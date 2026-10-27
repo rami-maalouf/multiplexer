@@ -69,13 +69,14 @@ security list and on the server.
 **Acceptance criteria:**
 - [x] `dig +short matrix.<domain>` returns the server's public IP. (2026-10-27: Rami added Cloudflare `A matrix -> 192.18.154.172`, DNS only. 1.1.1.1, 8.8.8.8 and Cloudflare's name server return it.)
 - [ ] From the Mac, TCP ports 80, 443 and 8448 reach the server. (2026-10-27: 80 and 443 yes, 8448 no. Rami: Oracle security list ingress for TCP 8448 and UDP 443, 8448.)
-- [ ] The base domain can serve `/.well-known/matrix/server` (the choice from T0.2). (2026-10-27: with Rami's yes, `80e243a` was pushed to the website's `main`. GitHub said the push bypassed the rule "Missing successful active Preview deployment". Vercel's production deploy of it failed; the site still serves `b8fe22b`. The cause is not known yet: the Vercel CLI token on the Mac is not valid.)
+- [x] The base domain can serve `/.well-known/matrix/server` (the choice from T0.2). (2026-10-27: live. `ramimaalouf.com` answers 301 to `www`, which serves `server` and `client` as JSON with CORS, equal to the server's own files. The website's `main` is at `f32aad4`.)
 
 **Verification:**
 - [ ] On the Mac, `nc -vz matrix.<domain> <port>`. "Connection refused" proves that the packet reached the host (nothing listens yet), so no listener on the server is needed. A timeout means the security list drops it.
 
 **Found on the way:**
 - The host firewall blocks nothing, so the server needs no change (details: `server/README.md`, Network). `/etc/iptables/rules.v4` is not loaded: `iptables-persistent` was removed on 2025-08-11.
+- The website could not deploy at all: Vercel no longer builds Node 20 (`engines` in `package.json`), and the site's `@astrojs/vercel` 7 (the last for Astro 4) writes the runtime `nodejs18.x`, which Vercel refuses, for any other Node. Fixed on the website (`c35cb89`, `f32aad4`): Node 24, and `scripts/fix-vercel-runtime.mjs` sets the function's runtime after `astro build`. A preview deploy was checked first (same status codes and pages as live). The proper fix later: Astro 5 or newer with a newer adapter. The first push (`80e243a`) bypassed the repo's rule "Missing successful active Preview deployment".
 
 **Dependencies:** T0.1, T0.2
 **Files:** `server/README.md` (record the Oracle security list rules)
@@ -87,7 +88,7 @@ security list and on the server.
 on aarch64 and that Element X can use it.
 
 **Acceptance criteria:**
-- [ ] `--tags=self-check` is all green. (Waits for port 8448 and the website's well-known files.)
+- [ ] `--tags=self-check` is all green. (2026-10-27: the client API passes; the federation check fails because the security list still blocks TCP 8448. The website's files are live.)
 - [ ] User `rami` exists (`--tags=register-user`). Element X on my iPhone signs in and sends a message to a test room. (2026-10-27: `@rami:ramimaalouf.com` exists, admin. Also `@test1` and `@test2` for the app. Element X waits for Rami.)
 - [x] We note which images were pulled for arm64 and which were built on the server. (All 7 pulled for arm64, none built: `server/notes/install.md`.)
 
