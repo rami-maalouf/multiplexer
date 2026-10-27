@@ -6,9 +6,9 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server (waits for Q1). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | App: T2.4 Unread counts and T2.6's recovery key, once the server conversation has made test users (T0.5). Server: Phase 0 runs in its own conversation (branch `server/phase-0`). |
-| Blocked on Rami | Q1 (domain) |
+| Current phase | Phase 0: prove the server (T0.3 done; the install waits for Rami's yes to the domain). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Next task | App: T2.4 Unread counts and T2.6's recovery key, once the server conversation has made test users (T0.5). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): T0.4, then T0.5 after Rami's yes. |
+| Blocked on Rami | Q1 (yes to `ramimaalouf.com`), the DNS record `matrix`, the Oracle security list (TCP 8448, UDP 443 and 8448), a push of the website branch `matrix-well-known`. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
 | Last updated | 2026-10-27 |
@@ -126,9 +126,9 @@ Use these to check that we work on the right thing.
 
 Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
-**Server (`ssh oracle`):** Ubuntu 24.04.5, aarch64, 4 CPUs, 23 GiB memory, 96 GB disk with 30 GB used, Docker installed but disabled. Ports 80, 443 and 8448 are free. Details: `server/notes/inventory.md` (T0.1).
+**Server (`ssh oracle`):** Ubuntu 24.04.5, aarch64, 4 CPUs, 23 GiB memory, 96 GB disk with 30 GB used, Docker installed but disabled. Ports 80, 443 and 8448 are free. Details: `server/notes/inventory.md` (T0.1). No host firewall is active (`iptables-persistent` was removed on 2025-08-11, so `/etc/iptables/rules.v4` is not loaded); Oracle's security list is the only firewall. No public IPv6. Time sync: `systemd-timesyncd`.
 
-**Mac:** arm64, Xcode, Docker, uv, Homebrew, gh. Ansible and `just` are not installed.
+**Mac:** arm64, Xcode, Docker, uv, Homebrew, gh. Ansible 14.5.0 (ansible-core 2.21.5) through `uv tool`, installed by `server/setup.sh`. `just` is not needed.
 
 **Oracle Always Free** ([docs](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)):
 - The page lists 2 OCPUs and 12 GB of A1 as free. Our instance is larger, so check billing (Q5).
@@ -139,9 +139,13 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 - It "somewhat supports" ARM. Only amd64 is fully supported. A component without an arm64 image is built on the server, if that component supports self-building.
 - Ports: 80/tcp, 443/tcp and udp, 8448/tcp and udp.
 - DNS: an A record for `matrix.<domain>`. The base domain delegates to it with `/.well-known/matrix/server`.
-- Install: `ansible-playbook -i inventory/hosts setup.yml --tags=install-all,ensure-matrix-users-created,start`.
-- Check: `ansible-playbook -i inventory/hosts setup.yml --tags=self-check`.
-- Add a user: `--extra-vars='username=… password=… admin=yes' --tags=register-user`.
+- It has no release tags. We pin a commit in `server/setup.sh` (`e3929968b8`, master on 2026-10-27).
+- Install: `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`.
+- Check: `./server/playbook.sh --tags=self-check`.
+- Add a user: `./server/register-user.sh <user> <keychain service> [admin]` (the playbook's `--tags=register-user`, with the password from the Keychain).
+- The self-check requires the base domain's well-known files to equal the ones it generates. Its check of `/.well-known/matrix/client` does not follow redirects by default (`config.yml` turns that on).
+- Its Docker role replaces `/etc/apt/sources.list.d/docker.list` with `docker.sources` (same repository) and turns Docker on at boot.
+- Let's Encrypt needs no e-mail address (`traefik_config_certificatesResolvers_acme_email` stays empty).
 - WhatsApp: `matrix_bridge_mautrix_whatsapp_enabled: true`. Double puppeting needs the Appservice Double Puppet service.
 
 **Matrix homeserver domain:** you cannot change it after install.
@@ -185,7 +189,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q1 | Which domain? User IDs become `@rami:<base domain>`. Does the base domain already host a website? (That decides how we serve `/.well-known/matrix/server`.) | T0.4 |
+| Q1 | Which domain? User IDs become `@rami:<base domain>`. Does the base domain already host a website? (That decides how we serve `/.well-known/matrix/server`.) Proposed 2026-10-27: `ramimaalouf.com` (Vercel site; well-known files on the website's branch `matrix-well-known`), Synapse at `matrix.ramimaalouf.com`. Waits for Rami's explicit yes. | T0.5 |
 | Q2 | ~~App name and bundle id~~ Answered 2026-10-27: Multiplexer, `com.ramimaalouf.multiplexer`. | T1.1 |
 | Q3 | Is WhatsApp the right first network? | T0.6 |
 | Q4 | Which Apple Developer team signs device builds and owns the APNs key? | Phase 2, Phase 3 |
@@ -215,4 +219,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T2.5 passed: photo messages show at their ratio, download through the sdk into the app's cache, and open in a full-screen viewer. |
 | 2026-10-27 | T2.8 added and passed: scrolling up a chat loads 20 older messages at a time, to the room's first message, and keeps the reader's place. A test sign-in now signs out in a teardown, so a failed test leaves no device on the account. |
 | 2026-10-27 | Rami keeps the two leftover test devices on the practice account (`B7E9i45YI2`, `fzw1iUkJqS`). Do not remove them. |
+| 2026-10-27 | T0.3 done: Ansible 14.5.0 on the Mac; the playbook pinned at `e3929968b8`; our inventory reaches the server as `oracle` and answers `pong`. The settings are in `config.yml` (in git); only the two secrets are in the gitignored `vars.yml`, written from the Keychain (service `multiplexer-server`), so the server can be rebuilt from `server/` plus the Keychain. |
+| 2026-10-27 | Found in T0.3 (read only): the host firewall blocks nothing (`rules.v4` is not loaded since `iptables-persistent` was removed), so T0.4 needs no host change. The T0.1 inventory said otherwise; corrected there. From the Mac, TCP 80 and 443 pass Oracle's security list and 8448 does not. |
+| 2026-10-27 | The website's well-known files are ready on the portfolio repo's branch `matrix-well-known` (commit `80e243a`, not pushed): `server` and `client` in `public/.well-known/matrix/`, served as JSON, `client` with CORS. matrix-rust-sdk sets no redirect policy, so Element X and our app follow `ramimaalouf.com`'s 301 to `www`. |
 | 2026-10-27 | T2.6, first part: encrypted chats show new messages as text, and a message without its key shows "Waiting for this message". The practice account has no recovery set up; the recovery key waits for a test user on our server, so the practice account Rami also uses in Element keeps no new encryption identity. |

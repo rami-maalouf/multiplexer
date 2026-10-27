@@ -15,7 +15,7 @@ Docker and ports 80, 443 and 8448, so we must know what is there first.
 **Acceptance criteria:**
 - [x] A list of containers, services that listen on ports, and the largest disk users. (2026-10-27: `server/notes/inventory.md`.)
 - [x] We know if ports 80, 443 and 8448 are free, or what uses them. (Free. Docker is installed but disabled; old n8n and Postiz images and volumes remain.)
-- [ ] Rami decides what stays. The decision is in the plan's decision log. (Three questions at the end of the inventory.)
+- [x] Rami decides what stays. The decision is in the plan's decision log. (2026-10-27: keep all old Docker data; the playbook may turn Docker on and keep it on at boot.)
 
 **Verification:**
 - [x] The containers, the listening ports and the disk use, saved in `server/notes/inventory.md`. (The Docker daemon is stopped, so the old images and volumes were read from `/var/lib/docker` without starting it.)
@@ -30,8 +30,8 @@ Docker and ports 80, 443 and 8448, so we must know what is there first.
 The server lives at `matrix.<base domain>`. This cannot change after install.
 
 **Acceptance criteria:**
-- [ ] Base domain chosen (Q1).
-- [ ] We know if the base domain already hosts a website, and how it serves `/.well-known/matrix/server`.
+- [ ] Base domain chosen (Q1). (Proposed: `ramimaalouf.com`, server at `matrix.ramimaalouf.com`. Waits for Rami's explicit yes.)
+- [x] We know if the base domain already hosts a website, and how it serves `/.well-known/matrix/server`. (2026-10-27: an Astro site on Vercel, repo `~/Documents/code/web/portfolio`. Static files in `public/.well-known/matrix/`, with `Content-Type` and CORS headers in `vercel.json`: branch `matrix-well-known`, commit `80e243a`, not pushed. `ramimaalouf.com` answers 301 to `www`; Synapse and matrix-rust-sdk follow it.)
 - [ ] Recorded in the decision log.
 
 **Dependencies:** None
@@ -44,16 +44,21 @@ pinned commit. Write our inventory for `oracle`, with Synapse as the homeserver
 and no bridges yet.
 
 **Acceptance criteria:**
-- [ ] `ansible --version` is a version that the playbook's `docs/ansible.md` supports.
-- [ ] `ansible -i inventory/hosts all -m ping` answers `pong` from the server.
-- [ ] `vars.yml` and other secrets are gitignored. A redacted example is in git.
+- [x] `ansible --version` is a version that the playbook's `docs/ansible.md` supports. (2026-10-27: Ansible 14.5.0, ansible-core 2.21.5, with `uv tool`. The docs ask for ansible-core 2.15.1 or newer.)
+- [x] `ansible -i inventory/hosts all -m ping` answers `pong` from the server. (`ansible -i server/inventory/hosts all -m ping`.)
+- [x] `vars.yml` and other secrets are gitignored. A redacted example is in git. (`vars.yml` holds only the two secrets; `server/setup.sh` writes it from the Keychain, service `multiplexer-server`. The settings are in `config.yml`, in git. Example: `server/vars.example.yml`.)
 
 **Verification:**
-- [ ] The ping command above.
-- [ ] `git status` shows no secret files.
+- [x] The ping command above.
+- [x] `git status` shows no secret files.
+
+**Found on the way:**
+- The playbook has no release tags. `server/setup.sh` pins commit `e3929968b8` (master on 2026-10-27) and fetches only that commit: a full clone stalled at 25 MB.
+- `just` is not needed: `setup.sh` calls `ansible-galaxy` for the roles, and `playbook.sh` runs `ansible-playbook`.
+- The inventory reaches the server as `ansible_host=oracle`, so the SSH key path stays in `~/.ssh/config`.
 
 **Dependencies:** T0.2
-**Files:** `.gitignore`, `server/README.md`, `server/inventory/hosts`, `server/inventory/host_vars/matrix.<domain>/vars.yml` (ignored), `vars.example.yml`
+**Files:** `.gitignore`, `server/README.md`, `server/setup.sh`, `server/playbook.sh`, `server/inventory/hosts`, `server/inventory/host_vars/matrix.ramimaalouf.com/config.yml`, `.../vars.yml` (ignored), `server/vars.example.yml`
 **Scope:** S
 
 ### T0.4 DNS and firewall
@@ -62,12 +67,15 @@ and no bridges yet.
 security list and on the server.
 
 **Acceptance criteria:**
-- [ ] `dig +short matrix.<domain>` returns the server's public IP.
-- [ ] From the Mac, TCP ports 80, 443 and 8448 reach the server.
-- [ ] The base domain can serve `/.well-known/matrix/server` (the choice from T0.2).
+- [ ] `dig +short matrix.<domain>` returns the server's public IP. (Rami: Cloudflare `A matrix -> 192.18.154.172`, proxy off.)
+- [ ] From the Mac, TCP ports 80, 443 and 8448 reach the server. (2026-10-27: 80 and 443 yes, 8448 no. Rami: Oracle security list ingress for TCP 8448 and UDP 443, 8448.)
+- [ ] The base domain can serve `/.well-known/matrix/server` (the choice from T0.2). (Ready on the website's branch `matrix-well-known`; Rami reviews and pushes.)
 
 **Verification:**
-- [ ] On the server, `nc -l <port>` for each port. On the Mac, `nc -vz matrix.<domain> <port>`.
+- [ ] On the Mac, `nc -vz matrix.<domain> <port>`. "Connection refused" proves that the packet reached the host (nothing listens yet), so no listener on the server is needed. A timeout means the security list drops it.
+
+**Found on the way:**
+- The host firewall blocks nothing, so the server needs no change (details: `server/README.md`, Network). `/etc/iptables/rules.v4` is not loaded: `iptables-persistent` was removed on 2025-08-11.
 
 **Dependencies:** T0.1, T0.2
 **Files:** `server/README.md` (record the Oracle security list rules)
@@ -87,8 +95,12 @@ on aarch64 and that Element X can use it.
 - [ ] The self-check output and an Element X screenshot.
 - [ ] `free -h` and `sudo docker stats --no-stream` after one hour, saved in `server/notes/`.
 
+**Before the first run:** Rami's explicit yes to the domain (the server name can never change).
+The install also replaces `/etc/apt/sources.list.d/docker.list` with an equal `docker.sources`
+(the playbook's Docker role), and turns Docker on at boot.
+
 **Dependencies:** T0.3, T0.4
-**Files:** `server/inventory/host_vars/.../vars.yml`, `server/notes/install.md`
+**Files:** `server/inventory/host_vars/.../config.yml`, `server/register-user.sh`, `server/notes/install.md`
 **Scope:** S
 
 ### T0.6 Add the WhatsApp bridge
