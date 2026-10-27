@@ -68,11 +68,11 @@ security list and on the server.
 
 **Acceptance criteria:**
 - [x] `dig +short matrix.<domain>` returns the server's public IP. (2026-10-27: Rami added Cloudflare `A matrix -> 192.18.154.172`, DNS only. 1.1.1.1, 8.8.8.8 and Cloudflare's name server return it.)
-- [ ] From the Mac, TCP ports 80, 443 and 8448 reach the server. (2026-10-27: 80 and 443 yes, 8448 no. Rami: Oracle security list ingress for TCP 8448 and UDP 443, 8448.)
+- [x] From the Mac, TCP ports 80, 443 and 8448 reach the server. (2026-10-27: Rami added TCP 8448, UDP 443 and UDP 8448 to the security list; all three TCP ports connect. UDP is not tested from the Mac.)
 - [x] The base domain can serve `/.well-known/matrix/server` (the choice from T0.2). (2026-10-27: live. `ramimaalouf.com` answers 301 to `www`, which serves `server` and `client` as JSON with CORS, equal to the server's own files. The website's `main` is at `f32aad4`.)
 
 **Verification:**
-- [ ] On the Mac, `nc -vz matrix.<domain> <port>`. "Connection refused" proves that the packet reached the host (nothing listens yet), so no listener on the server is needed. A timeout means the security list drops it.
+- [x] On the Mac, `nc -vz matrix.<domain> <port>`. "Connection refused" proves that the packet reached the host (nothing listens yet), so no listener on the server is needed. A timeout means the security list drops it.
 
 **Found on the way:**
 - The host firewall blocks nothing, so the server needs no change (details: `server/README.md`, Network). `/etc/iptables/rules.v4` is not loaded: `iptables-persistent` was removed on 2025-08-11.
@@ -88,7 +88,7 @@ security list and on the server.
 on aarch64 and that Element X can use it.
 
 **Acceptance criteria:**
-- [ ] `--tags=self-check` is all green. (2026-10-27: the client API passes; the federation check fails because the security list still blocks TCP 8448. The website's files are live.)
+- [x] `--tags=self-check` is all green. (2026-10-27: `ok=36 failed=0`: the client API, the federation API on 8448, and the well-known files on both names. matrix.org's federation tester: `FederationOK: True`, found through the website's 301.)
 - [ ] User `rami` exists (`--tags=register-user`). Element X on my iPhone signs in and sends a message to a test room. (2026-10-27: `@rami:ramimaalouf.com` exists, admin. Also `@test1` and `@test2` for the app. Element X waits for Rami.)
 - [x] We note which images were pulled for arm64 and which were built on the server. (All 7 pulled for arm64, none built: `server/notes/install.md`.)
 

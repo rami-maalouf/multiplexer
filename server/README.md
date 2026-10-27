@@ -68,9 +68,11 @@ To paste a password on the iPhone (Universal Clipboard):
   `ramimaalouf.com` answers 301 to `www.ramimaalouf.com`. Synapse and matrix-rust-sdk
   (Element X, our app) follow it; a browser client does not find the server from the user
   ID, because the 301 has no CORS header.
-- **Oracle security list** (the cloud firewall, set by Rami in the console): ingress from
-  `0.0.0.0/0` on TCP 22, 80, 443, 8448 and UDP 443, 8448. On 2026-10-27, TCP 80 and 443
-  were open and TCP 8448 was closed.
+- **Oracle security list** (the cloud firewall, set by Rami in the console): region
+  `ca-toronto-1`, VCN `vcn-20250515-0038` > Security > Default Security List > Security
+  rules. Ingress from `0.0.0.0/0`, all stateful: TCP 22, 80, 443 (old, "run n8n publicly"),
+  and since 2026-10-27 TCP 8448, UDP 443 and UDP 8448 (Matrix). Also Oracle's default ICMP
+  rules. To rebuild on a new VCN, add the same rules.
 - **Host firewall:** none is active. `/etc/iptables/rules.v4` has REJECT rules, but
   nothing loads them: `iptables-persistent` was removed on 2025-08-11, so the
   `netfilter-persistent` service has no plugins. The live `INPUT` chain is empty (policy
