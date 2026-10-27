@@ -6,9 +6,9 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server (T0.3 done; the install waits for Rami's yes to the domain). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | App: T2.4 Unread counts, once the server conversation has made test users (T0.5). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): T0.4, then T0.5 after Rami's yes. |
-| Blocked on Rami | Q1 (yes to `ramimaalouf.com`), the DNS record `matrix`, the Oracle security list (TCP 8448, UDP 443 and 8448), a push of the website branch `matrix-well-known`. |
+| Current phase | Phase 0: prove the server (T0.2 and T0.3 done; T0.5, the install, runs). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Next task | App: T2.4 Unread counts, once the server conversation has made test users (T0.5). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): T0.5, then T0.4's checks when the ports and the website are open. |
+| Blocked on Rami | The Oracle security list (TCP 8448, UDP 443 and 8448), a push of the website branch `matrix-well-known`. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
 | Last updated | 2026-10-27 |
@@ -189,7 +189,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q1 | Which domain? User IDs become `@rami:<base domain>`. Does the base domain already host a website? (That decides how we serve `/.well-known/matrix/server`.) Proposed 2026-10-27: `ramimaalouf.com` (Vercel site; well-known files on the website's branch `matrix-well-known`), Synapse at `matrix.ramimaalouf.com`. Waits for Rami's explicit yes. | T0.5 |
+| Q1 | Which domain? User IDs become `@rami:<base domain>`. Does the base domain already host a website? (That decides how we serve `/.well-known/matrix/server`.) Answered 2026-10-27 (Rami): `ramimaalouf.com` (Vercel site; well-known files on the website's branch `matrix-well-known`), Synapse at `matrix.ramimaalouf.com`. | T0.5 |
 | Q2 | ~~App name and bundle id~~ Answered 2026-10-27: Multiplexer, `com.ramimaalouf.multiplexer`. | T1.1 |
 | Q3 | Is WhatsApp the right first network? | T0.6 |
 | Q4 | Which Apple Developer team signs device builds and owns the APNs key? | Phase 2, Phase 3 |
@@ -222,3 +222,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T0.3 done: Ansible 14.5.0 on the Mac; the playbook pinned at `e3929968b8`; our inventory reaches the server as `oracle` and answers `pong`. The settings are in `config.yml` (in git); only the two secrets are in the gitignored `vars.yml`, written from the Keychain (service `multiplexer-server`), so the server can be rebuilt from `server/` plus the Keychain. |
 | 2026-10-27 | Found in T0.3 (read only): the host firewall blocks nothing (`rules.v4` is not loaded since `iptables-persistent` was removed), so T0.4 needs no host change. The T0.1 inventory said otherwise; corrected there. From the Mac, TCP 80 and 443 pass Oracle's security list and 8448 does not. |
 | 2026-10-27 | The website's well-known files are ready on the portfolio repo's branch `matrix-well-known` (commit `80e243a`, not pushed): `server` and `client` in `public/.well-known/matrix/`, served as JSON, `client` with CORS. matrix-rust-sdk sets no redirect policy, so Element X and our app follow `ramimaalouf.com`'s 301 to `www`. |
+| 2026-10-27 | T0.2 done. Rami confirmed the server name `ramimaalouf.com` (user IDs `@name:ramimaalouf.com`, Synapse at `matrix.ramimaalouf.com`; it can never change), and that the playbook may replace `docker.list` with `docker.sources`. Cloudflare has `A matrix -> 192.18.154.172`, DNS only. |

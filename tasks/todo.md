@@ -30,9 +30,9 @@ Docker and ports 80, 443 and 8448, so we must know what is there first.
 The server lives at `matrix.<base domain>`. This cannot change after install.
 
 **Acceptance criteria:**
-- [ ] Base domain chosen (Q1). (Proposed: `ramimaalouf.com`, server at `matrix.ramimaalouf.com`. Waits for Rami's explicit yes.)
+- [x] Base domain chosen (Q1). (2026-10-27, Rami: `ramimaalouf.com`. User IDs `@name:ramimaalouf.com`; Synapse at `matrix.ramimaalouf.com`.)
 - [x] We know if the base domain already hosts a website, and how it serves `/.well-known/matrix/server`. (2026-10-27: an Astro site on Vercel, repo `~/Documents/code/web/portfolio`. Static files in `public/.well-known/matrix/`, with `Content-Type` and CORS headers in `vercel.json`: branch `matrix-well-known`, commit `80e243a`, not pushed. `ramimaalouf.com` answers 301 to `www`; Synapse and matrix-rust-sdk follow it.)
-- [ ] Recorded in the decision log.
+- [x] Recorded in the decision log.
 
 **Dependencies:** None
 **Scope:** XS (a decision)
@@ -97,7 +97,7 @@ on aarch64 and that Element X can use it.
 
 **Before the first run:** Rami's explicit yes to the domain (the server name can never change).
 The install also replaces `/etc/apt/sources.list.d/docker.list` with an equal `docker.sources`
-(the playbook's Docker role), and turns Docker on at boot.
+(the playbook's Docker role), and turns Docker on at boot. (2026-10-27: Rami said yes to both.)
 
 **Dependencies:** T0.3, T0.4
 **Files:** `server/inventory/host_vars/.../config.yml`, `server/register-user.sh`, `server/notes/install.md`
