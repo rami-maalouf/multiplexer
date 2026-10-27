@@ -74,34 +74,7 @@ bun exact.mjs contract build app.contract --json --errors-only
 - Exact asks apps to keep a local diary (`bun exact.mjs feedback status` says `ask`).
   Write it in `apps/multiplexer/.exact/diary/`. Never send it without Rami's yes.
 
-## MatrixCore API (today)
+## Test accounts
 
-- `MatrixAccount.signIn(homeserver:user:password:deviceName:storeDirectory:)`
-- `MatrixAccount.restore(_:storeDirectory:)` with a `SavedSession` from `savedSession()`
-- `rooms()`, `messages(roomId:limit:)`, `send(roomId:text:)`, `createRoom(name:)`, `signOut()`
-- `MatrixCore.sdkCommit()`
-
-`messages` waits until the timeline stops changing (at most 5 s). The app needs live
-updates instead (Phase 2).
-
-## Status (2026-10-27)
-
-Done:
-- T1.1 the Exact app exists (`com.ramimaalouf.multiplexer`, no Linux).
-- T1.2 the app calls matrix-rust-sdk through the native module.
-- T1.3 MatrixCore signs in, lists rooms, sends and reads messages against matrix.org
-  (the WhatsApp part waits for the server).
-
-Next:
-- **T1.4 sign-in screen:** server, user name and password. On success, show the room
-  list. On a wrong password, show an alert. Keep the `SavedSession` in the Keychain, so
-  that a relaunch stays signed in. MatrixCore calls are async, so the native module must
-  answer with `later`, not `call` (`call` must answer within 100 ms on the main thread).
-- **T1.5 room list and read-only chat**, with the `chat-thread` recipe.
-- Phase 0 (the server) waits for Rami: Q1, the domain. Rami's recommended option is a
-  subdomain only for chat, such as `chat.<domain>`.
-
-Accounts:
-- Practice: `@rami-m-test:matrix.org` (password in the Keychain). Its room "Multiplexer test" is for tests.
-- `@rami-m:matrix.org` is Rami's own account. It has no password (social sign-in). Do not test with it.
-- `@ramimaalouf:beeper.com` is his Beeper account. Do not use it.
+- Practice: `@rami-m-test:matrix.org`. Its password is in the Keychain. Its room "Multiplexer test" is for tests.
+- Do not test with `@rami-m:matrix.org` or `@ramimaalouf:beeper.com`: they are Rami's real accounts.
