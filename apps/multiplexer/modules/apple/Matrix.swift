@@ -35,9 +35,12 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    reply.send(["rooms": try await signedIn().rooms().map {
-                        ["id": $0.id, "name": $0.name, "isDirect": $0.isDirect, "lastMessage": $0.lastMessage,
-                         "lastSender": $0.lastSenderName, "lastIsOwn": $0.lastIsOwn, "lastTime": Double($0.lastTimestamp)]
+                    let account = try await signedIn()
+                    reply.send(["rooms": try await account.rooms().map { room in
+                        ["id": room.id, "name": room.name, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
+                         "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
+                         "avatar": cached(room.avatarName, then: .rooms) {
+                             _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
                     }])
                 case "messages":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
@@ -156,16 +159,23 @@ final class Matrix: ExactModule {
         }
     }
 
-    /// A photo message's thumbnail as an `app:/` path once it is here; until then "", and
-    /// the download starts, and the chat is asked again when it ends.
+    /// A photo message's thumbnail as an `app:/` path once it is here (see `cached`).
     @MainActor private func thumbnail(_ account: MatrixAccount, roomId: String, message: Message) -> String {
-        guard let name = message.image?.thumbnailName else { return "" }
+        cached(message.image?.thumbnailName ?? "", then: .room(roomId)) {
+            _ = try await account.imageFile(roomId: roomId, messageId: message.id, full: false, directory: self.media)
+        }
+    }
+
+    /// A downloaded picture's `app:/` path once its file is here. Until then "": `fetch`
+    /// starts (once), and when it ends app.ts is told `change`, so it asks again.
+    @MainActor private func cached(_ name: String, then change: MatrixChange, fetch: @escaping () async throws -> Void) -> String {
+        guard !name.isEmpty else { return "" }
         if FileManager.default.fileExists(atPath: media.appendingPathComponent(name).path) { return "app:/cache/matrix-media/\(name)" }
         guard !failedDownloads.contains(name), downloading.insert(name).inserted else { return "" }
         Task { @MainActor in
             do {
-                _ = try await account.imageFile(roomId: roomId, messageId: message.id, full: false, directory: media)
-                changed(.room(roomId))
+                try await fetch()
+                changed(change)
             } catch {
                 failedDownloads.insert(name)
             }

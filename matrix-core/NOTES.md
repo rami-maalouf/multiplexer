@@ -101,6 +101,14 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - `createRoom(name:encrypted:)` makes an encrypted room ("Multiplexer encrypted test" for
   the tests).
 
+## The chat list
+
+- `rooms()` returns the joined rooms in the room list service's order (the server's
+  recency ranking, kept from the entries listener's diffs); a room it has not ranked yet
+  comes after, in the client's order.
+- `RoomSummary.avatarName` names the room's picture; `avatarFile(roomId:directory:)`
+  downloads a thumbnail of at most 160 pixels a side once.
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The

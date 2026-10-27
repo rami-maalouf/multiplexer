@@ -43,6 +43,8 @@ public struct RoomSummary: Equatable, Sendable {
     public var lastIsOwn: Bool
     /// Milliseconds since 1970; 0 when the room has no message.
     public var lastTimestamp: UInt64
+    /// The file name of the room's picture for `MatrixAccount.avatarFile`; "" when it has none.
+    public var avatarName: String = ""
 }
 
 public struct Message: Equatable, Sendable {

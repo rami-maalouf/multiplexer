@@ -405,6 +405,27 @@ message, and keeps the reader's place.
 **Dependencies:** T2.2
 **Scope:** S
 
+### T2.9 Pictures in the chat list
+
+**Description:** Added after T2.8: a list of names with no faces is hard to scan, and
+bridged chats bring each contact's picture. Each row gets the room's picture, or its
+initials.
+
+**Acceptance criteria:**
+- [x] A room with a picture shows it, round, at the start of its row. (2026-10-27: the test room's picture, set through the API; Matrix.org's logo.)
+- [x] A room without one shows its initials. ("ME" for "Multiplexer encrypted test".)
+- [x] `check` is clean in light, dark and at the largest text size. (The picture stays 44 points; the initials scale to a cap: finding 21.)
+
+**Found on the way:**
+- A room whose newest event is no message (a new picture) lost its time and sorted low. The list now takes the room list service's order (the server's recency ranking), and a room's time counts any newest event.
+- The sdk ranks the encrypted test room, whose newest message this device cannot read, below an older room. That is the sdk's order; unchanged.
+
+**Verification:**
+- [x] MatrixCore tests: `testARoomPictureShowsInTheListAndDownloads`; in `testAnOpenChatSeesAMessageFromAnotherDevice`, the room with the newest message comes first.
+
+**Dependencies:** T2.2
+**Scope:** S
+
 ### Checkpoint M2: daily reading and sending
 
 - [ ] On my iPhone, against our server: live updates, sending, unread counts.
