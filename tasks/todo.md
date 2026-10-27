@@ -166,14 +166,15 @@ call it. No network and no UI design. Try A first, then B.
 `messages(roomId, limit)`.
 
 **Acceptance criteria:**
-- [ ] An XCTest in the iOS Simulator signs in to our server with a test account and lists the rooms. The list includes the WhatsApp chat.
+- [ ] An XCTest in the iOS Simulator signs in to the practice account on matrix.org (D8) and lists its rooms.
+- [ ] After T0.6: the same test against our server lists the WhatsApp chat.
 - [ ] It returns the last 20 messages of a room, in order, with sender, text and time.
 - [ ] No matrix-rust-sdk type is in MatrixCore's public API.
 
 **Verification:**
 - [ ] `xcodebuild test` on an iOS Simulator destination passes.
 
-**Dependencies:** T0.6, T1.2
+**Dependencies:** T1.2, the practice account (D8). The WhatsApp check needs T0.6.
 **Files:** `matrix-core/Package.swift`, `matrix-core/Sources/MatrixCore/*.swift`, `matrix-core/Tests/*`
 **Scope:** M
 

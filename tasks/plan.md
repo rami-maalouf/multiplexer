@@ -7,7 +7,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 | | |
 |---|---|
 | Current phase | Phase 0: prove the server. Phase 1: T1.1 and T1.2 done. |
-| Next task | Q1 (domain), then T0.1 to T0.6. T1.3 needs the server (T0.6). |
+| Next task | T1.3 on the matrix.org practice account (D8). Q1 (domain) still blocks Phase 0. |
 | Blocked on Rami | Q1 (domain) |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `65577096ed` (2026-10-27) |
@@ -120,6 +120,7 @@ Use these to check that we work on the right thing.
 | D5 | Element X is the client until our app is usable. | It works with our server from the first day. |
 | D6 | First network: WhatsApp. | QR login (`login qr`). Simple to test. Confirm with Q3. |
 | D7 | Work from the Mac. Manage the server over SSH and Ansible. | The iOS build needs Xcode. The playbook runs from the local computer. Safer than an agent with sudo on the server. |
+| D8 | Build the client against a practice account on matrix.org until our server is ready. Its password stays in the Mac's Keychain, never in chat or git. | Unblocks Phase 1 while Phase 0 waits for the domain. matrix.org cannot host our bridges: a bridge must be registered on the homeserver by its admin. |
 
 ## Facts we rely on
 
@@ -199,3 +200,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | Pulled the latest Exact. Its `main` history was rewritten on the remote, so local `main` now matches `origin/main` (`65577096ed`). The old local `main` is kept in exact2 as `backup/main-before-2026-10-27-rewrite`. The facts above still hold. |
 | 2026-10-27 | Named the app **Multiplexer** (Rami). Bundle id `com.ramimaalouf.multiplexer`, following `com.ramimaalouf.openmulticam` and `com.ramimaalouf.opensplit`. Folder and T3 project renamed. Alternatives considered: Estuary (no messaging conflict, warmer), Switchboard, Braid, Hearth, Patchbay, Weft (each already used by a chat or social product). |
 | 2026-10-27 | T1.2 passed: an Exact native module calls matrix-rust-sdk on the iOS Simulator (approach A: the release's xcframework and Swift bindings in `modules/apple/`). Exact refuses symlinks in the app, so `scripts/setup-matrix-sdk.sh` copies them. Cost to watch: each module edit recompiles 2 MB of bindings (about 40 s). Details in `matrix-core/NOTES.md`. D4 (Exact) stands. |
+| 2026-10-27 | D8: Rami chose to build the client against matrix.org for now. The domain (Q1) is still needed for Phase 0. |
