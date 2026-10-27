@@ -11,6 +11,8 @@ final class Matrix: ExactModule {
     private var stores: URL { context.data.appendingPathComponent("matrix", isDirectory: true) }
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
     private var account: Task<MatrixAccount, Error>?
+    /// Topics that changed and app.ts has not heard of yet: a burst of changes becomes one ask.
+    private var changedTopics: Set<String> = []
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
         switch request["op"] as? String {
@@ -93,6 +95,7 @@ final class Matrix: ExactModule {
                 try? await signedIn.signOut()
                 throw error
             }
+            tellChanges(signedIn)
             account = Task { signedIn }
             return ["ok": true, "problem": "", "detail": ""]
         } catch {
@@ -115,10 +118,35 @@ final class Matrix: ExactModule {
         let restoring = Task { try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store)) }
         account = restoring
         do {
-            return try await restoring.value
+            let restored = try await restoring.value
+            tellChanges(restored)
+            return restored
         } catch {
             account = nil
             throw error
+        }
+    }
+
+    /// Passes the account's changes to app.ts, as the topics its sources watch:
+    /// `rooms`, and `thread:<room id>` for an open chat.
+    private func tellChanges(_ account: MatrixAccount) {
+        account.onChange { [weak self] change in
+            DispatchQueue.main.async { self?.changed(change) }
+        }
+    }
+
+    private func changed(_ change: MatrixChange) {
+        if changedTopics.isEmpty {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                guard let self else { return }
+                let topics = changedTopics
+                changedTopics = []
+                topics.forEach(context.changed)
+            }
+        }
+        switch change {
+        case .rooms: changedTopics.insert("rooms")
+        case .room(let roomId): changedTopics.insert("thread:\(roomId)")
         }
     }
 

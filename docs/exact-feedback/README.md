@@ -35,6 +35,9 @@ Each finding was rechecked against exact2 `cee509ac82` (2026-10-27).
 | 14 | Withdrawn: "an app that uses exact2 by path cannot safely follow a rewritten `main`". The cost came from a one-time purge of exact2's git history, not from the framework or from building an app with it. | | | (file removed) |
 | 15 | After `update`, `lock` reports "no changes" for a `Cargo.lock` that `update` rewrote. | About 2 min | P3 | [update-and-lock-disagree-about-cargo-lock](issues/20261027-update-and-lock-disagree-about-cargo-lock.md) |
 | 16 | A drive cannot wait for work that a native module starts by itself, so it needs a fixed real-time wait. | About 3 min, and a slow drive | P3 | [a-drive-cannot-wait-for-a](issues/20261027-a-drive-cannot-wait-for-a.md) |
+| 17 | `clock until state` and `expect state` take different path forms, and the refusal shows only the grammar. | About 3 min and a wasted drive | P3 | [clock-until-state-and-expect-state](issues/20261027-clock-until-state-and-expect-state.md) |
+| 18 | A `compare` step empties the store for the whole drive, and nothing says so. | About 5 min | P3 | [a-compare-step-empties-the-store](issues/20261027-a-compare-step-empties-the-store.md) |
+| 19 | A transcript moved by one row when an update removed its first row above the view (seen once, not isolated). | About 10 min to measure | P3 | [a-transcript-moved-by-one-row](issues/20261027-a-transcript-moved-by-one-row.md) |
 
 ## What worked well
 

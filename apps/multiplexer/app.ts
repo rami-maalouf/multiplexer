@@ -29,11 +29,13 @@ const sources: Sources = {
   },
   loadRooms: async ([userId], _store, _storage, native): Promise<Result<'loadRooms'>> => {
     if (userId === '' || !native?.available) return { owner: userId, rooms: [] };
+    native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
     const answer = (await native.later({ op: 'rooms' })) as RoomsAnswer;
     return { owner: userId, rooms: answer.rooms };
   },
   loadMessages: async ([roomId, isDirect], _store, _storage, native): Promise<Result<'loadMessages'>> => {
     if (roomId === '' || !native?.available) return { room: roomId, messages: [] };
+    native.watch(`thread:${roomId}`);
     const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
     const messages = answer.messages.map((m, i) => {
       const before = answer.messages[i - 1];

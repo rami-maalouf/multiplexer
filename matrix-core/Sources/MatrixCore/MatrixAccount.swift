@@ -7,6 +7,12 @@ import MatrixRustSDK
 public final class MatrixAccount: @unchecked Sendable {
     private let client: Client
     private var syncService: SyncService?
+    private let lock = NSLock()
+    private var changeHandler: (@Sendable (MatrixChange) -> Void)?
+    /// The room list's listener, kept so that it keeps listening.
+    private var roomEntries: RoomListEntriesWithDynamicAdaptersResult?
+    /// One live timeline for each chat that was opened, so a chat opened again does not page back.
+    private var timelines: [String: Task<LiveTimeline, Error>] = [:]
 
     private init(client: Client) {
         self.client = client
@@ -73,6 +79,16 @@ public final class MatrixAccount: @unchecked Sendable {
                             nativeSlidingSync: s.slidingSyncVersion == .native)
     }
 
+    /// Calls `handler`, from any thread, when the room list or an open chat changes.
+    /// The room list is watched from the first `rooms()`, a chat from its first `messages()`.
+    public func onChange(_ handler: @escaping @Sendable (MatrixChange) -> Void) {
+        lock.withLock { changeHandler = handler }
+    }
+
+    private func notify(_ change: MatrixChange) {
+        lock.withLock { changeHandler }?(change)
+    }
+
     /// The rooms this account has joined, after the first sync.
     public func rooms(timeout: TimeInterval = 30) async throws -> [RoomSummary] {
         try await startSync(timeout: timeout)
@@ -93,12 +109,28 @@ public final class MatrixAccount: @unchecked Sendable {
         return rooms
     }
 
-    /// The last `limit` messages of a room, oldest first.
+    /// A room's messages, oldest first. The first call opens the chat's live timeline with
+    /// its last `limit` messages; later calls return those and every message since, so a
+    /// new message never pushes one the reader has loaded out of the chat.
     public func messages(roomId: String, limit: Int, timeout: TimeInterval = 30) async throws -> [Message] {
+        let opening: Task<LiveTimeline, Error> = lock.withLock {
+            if let open = timelines[roomId] { return open }
+            let task = Task { try await self.openTimeline(roomId, limit: limit, timeout: timeout) }
+            timelines[roomId] = task
+            return task
+        }
+        do {
+            return try await opening.value.shown(limit: limit)
+        } catch {
+            lock.withLock { timelines[roomId] = nil }
+            throw error
+        }
+    }
+
+    private func openTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
         let timeline = try await room(roomId, timeout: timeout).timeline()
         let items = TimelineItems()
         let handle = await timeline.addListener(listener: items)
-        defer { handle.cancel() }
         // a page holds state events too (joins, names), so page back until there are
         // enough messages or the room's start; at most 5 pages.
         for _ in 0..<5 {
@@ -108,7 +140,10 @@ public final class MatrixAccount: @unchecked Sendable {
             if try await timeline.paginateBackwards(numEvents: UInt16(clamping: limit)) { break }
         }
         await items.settle()
-        return Array(items.messages().suffix(limit))
+        // from here on, a change is news: a message came, or one was sent, edited or removed.
+        items.onChange = { [weak self] in self?.notify(.room(roomId)) }
+        return LiveTimeline(timeline: timeline, items: items, handle: handle,
+                            firstShown: items.messages().suffix(limit).first?.id)
     }
 
     /// Sends a text message and returns once the server has accepted it.
@@ -134,6 +169,11 @@ public final class MatrixAccount: @unchecked Sendable {
 
     /// Signs out, which removes this device from the account.
     public func signOut() async throws {
+        lock.withLock {
+            changeHandler = nil
+            roomEntries = nil
+            timelines = [:]
+        }
         await syncService?.stop()
         syncService = nil
         try await client.logout()
@@ -148,6 +188,10 @@ public final class MatrixAccount: @unchecked Sendable {
         defer { handle.cancel() }
         await service.start()
         try await poll(timeout: timeout, what: "the first sync") { state.current == .running }
+        let entries = try await service.roomListService().allRooms()
+            .entriesWithDynamicAdapters(pageSize: 1000, listener: RoomEntries { [weak self] in self?.notify(.rooms) })
+        _ = entries.controller().setFilter(kind: .joined)
+        lock.withLock { roomEntries = entries }
     }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.
@@ -181,17 +225,59 @@ private final class RoomListState: RoomListServiceStateListener, @unchecked Send
     }
 }
 
+/// Any change to the room list (its order, a room's name or last message) is a change.
+private final class RoomEntries: RoomListEntriesListener, @unchecked Sendable {
+    private let changed: @Sendable () -> Void
+    init(_ changed: @escaping @Sendable () -> Void) { self.changed = changed }
+    func onUpdate(roomEntriesUpdate: [RoomListEntriesUpdate]) { changed() }
+}
+
+/// An open chat's timeline and its listener; closing it stops the listener.
+private final class LiveTimeline: @unchecked Sendable {
+    let timeline: Timeline
+    let items: TimelineItems
+    private let handle: TaskHandle
+    /// The oldest message the chat showed when it opened.
+    private let firstShown: String?
+
+    init(timeline: Timeline, items: TimelineItems, handle: TaskHandle, firstShown: String?) {
+        self.timeline = timeline
+        self.items = items
+        self.handle = handle
+        self.firstShown = firstShown
+    }
+
+    /// The messages from the first one shown at open to the newest; the last `limit` if
+    /// that one is gone (the timeline was reset).
+    func shown(limit: Int) -> [Message] {
+        let all = items.messages()
+        guard let firstShown, let start = all.firstIndex(where: { $0.id == firstShown }) else { return Array(all.suffix(limit)) }
+        return Array(all[start...])
+    }
+
+    deinit { handle.cancel() }
+}
+
 /// A timeline's items, kept current by applying the sdk's diffs in order.
 private final class TimelineItems: TimelineListener, @unchecked Sendable {
     private let lock = NSLock()
     private var items: [TimelineItem] = []
     private var lastUpdate = Date()
+    private var changed: (@Sendable () -> Void)?
+
+    /// Called after each batch of diffs, from the sdk's task.
+    var onChange: (@Sendable () -> Void)? {
+        get { lock.withLock { changed } }
+        set { lock.withLock { changed = newValue } }
+    }
 
     func onUpdate(diff: [TimelineDiff]) {
-        lock.withLock {
+        let changed = lock.withLock {
             for d in diff { apply(d) }
             lastUpdate = Date()
+            return self.changed
         }
+        changed?()
     }
 
     private func apply(_ d: TimelineDiff) {

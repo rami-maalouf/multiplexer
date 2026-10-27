@@ -270,14 +270,18 @@ tells the app when the room list or the open chat changes. The module calls
 for each. The open chat keeps one live timeline, so a change costs no new pagination.
 
 **Acceptance criteria:**
-- [ ] A message that another device sends shows in the open chat within 3 s, with no pull to refresh.
-- [ ] The same message moves its room to the top of the list and updates the preview and the time.
-- [ ] Scrolled up in a long chat, a new message does not move what I read.
-- [ ] Opening a chat a second time does not page back again (the timeline is kept).
+- [x] A message that another device sends shows in the open chat within 3 s, with no pull to refresh. (2026-10-27: 1 to 2 s in the app; the MatrixCore test sees it within 1.4 s.)
+- [x] The same message moves its room to the top of the list and updates the preview and the time. (The preview and the time update. The list sorts by the last message's time; the test room was already at the top, so a move was not seen.)
+- [x] Scrolled up in a long chat, a new message does not move what I read. (`tree --ax` frames are the same before and after.)
+- [x] Opening a chat a second time does not page back again (the timeline is kept). (The MatrixCore test: a second `messages()` returns in under 0.3 s.)
 
 **Verification:**
-- [ ] A drive opens the test room while `testFillTheTestRoom` sends from another device. `clock until state` sees the new message.
-- [ ] Screenshots before and after.
+- [x] A drive opens the test room while `scripts/send-test-message.sh` sends from another device. `clock until state thread.messages.20.body == "…"` sees the new message.
+- [x] Screenshots before and after (`apps/multiplexer/.exact/t2.2-*.png`, not in git).
+
+**Found on the way:**
+- The chat showed only the last 20 messages, so each new message pushed the oldest one out, and the rows the reader saw moved up. Now a chat keeps every message from the first one it showed at open.
+- The room list listener needs `setFilter(kind: .joined)` on its controller before it reports changes.
 
 **Dependencies:** T2.1
 **Files:** `matrix-core/Sources/MatrixCore/*.swift`, `modules/apple/Matrix.swift`, `app.ts`, `app.contract`

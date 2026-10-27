@@ -57,6 +57,51 @@ final class MatrixCoreTests: XCTestCase {
         try await account.signOut()
     }
 
+    func testAnOpenChatSeesAMessageFromAnotherDevice() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let reader = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
+                                                    deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let changes = Changes()
+        reader.onChange { changes.add($0) }
+        let rooms = try await reader.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let opened = try await reader.messages(roomId: roomId, limit: 20)
+        // a chat opened again reads its live timeline: no paging back, no wait.
+        let again = Date()
+        _ = try await reader.messages(roomId: roomId, limit: 20)
+        XCTAssertLessThan(Date().timeIntervalSince(again), 0.3)
+
+        let writer = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
+                                                    deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let text = "Live \(UUID().uuidString)"
+        _ = try await writer.rooms()
+        try await writer.send(roomId: roomId, text: text)
+        try await writer.signOut()
+
+        // the reader asks again, as the app does when told; it must not page back.
+        let start = Date()
+        var last = try await reader.messages(roomId: roomId, limit: 20).last?.body
+        while last != text, Date().timeIntervalSince(start) < 10 {
+            try await Task.sleep(nanoseconds: 200_000_000)
+            last = try await reader.messages(roomId: roomId, limit: 20).last?.body
+        }
+        XCTAssertEqual(last, text)
+        // the new message is added; none that the chat showed is dropped.
+        let now = try await reader.messages(roomId: roomId, limit: 20)
+        XCTAssertEqual(Array(now.prefix(opened.count)).map(\.id), opened.map(\.id))
+        XCTAssertEqual(now.count, opened.count + 1)
+        print("the open chat had the new message after \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
+        XCTAssertTrue(changes.seen(.room(roomId)), "no change event for the open chat")
+        XCTAssertTrue(changes.seen(.rooms), "no change event for the room list")
+        let summary = try await reader.rooms().first { $0.id == roomId }
+        XCTAssertEqual(summary?.lastMessage, text)
+        try await reader.signOut()
+    }
+
     func testSignOutOnServerWithoutTheStore() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
@@ -120,4 +165,12 @@ final class MatrixCoreTests: XCTestCase {
     private func freshDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)")
     }
+}
+
+/// The change events an account sent, from any thread.
+private final class Changes: @unchecked Sendable {
+    private let lock = NSLock()
+    private var all: Set<MatrixChange> = []
+    func add(_ change: MatrixChange) { lock.withLock { _ = all.insert(change) } }
+    func seen(_ change: MatrixChange) -> Bool { lock.withLock { all.contains(change) } }
 }

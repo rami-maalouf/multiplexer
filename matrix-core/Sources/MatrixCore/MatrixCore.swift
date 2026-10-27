@@ -14,6 +14,14 @@ public enum MatrixCore {
     }
 }
 
+/// What changed, for `MatrixAccount.onChange`.
+public enum MatrixChange: Hashable, Sendable {
+    /// A room came or went, or its name, last message or time changed.
+    case rooms
+    /// The messages of an open chat changed.
+    case room(String)
+}
+
 /// What the app keeps (in the Keychain) to sign in again without a password.
 public struct SavedSession: Codable, Equatable, Sendable {
     public var userId: String

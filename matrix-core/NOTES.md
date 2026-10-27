@@ -54,6 +54,17 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   app, so `SecItem` calls fail with `-34018` (`errSecMissingEntitlement`). The app's
   relaunch check covers the Keychain.
 
+## Live updates
+
+- `MatrixAccount.onChange` reports `MatrixChange.rooms` (from the room list service's
+  entries listener, which needs `setFilter(kind: .joined)` before it reports) and
+  `MatrixChange.room(id)` (from an open chat's timeline listener).
+- The first `messages(roomId:)` opens a live timeline and pages back to the last `limit`
+  messages. It stays open; later calls read it, from the first message shown at open to
+  the newest. Timelines close at sign-out.
+- The module merges the changes of 0.2 s into one `context.changed` for each topic
+  (`rooms`, `thread:<room id>`).
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The
