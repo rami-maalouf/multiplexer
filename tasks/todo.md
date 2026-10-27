@@ -221,22 +221,141 @@ the native module.
 
 ### Checkpoint M1: first own screen
 
-- [ ] I can read my WhatsApp chat in our app on the Simulator.
-- [ ] Framework decision: continue with Exact, or move to Expo with the same MatrixCore. Record why.
+- [ ] I can read my WhatsApp chat in our app on the Simulator. (Waits for Phase 0, which waits for Q1.)
+- [x] Framework decision: continue with Exact, or move to Expo with the same MatrixCore. Record why. (2026-10-27, Rami: Exact. See the decision log.)
+- [x] Rami reviews. (2026-10-27)
+- [x] Write Phase 2 in detail here, with what we learned.
+
+## Phase 2: daily reading and sending (M2)
+
+Written at the M1 checkpoint (2026-10-27). The client work runs on the practice account
+until the server is ready (D8). What we learned in Phase 1:
+
+- Exact's `clock data` waits for slow native replies, so drives and tests need no waits.
+- The authored tests cannot sign in (no password in git). Screens behind sign-in are
+  checked by drives that type the password from the Keychain (`AGENTS.md`).
+- `verify ios` resets the agent's data but not the Keychain. The module then drops the
+  session, and its device stays on the server.
+- Each Swift edit takes 30 to 40 s to build. Batch Swift edits; iterate on `app.contract`
+  and `app.ts` (seconds).
+- The SDK delivers timeline changes on its own task. Read them only after they settle.
+
+### T2.1 Sign out a stale session on the server
+
+**Description:** When the Keychain has a session but its store folder is gone (a
+reinstall, or `verify ios`), sign that device out on the server before the app forgets
+it. Use a temporary store folder for the sign-out, then delete it.
+
+**Acceptance criteria:**
+- [ ] After a drive signs in and `verify ios` runs, the next launch is signed out, and the account's device list does not keep the old device.
+- [ ] If the server cannot be reached, the app still opens signed out. It does not wait more than 10 s.
+
+**Verification:**
+- [ ] A MatrixCore function lists the account's devices. A drive signs in, `verify ios` runs, a drive launches; the device count is the same as before.
+
+**Dependencies:** None
+**Files:** `matrix-core/Sources/MatrixCore/*.swift`, `modules/apple/Matrix.swift`
+**Scope:** S
+
+### T2.2 Live updates
+
+**Description:** The biggest unknown of Phase 2. MatrixCore keeps the sync running and
+tells the app when the room list or the open chat changes. The module calls
+`context.changed("rooms")` and `context.changed("thread")`; `app.ts` calls `native.watch`
+for each. The open chat keeps one live timeline, so a change costs no new pagination.
+
+**Acceptance criteria:**
+- [ ] A message that another device sends shows in the open chat within 3 s, with no pull to refresh.
+- [ ] The same message moves its room to the top of the list and updates the preview and the time.
+- [ ] Scrolled up in a long chat, a new message does not move what I read.
+- [ ] Opening a chat a second time does not page back again (the timeline is kept).
+
+**Verification:**
+- [ ] A drive opens the test room while `testFillTheTestRoom` sends from another device. `clock until state` sees the new message.
+- [ ] Screenshots before and after.
+
+**Dependencies:** T2.1
+**Files:** `matrix-core/Sources/MatrixCore/*.swift`, `modules/apple/Matrix.swift`, `app.ts`, `app.contract`
+**Scope:** M
+
+### T2.3 Send text
+
+**Description:** The composer from the `chat-thread` recipe. A sent message shows at
+once (the SDK's local echo), then shows as delivered. A failure shows "Not Delivered"
+and a way to try again.
+
+**Acceptance criteria:**
+- [ ] I type and tap Send. The message shows at once and the composer clears. The keyboard stays up.
+- [ ] Another device receives it (the MatrixCore test reads it back).
+- [ ] With the network off, the message shows "Not Delivered". Try Again sends it when the network is back.
+
+**Verification:**
+- [ ] A drive sends; a MatrixCore test on a second device reads the text.
+- [ ] A drive with `prefer online false` (or the simulator offline) shows the failed state.
+
+**Dependencies:** T2.2
+**Files:** `matrix-core/`, `modules/apple/Matrix.swift`, `app.ts`, `app.contract`
+**Scope:** M
+
+### T2.4 Unread counts and read markers
+
+**Description:** The room list shows how many messages I have not read. Opening a chat
+marks it read on the server, so Element and my other devices agree.
+
+**Acceptance criteria:**
+- [ ] A message from another device shows a count on its room, and the room title is bold.
+- [ ] Opening the chat clears the count here and in Element.
+
+**Verification:**
+- [ ] A drive with a send from another device, before and after opening the chat.
+
+**Dependencies:** T2.2
+**Scope:** S
+
+### T2.5 Show images
+
+**Description:** A photo message shows as a thumbnail in its bubble. MatrixCore downloads
+the thumbnail into the app's cache; the view shows the file. A tap opens it full screen.
+
+**Acceptance criteria:**
+- [ ] A photo sent from Element (later, from WhatsApp) shows as a thumbnail with the right aspect ratio.
+- [ ] The room list preview says "Photo".
+- [ ] A tap shows the full image; Back returns to the chat.
+
+**Dependencies:** T2.2
+**Scope:** M
+
+### T2.6 Encryption
+
+**Description:** Decide, then build, what encryption we need. Bridged rooms are not
+encrypted unless the bridge's end-to-bridge encryption is on (decide in Phase 0). Rooms
+with other Matrix users usually are.
+
+**Acceptance criteria:**
+- [ ] A decision in the log: end-to-bridge encryption on or off, and why.
+- [ ] In an encrypted room made in Element, messages sent after this device signed in show as text.
+- [ ] Older messages show after I enter the recovery key (key backup), or the plan says why not yet.
+
+**Dependencies:** T2.2, T0.6 (for the bridge decision)
+**Scope:** M
+
+### T2.7 Run on my iPhone
+
+**Description:** Build, sign and install on Rami's physical iPhone. Check the Keychain,
+the build size and the start time on a real device.
+
+**Acceptance criteria:**
+- [ ] `bun exact.mjs ios --device --run` installs and opens the app on my iPhone.
+- [ ] Sign in, relaunch, chats and sending work as on the Simulator.
+
+**Dependencies:** Q4 (the Apple team). It can move earlier as soon as Q4 is answered.
+**Scope:** S
+
+### Checkpoint M2: daily reading and sending
+
+- [ ] On my iPhone, against our server: live updates, sending, unread counts.
+- [ ] I use it for one week. Then list what is missing, and write Phase 3 in detail.
 - [ ] Rami reviews.
-- [ ] Write Phase 2 in detail here, with what we learned.
-
-## Phase 2: daily reading and sending (M2), rough
-
-- Live updates: MatrixCore observes sync and calls `context.changed`.
-- A Keychain session whose store is gone (a reinstall) is dropped without telling the server, so its device stays on the account. Sign it out on the server first.
-- Room list and chat refresh by hand only (pull to refresh, reopen).
-- Send text from the composer.
-- Unread counts and read markers.
-- Show images.
-- Encryption: device verification, and whether bridges use end-to-bridge encryption.
-- Build and run on my physical iPhone (Q4).
-- Use it for one week, then list what is missing.
 
 ## Phase 3: push notifications (M3), rough
 

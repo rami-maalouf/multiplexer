@@ -6,11 +6,11 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server. Phase 1: T1.1 to T1.5 done, on the practice account. |
-| Next task | Checkpoint M1: Rami's review and the framework decision. Its WhatsApp part waits for Phase 0, which waits for Q1 (domain). |
+| Current phase | Phase 0: prove the server (waits for Q1). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Next task | T2.1 Sign out a stale session, then T2.2 Live updates. M1's WhatsApp part waits for Phase 0, which waits for Q1 (domain). |
 | Blocked on Rami | Q1 (domain) |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
-| Exact | `/Users/rami/Documents/code/exact/exact2` at `65577096ed` (2026-10-27) |
+| Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
 | Last updated | 2026-10-27 |
 
 Update this table at the end of every work session.
@@ -116,7 +116,7 @@ Use these to check that we work on the right thing.
 | D1 | Bridges run on the server, not on the phone. | The server is always online. The client speaks only Matrix. On-device bridges need a Go runtime on iOS and special push work. |
 | D2 | Homeserver: Synapse, installed by matrix-docker-ansible-deploy. | The playbook's default. Native sliding sync since Synapse 1.114, which matrix-rust-sdk and Element X use. |
 | D3 | Client core: matrix-rust-sdk through `element-hq/matrix-rust-components-swift`, inside our own MatrixCore package. | The SDK that Element X uses. Apache-2.0. Has sync, encryption and a notification client. |
-| D4 | iOS UI: Exact. Fallback: Expo, reusing MatrixCore. | Native Mac app later from the same code. Chat UI work exists in Exact (`chat-thread` recipe, `apps/messages`, Excord). Revisit at the M1 checkpoint. |
+| D4 | iOS UI: Exact. Fallback: Expo, reusing MatrixCore. Confirmed at M1 (2026-10-27). | Native Mac app later from the same code. Chat UI work exists in Exact (`chat-thread` recipe, `apps/messages`, Excord). At M1, every screen used Exact's own parts and needed no change to Exact. |
 | D5 | Element X is the client until our app is usable. | It works with our server from the first day. |
 | D6 | First network: WhatsApp. | QR login (`login qr`). Simple to test. Confirm with Q3. |
 | D7 | Work from the Mac. Manage the server over SSH and Ansible. | The iOS build needs Xcode. The playbook runs from the local computer. Safer than an agent with sudo on the server. |
@@ -204,3 +204,5 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T1.3 passed on matrix.org with `@rami-m-test:matrix.org` (password in the Keychain, service `multiplexer-test-account`). MatrixCore builds as a Swift package with the pinned SDK and inside the Exact app. The WhatsApp part of T1.3 waits for T0.6. |
 | 2026-10-27 | T1.4 passed on the practice account: sign in, an alert that names why a sign-in failed, the session kept across launches, and Sign Out. The session is in the Keychain (`SessionKeychain` in MatrixCore, this device only, readable after the first unlock for the later notification extension). The SDK's store is a folder in the app's data; a Keychain session whose folder is gone (a reinstall) counts as signed out. The app's tests run on iOS only: the web has no Matrix SDK. |
 | 2026-10-27 | T1.5 passed on the practice account: a plain room list (name, time, 2-line preview, newest first) and a read-only chat (the last 20 messages, opened at the newest, `chat-thread` bubbles). Fixed a race in MatrixCore: `settle()` could read the timeline before a pagination's diffs arrived. The authored tests cannot sign in, so drives check these screens. |
+| 2026-10-27 | Checkpoint M1 (without its WhatsApp part, which waits for Phase 0): Rami chose to continue with Exact (D4). Exact now has a feedback flow for the app's diary (`bun exact.mjs feedback`); keep the diary for each task. Phase 2 written in detail. |
+| 2026-10-27 | Pulled the latest Exact. Its history was rewritten again (a transcript purged on purpose), so local `main` now matches `origin/main` (`cee509ac82`). The old local `main` is kept as `backup/main-before-2026-10-27-rewrite-2`. |
