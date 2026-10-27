@@ -5,7 +5,7 @@ task: a native module finishes a network call in the background after launch (no
 ### Rough
 - A drive could not wait for the module's background work: `clock data` waits for requests the data module made, and this work had none. Used `"clock +4000 real"` and then `logs` to see the module's `print`. ~3 min, and the drive now has a fixed real-time wait, which the docs say never to write. What would have helped: a way for a module to say it is busy (`context.busy { … }`, or a ticket), which `clock data` waits for and its reply names.
 
-- The module keeps a secret in the Keychain that must live and die with the app's data; under the agent, a test's fresh storage clears the data but not the Keychain (already in an earlier diary). The fix in the module was to treat "a Keychain item whose data folder is gone" as stale and clean it up at the next launch. ~0 min this time, but every module with a Keychain item needs the same logic. What would have helped: `context` saying the storage was reset, or a `context.keychainService` that the agent clears with the data.
+- A native module that keeps a secret outside Exact's store must clean it up itself when the agent starts the data fresh (finding "a native module cannot keep a secret in Exact's store", already sent). Here that meant a second Keychain item and a background clean-up at launch, about an hour of work. What would have helped: a secret store on the module's `context`, or a flag that says the storage started empty.
 
 ### Lean in
 - `logs` showed the module's `print` from a drive, so the background work was visible without a debugger.

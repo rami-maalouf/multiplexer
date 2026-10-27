@@ -32,8 +32,9 @@ Each finding was rechecked against exact2 `cee509ac82` (2026-10-27).
 | 11 | `prefer root-font-size` enlarges Exact's text but not native fields. | About 3 min | P3 | [prefer-root-font-size-leaves-native-text](issues/20261027-prefer-root-font-size-leaves-native-text.md) |
 | 12 | The `chat-thread` recipe uses `overflow-wrap="anywhere"`, which `verify ios` reports. | About 2 min | P3 | [chat-thread-recipe-breaks-inside-words](issues/20261027-chat-thread-recipe-breaks-inside-words.md) |
 | 13 | Four agent messages could say what to do next. | 1 or 2 min each | P3 | [small-agent-drive-messages](issues/20261027-small-agent-drive-messages.md) |
-| 14 | An app that uses exact2 by path cannot safely follow a rewritten `main`. | About 8 min, twice | P3 | [apps-outside-exact2-cannot-follow-a-rewritten-main](issues/20261027-apps-outside-exact2-cannot-follow-a-rewritten-main.md) |
+| 14 | Withdrawn: "an app that uses exact2 by path cannot safely follow a rewritten `main`". The cost came from a one-time purge of exact2's git history, not from the framework or from building an app with it. | | | (file removed) |
 | 15 | After `update`, `lock` reports "no changes" for a `Cargo.lock` that `update` rewrote. | About 2 min | P3 | [update-and-lock-disagree-about-cargo-lock](issues/20261027-update-and-lock-disagree-about-cargo-lock.md) |
+| 16 | A drive cannot wait for work that a native module starts by itself, so it needs a fixed real-time wait. | About 3 min, and a slow drive | P3 | [a-drive-cannot-wait-for-a](issues/20261027-a-drive-cannot-wait-for-a.md) |
 
 ## What worked well
 
@@ -44,6 +45,16 @@ Each finding was rechecked against exact2 `cee509ac82` (2026-10-27).
 - `formatDay(…, "list")` and `"day-time"` give a chat list's and a transcript's times.
 - `modules/apple/*.xcframework` links a vendor's static library with no linker flags.
 - `verify ios` rebuilds on its own after exact2 moves.
+
+## What counts as a finding
+
+Only Exact: its compiler, runtime, hosts, tools (`exact.mjs`, the agent, `verify`), docs
+and recipes, and the process of building an app with them. The test: the cost came from
+Exact, and a change to Exact would remove it.
+
+Not a finding: a cost that came from somewhere else, such as Xcode, the Simulator, a
+third-party library, a server, the network, git or the editor, even when it slowed the
+task down. Record that in the task's notes (`tasks/todo.md`), not here.
 
 ## How to add a finding
 
@@ -74,6 +85,8 @@ Findings go to the team through Exact's private feedback tool. Run it from
 |---|---|---|---|
 | 2026-10-27 | `4c8a0a07-60a8-466e-ae9a-bef9a0b29f82` | 4 diary entries (findings 1 to 15, in their Rough sections) and 77 command-log lines | Rami |
 | 2026-10-27 | `ac63ff5c-08e3-461b-ae7f-5f1598b2125b` | Findings 1 to 15 as issue files, rechecked at exact2 `cee509ac82`, in the entry `2026-10-27-findings-for-the-team.md` | Claude, at Rami's request |
+
+Both sends above include finding 14, which was withdrawn after they were sent.
 
 To take a send back: `bun exact.mjs feedback delete <receipt>`.
 

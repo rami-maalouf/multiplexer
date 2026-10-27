@@ -35,6 +35,11 @@ not found while writing the module.
 
 ## Evidence
 
+The workaround, built later the same day: the module treats "a Keychain item whose
+data folder is gone" as stale, moves it to a second Keychain item, and signs it out on
+the server in the background, trying again at the next launch. About an hour of work,
+which every module that keeps a secret outside Exact's store would have to repeat.
+
 Seen on 2026-10-27. At `cee509ac82`, `ExactModuleContext`
 (`host/apple/modules/ExactNativeModule.swift`) has no secret API, and Exact's only
 Keychain code is its own (`host/apple/Sources/ExactKit/Presence.swift`).

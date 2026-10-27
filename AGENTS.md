@@ -101,8 +101,14 @@ you down is feedback, and recording it is part of each task, not optional. Start
   would have helped (a message, a doc line, a feature).
 - Count as Rough: a compile or build error that was not clear, a doc you had to grep
   for, a `contract vocab` lookup that gave nothing useful, Exact source you had to read,
-  a drive or `verify` result that misled you, a slow loop, editor noise, and **every
-  workaround you write into this file**.
+  a drive or `verify` result that misled you, a slow Exact build or drive, editor errors
+  that Exact's project setup causes, and **every workaround for Exact that you write into
+  this file**.
+- **Only the framework.** Record only costs that came from Exact (its compiler, runtime,
+  hosts, tools, docs and recipes) or from the process of building an app with it. The
+  test: a change to Exact would remove the cost. A cost from Xcode, the Simulator, a
+  third-party library, a server, the network, git or the editor is not feedback, even
+  when it slowed the task down. Note it in `tasks/todo.md` instead.
 - Keep it generic: no app name, no product purpose, no server names, no account names,
   no secrets. Write "a chat app", "a public server", "a third-party library".
 - At the end of each task, turn each new Rough entry into a finding in
