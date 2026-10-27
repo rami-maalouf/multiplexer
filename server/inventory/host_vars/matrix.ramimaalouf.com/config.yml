@@ -24,6 +24,10 @@ devture_systemd_docker_base_ipv6_enabled: true
 # no web client: element x and our app are the clients.
 matrix_client_element_enabled: false
 
+# the playbook puts ketesa's (an admin web ui) settings in /.well-known/matrix/client even
+# when ketesa is off. we use no ketesa, so the file stays as on the website: m.homeserver only.
+matrix_static_files_file_matrix_client_property_cc_etke_ketesa_enabled: false
+
 # ramimaalouf.com answers 301 to www.ramimaalouf.com (vercel). the playbook's check of
 # /.well-known/matrix/client does not follow redirects by default, but matrix-rust-sdk
 # (element x, our app) and synapse do, so the check follows them too.

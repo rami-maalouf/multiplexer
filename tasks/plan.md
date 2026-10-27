@@ -6,9 +6,9 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server (T0.2 and T0.3 done; T0.5, the install, runs). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | App: T2.4 Unread counts, once the server conversation has made test users (T0.5). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): T0.5, then T0.4's checks when the ports and the website are open. |
-| Blocked on Rami | The Oracle security list (TCP 8448, UDP 443 and 8448), a push of the website branch `matrix-well-known`. |
+| Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; T0.5 waits for the self-check and Element X). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Next task | App: T2.4 Unread counts: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): the self-check when port 8448 and the website are open, then Element X, then T0.6. |
+| Blocked on Rami | The Oracle security list (TCP 8448, UDP 443 and 8448); the website's failed Vercel deploy (its log, or `vercel login` on the Mac); Element X sign-in. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
 | Last updated | 2026-10-27 |
@@ -146,6 +146,8 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 - The self-check requires the base domain's well-known files to equal the ones it generates. Its check of `/.well-known/matrix/client` does not follow redirects by default (`config.yml` turns that on).
 - Its Docker role replaces `/etc/apt/sources.list.d/docker.list` with `docker.sources` (same repository) and turns Docker on at boot.
 - Let's Encrypt needs no e-mail address (`traefik_config_certificatesResolvers_acme_email` stays empty).
+- It puts Ketesa's settings into `/.well-known/matrix/client` even when Ketesa is off; `config.yml` turns that off, so the file is `m.homeserver` only.
+- On aarch64, all 7 images of a Synapse-only install are pulled for arm64; nothing is built (`server/notes/install.md`).
 - WhatsApp: `matrix_bridge_mautrix_whatsapp_enabled: true`. Double puppeting needs the Appservice Double Puppet service.
 
 **Matrix homeserver domain:** you cannot change it after install.
@@ -223,3 +225,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | Found in T0.3 (read only): the host firewall blocks nothing (`rules.v4` is not loaded since `iptables-persistent` was removed), so T0.4 needs no host change. The T0.1 inventory said otherwise; corrected there. From the Mac, TCP 80 and 443 pass Oracle's security list and 8448 does not. |
 | 2026-10-27 | The website's well-known files are ready on the portfolio repo's branch `matrix-well-known` (commit `80e243a`, not pushed): `server` and `client` in `public/.well-known/matrix/`, served as JSON, `client` with CORS. matrix-rust-sdk sets no redirect policy, so Element X and our app follow `ramimaalouf.com`'s 301 to `www`. |
 | 2026-10-27 | T0.2 done. Rami confirmed the server name `ramimaalouf.com` (user IDs `@name:ramimaalouf.com`, Synapse at `matrix.ramimaalouf.com`; it can never change), and that the playbook may replace `docker.list` with `docker.sources`. Cloudflare has `A matrix -> 192.18.154.172`, DNS only. |
+| 2026-10-27 | T0.5 install done: Synapse 1.164.0, PostgreSQL 18.6 and Traefik run on the Oracle server, all arm64 images. `https://matrix.ramimaalouf.com` has a Let's Encrypt certificate and password sign-in. Users `@rami` (admin), `@test1`, `@test2` exist; passwords only in the Keychain. The self-check waits for port 8448 and the website: with Rami's yes, the website commit `80e243a` went to its `main`, but Vercel's production deploy failed (cause not known yet). |

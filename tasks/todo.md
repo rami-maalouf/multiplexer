@@ -69,7 +69,7 @@ security list and on the server.
 **Acceptance criteria:**
 - [x] `dig +short matrix.<domain>` returns the server's public IP. (2026-10-27: Rami added Cloudflare `A matrix -> 192.18.154.172`, DNS only. 1.1.1.1, 8.8.8.8 and Cloudflare's name server return it.)
 - [ ] From the Mac, TCP ports 80, 443 and 8448 reach the server. (2026-10-27: 80 and 443 yes, 8448 no. Rami: Oracle security list ingress for TCP 8448 and UDP 443, 8448.)
-- [ ] The base domain can serve `/.well-known/matrix/server` (the choice from T0.2). (Ready on the website's branch `matrix-well-known`; Rami reviews and pushes.)
+- [ ] The base domain can serve `/.well-known/matrix/server` (the choice from T0.2). (2026-10-27: with Rami's yes, `80e243a` was pushed to the website's `main`. GitHub said the push bypassed the rule "Missing successful active Preview deployment". Vercel's production deploy of it failed; the site still serves `b8fe22b`. The cause is not known yet: the Vercel CLI token on the Mac is not valid.)
 
 **Verification:**
 - [ ] On the Mac, `nc -vz matrix.<domain> <port>`. "Connection refused" proves that the packet reached the host (nothing listens yet), so no listener on the server is needed. A timeout means the security list drops it.
@@ -87,13 +87,15 @@ security list and on the server.
 on aarch64 and that Element X can use it.
 
 **Acceptance criteria:**
-- [ ] `--tags=self-check` is all green.
-- [ ] User `rami` exists (`--tags=register-user`). Element X on my iPhone signs in and sends a message to a test room.
-- [ ] We note which images were pulled for arm64 and which were built on the server.
+- [ ] `--tags=self-check` is all green. (Waits for port 8448 and the website's well-known files.)
+- [ ] User `rami` exists (`--tags=register-user`). Element X on my iPhone signs in and sends a message to a test room. (2026-10-27: `@rami:ramimaalouf.com` exists, admin. Also `@test1` and `@test2` for the app. Element X waits for Rami.)
+- [x] We note which images were pulled for arm64 and which were built on the server. (All 7 pulled for arm64, none built: `server/notes/install.md`.)
 
 **Verification:**
 - [ ] The self-check output and an Element X screenshot.
 - [ ] `free -h` and `sudo docker stats --no-stream` after one hour, saved in `server/notes/`.
+
+**First run:** 2026-10-27, `ok=195 changed=58 failed=0`. Synapse answers at `https://matrix.ramimaalouf.com` with a Let's Encrypt certificate, and password sign-in works.
 
 **Before the first run:** Rami's explicit yes to the domain (the server name can never change).
 The install also replaces `/etc/apt/sources.list.d/docker.list` with an equal `docker.sources`
