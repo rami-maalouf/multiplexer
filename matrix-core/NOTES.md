@@ -91,6 +91,24 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - The module keeps them in `<Exact's context.cache>/matrix-media/`, which the view shows
   as `app:/cache/matrix-media/<name>`, and deletes them at sign-out.
 
+## Encryption
+
+- The sdk encrypts and decrypts by itself. A message this device has no key for is a
+  `Message` with `waitingForKey` (body ""), not dropped; it turns into the message when the
+  key comes.
+- `recoveryStatus()` says whether the account keeps its keys in a backup that a recovery
+  key opens. The practice account has none (`disabled`, 2026-10-27).
+- `createRoom(name:encrypted:)` makes an encrypted room ("Multiplexer encrypted test" for
+  the tests).
+
+## The chat list
+
+- `rooms()` returns the joined rooms in the room list service's order (the server's
+  recency ranking, kept from the entries listener's diffs); a room it has not ranked yet
+  comes after, in the client's order.
+- `RoomSummary.avatarName` names the room's picture; `avatarFile(roomId:directory:)`
+  downloads a thumbnail of at most 160 pixels a side once.
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The

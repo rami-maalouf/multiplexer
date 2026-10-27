@@ -10,8 +10,9 @@ public final class MatrixAccount: @unchecked Sendable {
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
-    /// The room list's listener, kept so that it keeps listening.
+    /// The room list's listener, kept so that it keeps listening, and the rooms in its order.
     private var roomEntries: RoomListEntriesWithDynamicAdaptersResult?
+    private var roomOrder: RoomEntries?
     /// One live timeline for each chat that was opened, so a chat opened again does not page back.
     private var timelines: [String: Task<LiveTimeline, Error>] = [:]
 
@@ -90,13 +91,22 @@ public final class MatrixAccount: @unchecked Sendable {
         lock.withLock { changeHandler }?(change)
     }
 
-    /// The rooms this account has joined, after the first sync.
+    /// The rooms this account has joined, after the first sync: the most recent activity first.
     public func rooms(timeout: TimeInterval = 30) async throws -> [RoomSummary] {
         try await startSync(timeout: timeout)
         var rooms: [RoomSummary] = []
-        for room in client.rooms() where room.membership() == .joined {
+        // the room list service's order: the most recent activity first, as the server ranks
+        // it, so a room whose newest event this device cannot show still sits in its place.
+        let ordered = lock.withLock { roomOrder }?.ids() ?? []
+        let rank = Dictionary(ordered.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+        // a room the service has not ranked yet keeps the client's order, after the ranked ones.
+        let joined = client.rooms().filter { $0.membership() == .joined }.enumerated()
+            .sorted { (rank[$0.element.id()] ?? Int.max, $0.offset) < (rank[$1.element.id()] ?? Int.max, $1.offset) }
+            .map(\.element)
+        for room in joined {
             var summary = RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect(),
-                                      lastMessage: "", lastSenderName: "", lastIsOwn: false, lastTimestamp: 0)
+                                      lastMessage: "", lastSenderName: "", lastIsOwn: false, lastTimestamp: 0,
+                                      avatarName: room.avatarUrl().map(avatarFileName) ?? "")
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
@@ -213,6 +223,24 @@ public final class MatrixAccount: @unchecked Sendable {
         return file
     }
 
+    /// A room's picture as a file in `directory`, at most `side` pixels a side; nil when the
+    /// room has none. Downloaded once; later calls return the same file.
+    public func avatarFile(roomId: String, directory: URL, side: UInt64 = 160) async throws -> URL? {
+        guard let url = try client.getRoom(roomId: roomId)?.avatarUrl() else { return nil }
+        let file = directory.appendingPathComponent(avatarFileName(url))
+        if FileManager.default.fileExists(atPath: file.path) { return file }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let source = try MediaSource.fromUrl(url: url)
+        let data: Data
+        do {
+            data = try await client.getMediaThumbnail(mediaSource: source, width: side, height: side)
+        } catch {
+            data = try await client.getMediaContent(mediaSource: source)
+        }
+        try data.write(to: file, options: .atomic)
+        return file
+    }
+
     /// Removes a message that the server does not have (it failed, or still waits in the
     /// queue). A sent message is left alone.
     public func discard(roomId: String, messageId: String, timeout: TimeInterval = 30) async throws {
@@ -221,9 +249,21 @@ public final class MatrixAccount: @unchecked Sendable {
         try await live.timeline.redactEvent(eventOrTransactionId: itemId, reason: nil)
     }
 
-    /// Creates a private, unencrypted room and returns its id.
-    public func createRoom(name: String) async throws -> String {
-        try await client.createRoom(request: CreateRoomParameters(name: name, isEncrypted: false, visibility: .private, preset: .privateChat))
+    /// Creates a private room and returns its id.
+    public func createRoom(name: String, encrypted: Bool = false) async throws -> String {
+        try await client.createRoom(request: CreateRoomParameters(name: name, isEncrypted: encrypted, visibility: .private, preset: .privateChat))
+    }
+
+    /// The account's recovery, once this device has finished setting up its encryption.
+    public func recoveryStatus() async -> RecoveryStatus {
+        let encryption = client.encryption()
+        await encryption.waitForE2eeInitializationTasks()
+        switch encryption.recoveryState() {
+        case .enabled: return .enabled
+        case .disabled: return .disabled
+        case .incomplete: return .incomplete
+        case .unknown: return .unknown
+        }
     }
 
     /// Signs out, which removes this device from the account.
@@ -231,6 +271,7 @@ public final class MatrixAccount: @unchecked Sendable {
         lock.withLock {
             changeHandler = nil
             roomEntries = nil
+            roomOrder = nil
             timelines = [:]
         }
         await syncService?.stop()
@@ -247,10 +288,13 @@ public final class MatrixAccount: @unchecked Sendable {
         defer { handle.cancel() }
         await service.start()
         try await poll(timeout: timeout, what: "the first sync") { state.current == .running }
-        let entries = try await service.roomListService().allRooms()
-            .entriesWithDynamicAdapters(pageSize: 1000, listener: RoomEntries { [weak self] in self?.notify(.rooms) })
+        let order = RoomEntries { [weak self] in self?.notify(.rooms) }
+        let entries = try await service.roomListService().allRooms().entriesWithDynamicAdapters(pageSize: 1000, listener: order)
         _ = entries.controller().setFilter(kind: .joined)
-        lock.withLock { roomEntries = entries }
+        lock.withLock {
+            roomEntries = entries
+            roomOrder = order
+        }
     }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.
@@ -284,11 +328,37 @@ private final class RoomListState: RoomListServiceStateListener, @unchecked Send
     }
 }
 
-/// Any change to the room list (its order, a room's name or last message) is a change.
+/// The room list in the room list service's order, kept current by applying its diffs.
+/// Any change (its order, a room's name or last message) is a change for the app.
 private final class RoomEntries: RoomListEntriesListener, @unchecked Sendable {
     private let changed: @Sendable () -> Void
+    private let lock = NSLock()
+    private var rooms: [String] = []
+
     init(_ changed: @escaping @Sendable () -> Void) { self.changed = changed }
-    func onUpdate(roomEntriesUpdate: [RoomListEntriesUpdate]) { changed() }
+
+    func ids() -> [String] { lock.withLock { rooms } }
+
+    func onUpdate(roomEntriesUpdate: [RoomListEntriesUpdate]) {
+        lock.withLock {
+            for update in roomEntriesUpdate {
+                switch update {
+                case .append(let values): rooms += values.map { $0.id() }
+                case .clear: rooms = []
+                case .pushFront(let value): rooms.insert(value.id(), at: 0)
+                case .pushBack(let value): rooms.append(value.id())
+                case .popFront: if !rooms.isEmpty { rooms.removeFirst() }
+                case .popBack: if !rooms.isEmpty { rooms.removeLast() }
+                case .insert(let index, let value): rooms.insert(value.id(), at: min(Int(index), rooms.count))
+                case .set(let index, let value): if Int(index) < rooms.count { rooms[Int(index)] = value.id() }
+                case .remove(let index): if Int(index) < rooms.count { rooms.remove(at: Int(index)) }
+                case .truncate(let length): rooms = Array(rooms.prefix(Int(length)))
+                case .reset(let values): rooms = values.map { $0.id() }
+                }
+            }
+        }
+        changed()
+    }
 }
 
 /// An open chat's timeline and its listener; closing it stops the listener.
@@ -444,6 +514,9 @@ extension SignInError {
 
 extension RoomSummary {
     mutating func fillLast(timestamp: Timestamp, sender: String, isOwn: Bool, profile: ProfileDetails, content: TimelineItemContent) {
+        // the newest event orders the list even when it is no message (a new picture, a
+        // join); then there is no preview.
+        lastTimestamp = timestamp
         guard case .msgLike(let like) = content else { return }
         switch like.kind {
         case .message(let message):
@@ -466,13 +539,20 @@ extension RoomSummary {
         lastSenderName = sender
         if case .ready(let displayName, _, _, _, _) = profile, let displayName { lastSenderName = displayName }
         lastIsOwn = isOwn
-        lastTimestamp = timestamp
     }
 }
 
 extension Message {
     init?(_ event: EventTimelineItem, id: String) {
-        guard case .msgLike(let content) = event.content, case .message(let message) = content.kind else { return nil }
+        guard case .msgLike(let content) = event.content else { return nil }
+        if case .unableToDecrypt = content.kind {
+            var name = event.sender
+            if case .ready(let displayName, _, _, _, _) = event.senderProfile, let displayName { name = displayName }
+            self.init(id: id, sender: event.sender, senderName: name, body: "", timestamp: event.timestamp,
+                      isOwn: event.isOwn, sendState: .sent, image: nil, waitingForKey: true)
+            return
+        }
+        guard case .message(let message) = content.kind else { return nil }
         var name = event.sender
         if case .ready(let displayName, _, _, _, _) = event.senderProfile, let displayName { name = displayName }
         let sendState: SendState
@@ -492,10 +572,16 @@ extension Message {
     }
 }
 
+/// A media url names its picture for good; its hash makes a safe file name.
+private func mediaKey(_ url: String) -> String {
+    SHA256.hash(data: Data(url.utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
+}
+
+private func avatarFileName(_ url: String) -> String { "\(mediaKey(url))-avatar.jpg" }
+
 extension MessageImage {
     init(_ content: ImageMessageContent) {
-        // the media url names the picture for good; its hash makes a safe file name.
-        let key = SHA256.hash(data: Data(content.source.url().utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
+        let key = mediaKey(content.source.url())
         let ext: String
         switch content.info?.mimetype {
         case "image/png"?: ext = "png"

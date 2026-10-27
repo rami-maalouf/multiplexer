@@ -7,12 +7,17 @@ export const grants = '';
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
-type RoomsAnswer = { rooms: Result<'loadRooms'>['rooms'] };
+type RoomsAnswer = { rooms: Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'>[] };
+
+// a chat with no picture shows the first letters of its first two words, as Messages does.
+const initials = (name: string): string =>
+  name.split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).slice(0, 2).map((w) => [...w][0].toUpperCase()).join('')
+  || [...name.trim()][0] || '';
 type MessagesAnswer = {
   atStart: boolean;
   messages: {
     id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
-    isImage: boolean; image: string; imageWidth: number; imageHeight: number;
+    isImage: boolean; image: string; imageWidth: number; imageHeight: number; waitingForKey: boolean;
   }[];
 };
 
@@ -36,11 +41,11 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  loadRooms: async ([userId], _store, _storage, native): Promise<Result<'loadRooms'>> => {
+  loadRoomsByRecency: async ([userId], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
     if (userId === '' || !native?.available) return { owner: userId, rooms: [] };
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
     const answer = (await native.later({ op: 'rooms' })) as RoomsAnswer;
-    return { owner: userId, rooms: answer.rooms };
+    return { owner: userId, rooms: answer.rooms.map((r) => ({ ...r, initials: initials(r.name) })) };
   },
   loadMessages: async ([roomId, isDirect], _store, _storage, native): Promise<Result<'loadMessages'>> => {
     if (roomId === '' || !native?.available) return { room: roomId, atStart: true, messages: [] };
@@ -54,6 +59,7 @@ const sources: Sources = {
       return {
         id: m.id, senderName: m.senderName, body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, showName,
         isImage: m.isImage, image: m.image, imageWidth: m.imageWidth, imageHeight: m.imageHeight,
+        waitingForKey: m.waitingForKey,
         photoWidth: m.imageWidth > 0 && m.imageHeight > 0
           ? Math.min(PHOTO_MAX_WIDTH, (PHOTO_MAX_HEIGHT * m.imageWidth) / m.imageHeight) : PHOTO_MAX_WIDTH,
       };

@@ -364,9 +364,13 @@ encrypted unless the bridge's end-to-bridge encryption is on (decide in Phase 0)
 with other Matrix users usually are.
 
 **Acceptance criteria:**
-- [ ] A decision in the log: end-to-bridge encryption on or off, and why.
-- [ ] In an encrypted room made in Element, messages sent after this device signed in show as text.
-- [ ] Older messages show after I enter the recovery key (key backup), or the plan says why not yet.
+- [ ] A decision in the log: end-to-bridge encryption on or off, and why. (Waits for T0.6.)
+- [x] In an encrypted room, messages sent after this device signed in show as text. (2026-10-27: the room "Multiplexer encrypted test", made by MatrixCore; another device's message shows as text at once; a message sent from the app is encrypted and shows as text.)
+- [x] Added: a message this device has no key for shows as "Waiting for this message", not nothing. Before, MatrixCore dropped it from the chat.
+- [ ] Older messages show after I enter the recovery key (key backup). (Waits for T0.5: the practice account has no recovery, and turning it on would add an encryption identity to an account Rami also uses in Element. Test it with a test user on our own server.)
+
+**Found on the way:**
+- A room whose newest message this device cannot read has no preview and no time in the chat list, so it sorts last.
 
 **Dependencies:** T2.2, T0.6 (for the bridge decision)
 **Scope:** M
@@ -399,6 +403,27 @@ message, and keeps the reader's place.
 **Verification:**
 - [x] MatrixCore test `testOlderMessagesLoadUntilTheStart`.
 - [x] A drive that scrolls to the top of the test room.
+
+**Dependencies:** T2.2
+**Scope:** S
+
+### T2.9 Pictures in the chat list
+
+**Description:** Added after T2.8: a list of names with no faces is hard to scan, and
+bridged chats bring each contact's picture. Each row gets the room's picture, or its
+initials.
+
+**Acceptance criteria:**
+- [x] A room with a picture shows it, round, at the start of its row. (2026-10-27: the test room's picture, set through the API; Matrix.org's logo.)
+- [x] A room without one shows its initials. ("ME" for "Multiplexer encrypted test".)
+- [x] `check` is clean in light, dark and at the largest text size. (The picture stays 44 points; the initials scale to a cap: finding 21.)
+
+**Found on the way:**
+- A room whose newest event is no message (a new picture) lost its time and sorted low. The list now takes the room list service's order (the server's recency ranking), and a room's time counts any newest event.
+- The sdk ranks the encrypted test room, whose newest message this device cannot read, below an older room. That is the sdk's order; unchanged.
+
+**Verification:**
+- [x] MatrixCore tests: `testARoomPictureShowsInTheListAndDownloads`; in `testAnOpenChatSeesAMessageFromAnotherDevice`, the room with the newest message comes first.
 
 **Dependencies:** T2.2
 **Scope:** S

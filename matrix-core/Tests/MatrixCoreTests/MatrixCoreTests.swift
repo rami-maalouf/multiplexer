@@ -6,6 +6,7 @@ import XCTest
 /// (its password from the Mac's Keychain); without it the test is skipped.
 final class MatrixCoreTests: XCTestCase {
     private let roomName = "Multiplexer test"
+    private let encryptedRoomName = "Multiplexer encrypted test"
 
     func testSignInSendAndReadBackOnANewDevice() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -91,6 +92,13 @@ final class MatrixCoreTests: XCTestCase {
         XCTAssertEqual(Array(now.prefix(opened.count)).map(\.id), opened.map(\.id))
         XCTAssertEqual(now.count, opened.count + 1)
         print("the open chat had the new message after \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
+        // the room with the newest message comes first in the list.
+        var first = try await reader.rooms().first?.id
+        while first != roomId, Date().timeIntervalSince(start) < 15 {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            first = try await reader.rooms().first?.id
+        }
+        XCTAssertEqual(first, roomId, "the room with the newest message is not first")
         XCTAssertTrue(changes.seen(.room(roomId)), "no change event for the open chat")
         XCTAssertTrue(changes.seen(.rooms), "no change event for the room list")
         let summary = try await reader.rooms().first { $0.id == roomId }
@@ -194,6 +202,60 @@ final class MatrixCoreTests: XCTestCase {
         try await account.signOut()
     }
 
+    func testARoomPictureShowsInTheListAndDownloads() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let rooms = try await account.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let before = rooms.first { $0.id == roomId }?.avatarName ?? ""
+
+        // a new picture for the test room, set as another client would.
+        let jpeg = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 400), format: {
+            let f = UIGraphicsImageRendererFormat(); f.scale = 1; return f }()).jpegData(withCompressionQuality: 0.8) { c in
+            UIColor.systemOrange.setFill(); c.fill(CGRect(x: 0, y: 0, width: 400, height: 400))
+        }
+        let session = try account.savedSession()
+        let uri = try await upload(jpeg, session: session)
+        try await putState(["url": uri], type: "m.room.avatar", roomId: roomId, session: session)
+
+        let start = Date()
+        var name = before
+        while name == before, Date().timeIntervalSince(start) < 15 {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            name = try await account.rooms().first { $0.id == roomId }?.avatarName ?? ""
+        }
+        XCTAssertNotEqual(name, before, "the room's summary did not get the new picture")
+        XCTAssertFalse(name.isEmpty)
+        let downloaded = try await account.avatarFile(roomId: roomId, directory: freshDirectory())
+        let file = try XCTUnwrap(downloaded)
+        XCTAssertEqual(file.lastPathComponent, name)
+        let picture = try XCTUnwrap(UIImage(contentsOfFile: file.path), "the room picture is not a picture")
+        XCTAssertLessThanOrEqual(max(picture.size.width, picture.size.height), 400)
+    }
+
+    private func upload(_ jpeg: Data, session: SavedSession) async throws -> String {
+        var upload = URLRequest(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/media/v3/upload"))
+        upload.httpMethod = "POST"
+        upload.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        upload.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        let (uploaded, _) = try await URLSession.shared.upload(for: upload, from: jpeg)
+        return try XCTUnwrap((try JSONSerialization.jsonObject(with: uploaded) as? [String: Any])?["content_uri"] as? String)
+    }
+
+    private func putState(_ content: [String: Any], type: String, roomId: String, session: SavedSession) async throws {
+        var put = URLRequest(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3/rooms")
+            .appendingPathComponent(roomId).appendingPathComponent("state").appendingPathComponent(type))
+        put.httpMethod = "PUT"
+        put.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        put.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        put.httpBody = try JSONSerialization.data(withJSONObject: content)
+        let (_, response) = try await URLSession.shared.data(for: put)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+    }
+
     /// Uploads a jpeg and sends it as an m.image event, through the client-server api.
     private func sendPhoto(_ jpeg: Data, width: Int, height: Int, caption: String, roomId: String, session: SavedSession) async throws {
         let base = URL(string: session.homeserverUrl)!
@@ -214,6 +276,40 @@ final class MatrixCoreTests: XCTestCase {
         ])
         let (_, response) = try await URLSession.shared.data(for: send)
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+    }
+
+    func testAnEncryptedRoomShowsANewMessageAsText() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let reader = try await signIn(homeserver, user, password)
+        print("recovery on this account: \(await reader.recoveryStatus())")
+        let rooms = try await reader.rooms()
+        let roomId: String
+        if let existing = rooms.first(where: { $0.name == encryptedRoomName })?.id {
+            roomId = existing
+        } else {
+            roomId = try await reader.createRoom(name: encryptedRoomName, encrypted: true)
+        }
+        _ = try await reader.messages(roomId: roomId, limit: 20)
+
+        // another device sends after the reader signed in, so it shares the key with the reader.
+        let writer = try await signIn(homeserver, user, password)
+        _ = try await writer.rooms()
+        let text = "Encrypted \(UUID().uuidString)"
+        try await writer.sendAndWait(roomId: roomId, text: text)
+
+        let start = Date()
+        var seen = try await reader.messages(roomId: roomId, limit: 20).last { $0.isOwn }
+        while seen?.body != text, Date().timeIntervalSince(start) < 20 {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            seen = try await reader.messages(roomId: roomId, limit: 20).last { $0.isOwn }
+        }
+        XCTAssertEqual(seen?.body, text, "the reader shows \(seen?.waitingForKey == true ? "a message waiting for its key" : "nothing")")
+        XCTAssertEqual(seen?.waitingForKey, false)
+        print("the reader showed the encrypted message after \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
     }
 
     func testOlderMessagesLoadUntilTheStart() async throws {

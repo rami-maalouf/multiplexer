@@ -43,6 +43,8 @@ public struct RoomSummary: Equatable, Sendable {
     public var lastIsOwn: Bool
     /// Milliseconds since 1970; 0 when the room has no message.
     public var lastTimestamp: UInt64
+    /// The file name of the room's picture for `MatrixAccount.avatarFile`; "" when it has none.
+    public var avatarName: String = ""
 }
 
 public struct Message: Equatable, Sendable {
@@ -57,6 +59,20 @@ public struct Message: Equatable, Sendable {
     public var sendState: SendState
     /// The picture of a photo message; nil for text. `body` is then its caption, or "".
     public var image: MessageImage?
+    /// An encrypted message this device has no key for yet (`body` is ""). It turns into
+    /// the message when the key comes: from the sender, or from the key backup (`recover`).
+    public var waitingForKey: Bool = false
+}
+
+/// Whether the account keeps its message keys in a backup that a recovery key opens.
+public enum RecoveryStatus: String, Sendable {
+    /// This device can read the backup.
+    case enabled
+    /// The account has no recovery set up.
+    case disabled
+    /// The account has recovery, but this device cannot read it yet: it needs the recovery key.
+    case incomplete
+    case unknown
 }
 
 public struct MessageImage: Equatable, Sendable {
