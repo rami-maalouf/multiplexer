@@ -35,6 +35,25 @@ final class MatrixCoreTests: XCTestCase {
         try await second.signOut()
     }
 
+    func testSignInNamesWhyItFailed() async throws {
+        let homeserver = ProcessInfo.processInfo.environment["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        // synapse answers an unknown user as it answers a wrong password, so no real account is tried.
+        await assertSignIn(homeserver: homeserver, user: "multiplexer-no-such-user-\(UUID().uuidString.prefix(8))",
+                           fails: .wrongPassword)
+        // .invalid never resolves (rfc 6761).
+        await assertSignIn(homeserver: "multiplexer.invalid", user: "nobody", fails: .serverNotFound)
+    }
+
+    private func assertSignIn(homeserver: String, user: String, fails expected: SignInError, line: UInt = #line) async {
+        do {
+            _ = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: "not the password",
+                                               deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+            XCTFail("signed in to \(homeserver)", line: line)
+        } catch {
+            XCTAssertEqual(error as? SignInError, expected, "\(error)", line: line)
+        }
+    }
+
     private func freshDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)")
     }

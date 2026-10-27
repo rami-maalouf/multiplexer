@@ -1,3 +1,34 @@
-test "the screen shows the Matrix SDK row"
-  expect tree has "root"
-  expect tree has "sdk-commit"
+// these run on ios only: the web has no Matrix SDK. the alerts' tests reach matrix.org
+// and the dns, but sign in to no real account.
+test "Sign In waits for the server, the user name and the password"
+  expect disabled "sign-in"
+  type "server" "matrix.org"
+  type "user" "nobody"
+  expect disabled "sign-in"
+  type "password" "not the password"
+  expect enabled "sign-in"
+
+test "a server that does not answer is named in an alert, and OK keeps the form"
+  type "server" "multiplexer.invalid"
+  type "user" "nobody"
+  type "password" "not the password"
+  tap "sign-in"
+  clock data
+  clock settle
+  expect text "problem" == "No Matrix server answered at multiplexer.invalid. Check the server name."
+  tap "sign-in-failed-ok"
+  clock settle
+  expect text "server" == "multiplexer.invalid"
+  expect tree missing "room-list"
+
+test "a wrong password is named in an alert"
+  type "server" "matrix.org"
+  type "user" "multiplexer-no-such-user"
+  type "password" "not the password"
+  tap "sign-in"
+  clock data
+  clock settle
+  expect text "problem" == "The user name or password is wrong."
+  tap "sign-in-failed-ok"
+  clock settle
+  expect text "user" == "multiplexer-no-such-user"

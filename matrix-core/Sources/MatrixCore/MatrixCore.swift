@@ -46,4 +46,20 @@ public enum MatrixCoreError: Error, Equatable {
     case noRoom(String)
     case timedOut(String)
     case sendFailed(String)
+    /// A Keychain call failed with this `OSStatus`.
+    case keychain(Int32)
+}
+
+/// Why `MatrixAccount.signIn` failed.
+public enum SignInError: Error, Equatable {
+    /// The server refused the user name and password.
+    case wrongPassword
+    /// No Matrix server answered at that name or address.
+    case serverNotFound
+    /// The server has no native sliding sync, which the sdk needs.
+    case serverNotSupported
+    /// Too many tries: the server asks the client to wait.
+    case rateLimited
+    /// Anything else, in the sdk's words.
+    case other(String)
 }

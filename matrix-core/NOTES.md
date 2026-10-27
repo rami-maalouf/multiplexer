@@ -29,6 +29,26 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   calls the SDK" is a convention here. `Matrix.swift` (the native module) calls only
   `MatrixCore`.
 
+## Where the session lives
+
+- **The Keychain** holds the session (`SessionKeychain`, one generic-password item:
+  the access token, the device and the store folder's name). Readable on this device
+  only, after the first unlock, so a notification extension can read it while the
+  phone is locked. The app uses the service `com.ramimaalouf.multiplexer.session`;
+  under Exact's agent it adds `.agent`, because the agent's data is a fresh scratch
+  tree.
+- **The SDK's store** (state, crypto, event cache, media) is a folder in the app's
+  data: `<Exact's context.data>/matrix/<uuid>/`. A Keychain session whose folder is
+  gone (a reinstall keeps the Keychain) counts as signed out, and the item is deleted:
+  a session without its crypto store has lost its encryption keys.
+- **Sign-in errors** are `SignInError` (`wrongPassword`, `serverNotFound`,
+  `serverNotSupported`, `rateLimited`, `other`). Seen on matrix.org: an unknown user
+  gives `M_FORBIDDEN`, as a wrong password does; a `.invalid` server gives
+  `serverNotFound`.
+- **The package's tests cannot use the Keychain.** A Swift package test has no host
+  app, so `SecItem` calls fail with `-34018` (`errSecMissingEntitlement`). The app's
+  relaunch check covers the Keychain.
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The

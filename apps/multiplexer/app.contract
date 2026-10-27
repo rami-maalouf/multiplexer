@@ -1,23 +1,135 @@
-// Multiplexer: the view. app.ts answers what it asks for. For now the screen
-// proves that matrix-rust-sdk loads: only the Rust library knows its commit.
-shape SdkInfo
-  commit: string
+// Multiplexer: the view. app.ts answers what it asks for, through the native module
+// (modules/apple/Matrix.swift), which calls MatrixCore.
+use EmptyState from "exact:content"
+
+shape Session
+  userId: string
+
+shape Room
+  id: string
+  name: string
+
+// owner is the account the rooms belong to, so a list never shows under another account.
+shape RoomList
+  owner: string
+  rooms: Room[]
+
+shape SignInReply
+  ok: bool
+  error: string
+
+shape Reply
+  ok: bool
 
 routes nav
   home "/"
 
 component Multiplexer
-  resource sdk = sdkInfo() as shape SdkInfo
+  state server = ""
+  state user = ""
+  state password = ""
+  state problem = ""
+  resource session = currentSession() as shape Session else empty()
+  resource roomList = loadRooms(session.userId) as shape RoomList else empty()
+  mutation signedIn as shape SignInReply refreshes session then afterSignIn
+  mutation signedOut as shape Reply refreshes session
+  derive canSignIn = server.trim() != "" and user.trim() != "" and password != "" and not pending(signedIn)
+  derive refusal = match signedIn { case some(r) => r.ok ? "" : r.error, case none => "" }
+  derive roomsShown = roomList.owner == session.userId
+
+  action editServer(v: string)
+    server = v
+  action editUser(v: string)
+    user = v
+  action editPassword(v: string)
+    password = v
+  action toUser
+    focus("user")
+  action toPassword
+    focus("password")
+  action signIn
+    if canSignIn
+      send signedIn = signIn(server.trim(), user.trim(), password)
+  action afterSignIn
+    if refusal != ""
+      problem = refusal
+      showModal("sign-in-failed")
+    else
+      password = ""
+  action askSignOut
+    showModal("sign-out")
+  action signOut
+    send signedOut = signOut()
+  action reloadRooms
+    refresh roomList
+
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" width="100%" height="100%"
       for e in stack(nav) key=e.id
-        column navigationKey=`${e.id}` navigationScroll="content" position="absolute" inset=0 display="flex" flex-direction="column"
-          header display="flex" align-items="center"
-            text "Multiplexer" role="heading" aria-level=1 flex=1
-          list id="content" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-            section
-              row
-                text "Matrix SDK" flex=1
-                text (sdk.commit == "" ? "Not loaded" : sdk.commit.slice(0, 12)) color="-exact-secondary-label" testId="sdk-commit"
-              footer
-                text "The commit of matrix-rust-sdk that this app linked."
+        if session.userId == ""
+          column navigationKey=`${e.id}` navigationScroll="sign-in-form" position="absolute" inset=0 display="flex" flex-direction="column"
+            header display="flex" align-items="center"
+              text "Multiplexer" role="heading" aria-level=1 flex=1
+              button press=signIn disabled=(not canSignIn) buttonStyle="filled" testId="sign-in"
+                text "Sign In"
+            list id="sign-in-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+              section
+                row
+                  text "Server" width="6.5rem"
+                  input id="server" value=server input=editServer submit=toUser placeholder="matrix.org"
+                    aria-label="Server" autocomplete="url" inputmode="url" autocapitalize="none" enterkeyhint="next"
+                    disabled=pending(signedIn) testId="server" flex=1 min-width=0
+                footer
+                  text "Your chats from WhatsApp and other networks come through this Matrix server."
+              section
+                row
+                  text "User Name" width="6.5rem"
+                  input id="user" value=user input=editUser submit=toPassword placeholder="Required"
+                    aria-label="User Name" autocomplete="username" autocapitalize="none" enterkeyhint="next"
+                    disabled=pending(signedIn) testId="user" flex=1 min-width=0
+                row
+                  text "Password" width="6.5rem"
+                  input id="password" type="password" value=password input=editPassword submit=signIn placeholder="Required"
+                    aria-label="Password" autocomplete="current-password" enterkeyhint="go"
+                    disabled=pending(signedIn) testId="password" flex=1 min-width=0
+              if pending(signedIn)
+                section
+                  row gap=8 testId="signing-in"
+                    progress aria-label="Signing in"
+                    text "Signing In…" color="-exact-secondary-label"
+        else
+          column navigationKey=`${e.id}` navigationScroll="rooms" position="absolute" inset=0 display="flex" flex-direction="column"
+            header display="flex" align-items="center"
+              text "Chats" role="heading" aria-level=1 flex=1
+              text session.userId
+              button press=askSignOut testId="sign-out"
+                text "Sign Out"
+            if roomsShown
+              if roomList.rooms.length == 0
+                EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
+              else
+                list id="rooms" appearance="auto" listStyle="inset-grouped" refresh=reloadRooms
+                  refreshing=pending(roomList) flex=1 min-height=0 testId="room-list"
+                  section
+                    for r in roomList.rooms key=r.id
+                      row
+                        text r.name testId=`room-${r.id}`
+            else
+              if failed(roomList) and not pending(roomList)
+                column flex=1 justify-content="center" align-items="center" gap=12 padding=24
+                  text "Couldn’t load your chats." color="-exact-secondary-label" testId="rooms-error"
+                  button press=reloadRooms buttonStyle="bordered" testId="rooms-retry"
+                    text "Try Again"
+              else
+                column flex=1 justify-content="center" align-items="center"
+                  progress aria-label="Loading chats" testId="rooms-loading"
+      dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"
+        text problem testId="problem"
+        button commandfor="sign-in-failed" command="close" testId="sign-in-failed-ok"
+          text "OK"
+      dialog id="sign-out" role="alertdialog" aria-label="Sign Out?"
+        text "This iPhone forgets your session. Your chats stay on the server."
+        button press=signOut destructive=true commandfor="sign-out" command="close" testId="sign-out-confirm"
+          text "Sign Out"
+        button commandfor="sign-out" command="close"
+          text "Cancel"

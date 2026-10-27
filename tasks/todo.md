@@ -184,13 +184,15 @@ call it. No network and no UI design. Try A first, then B.
 the native module.
 
 **Acceptance criteria:**
-- [ ] I enter the homeserver, user name and password. Success opens the room list.
-- [ ] A wrong password shows an alert with the reason.
-- [ ] The session survives a relaunch. The token is in the Keychain, not in plain files.
+- [x] I enter the homeserver, user name and password. Success opens the room list. (2026-10-27: the practice account on matrix.org shows its 2 rooms.)
+- [x] A wrong password shows an alert with the reason. (Also an unknown server, a server without sliding sync, and too many tries. `SignInError` in MatrixCore names the reason; `app.ts` says it.)
+- [x] The session survives a relaunch. The token is in the Keychain, not in plain files. (A new launch opens on the room list. No file in the app's container has a `syt_` token.)
+- [x] Added: Sign Out, after a confirmation. It removes the device from the server, the Keychain item and the store folder.
 
 **Verification:**
-- [ ] An `app.test.contract` test for the error state.
-- [ ] A manual sign-in on the Simulator against our server.
+- [x] An `app.test.contract` test for the error state. (3 tests: Sign In waits for all fields; an unknown server; a wrong password. `verify ios` is clean.)
+- [x] A manual sign-in on the Simulator against the practice account on matrix.org (D8).
+- [ ] After T0.6: the same sign-in against our server.
 
 **Dependencies:** T1.3
 **Files:** `app.contract`, `app.ts`, `modules/apple/Matrix.swift`

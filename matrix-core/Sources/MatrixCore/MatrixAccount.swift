@@ -13,11 +13,15 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// Signs in with a user name and password. `homeserver` is a server name
-    /// (`matrix.org`) or a URL; the store lives in `storeDirectory`.
+    /// (`matrix.org`) or a URL; the store lives in `storeDirectory`. Throws a `SignInError`.
     public static func signIn(homeserver: String, user: String, password: String, deviceName: String, storeDirectory: URL) async throws -> MatrixAccount {
-        let client = try await builder(storeDirectory).serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
-        try await client.login(username: user, password: password, initialDeviceName: deviceName, deviceId: nil)
-        return MatrixAccount(client: client)
+        do {
+            let client = try await builder(storeDirectory).serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
+            try await client.login(username: user, password: password, initialDeviceName: deviceName, deviceId: nil)
+            return MatrixAccount(client: client)
+        } catch {
+            throw SignInError(error)
+        }
     }
 
     /// Signs in again with a session that `savedSession()` returned.
@@ -196,6 +200,24 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
                 return event.localSendState ?? .sent(eventId: "")
             }
             return nil
+        }
+    }
+}
+
+extension SignInError {
+    init(_ error: Error) {
+        switch error {
+        case ClientBuildError.InvalidServerName, ClientBuildError.ServerUnreachable,
+             ClientBuildError.WellKnownLookupFailed, ClientBuildError.WellKnownDeserializationError:
+            self = .serverNotFound
+        case ClientBuildError.SlidingSyncVersion:
+            self = .serverNotSupported
+        case ClientError.MatrixApi(.forbidden, _, _, _):
+            self = .wrongPassword
+        case ClientError.MatrixApi(.limitExceeded, _, _, _):
+            self = .rateLimited
+        default:
+            self = .other(String(describing: error))
         }
     }
 }

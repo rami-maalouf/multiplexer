@@ -67,6 +67,20 @@ bun exact.mjs contract build app.contract --json --errors-only
 ```
 
 - `prefer` takes a full key: `"prefer prefers-color-scheme dark"`.
+- **The app's tests run on iOS only** (`test ios`, `verify ios`). The web has no Matrix
+  SDK, so `verify` on the web fails the sign-in tests. Two tests reach matrix.org and DNS
+  (no real account): they need the network.
+- **Sign in to the practice account in a drive** without the password in chat or logs:
+  `pw="$(security find-generic-password -s multiplexer-test-account -a @rami-m-test:matrix.org -w)"`,
+  then `"type password $pw"`. The drive masks a password field. Do not run `state` before
+  the sign-in ends: it shows the `password` state. Sign out at the end of the drive, so
+  matrix.org does not collect old devices.
+- Each drive is a new launch. The agent keeps its own session (Keychain service
+  `com.ramimaalouf.multiplexer.session.agent`) and data, so a drive after a sign-in opens
+  signed in. Each authored test starts signed out.
+- `prefer root-font-size 53` scales only Exact's text. To see the real largest text size,
+  `xcrun simctl ui <udid> content_size accessibility-extra-extra-extra-large`, then set
+  it back (`large`).
 - Each edit to a Swift file in `modules/apple/` compiles the SDK's 2 MB of bindings
   again (about 30 to 40 s).
 - Exact's only required reading: `/Users/rami/Documents/code/exact/exact2/docs/start-here.md`.
