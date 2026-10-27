@@ -10,6 +10,7 @@ goes through the playbook or a playbook in this folder; manual commands there on
 | `setup.sh` | Installs Ansible (uv), gets the playbook at its pinned commit and its roles, and writes `vars.yml` from the Keychain. Safe to run again. |
 | `playbook.sh` | Runs the playbook's `setup.yml` against our inventory. Takes the usual `ansible-playbook` flags. |
 | `register-user.sh` | Registers a Matrix user with a random password that only the Keychain keeps. |
+| `remove-unused-sessions.py` | Signs out a user's sessions that have no name and were never used (`uv run`). |
 | `inventory/hosts` | The server: `matrix.ramimaalouf.com`, reached through `Host oracle` in `~/.ssh/config`. |
 | `inventory/host_vars/matrix.ramimaalouf.com/config.yml` | All settings. In git, no secrets. |
 | `inventory/host_vars/matrix.ramimaalouf.com/vars.yml` | The two secrets. Gitignored; `setup.sh` writes it. Its shape: `vars.example.yml`. |
@@ -69,8 +70,9 @@ To paste a password on the iPhone (Universal Clipboard):
   (Element X, our app) follow it; a browser client (Element Web, Element Desktop) does not,
   because the 301 has no CORS header. In a browser client, enter `www.ramimaalouf.com` or
   `matrix.ramimaalouf.com` as the server; the user ID stays `@name:ramimaalouf.com`.
-- **Registration leaves a session.** `register-user.sh` (the playbook's `register_new_matrix_user`)
-  signs the new user in once, so each user starts with one unnamed session that nobody uses.
+- **Registration leaves a session.** The playbook's `register_new_matrix_user` signs the new
+  user in once. `register-user.sh` then runs `remove-unused-sessions.py`, which signs out every
+  session of that user with no name that was never used.
 - **Oracle security list** (the cloud firewall, set by Rami in the console): region
   `ca-toronto-1`, VCN `vcn-20250515-0038` > Security > Default Security List > Security
   rules. Ingress from `0.0.0.0/0`, all stateful: TCP 22, 80, 443 (old, "run n8n publicly"),

@@ -98,7 +98,7 @@ on aarch64 and that Element X can use it.
 
 **Found on the way:**
 - 2026-10-27: Rami signed in with Element Web (app.element.io, Firefox) by entering `www.ramimaalouf.com`. With `ramimaalouf.com` it said "Homeserver URL does not appear to be a valid Matrix homeserver": the 301 to `www` has no CORS header (checked with curl). Element X and our app are not affected.
-- Registration leaves one unused session per user (`@rami` `LCCCMXGHUT`, `@test1` `GSZAMCIGYJ`, `@test2` `LZOEOUBRAB`), each with a live token that nobody holds. Removing them waits for Rami.
+- Registration leaves one unused session per user (`@rami` `LCCCMXGHUT`, `@test1` `GSZAMCIGYJ`, `@test2` `LZOEOUBRAB`), each with a live token that nobody holds. With Rami's yes, `server/remove-unused-sessions.py` signed out the two test ones; `register-user.sh` now runs it after each registration. Rami signs out his own in Element Web.
 
 **First run:** 2026-10-27, `ok=195 changed=58 failed=0`. Synapse answers at `https://matrix.ramimaalouf.com` with a Let's Encrypt certificate, and password sign-in works.
 

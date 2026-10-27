@@ -35,5 +35,7 @@ status=0
 sed "s/$password/<password>/g" "$log"
 if [ "$status" -eq 0 ]; then
   echo "registered $account (admin: $admin). password: keychain service $service, account $account"
+  # the registration signs the user in once; nobody uses that session.
+  uv run "$here/remove-unused-sessions.py" "$user" "$service"
 fi
 exit "$status"

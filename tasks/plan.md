@@ -8,7 +8,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 |---|---|
 | Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; the self-check is green; T0.5 waits for Element X). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
 | Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): Element X, then T0.6. |
-| Blocked on Rami | Element X sign-in (T0.5); yes or no to removing the 3 unused sessions from registration. |
+| Blocked on Rami | Element X sign-in (T0.5). |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
 | Last updated | 2026-10-27 |
