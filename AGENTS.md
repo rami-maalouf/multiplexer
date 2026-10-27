@@ -23,6 +23,7 @@ WhatsApp, Signal, ...  <->  mautrix bridges  ->  Synapse (Matrix server)  <->  i
 | `scripts/test-matrix-core.sh` | Runs MatrixCore's end-to-end test on the iOS Simulator against matrix.org. |
 | `vendor/` | The downloaded SDK. Not in git. |
 | `tasks/` | The plan and the task list. |
+| `docs/exact-feedback/` | Every place where Exact was hard, for Rami and the Exact team: one issue file each, and an index. |
 
 The Exact framework is a separate checkout at `/Users/rami/Documents/code/exact/exact2`.
 The app uses it by path. Do not put this project inside it.
@@ -86,13 +87,15 @@ bun exact.mjs contract build app.contract --json --errors-only
 - Exact's only required reading: `/Users/rami/Documents/code/exact/exact2/docs/start-here.md`.
   For a chat screen, see its `chat-thread` recipe.
 
-## Exact feedback: always keep the diary
+## Exact feedback: always record it
 
-Rami uses this app to improve Exact. Every place where Exact slowed you down is
-feedback, and recording it is part of each task, not optional.
+Rami and the Exact team use this app to improve Exact. Every place where Exact slowed
+you down is feedback, and recording it is part of each task, not optional. Start at
+**`docs/exact-feedback/README.md`**: the list of findings, and how to add one.
 
 - Keep one diary entry per task: `apps/multiplexer/.exact/diary/<YYYY-MM-DD>-<topic>.md`,
-  in the format of `<exact2>/docs/diary.md` (Rough, Lean in, Needed, Checkpoints).
+  in the format of `<exact2>/docs/diary.md` (Rough, Lean in, Needed, Checkpoints). The
+  diary is in git.
 - **Write a Rough entry when the struggle happens**, not from memory at the end. Record
   what you tried, the error text, about how long it cost, what you did instead, and what
   would have helped (a message, a doc line, a feature).
@@ -102,9 +105,12 @@ feedback, and recording it is part of each task, not optional.
   workaround you write into this file**.
 - Keep it generic: no app name, no product purpose, no server names, no account names,
   no secrets. Write "a chat app", "a public server", "a third-party library".
-- At the end of each task, run `bun exact.mjs feedback status`. The answer is `ask`, so
-  ask Rami once whether to send the diary, quoting 2 to 4 lines. Send nothing without
-  Rami's yes.
+- At the end of each task, turn each new Rough entry into a finding in
+  `docs/exact-feedback/issues/` (or add evidence to a known one), and add its row to the
+  README's table. The README gives the steps.
+- Then run `bun exact.mjs feedback status`. The answer is `ask`, so ask Rami once whether
+  to send, quoting 2 to 4 lines. Send nothing, and open no pull request to exact2,
+  without Rami's yes: exact2 is public.
 
 ## Test accounts
 

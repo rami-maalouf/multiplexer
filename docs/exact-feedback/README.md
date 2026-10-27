@@ -1,0 +1,75 @@
+# Exact feedback
+
+This folder records each place where building Multiplexer with Exact was hard. Its
+purpose: Rami and the Exact team can improve the framework. Read this page first.
+
+| What | Where |
+|---|---|
+| Findings, one file each, in exact2's issue format | [`issues/`](issues/) |
+| Raw notes, one file per task, in Exact's diary format | [`apps/multiplexer/.exact/diary/`](../../apps/multiplexer/.exact/diary/) |
+| The rule that every agent follows | `AGENTS.md`, "Exact feedback: always record it" |
+
+The findings use no app name, server name or account name, so they can go to the
+Exact team as they are.
+
+## Findings
+
+Each finding was rechecked against exact2 `cee509ac82` (2026-10-27).
+
+| # | Finding | Cost | Severity | File |
+|---|---|---|---|---|
+| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. | 31 to 42 s for each edit | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
+| 2 | An authored test cannot read a secret, so `verify` never reaches the screens behind a sign-in. | A text-size bug that `verify` missed | P2 | [authored-tests-cannot-read-a-secret](issues/20261027-authored-tests-cannot-read-a-secret.md) |
+| 3 | A native module can use only real files in `modules/apple`: no links, no local Swift package. | About 20 min, then a copy step after each edit | P3 | [module-swift-only-from-modules-apple](issues/20261027-module-swift-only-from-modules-apple.md) |
+| 4 | A native module cannot keep a secret in Exact's store, so its Keychain items outlive a fresh drive. | A test device left signed in on the server | P3 | [native-module-has-no-secret-store](issues/20261027-native-module-has-no-secret-store.md) |
+| 5 | The editor cannot resolve native module Swift, so every line shows an error. | No quick feedback while editing | P3 | [editor-cannot-resolve-module-swift](issues/20261027-editor-cannot-resolve-module-swift.md) |
+| 6 | `state` prints the value that a password field is bound to. | A password can reach the agent's output | P3 | [agent-state-prints-a-password](issues/20261027-agent-state-prints-a-password.md) |
+| 7 | A `role="status"` readout holding a `progress` is hidden from the iOS bar, with no warning. | About 5 min | P3 | [ios-bar-hides-a-status-readout-with-progress](issues/20261027-ios-bar-hides-a-status-readout-with-progress.md) |
+| 8 | An app cannot say that it runs on iOS only. | Web tests fail | P3 | [an-app-cannot-say-it-runs-on-ios-only](issues/20261027-an-app-cannot-say-it-runs-on-ios-only.md) |
+| 9 | The native-module recipe leaves out the module's folders, its Swift mode and how `clock data` treats `later`. | About 15 min | P3 | [native-module-recipe-gaps](issues/20261027-native-module-recipe-gaps.md) |
+| 10 | `contract vocab` names a tag or property but not its attributes or values. | About 5 min | P3 | [vocab-gives-no-attributes-or-values](issues/20261027-vocab-gives-no-attributes-or-values.md) |
+| 11 | `prefer root-font-size` enlarges Exact's text but not native fields. | About 3 min | P3 | [prefer-root-font-size-leaves-native-text](issues/20261027-prefer-root-font-size-leaves-native-text.md) |
+| 12 | The `chat-thread` recipe uses `overflow-wrap="anywhere"`, which `verify ios` reports. | About 2 min | P3 | [chat-thread-recipe-breaks-inside-words](issues/20261027-chat-thread-recipe-breaks-inside-words.md) |
+| 13 | Four agent messages could say what to do next. | 1 or 2 min each | P3 | [small-agent-drive-messages](issues/20261027-small-agent-drive-messages.md) |
+| 14 | An app that uses exact2 by path cannot safely follow a rewritten `main`. | About 8 min, twice | P3 | [apps-outside-exact2-cannot-follow-a-rewritten-main](issues/20261027-apps-outside-exact2-cannot-follow-a-rewritten-main.md) |
+| 15 | After `update`, `lock` reports "no changes" for a `Cargo.lock` that `update` rewrote. | About 2 min | P3 | [update-and-lock-disagree-about-cargo-lock](issues/20261027-update-and-lock-disagree-about-cargo-lock.md) |
+
+## What worked well
+
+- Compiler errors name the fix (`lower-grouped-list`, `lower-empty-state-in-list`, symbol aliases).
+- `clock data` waits for slow native replies, so tests and drives need no waits.
+- Drives mask password fields, and the command log keeps no arguments.
+- A `list` with no `appearance` looks like the Messages app with no extra code.
+- `formatDay(…, "list")` and `"day-time"` give a chat list's and a transcript's times.
+- `modules/apple/*.xcframework` links a vendor's static library with no linker flags.
+- `verify ios` rebuilds on its own after exact2 moves.
+
+## How to add a finding
+
+1. When Exact costs you time, write it in the task's diary entry at once:
+   `apps/multiplexer/.exact/diary/<YYYY-MM-DD>-<topic>.md` (format: `<exact2>/docs/diary.md`).
+2. At the end of the task, search exact2's `issues/`, `issues/closed/` and `QUEUE.md`
+   for the same problem. Also search the files here.
+3. For a new problem, add an issue file here. Run this from this folder:
+   `bun <exact2>/scripts/issue.mjs new "<title>" --systems "<a, b>" --severity P3 --author "Claude (Opus 5.5), from Rami Maalouf's chat app friction log (an app outside exact2)"`.
+   Then write what happened, what would help, and where you saw it (the exact2 commit).
+   For a known problem, add your evidence to its file.
+4. Run `bun <exact2>/scripts/issue.mjs check` from this folder.
+5. Add a row to the table above.
+6. Keep each file generic: no app name, product purpose, server name, account name or secret.
+
+If a new diary file does not show in `git status`, check `apps/multiplexer/.gitignore`:
+it must keep `!/.exact/diary/`.
+
+## Sending the findings to the Exact team
+
+Not sent yet. exact2 (`ccheever/exact47`) is public, and Rami's GitHub account can only
+read it. Two ways, each needs Rami's yes:
+
+- **A pull request:** the files in `issues/` go into exact2's `issues/` folder, from a
+  fork. The team files issues in this way. The pull request is public.
+- **The feedback tool:** `bun exact.mjs feedback send` sends the diary entries to the
+  Exact team. It is not public.
+
+After a finding is in exact2, exact2's copy is the one to update. Delete the file here,
+and link the row to exact2's file.

@@ -3,4 +3,6 @@
 /dist.*
 /node_modules/
 /app.contract.d.ts
-/.exact/
+# exact's scratch folder; the diary is kept in git (docs/exact-feedback/README.md).
+/.exact/*
+!/.exact/diary/
