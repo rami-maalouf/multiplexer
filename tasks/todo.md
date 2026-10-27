@@ -350,9 +350,13 @@ encrypted unless the bridge's end-to-bridge encryption is on (decide in Phase 0)
 with other Matrix users usually are.
 
 **Acceptance criteria:**
-- [ ] A decision in the log: end-to-bridge encryption on or off, and why.
-- [ ] In an encrypted room made in Element, messages sent after this device signed in show as text.
-- [ ] Older messages show after I enter the recovery key (key backup), or the plan says why not yet.
+- [ ] A decision in the log: end-to-bridge encryption on or off, and why. (Waits for T0.6.)
+- [x] In an encrypted room, messages sent after this device signed in show as text. (2026-10-27: the room "Multiplexer encrypted test", made by MatrixCore; another device's message shows as text at once; a message sent from the app is encrypted and shows as text.)
+- [x] Added: a message this device has no key for shows as "Waiting for this message", not nothing. Before, MatrixCore dropped it from the chat.
+- [ ] Older messages show after I enter the recovery key (key backup). (Waits for T0.5: the practice account has no recovery, and turning it on would add an encryption identity to an account Rami also uses in Element. Test it with a test user on our own server.)
+
+**Found on the way:**
+- A room whose newest message this device cannot read has no preview and no time in the chat list, so it sorts last.
 
 **Dependencies:** T2.2, T0.6 (for the bridge decision)
 **Scope:** M

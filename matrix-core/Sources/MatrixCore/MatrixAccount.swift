@@ -221,9 +221,21 @@ public final class MatrixAccount: @unchecked Sendable {
         try await live.timeline.redactEvent(eventOrTransactionId: itemId, reason: nil)
     }
 
-    /// Creates a private, unencrypted room and returns its id.
-    public func createRoom(name: String) async throws -> String {
-        try await client.createRoom(request: CreateRoomParameters(name: name, isEncrypted: false, visibility: .private, preset: .privateChat))
+    /// Creates a private room and returns its id.
+    public func createRoom(name: String, encrypted: Bool = false) async throws -> String {
+        try await client.createRoom(request: CreateRoomParameters(name: name, isEncrypted: encrypted, visibility: .private, preset: .privateChat))
+    }
+
+    /// The account's recovery, once this device has finished setting up its encryption.
+    public func recoveryStatus() async -> RecoveryStatus {
+        let encryption = client.encryption()
+        await encryption.waitForE2eeInitializationTasks()
+        switch encryption.recoveryState() {
+        case .enabled: return .enabled
+        case .disabled: return .disabled
+        case .incomplete: return .incomplete
+        case .unknown: return .unknown
+        }
     }
 
     /// Signs out, which removes this device from the account.
@@ -472,7 +484,15 @@ extension RoomSummary {
 
 extension Message {
     init?(_ event: EventTimelineItem, id: String) {
-        guard case .msgLike(let content) = event.content, case .message(let message) = content.kind else { return nil }
+        guard case .msgLike(let content) = event.content else { return nil }
+        if case .unableToDecrypt = content.kind {
+            var name = event.sender
+            if case .ready(let displayName, _, _, _, _) = event.senderProfile, let displayName { name = displayName }
+            self.init(id: id, sender: event.sender, senderName: name, body: "", timestamp: event.timestamp,
+                      isOwn: event.isOwn, sendState: .sent, image: nil, waitingForKey: true)
+            return
+        }
+        guard case .message(let message) = content.kind else { return nil }
         var name = event.sender
         if case .ready(let displayName, _, _, _, _) = event.senderProfile, let displayName { name = displayName }
         let sendState: SendState

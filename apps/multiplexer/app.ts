@@ -12,7 +12,7 @@ type MessagesAnswer = {
   atStart: boolean;
   messages: {
     id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
-    isImage: boolean; image: string; imageWidth: number; imageHeight: number;
+    isImage: boolean; image: string; imageWidth: number; imageHeight: number; waitingForKey: boolean;
   }[];
 };
 
@@ -54,6 +54,7 @@ const sources: Sources = {
       return {
         id: m.id, senderName: m.senderName, body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, showName,
         isImage: m.isImage, image: m.image, imageWidth: m.imageWidth, imageHeight: m.imageHeight,
+        waitingForKey: m.waitingForKey,
         photoWidth: m.imageWidth > 0 && m.imageHeight > 0
           ? Math.min(PHOTO_MAX_WIDTH, (PHOTO_MAX_HEIGHT * m.imageWidth) / m.imageHeight) : PHOTO_MAX_WIDTH,
       };

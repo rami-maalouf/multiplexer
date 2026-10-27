@@ -7,7 +7,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 | | |
 |---|---|
 | Current phase | Phase 0: prove the server (waits for Q1). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | App: T2.4 Unread counts, once the server conversation has made test users (T0.5). Server: Phase 0 runs in its own conversation (branch `server/phase-0`). |
+| Next task | App: T2.4 Unread counts and T2.6's recovery key, once the server conversation has made test users (T0.5). Server: Phase 0 runs in its own conversation (branch `server/phase-0`). |
 | Blocked on Rami | Q1 (domain) |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
@@ -215,3 +215,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T2.5 passed: photo messages show at their ratio, download through the sdk into the app's cache, and open in a full-screen viewer. |
 | 2026-10-27 | T2.8 added and passed: scrolling up a chat loads 20 older messages at a time, to the room's first message, and keeps the reader's place. A test sign-in now signs out in a teardown, so a failed test leaves no device on the account. |
 | 2026-10-27 | Rami keeps the two leftover test devices on the practice account (`B7E9i45YI2`, `fzw1iUkJqS`). Do not remove them. |
+| 2026-10-27 | T2.6, first part: encrypted chats show new messages as text, and a message without its key shows "Waiting for this message". The practice account has no recovery set up; the recovery key waits for a test user on our server, so the practice account Rami also uses in Element keeps no new encryption identity. |

@@ -6,6 +6,7 @@ import XCTest
 /// (its password from the Mac's Keychain); without it the test is skipped.
 final class MatrixCoreTests: XCTestCase {
     private let roomName = "Multiplexer test"
+    private let encryptedRoomName = "Multiplexer encrypted test"
 
     func testSignInSendAndReadBackOnANewDevice() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -214,6 +215,40 @@ final class MatrixCoreTests: XCTestCase {
         ])
         let (_, response) = try await URLSession.shared.data(for: send)
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+    }
+
+    func testAnEncryptedRoomShowsANewMessageAsText() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let reader = try await signIn(homeserver, user, password)
+        print("recovery on this account: \(await reader.recoveryStatus())")
+        let rooms = try await reader.rooms()
+        let roomId: String
+        if let existing = rooms.first(where: { $0.name == encryptedRoomName })?.id {
+            roomId = existing
+        } else {
+            roomId = try await reader.createRoom(name: encryptedRoomName, encrypted: true)
+        }
+        _ = try await reader.messages(roomId: roomId, limit: 20)
+
+        // another device sends after the reader signed in, so it shares the key with the reader.
+        let writer = try await signIn(homeserver, user, password)
+        _ = try await writer.rooms()
+        let text = "Encrypted \(UUID().uuidString)"
+        try await writer.sendAndWait(roomId: roomId, text: text)
+
+        let start = Date()
+        var seen = try await reader.messages(roomId: roomId, limit: 20).last { $0.isOwn }
+        while seen?.body != text, Date().timeIntervalSince(start) < 20 {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            seen = try await reader.messages(roomId: roomId, limit: 20).last { $0.isOwn }
+        }
+        XCTAssertEqual(seen?.body, text, "the reader shows \(seen?.waitingForKey == true ? "a message waiting for its key" : "nothing")")
+        XCTAssertEqual(seen?.waitingForKey, false)
+        print("the reader showed the encrypted message after \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
     }
 
     func testOlderMessagesLoadUntilTheStart() async throws {

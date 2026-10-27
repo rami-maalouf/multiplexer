@@ -22,7 +22,8 @@ shape RoomList
 // state: "sending", "sent" or "failed". startsGroup: the time shows above it.
 // showName: the sender's name shows above it. A photo (isImage) has its size in pixels
 // (0 when unknown), its width in the chat in rem, and its thumbnail's path once it is
-// downloaded ("" until then); its body is the caption, or "".
+// downloaded ("" until then); its body is the caption, or "". waitingForKey: an encrypted
+// message this device cannot read yet; it turns into the message when its key comes.
 shape Message
   id: string
   senderName: string
@@ -37,6 +38,7 @@ shape Message
   imageWidth: number
   imageHeight: number
   photoWidth: number
+  waitingForKey: bool
 
 // the full picture of the photo open in the viewer; message names it.
 shape Photo
@@ -268,7 +270,10 @@ component Multiplexer
                           if m.image != ""
                             image m.image width="100%" height="100%" object-fit="cover"
                       // a message on its way is dimmed; one that failed says so, with a way to send it again.
-                      if not m.isImage or m.body != ""
+                      if m.waitingForKey
+                        text "Waiting for this message" padding="8px 12px" border-radius=18 max-width="75%" font-style="italic"
+                          background-color="-exact-fill" color="-exact-secondary-label" testId=`message-${m.id}`
+                      else if not m.isImage or m.body != ""
                         text m.body padding="8px 12px" border-radius=18 max-width="75%" overflow-wrap="break-word"
                           background-color=(m.isOwn ? "AccentColor" : "-exact-fill") color=(m.isOwn ? "AccentColorText" : "-exact-label")
                           opacity=(m.state == "sending" ? 0.6 : 1) testId=`message-${m.id}`

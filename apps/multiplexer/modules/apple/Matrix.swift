@@ -46,6 +46,7 @@ final class Matrix: ExactModule {
                     reply.send(["atStart": atStart, "messages": messages.map {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
+                         "waitingForKey": $0.waitingForKey,
                          "isImage": $0.image != nil, "image": thumbnail(account, roomId: roomId, message: $0),
                          "imageWidth": $0.image?.width ?? 0, "imageHeight": $0.image?.height ?? 0]
                     }])
