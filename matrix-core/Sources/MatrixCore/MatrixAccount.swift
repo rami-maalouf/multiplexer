@@ -38,6 +38,21 @@ public final class MatrixAccount: @unchecked Sendable {
         return MatrixAccount(client: client)
     }
 
+    /// Signs a session out on the server without its store (a reinstall lost it), through
+    /// a scratch store that is deleted after. True when the server no longer knows the
+    /// session, now or before; false when it could not be reached, so try again later.
+    public static func signOutOnServer(_ saved: SavedSession, scratchDirectory: URL) async -> Bool {
+        defer { try? FileManager.default.removeItem(at: scratchDirectory) }
+        do {
+            try await restore(saved, storeDirectory: scratchDirectory).client.logout()
+            return true
+        } catch ClientError.MatrixApi(.unknownToken, _, _, _) {
+            return true
+        } catch {
+            return false
+        }
+    }
+
     private static func builder(_ storeDirectory: URL) throws -> ClientBuilder {
         let data = storeDirectory.appendingPathComponent("data"), cache = storeDirectory.appendingPathComponent("cache")
         try FileManager.default.createDirectory(at: data, withIntermediateDirectories: true)

@@ -39,8 +39,13 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   tree.
 - **The SDK's store** (state, crypto, event cache, media) is a folder in the app's
   data: `<Exact's context.data>/matrix/<uuid>/`. A Keychain session whose folder is
-  gone (a reinstall keeps the Keychain) counts as signed out, and the item is deleted:
-  a session without its crypto store has lost its encryption keys.
+  gone (a reinstall keeps the Keychain) counts as signed out, and the item moves to the
+  `sign-out` slot below: a session without its crypto store has lost its encryption keys.
+- **A session the server must still forget** waits in a second Keychain item (slot
+  `sign-out`): a session whose store is gone, or one whose Sign Out could not reach the
+  server. The module signs it out with `MatrixAccount.signOutOnServer` (a scratch store,
+  deleted after) in the background, and tries again at the next launch if the server
+  could not be reached.
 - **Sign-in errors** are `SignInError` (`wrongPassword`, `serverNotFound`,
   `serverNotSupported`, `rateLimited`, `other`). Seen on matrix.org: an unknown user
   gives `M_FORBIDDEN`, as a wrong password does; a `.invalid` server gives

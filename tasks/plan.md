@@ -7,7 +7,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 | | |
 |---|---|
 | Current phase | Phase 0: prove the server (waits for Q1). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | T2.1 Sign out a stale session, then T2.2 Live updates. M1's WhatsApp part waits for Phase 0, which waits for Q1 (domain). |
+| Next task | T2.2 Live updates. M1's WhatsApp part waits for Phase 0, which waits for Q1 (domain). |
 | Blocked on Rami | Q1 (domain) |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
@@ -206,3 +206,5 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T1.5 passed on the practice account: a plain room list (name, time, 2-line preview, newest first) and a read-only chat (the last 20 messages, opened at the newest, `chat-thread` bubbles). Fixed a race in MatrixCore: `settle()` could read the timeline before a pagination's diffs arrived. The authored tests cannot sign in, so drives check these screens. |
 | 2026-10-27 | Checkpoint M1 (without its WhatsApp part, which waits for Phase 0): Rami chose to continue with Exact (D4). Exact now has a feedback flow for the app's diary (`bun exact.mjs feedback`); keep the diary for each task. Phase 2 written in detail. |
 | 2026-10-27 | Pulled the latest Exact. Its history was rewritten again (a transcript purged on purpose), so local `main` now matches `origin/main` (`cee509ac82`). The old local `main` is kept as `backup/main-before-2026-10-27-rewrite-2`. |
+| 2026-10-27 | Sent the app's Exact diaries with Rami's yes (receipt `4c8a0a07-60a8-466e-ae9a-bef9a0b29f82`; `bun exact.mjs feedback delete <receipt>` takes it back). |
+| 2026-10-27 | T2.1 passed: a session whose store is gone, or whose Sign Out could not reach the server, waits in a second Keychain slot and is signed out on the server in the background. Tests and drives no longer leave devices on the practice account. |

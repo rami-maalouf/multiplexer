@@ -5,13 +5,18 @@ import Foundation
 final class Matrix: ExactModule {
     // the agent's data is a fresh scratch tree, so it keeps its session apart from the app's.
     private lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
+    /// A session the server must still forget. Until it does, its device stays on the account.
+    private lazy var pending = SessionKeychain(service: keychain.service, slot: "sign-out")
+    private var signingOutPending = false
     private var stores: URL { context.data.appendingPathComponent("matrix", isDirectory: true) }
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
     private var account: Task<MatrixAccount, Error>?
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
         switch request["op"] as? String {
-        case "session": return ["userId": try stored()?.session.userId ?? ""]
+        case "session":
+            defer { signOutPending() }
+            return ["userId": try stored()?.session.userId ?? ""]
         default: throw ExactNativeRefusal("matrix answers session")
         }
     }
@@ -47,12 +52,29 @@ final class Matrix: ExactModule {
     }
 
     /// The Keychain's session if its store is still there. A reinstall keeps the Keychain
-    /// but not the store, and a session without its store has lost its encryption keys.
+    /// but not the store, and a session without its store has lost its encryption keys:
+    /// it waits to be signed out on the server, and the app opens signed out.
     private func stored() throws -> StoredSession? {
         guard let stored = try keychain.read() else { return nil }
         if FileManager.default.fileExists(atPath: stores.appendingPathComponent(stored.store).path) { return stored }
+        try pending.write(stored)
         try keychain.delete()
         return nil
+    }
+
+    /// Signs the pending session out on the server in the background. If the server cannot
+    /// be reached, the session stays pending for the next launch.
+    private func signOutPending() {
+        guard !signingOutPending, let stale = try? pending.read() else { return }
+        signingOutPending = true
+        let scratch = context.temporary.appendingPathComponent("matrix-sign-out-\(UUID().uuidString)", isDirectory: true)
+        Task { @MainActor in
+            if await MatrixAccount.signOutOnServer(stale.session, scratchDirectory: scratch) {
+                try? pending.delete()
+                print("matrix: signed out a session whose store was gone")
+            }
+            signingOutPending = false
+        }
     }
 
     /// A refusal is a reply: `problem` names it for app.ts, which says it to the person.
@@ -100,12 +122,17 @@ final class Matrix: ExactModule {
         }
     }
 
-    /// Asks the server to forget this device, then forgets the session here even if the server could not be reached.
+    /// Asks the server to forget this device, then forgets the session here. If the server
+    /// could not be reached, the session waits to be signed out there later.
     @MainActor private func signOut() async throws {
-        if let signedIn = try? await signedIn() { try? await signedIn.signOut() }
+        let stored = try keychain.read()
+        var forgotten = false
+        if let signedIn = try? await signedIn() { forgotten = (try? await signedIn.signOut()) != nil }
         account = nil
+        if !forgotten, let stored { try pending.write(stored) }
         try keychain.delete()
         try? FileManager.default.removeItem(at: stores)
+        if !forgotten { signOutPending() }
     }
 }
 let exactModule: ExactModule.Type = Matrix.self

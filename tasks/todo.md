@@ -247,11 +247,16 @@ reinstall, or `verify ios`), sign that device out on the server before the app f
 it. Use a temporary store folder for the sign-out, then delete it.
 
 **Acceptance criteria:**
-- [ ] After a drive signs in and `verify ios` runs, the next launch is signed out, and the account's device list does not keep the old device.
-- [ ] If the server cannot be reached, the app still opens signed out. It does not wait more than 10 s.
+- [x] After a drive signs in and `verify ios` runs, the next launch is signed out, and the account's device list does not keep the old device. (2026-10-27: device `KZqwpyN8n8` gone after `verify ios`.)
+- [x] If the server cannot be reached, the app still opens signed out. It does not wait more than 10 s. (The app does not wait at all: the session moves to a second Keychain slot, `sign-out`, and a background task signs it out. If the server cannot be reached, the next launch tries again. Sign Out uses the same slot when the server cannot be reached.)
 
 **Verification:**
-- [ ] A MatrixCore function lists the account's devices. A drive signs in, `verify ios` runs, a drive launches; the device count is the same as before.
+- [x] `scripts/list-test-devices.sh` lists the account's devices (the SDK has no call for it, so it uses the HTTP API). A drive signs in, `verify ios` runs, a drive launches; the drive's device is gone.
+- [x] MatrixCore test `testSignOutOnServerWithoutTheStore`: the old token is refused 0.1 to 0.9 s after the sign-out (matrix.org drops it within a second, not at once); an unreachable server returns false.
+
+**Found on the way:**
+- matrix.org signs in through its account service (`account.matrix.org`), so the HTTP API refuses device deletion (`M_UNRECOGNIZED`). The older leftover device `B7E9i45YI2` must be removed by hand, in Element or at account.matrix.org.
+- A failed `xcodebuild test` waited 10 minutes for `simctl diagnose`. `scripts/test-matrix-core.sh` now passes `-collect-test-diagnostics never`.
 
 **Dependencies:** None
 **Files:** `matrix-core/Sources/MatrixCore/*.swift`, `modules/apple/Matrix.swift`

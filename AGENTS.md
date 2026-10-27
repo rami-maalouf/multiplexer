@@ -119,4 +119,7 @@ you down is feedback, and recording it is part of each task, not optional. Start
   messages: `MATRIX_TEST_FILL=24 ./scripts/test-matrix-core.sh -only-testing:MatrixCoreTests/MatrixCoreTests/testFillTheTestRoom`.
 - A drive's clock starts at 2026-01-01, so today's messages show as dates. Add
   `--epoch now --time-zone America/New_York` to `agent ios` to see real times.
+- `./scripts/list-test-devices.sh` lists the practice account's devices. Tests and drives
+  should leave none behind. matrix.org refuses device deletion through the API, so a
+  leftover device must be removed in Element or at account.matrix.org.
 - Do not test with `@rami-m:matrix.org` or `@ramimaalouf:beeper.com`: they are Rami's real accounts.
