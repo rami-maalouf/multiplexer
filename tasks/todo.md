@@ -94,7 +94,7 @@ on aarch64 and that Element X can use it.
 
 **Verification:**
 - [ ] The self-check output and an Element X screenshot.
-- [ ] `free -h` and `sudo docker stats --no-stream` after one hour, saved in `server/notes/`.
+- [x] `free -h` and `sudo docker stats --no-stream` after one hour, saved in `server/notes/`. (2026-10-27: 1.8 GiB used, Synapse 126 MiB, Postgres 218 MiB, load 0.08: `server/notes/install.md`.)
 
 **Found on the way:**
 - 2026-10-27: Rami signed in with Element Web (app.element.io, Firefox) by entering `www.ramimaalouf.com`. With `ramimaalouf.com` it said "Homeserver URL does not appear to be a valid Matrix homeserver": the 301 to `www` has no CORS header (checked with curl). Element X and our app are not affected.

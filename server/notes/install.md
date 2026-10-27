@@ -38,3 +38,30 @@ Synapse 119 MiB, Traefik 28 MiB, the rest under 20 MiB each. CPU near 0%.
 **Found on the way:** the playbook puts Ketesa's settings (`cc.etke.ketesa`) into
 `/.well-known/matrix/client` even when Ketesa is off, so the file differed from the
 website's copy. `config.yml` turns that property off; the file is `m.homeserver` only.
+
+**After about one hour** (2026-10-27 22:31 UTC, `free -h` and `sudo docker stats --no-stream`):
+1.8 GiB of 23 GiB used, 21 GiB available, no swap. Load average 0.08. Disk 31 of 96 GB.
+All 7 `matrix-*` units active; Synapse healthy.
+
+| Container | CPU | Memory |
+|---|---|---|
+| `matrix-postgres` | 0.01% | 218 MiB |
+| `matrix-traefik` | 0.05% | 128 MiB |
+| `matrix-synapse` | 2.9% | 126 MiB |
+| `matrix-container-socket-proxy` | 0.03% | 18 MiB |
+| `matrix-static-files` | 0% | 11 MiB |
+| `matrix-exim-relay` | 0% | 4 MiB |
+| `matrix-traefik-certs-dumper` | 0% | 4 MiB |
+
+This is far below Oracle's 20% reclaim line (see the M0 checkpoint): one user, no bridges yet.
+
+## 2026-10-27: first clients
+
+- Element Web (app.element.io, Firefox): sign-in with `www.ramimaalouf.com` (not
+  `ramimaalouf.com`: the 301 has no CORS header). Exchanged encrypted messages with
+  `@rami-m:matrix.org` over federation, both ways.
+- Element X (iPhone): sign-in with `ramimaalouf.com`. Verifying the new session hung on the
+  iPhone's "Start verification" spinner, twice. Started from Element Web instead (Settings >
+  Sessions > Element X iOS > Verify session), with no Start on the iPhone, it worked. The
+  server delivered every verification message both times (nothing waited in `device_inbox`),
+  so the hang was in the client, not the server.
