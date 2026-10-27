@@ -65,6 +65,18 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - The module merges the changes of 0.2 s into one `context.changed` for each topic
   (`rooms`, `thread:<room id>`).
 
+## Sending
+
+- `send` puts the message in the room's send queue (the open chat's live timeline) and
+  returns at once; `Message.sendState` goes `sending`, then `sent` or `failed`. A message
+  keeps its id (the timeline item's unique id) from sending to sent.
+- A failure the sdk can recover from (no network) stops the room's send queue; `retry`
+  starts it again and also retries a message the server refused (`retrySend`).
+- The sdk keeps a refused message in its queue, across launches, until it is sent or
+  discarded. `discard` cancels it (`redactEvent` on its transaction id); it never touches
+  a sent message.
+- `sendAndWait` returns once the server has the message, for tests and scripts.
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The

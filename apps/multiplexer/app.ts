@@ -8,7 +8,9 @@ export const grants = '';
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
 type RoomsAnswer = { rooms: Result<'loadRooms'>['rooms'] };
-type MessagesAnswer = { messages: { id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean }[] };
+type MessagesAnswer = {
+  messages: { id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string }[];
+};
 
 const problems: Record<string, (server: string) => string> = {
   'wrong-password': () => 'The user name or password is wrong.',
@@ -42,7 +44,7 @@ const sources: Sources = {
       const startsGroup = before === undefined || m.time - before.time > GROUP_GAP_MS;
       // a group chat names the sender above the first message of each run.
       const showName = !isDirect && !m.isOwn && (startsGroup || before.sender !== m.sender);
-      return { id: m.id, senderName: m.senderName, body: m.body, time: m.time, isOwn: m.isOwn, startsGroup, showName };
+      return { id: m.id, senderName: m.senderName, body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, showName };
     });
     return { room: roomId, messages };
   },
@@ -51,6 +53,19 @@ const sources: Sources = {
     const answer = (await native.later({ op: 'signIn', server, user, password })) as SignInAnswer;
     if (answer.ok) return { ok: true, error: '' };
     return { ok: false, error: problems[answer.problem]?.(server) ?? `Multiplexer could not sign in: ${answer.detail}` };
+  },
+  // a failure to send shows on the message itself (state "failed"), not as a refusal here.
+  sendMessage: async ([roomId, text], _store, _storage, native): Promise<Result<'sendMessage'>> => {
+    await native!.later({ op: 'send', roomId, text });
+    return { ok: true };
+  },
+  retryMessage: async ([roomId, messageId], _store, _storage, native): Promise<Result<'retryMessage'>> => {
+    await native!.later({ op: 'retry', roomId, messageId });
+    return { ok: true };
+  },
+  discardMessage: async ([roomId, messageId], _store, _storage, native): Promise<Result<'discardMessage'>> => {
+    await native!.later({ op: 'discard', roomId, messageId });
+    return { ok: true };
   },
   signOut: async (_args, _store, _storage, native): Promise<Result<'signOut'>> => {
     await native!.later({ op: 'signOut' });

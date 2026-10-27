@@ -31,3 +31,12 @@ Cost: about 3 minutes, and a drive that is slow and can still be flaky.
 Seen on 2026-10-27 at `cee509ac82`. `ExactModuleContext`
 (`host/apple/modules/ExactNativeModule.swift`) has `changed`, `wrote`, `now`, `after` and
 `frames`, but nothing that tells the agent's clock that the module has work in flight.
+
+## More evidence: a change the module pushes after a mutation
+
+A drive tapped Delete on a failed message. The mutation's reply came at once; the row went
+away later, when the module called `context.changed` and the resource was asked again.
+`clock data` lands the reply, not the later push, and `clock until state <path> ==
+<literal>` has only `==`, so "until this row is gone" cannot be written. The drive used
+`"clock +2000 real"`. What would also help: `clock until state <path> != <literal>`, or
+`clock until tree missing <testId> within <ms>`. Seen on 2026-10-27 at `cee509ac82`.

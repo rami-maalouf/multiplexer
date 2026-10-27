@@ -21,7 +21,7 @@ final class MatrixCoreTests: XCTestCase {
         let existing = rooms.first { $0.name == roomName }?.id
         let roomId: String
         if let existing { roomId = existing } else { roomId = try await first.createRoom(name: roomName) }
-        try await first.send(roomId: roomId, text: text)
+        try await first.sendAndWait(roomId: roomId, text: text)
         try await first.signOut()
 
         // a second device with an empty store must get both from the server.
@@ -52,7 +52,7 @@ final class MatrixCoreTests: XCTestCase {
         let rooms = try await account.rooms()
         let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
         for n in 1...count {
-            try await account.send(roomId: roomId, text: "Fill \(n) of \(count)", timeout: 120)
+            try await account.sendAndWait(roomId: roomId, text: "Fill \(n) of \(count)", timeout: 120)
         }
         try await account.signOut()
     }
@@ -79,7 +79,7 @@ final class MatrixCoreTests: XCTestCase {
                                                     deviceName: "Multiplexer test", storeDirectory: freshDirectory())
         let text = "Live \(UUID().uuidString)"
         _ = try await writer.rooms()
-        try await writer.send(roomId: roomId, text: text)
+        try await writer.sendAndWait(roomId: roomId, text: text)
         try await writer.signOut()
 
         // the reader asks again, as the app does when told; it must not page back.
@@ -100,6 +100,60 @@ final class MatrixCoreTests: XCTestCase {
         let summary = try await reader.rooms().first { $0.id == roomId }
         XCTAssertEqual(summary?.lastMessage, text)
         try await reader.signOut()
+    }
+
+    func testASentMessageShowsAtOnceThenSentAndARefusedOneFails() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let account = try await MatrixAccount.signIn(homeserver: env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user: user,
+                                                     password: password, deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let rooms = try await account.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        _ = try await account.messages(roomId: roomId, limit: 20)
+
+        // a message shows at once, then as sent, under the same id.
+        let text = "Send state \(UUID().uuidString)"
+        try await account.send(roomId: roomId, text: text)
+        let queued = try await mine(account, roomId, text, within: 5)
+        let sent = try await mine(account, roomId, text, within: 15) { $0.sendState == .sent }
+        XCTAssertEqual(sent.id, queued.id, "the message changed its id when it was sent")
+
+        // a message over the spec's 65,536-byte event limit is refused, and shows as failed.
+        let tooLarge = String(repeating: "x", count: 70_000)
+        try await account.send(roomId: roomId, text: tooLarge)
+        let failed = try await mine(account, roomId, tooLarge, within: 20) { $0.sendState == .failed }
+        // retrying it does not throw; the server refuses it again.
+        try await account.retry(roomId: roomId, messageId: failed.id)
+        let again = try await mine(account, roomId, tooLarge, within: 20) { $0.sendState == .failed }
+        XCTAssertEqual(again.id, failed.id)
+        // discarding it removes it from the chat; discarding a sent message does nothing.
+        try await account.discard(roomId: roomId, messageId: failed.id)
+        try await account.discard(roomId: roomId, messageId: sent.id)
+        let start = Date()
+        var left = try await account.messages(roomId: roomId, limit: 20)
+        while left.contains(where: { $0.id == failed.id }), Date().timeIntervalSince(start) < 10 {
+            try await Task.sleep(nanoseconds: 100_000_000)
+            left = try await account.messages(roomId: roomId, limit: 20)
+        }
+        XCTAssertFalse(left.contains { $0.id == failed.id }, "the failed message is still in the chat")
+        XCTAssertTrue(left.contains { $0.id == sent.id && $0.sendState == .sent }, "the sent message was touched")
+        try await account.signOut()
+    }
+
+    /// The newest own message with this text, once it matches `done`.
+    private func mine(_ account: MatrixAccount, _ roomId: String, _ text: String, within seconds: TimeInterval,
+                      _ done: (Message) -> Bool = { _ in true }) async throws -> Message {
+        let start = Date()
+        while true {
+            let found = try await account.messages(roomId: roomId, limit: 20).last { $0.isOwn && $0.body == text }
+            if let found, done(found) { return found }
+            if Date().timeIntervalSince(start) > seconds {
+                throw MatrixCoreError.timedOut("message \(text.prefix(20)): \(found.map { "\($0.sendState)" } ?? "none")")
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
     }
 
     func testSignOutOnServerWithoutTheStore() async throws {

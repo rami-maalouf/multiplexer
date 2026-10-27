@@ -7,7 +7,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 | | |
 |---|---|
 | Current phase | Phase 0: prove the server (waits for Q1). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | T2.3 Send text. Phase 0 waits for Q1 (domain); T0.1 is done. |
+| Next task | T2.4 Unread counts (needs a second test account). Phase 0 waits for Q1 (domain); T0.1 is done. |
 | Blocked on Rami | Q1 (domain) |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
@@ -210,3 +210,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T2.1 passed: a session whose store is gone, or whose Sign Out could not reach the server, waits in a second Keychain slot and is signed out on the server in the background. Tests and drives no longer leave devices on the practice account. |
 | 2026-10-27 | T0.1 done (read only): ports 80, 443 and 8448 are free; Docker is disabled; old n8n and Postiz images (13 GB) and volumes (294 MB) remain; T3 Code and Syncthing run and do not conflict. Rami decides what stays. |
 | 2026-10-27 | T2.2 passed: MatrixCore watches the room list and keeps one live timeline per opened chat; the module passes changes to `app.ts` as `context.changed` topics. A new message shows in 1 to 2 s, and a reader scrolled up keeps their place. |
+| 2026-10-27 | T2.3 passed, except the offline case (needs a device, T2.7): the composer sends through the room's send queue; a message shows at once, dimmed, then sent; a failed one shows "Not Delivered" with Try Again and Delete. |

@@ -113,6 +113,11 @@ public final class MatrixAccount: @unchecked Sendable {
     /// its last `limit` messages; later calls return those and every message since, so a
     /// new message never pushes one the reader has loaded out of the chat.
     public func messages(roomId: String, limit: Int, timeout: TimeInterval = 30) async throws -> [Message] {
+        try await liveTimeline(roomId, limit: limit, timeout: timeout).shown(limit: limit)
+    }
+
+    /// The chat's live timeline, opened the first time with its last `limit` messages.
+    private func liveTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
         let opening: Task<LiveTimeline, Error> = lock.withLock {
             if let open = timelines[roomId] { return open }
             let task = Task { try await self.openTimeline(roomId, limit: limit, timeout: timeout) }
@@ -120,7 +125,7 @@ public final class MatrixAccount: @unchecked Sendable {
             return task
         }
         do {
-            return try await opening.value.shown(limit: limit)
+            return try await opening.value
         } catch {
             lock.withLock { timelines[roomId] = nil }
             throw error
@@ -146,20 +151,43 @@ public final class MatrixAccount: @unchecked Sendable {
                             firstShown: items.messages().suffix(limit).first?.id)
     }
 
-    /// Sends a text message and returns once the server has accepted it.
+    /// Puts a text message in the room's send queue and returns at once. The chat shows
+    /// it at once as `sending`, then `sent`, or `failed`.
     public func send(roomId: String, text: String, timeout: TimeInterval = 30) async throws {
-        let timeline = try await room(roomId, timeout: timeout).timeline()
-        let items = TimelineItems()
-        let handle = await timeline.addListener(listener: items)
-        defer { handle.cancel() }
-        _ = try await timeline.send(msg: messageEventContentFromMarkdown(md: text))
+        let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
+        _ = try await live.timeline.send(msg: messageEventContentFromMarkdown(md: text))
+    }
+
+    /// Sends a text message and returns once the server has accepted it.
+    public func sendAndWait(roomId: String, text: String, timeout: TimeInterval = 30) async throws {
+        try await send(roomId: roomId, text: text, timeout: timeout)
+        let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         try await poll(timeout: timeout, what: "sending the message") {
-            switch items.sendState(ofOwnMessage: text) {
+            switch live.items.messages().last(where: { $0.isOwn && $0.body == text })?.sendState {
             case .sent?: return true
-            case .sendingFailed?: throw MatrixCoreError.sendFailed(text)
+            case .failed?: throw MatrixCoreError.sendFailed(text)
             default: return false
             }
         }
+    }
+
+    /// Sends a failed message again. A failure the sdk can recover from (no network) stops
+    /// the room's send queue, so it starts the queue again; a message the server refused
+    /// waits until it is retried.
+    public func retry(roomId: String, messageId: String, timeout: TimeInterval = 30) async throws {
+        let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
+        try await room(roomId, timeout: timeout).enableSendQueue(enable: true)
+        if let itemId = live.items.eventOrTransactionId(of: messageId) {
+            _ = try await live.timeline.retrySend(itemId: itemId, target: .event)
+        }
+    }
+
+    /// Removes a message that the server does not have (it failed, or still waits in the
+    /// queue). A sent message is left alone.
+    public func discard(roomId: String, messageId: String, timeout: TimeInterval = 30) async throws {
+        let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
+        guard let itemId = live.items.eventOrTransactionId(of: messageId), case .transactionId = itemId else { return }
+        try await live.timeline.redactEvent(eventOrTransactionId: itemId, reason: nil)
     }
 
     /// Creates a private, unencrypted room and returns its id.
@@ -308,18 +336,11 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     func messages() -> [Message] {
-        lock.withLock { items.compactMap { $0.asEvent() }.compactMap(Message.init) }
+        lock.withLock { items.compactMap { item in item.asEvent().flatMap { Message($0, id: item.uniqueId().id) } } }
     }
 
-    func sendState(ofOwnMessage body: String) -> EventSendState? {
-        lock.withLock {
-            for item in items.reversed() {
-                guard let event = item.asEvent(), event.isOwn, Message(event)?.body == body else { continue }
-                // a remote echo has no local send state: the server has it.
-                return event.localSendState ?? .sent(eventId: "")
-            }
-            return nil
-        }
+    func eventOrTransactionId(of messageId: String) -> EventOrTransactionId? {
+        lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent()?.eventOrTransactionId }
     }
 }
 
@@ -370,15 +391,18 @@ extension RoomSummary {
 }
 
 extension Message {
-    init?(_ event: EventTimelineItem) {
+    init?(_ event: EventTimelineItem, id: String) {
         guard case .msgLike(let content) = event.content, case .message(let message) = content.kind else { return nil }
-        let id: String
-        switch event.eventOrTransactionId {
-        case .eventId(let eventId): id = eventId
-        case .transactionId(let transactionId): id = transactionId
-        }
         var name = event.sender
         if case .ready(let displayName, _, _, _, _) = event.senderProfile, let displayName { name = displayName }
-        self.init(id: id, sender: event.sender, senderName: name, body: message.body, timestamp: event.timestamp, isOwn: event.isOwn)
+        let sendState: SendState
+        switch event.localSendState {
+        case .notSentYet?: sendState = .sending
+        case .sendingFailed?: sendState = .failed
+        // a remote echo has no local send state: the server has it.
+        case .sent?, nil: sendState = .sent
+        }
+        self.init(id: id, sender: event.sender, senderName: name, body: message.body, timestamp: event.timestamp,
+                  isOwn: event.isOwn, sendState: sendState)
     }
 }

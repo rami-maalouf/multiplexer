@@ -39,13 +39,23 @@ final class Matrix: ExactModule {
                     let messages = try await signedIn().messages(roomId: request["roomId"] as? String ?? "", limit: request["limit"] as? Int ?? 20)
                     reply.send(["messages": messages.map {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
-                         "time": Double($0.timestamp), "isOwn": $0.isOwn]
+                         "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue]
                     }])
+                case "send":
+                    // the message shows in the chat at once; its state says how the sending goes.
+                    try await signedIn().send(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "")
+                    reply.send(["ok": true])
+                case "discard":
+                    try await signedIn().discard(roomId: request["roomId"] as? String ?? "", messageId: request["messageId"] as? String ?? "")
+                    reply.send(["ok": true])
+                case "retry":
+                    try await signedIn().retry(roomId: request["roomId"] as? String ?? "", messageId: request["messageId"] as? String ?? "")
+                    reply.send(["ok": true])
                 case "signOut":
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, messages and signOut")
+                    reply.fail("matrix answers signIn, rooms, messages, send, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))

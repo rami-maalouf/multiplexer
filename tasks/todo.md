@@ -294,13 +294,15 @@ once (the SDK's local echo), then shows as delivered. A failure shows "Not Deliv
 and a way to try again.
 
 **Acceptance criteria:**
-- [ ] I type and tap Send. The message shows at once and the composer clears. The keyboard stays up.
-- [ ] Another device receives it (the MatrixCore test reads it back).
-- [ ] With the network off, the message shows "Not Delivered". Try Again sends it when the network is back.
+- [x] I type and tap Send. The message shows at once and the composer clears. The keyboard stays up. (2026-10-27: dimmed while sending, sent in about 1 s; the caret stays in the composer.)
+- [x] Another device receives it. (A separate device read "Composer check 160246" from the server.)
+- [ ] With the network off, the message shows "Not Delivered". Try Again sends it when the network is back. (Partly: "Not Delivered", Try Again and Delete work with a message the server refuses (over the 65,536-byte limit). The Simulator shares the Mac's network, so the offline case waits for T2.7, in airplane mode.)
+- [x] Added: Delete on a failed message. The sdk keeps a refused message in its queue across launches, so without Delete it stays forever.
 
 **Verification:**
-- [ ] A drive sends; a MatrixCore test on a second device reads the text.
-- [ ] A drive with `prefer online false` (or the simulator offline) shows the failed state.
+- [x] MatrixCore test `testASentMessageShowsAtOnceThenSentAndARefusedOneFails`: sending, then sent under the same id; a refused message fails; retry and discard.
+- [x] A drive sends from the composer; another device reads it back. A drive shows the failed state, Try Again and Delete.
+- [x] `check` is clean on the chat in light, dark and at the largest text size (after the composer's field was made 44 points tall).
 
 **Dependencies:** T2.2
 **Files:** `matrix-core/`, `modules/apple/Matrix.swift`, `app.ts`, `app.contract`
@@ -358,6 +360,7 @@ the build size and the start time on a real device.
 - [ ] Sign in, relaunch, chats and sending work as on the Simulator.
 
 **Dependencies:** Q4 (the Apple team). It can move earlier as soon as Q4 is answered.
+**Also check here:** T2.3's offline case (airplane mode: "Not Delivered", then Try Again sends it).
 **Scope:** S
 
 ### Checkpoint M2: daily reading and sending

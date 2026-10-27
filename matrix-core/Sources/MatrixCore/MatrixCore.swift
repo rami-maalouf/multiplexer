@@ -46,7 +46,7 @@ public struct RoomSummary: Equatable, Sendable {
 }
 
 public struct Message: Equatable, Sendable {
-    /// The event id, or the transaction id while a message is still being sent.
+    /// The timeline's id for the message: the same while it is sent and after.
     public var id: String
     public var sender: String
     public var senderName: String
@@ -54,6 +54,15 @@ public struct Message: Equatable, Sendable {
     /// Milliseconds since 1970.
     public var timestamp: UInt64
     public var isOwn: Bool
+    public var sendState: SendState
+}
+
+/// Where a message is on its way to the server. Others' messages are `sent`.
+public enum SendState: String, Sendable {
+    case sending
+    case sent
+    /// The server refused it, or could not be reached: `MatrixAccount.retry` tries again.
+    case failed
 }
 
 public enum MatrixCoreError: Error, Equatable {

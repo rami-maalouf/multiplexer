@@ -19,13 +19,15 @@ shape RoomList
   owner: string
   rooms: Room[]
 
-// startsGroup: the time shows above it. showName: the sender's name shows above it.
+// state: "sending", "sent" or "failed". startsGroup: the time shows above it.
+// showName: the sender's name shows above it.
 shape Message
   id: string
   senderName: string
   body: string
   time: number
   isOwn: bool
+  state: string
   startsGroup: bool
   showName: bool
 
@@ -57,12 +59,16 @@ component Multiplexer
   state user = ""
   state password = ""
   state problem = ""
+  state draft = ""
   state now = 0
   resource time = exactTime() as shape Time
   resource session = currentSession() as shape Session else empty()
   resource roomList = loadRooms(session.userId) as shape RoomList else empty()
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
+  mutation sent as shape Reply then afterSend
+  mutation retried as shape Reply
+  mutation discarded as shape Reply
   derive canSignIn = server.trim() != "" and user.trim() != "" and password != "" and not pending(signedIn)
   derive refusal = match signedIn { case some(r) => r.ok ? "" : r.error, case none => "" }
   derive roomsShown = roomList.owner == session.userId
@@ -110,9 +116,23 @@ component Multiplexer
     refresh roomList
   action reloadThread
     refresh thread
+  action editDraft(v: string)
+    draft = v
+  action post
+    if draft.trim() != "" and not pending(sent)
+      send sent = sendMessage(openRoom, draft.trim())
+    focus("composer")
+  action afterSend
+    if match sent { case some(r) => r.ok, case none => false }
+      draft = ""
+  action retry(id: string)
+    send retried = retryMessage(openRoom, id)
+  action discard(id: string)
+    send discarded = discardMessage(openRoom, id)
 
   view
-    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow width="100%" height="100%"
+    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content"
+      width="100%" height="100%"
       for e in stack(nav) key=e.id
         if e.name == "home"
           if session.userId == ""
@@ -199,9 +219,17 @@ component Multiplexer
                       // no name in a chat named after the sender (a one-to-one chat that is not marked direct).
                       if m.showName and m.senderName != openName
                         text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding="0 12px"
+                      // a message on its way is dimmed; one that failed says so, with a way to send it again.
                       text m.body padding="8px 12px" border-radius=18 max-width="75%" overflow-wrap="break-word"
                         background-color=(m.isOwn ? "AccentColor" : "-exact-fill") color=(m.isOwn ? "AccentColorText" : "-exact-label")
-                        testId=`message-${m.id}`
+                        opacity=(m.state == "sending" ? 0.6 : 1) testId=`message-${m.id}`
+                      if m.state == "failed"
+                        row gap=12 align-items="center"
+                          text "Not Delivered" font="-exact-footnote" color="-exact-system-red" testId=`failed-${m.id}`
+                          button press=retry(m.id) disabled=pending(retried) testId=`retry-${m.id}`
+                            text "Try Again"
+                          button press=discard(m.id) destructive=true disabled=pending(discarded) testId=`discard-${m.id}`
+                            text "Delete"
             else
               if failed(thread) and not pending(thread)
                 column flex=1 justify-content="center" align-items="center" gap=12 padding=24
@@ -211,6 +239,16 @@ component Multiplexer
               else
                 column flex=1 justify-content="center" align-items="center"
                   progress aria-label="Loading messages" testId="thread-loading"
+            if threadShown
+              // the field's own padding makes it a 44-point target; the row adds none above or below.
+              row align-items="flex-end" margin="6px 12px" padding="0 4px 0 12px" border-radius=22
+                border="1px solid -exact-separator"
+                textarea id="composer" value=draft input=editDraft rows=1 field-sizing="content" max-height=140
+                  placeholder="Message" aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
+                  border="none" background-color="transparent"
+                button press=post disabled=(draft.trim() == "" or pending(sent)) buttonStyle="filled" margin="4px 0"
+                  retainFocus=true aria-label="Send" testId="send"
+                  image "symbol:send"
       dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"
         text problem testId="problem"
         button commandfor="sign-in-failed" command="close" testId="sign-in-failed-ok"
