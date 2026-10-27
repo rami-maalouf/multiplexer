@@ -63,19 +63,35 @@ public final class MatrixAccount: @unchecked Sendable {
         try await startSync(timeout: timeout)
         var rooms: [RoomSummary] = []
         for room in client.rooms() where room.membership() == .joined {
-            rooms.append(RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect()))
+            var summary = RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect(),
+                                      lastMessage: "", lastSenderName: "", lastIsOwn: false, lastTimestamp: 0)
+            switch await room.latestEvent() {
+            case .remote(let timestamp, let sender, let isOwn, let profile, let content):
+                summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
+            case .local(let timestamp, let sender, let profile, let content, _):
+                summary.fillLast(timestamp: timestamp, sender: sender, isOwn: true, profile: profile, content: content)
+            case .none, .remoteInvite:
+                break
+            }
+            rooms.append(summary)
         }
         return rooms
     }
 
-    /// The last `limit` text messages of a room, oldest first.
+    /// The last `limit` messages of a room, oldest first.
     public func messages(roomId: String, limit: Int, timeout: TimeInterval = 30) async throws -> [Message] {
         let timeline = try await room(roomId, timeout: timeout).timeline()
         let items = TimelineItems()
         let handle = await timeline.addListener(listener: items)
         defer { handle.cancel() }
-        _ = try await timeline.paginateBackwards(numEvents: UInt16(clamping: limit))
-        // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
+        // a page holds state events too (joins, names), so page back until there are
+        // enough messages or the room's start; at most 5 pages.
+        for _ in 0..<5 {
+            // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
+            await items.settle()
+            if items.messages().count >= limit { break }
+            if try await timeline.paginateBackwards(numEvents: UInt16(clamping: limit)) { break }
+        }
         await items.settle()
         return Array(items.messages().suffix(limit))
     }
@@ -179,11 +195,13 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
         }
     }
 
-    /// Waits until no diff has arrived for `quiet` seconds, at most `limit` seconds.
+    /// Waits until no diff has arrived for `quiet` seconds, counted from the call at the
+    /// earliest (the diffs of a call that just returned may still be on their way), at most
+    /// `limit` seconds.
     func settle(quiet: TimeInterval = 0.5, limit: TimeInterval = 5) async {
         let start = Date()
         while Date().timeIntervalSince(start) < limit {
-            if lock.withLock({ Date().timeIntervalSince(lastUpdate) }) >= quiet { return }
+            if lock.withLock({ Date().timeIntervalSince(max(lastUpdate, start)) }) >= quiet { return }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
     }
@@ -219,6 +237,34 @@ extension SignInError {
         default:
             self = .other(String(describing: error))
         }
+    }
+}
+
+extension RoomSummary {
+    mutating func fillLast(timestamp: Timestamp, sender: String, isOwn: Bool, profile: ProfileDetails, content: TimelineItemContent) {
+        guard case .msgLike(let like) = content else { return }
+        switch like.kind {
+        case .message(let message):
+            switch message.msgType {
+            case .image: lastMessage = "Photo"
+            case .gallery: lastMessage = "Photos"
+            case .video: lastMessage = "Video"
+            case .audio: lastMessage = "Audio"
+            case .file: lastMessage = "File"
+            case .location: lastMessage = "Location"
+            default: lastMessage = message.body
+            }
+        case .sticker: lastMessage = "Sticker"
+        case .poll(let question, _, _, _, _, _, _): lastMessage = question
+        case .redacted: lastMessage = "Message deleted"
+        case .unableToDecrypt: lastMessage = "Encrypted message"
+        case .liveLocation: lastMessage = "Live location"
+        case .other: lastMessage = "Message"
+        }
+        lastSenderName = sender
+        if case .ready(let displayName, _, _, _, _) = profile, let displayName { lastSenderName = displayName }
+        lastIsOwn = isOwn
+        lastTimestamp = timestamp
     }
 }
 

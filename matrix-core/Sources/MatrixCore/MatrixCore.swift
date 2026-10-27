@@ -29,6 +29,12 @@ public struct RoomSummary: Equatable, Sendable {
     public var id: String
     public var name: String
     public var isDirect: Bool
+    /// The newest message as one line ("" when the room has none): its text, or its kind ("Photo").
+    public var lastMessage: String
+    public var lastSenderName: String
+    public var lastIsOwn: Bool
+    /// Milliseconds since 1970; 0 when the room has no message.
+    public var lastTimestamp: UInt64
 }
 
 public struct Message: Equatable, Sendable {

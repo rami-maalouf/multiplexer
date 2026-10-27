@@ -91,4 +91,8 @@ bun exact.mjs contract build app.contract --json --errors-only
 ## Test accounts
 
 - Practice: `@rami-m-test:matrix.org`. Its password is in the Keychain. Its room "Multiplexer test" is for tests.
+  It holds more than 20 messages, so the chat shows only its last 20. To add numbered
+  messages: `MATRIX_TEST_FILL=24 ./scripts/test-matrix-core.sh -only-testing:MatrixCoreTests/MatrixCoreTests/testFillTheTestRoom`.
+- A drive's clock starts at 2026-01-01, so today's messages show as dates. Add
+  `--epoch now --time-zone America/New_York` to `agent ios` to see real times.
 - Do not test with `@rami-m:matrix.org` or `@ramimaalouf:beeper.com`: they are Rami's real accounts.

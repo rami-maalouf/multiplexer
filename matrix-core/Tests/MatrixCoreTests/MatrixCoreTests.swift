@@ -29,10 +29,32 @@ final class MatrixCoreTests: XCTestCase {
                                                     deviceName: "Multiplexer test", storeDirectory: freshDirectory())
         let seen = try await second.rooms()
         XCTAssertTrue(seen.contains { $0.id == roomId && $0.name == roomName }, "rooms: \(seen.map(\.name))")
+        let summary = seen.first { $0.id == roomId }
+        XCTAssertEqual(summary?.lastMessage, text)
+        XCTAssertEqual(summary?.lastIsOwn, true)
+        XCTAssertGreaterThan(summary?.lastTimestamp ?? 0, 0)
         let messages = try await second.messages(roomId: roomId, limit: 20)
         XCTAssertEqual(messages.last?.body, text, "messages: \(messages.map(\.body))")
         XCTAssertEqual(messages.last?.isOwn, true)
         try await second.signOut()
+    }
+
+    /// Sends MATRIX_TEST_FILL numbered messages to the test room, so the app has a long chat
+    /// to show (only its last 20, opened at the newest). Runs only when that variable is set.
+    func testFillTheTestRoom() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let count = Int(env["MATRIX_TEST_FILL"] ?? ""), count > 0,
+              let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_FILL is not set")
+        }
+        let account = try await MatrixAccount.signIn(homeserver: env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user: user,
+                                                     password: password, deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let rooms = try await account.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        for n in 1...count {
+            try await account.send(roomId: roomId, text: "Fill \(n) of \(count)", timeout: 120)
+        }
+        try await account.signOut()
     }
 
     func testSignInNamesWhyItFailed() async throws {

@@ -8,11 +8,35 @@ shape Session
 shape Room
   id: string
   name: string
+  isDirect: bool
+  lastMessage: string
+  lastSender: string
+  lastIsOwn: bool
+  lastTime: number
 
 // owner is the account the rooms belong to, so a list never shows under another account.
 shape RoomList
   owner: string
   rooms: Room[]
+
+// startsGroup: the time shows above it. showName: the sender's name shows above it.
+shape Message
+  id: string
+  senderName: string
+  body: string
+  time: number
+  isOwn: bool
+  startsGroup: bool
+  showName: bool
+
+// room is the chat the messages belong to, so a chat never shows another's.
+shape Thread
+  room: string
+  messages: Message[]
+
+shape Time
+  epochAtZero: number
+  utcOffset: number
 
 shape SignInReply
   ok: bool
@@ -23,12 +47,18 @@ shape Reply
 
 routes nav
   home "/"
+    room "/room/:id"
+
+// a group chat names who wrote the last message; a one-to-one chat does not.
+fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
 
 component Multiplexer
   state server = ""
   state user = ""
   state password = ""
   state problem = ""
+  state now = 0
+  resource time = exactTime() as shape Time
   resource session = currentSession() as shape Session else empty()
   resource roomList = loadRooms(session.userId) as shape RoomList else empty()
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
@@ -36,6 +66,22 @@ component Multiplexer
   derive canSignIn = server.trim() != "" and user.trim() != "" and password != "" and not pending(signedIn)
   derive refusal = match signedIn { case some(r) => r.ok ? "" : r.error, case none => "" }
   derive roomsShown = roomList.owner == session.userId
+  derive shown = time.epochAtZero + now
+  derive openRoom = top(nav).name == "room" ? top(nav).params.id : ""
+  derive openRoomInfo = first(roomList.rooms.filter(r => r.id == openRoom))
+  derive openName = match openRoomInfo { case some(r) => r.name, case none => "" }
+  derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
+  resource thread = loadMessages(openRoom, openIsDirect) as shape Thread else empty()
+  derive threadShown = thread.room == openRoom
+  task tick mount
+    every(60000, step)
+
+  action step
+    now = performanceNow()
+  action follow(url: string)
+    nav = go(nav, url)
+  action back
+    nav = back(nav)
 
   action editServer(v: string)
     server = v
@@ -62,67 +108,109 @@ component Multiplexer
     send signedOut = signOut()
   action reloadRooms
     refresh roomList
+  action reloadThread
+    refresh thread
 
   view
-    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" width="100%" height="100%"
+    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow width="100%" height="100%"
       for e in stack(nav) key=e.id
-        if session.userId == ""
-          column navigationKey=`${e.id}` navigationScroll="sign-in-form" position="absolute" inset=0 display="flex" flex-direction="column"
-            header display="flex" align-items="center"
-              text "Multiplexer" role="heading" aria-level=1 flex=1
-              button press=signIn disabled=(not canSignIn) buttonStyle="filled" testId="sign-in"
-                text "Sign In"
-            list id="sign-in-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-              section
-                row
-                  text "Server" width="6.5rem"
-                  input id="server" value=server input=editServer submit=toUser placeholder="matrix.org"
-                    aria-label="Server" autocomplete="url" inputmode="url" autocapitalize="none" enterkeyhint="next"
-                    disabled=pending(signedIn) testId="server" flex=1 min-width=0
-                footer
-                  text "Your chats from WhatsApp and other networks come through this Matrix server."
-              section
-                row
-                  text "User Name" width="6.5rem"
-                  input id="user" value=user input=editUser submit=toPassword placeholder="Required"
-                    aria-label="User Name" autocomplete="username" autocapitalize="none" enterkeyhint="next"
-                    disabled=pending(signedIn) testId="user" flex=1 min-width=0
-                row
-                  text "Password" width="6.5rem"
-                  input id="password" type="password" value=password input=editPassword submit=signIn placeholder="Required"
-                    aria-label="Password" autocomplete="current-password" enterkeyhint="go"
-                    disabled=pending(signedIn) testId="password" flex=1 min-width=0
-              if pending(signedIn)
+        if e.name == "home"
+          if session.userId == ""
+            column navigationKey=`${e.id}` navigationScroll="sign-in-form" position="absolute" inset=0 display="flex" flex-direction="column"
+              header display="flex" align-items="center"
+                text "Multiplexer" role="heading" aria-level=1 flex=1
+                button press=signIn disabled=(not canSignIn) buttonStyle="filled" testId="sign-in"
+                  text "Sign In"
+              list id="sign-in-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
                 section
-                  row gap=8 testId="signing-in"
-                    progress aria-label="Signing in"
-                    text "Signing In…" color="-exact-secondary-label"
-        else
-          column navigationKey=`${e.id}` navigationScroll="rooms" position="absolute" inset=0 display="flex" flex-direction="column"
-            header display="flex" align-items="center"
-              text "Chats" role="heading" aria-level=1 flex=1
-              text session.userId
-              button press=askSignOut testId="sign-out"
-                text "Sign Out"
-            if roomsShown
-              if roomList.rooms.length == 0
-                EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
-              else
-                list id="rooms" appearance="auto" listStyle="inset-grouped" refresh=reloadRooms
-                  refreshing=pending(roomList) flex=1 min-height=0 testId="room-list"
+                  row
+                    text "Server" width="6.5rem"
+                    input id="server" value=server input=editServer submit=toUser placeholder="matrix.org"
+                      aria-label="Server" autocomplete="url" inputmode="url" autocapitalize="none" enterkeyhint="next"
+                      disabled=pending(signedIn) testId="server" flex=1 min-width=0
+                  footer
+                    text "Your chats from WhatsApp and other networks come through this Matrix server."
+                section
+                  row
+                    text "User Name" width="6.5rem"
+                    input id="user" value=user input=editUser submit=toPassword placeholder="Required"
+                      aria-label="User Name" autocomplete="username" autocapitalize="none" enterkeyhint="next"
+                      disabled=pending(signedIn) testId="user" flex=1 min-width=0
+                  row
+                    text "Password" width="6.5rem"
+                    input id="password" type="password" value=password input=editPassword submit=signIn placeholder="Required"
+                      aria-label="Password" autocomplete="current-password" enterkeyhint="go"
+                      disabled=pending(signedIn) testId="password" flex=1 min-width=0
+                if pending(signedIn)
                   section
-                    for r in roomList.rooms key=r.id
-                      row
-                        text r.name testId=`room-${r.id}`
+                    row gap=8 testId="signing-in"
+                      progress aria-label="Signing in"
+                      text "Signing In…" color="-exact-secondary-label"
+          else
+            column navigationKey=`${e.id}` navigationScroll="rooms" position="absolute" inset=0 display="flex" flex-direction="column"
+              header display="flex" align-items="center"
+                text "Chats" role="heading" aria-level=1 flex=1
+                text session.userId
+                button press=askSignOut testId="sign-out"
+                  text "Sign Out"
+              if roomsShown
+                if roomList.rooms.length == 0
+                  EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
+                else
+                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 testId="room-list"
+                    for r in sortBy(roomList.rooms, r => r.lastTime, "desc") key=r.id
+                      link href=path("room", r.id) testId=`room-${r.id}`
+                        column flex=1 min-width=0 gap=2 padding="10px 0"
+                          // at large text sizes the time wraps under the name instead of covering it.
+                          row flex-wrap="wrap" column-gap=6 align-items="baseline"
+                            text r.name font="-exact-headline" flex="1 1 10rem" min-width=0
+                            row gap=6 align-items="baseline" flex-shrink=0 margin-left="auto"
+                              if r.lastTime > 0
+                                text formatDay(r.lastTime, shown, time.utcOffset, "list") font="-exact-subheadline"
+                                  color="-exact-secondary-label"
+                              image "symbol:forward-chevron" font="-exact-footnote" color="-exact-tertiary-label"
+                          if r.lastMessage != ""
+                            text preview(r) font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
+                              testId=`room-preview-${r.id}`
+              else
+                if failed(roomList) and not pending(roomList)
+                  column flex=1 justify-content="center" align-items="center" gap=12 padding=24
+                    text "Couldn’t load your chats." color="-exact-secondary-label" testId="rooms-error"
+                    button press=reloadRooms buttonStyle="bordered" testId="rooms-retry"
+                      text "Try Again"
+                else
+                  column flex=1 justify-content="center" align-items="center"
+                    progress aria-label="Loading chats" testId="rooms-loading"
+        if e.name == "room"
+          column navigationKey=`${e.id}` navigationScroll="transcript" position="absolute" inset=0 display="flex" flex-direction="column"
+            header display="flex" align-items="center"
+              text openName role="heading" aria-level=2
+            if threadShown
+              if thread.messages.length == 0
+                EmptyState(symbol="symbol:messages", title="No Messages Yet", message="Messages in this chat show here.")
+              else
+                list id="transcript" appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
+                  flex=1 min-height=0 testId="transcript"
+                  for m in thread.messages key=m.id
+                    column align-items=(m.isOwn ? "flex-end" : "flex-start") padding="2px 12px" gap=2
+                      if m.startsGroup
+                        text formatDay(m.time, shown, time.utcOffset, "day-time") font="-exact-caption1"
+                          color="-exact-secondary-label" align-self="center" padding="12px 0 4px"
+                      // no name in a chat named after the sender (a one-to-one chat that is not marked direct).
+                      if m.showName and m.senderName != openName
+                        text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding="0 12px"
+                      text m.body padding="8px 12px" border-radius=18 max-width="75%" overflow-wrap="break-word"
+                        background-color=(m.isOwn ? "AccentColor" : "-exact-fill") color=(m.isOwn ? "AccentColorText" : "-exact-label")
+                        testId=`message-${m.id}`
             else
-              if failed(roomList) and not pending(roomList)
+              if failed(thread) and not pending(thread)
                 column flex=1 justify-content="center" align-items="center" gap=12 padding=24
-                  text "Couldn’t load your chats." color="-exact-secondary-label" testId="rooms-error"
-                  button press=reloadRooms buttonStyle="bordered" testId="rooms-retry"
+                  text "Couldn’t load this chat." color="-exact-secondary-label" testId="thread-error"
+                  button press=reloadThread buttonStyle="bordered" testId="thread-retry"
                     text "Try Again"
               else
                 column flex=1 justify-content="center" align-items="center"
-                  progress aria-label="Loading chats" testId="rooms-loading"
+                  progress aria-label="Loading messages" testId="thread-loading"
       dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"
         text problem testId="problem"
         button commandfor="sign-in-failed" command="close" testId="sign-in-failed-ok"

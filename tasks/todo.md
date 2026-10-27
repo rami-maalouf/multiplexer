@@ -204,12 +204,16 @@ the native module.
 `chat-thread` recipe. Read only.
 
 **Acceptance criteria:**
-- [ ] The room list shows each room's name and last message, newest first.
-- [ ] A tap opens the chat. It shows the last 20 messages, opened at the newest one.
-- [ ] `bun exact.mjs verify ios` is clean.
+- [x] The room list shows each room's name and last message, newest first. (2026-10-27: a plain list as in Messages: the name, the time in Mail's format, and a 2-line preview: "You: …" for own messages, "Name: …" in a group.)
+- [x] A tap opens the chat. It shows the last 20 messages, opened at the newest one. (The test room with 29 messages shows "Fill 5 of 24" to "Fill 24 of 24", in order, scrolled to the newest. A time header shows after a gap of more than an hour; a group shows sender names.)
+- [x] `bun exact.mjs verify ios` is clean.
 
 **Verification:**
-- [ ] Screenshots in light mode, dark mode and the largest text size, reviewed by eye.
+- [x] Screenshots in light mode, dark mode and the largest text size, reviewed by eye (`apps/multiplexer/.exact/t1.5-*.png`, not in git). The largest size first drew the time over the room name; the row now wraps.
+
+**Found on the way:**
+- `TimelineItems.settle()` could return before the diffs of a pagination arrived, so a chat sometimes showed 1 message, not 5 (1 of 3 launches). It now waits at least 0.5 s from the call (5 of 5 launches correct).
+- The authored tests cannot sign in (no password in git), so the room list and the chat are checked by drives, not by `app.test.contract`.
 
 **Dependencies:** T1.4
 **Files:** `app.contract`, `app.ts`, `modules/apple/Matrix.swift`
@@ -225,6 +229,8 @@ the native module.
 ## Phase 2: daily reading and sending (M2), rough
 
 - Live updates: MatrixCore observes sync and calls `context.changed`.
+- A Keychain session whose store is gone (a reinstall) is dropped without telling the server, so its device stays on the account. Sign it out on the server first.
+- Room list and chat refresh by hand only (pull to refresh, reopen).
 - Send text from the composer.
 - Unread counts and read markers.
 - Show images.

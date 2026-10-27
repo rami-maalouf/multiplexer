@@ -6,8 +6,8 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server. Phase 1: T1.1 to T1.4 done (T1.3 and T1.4 on the practice account). |
-| Next task | T1.5 Room list and read-only chat. Q1 (domain) still blocks Phase 0. |
+| Current phase | Phase 0: prove the server. Phase 1: T1.1 to T1.5 done, on the practice account. |
+| Next task | Checkpoint M1: Rami's review and the framework decision. Its WhatsApp part waits for Phase 0, which waits for Q1 (domain). |
 | Blocked on Rami | Q1 (domain) |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `65577096ed` (2026-10-27) |
@@ -203,3 +203,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | D8: Rami chose to build the client against matrix.org for now. The domain (Q1) is still needed for Phase 0. |
 | 2026-10-27 | T1.3 passed on matrix.org with `@rami-m-test:matrix.org` (password in the Keychain, service `multiplexer-test-account`). MatrixCore builds as a Swift package with the pinned SDK and inside the Exact app. The WhatsApp part of T1.3 waits for T0.6. |
 | 2026-10-27 | T1.4 passed on the practice account: sign in, an alert that names why a sign-in failed, the session kept across launches, and Sign Out. The session is in the Keychain (`SessionKeychain` in MatrixCore, this device only, readable after the first unlock for the later notification extension). The SDK's store is a folder in the app's data; a Keychain session whose folder is gone (a reinstall) counts as signed out. The app's tests run on iOS only: the web has no Matrix SDK. |
+| 2026-10-27 | T1.5 passed on the practice account: a plain room list (name, time, 2-line preview, newest first) and a read-only chat (the last 20 messages, opened at the newest, `chat-thread` bubbles). Fixed a race in MatrixCore: `settle()` could read the timeline before a pagination's diffs arrived. The authored tests cannot sign in, so drives check these screens. |

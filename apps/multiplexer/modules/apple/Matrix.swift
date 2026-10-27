@@ -24,12 +24,21 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    reply.send(["rooms": try await signedIn().rooms().map { ["id": $0.id, "name": $0.name] }])
+                    reply.send(["rooms": try await signedIn().rooms().map {
+                        ["id": $0.id, "name": $0.name, "isDirect": $0.isDirect, "lastMessage": $0.lastMessage,
+                         "lastSender": $0.lastSenderName, "lastIsOwn": $0.lastIsOwn, "lastTime": Double($0.lastTimestamp)]
+                    }])
+                case "messages":
+                    let messages = try await signedIn().messages(roomId: request["roomId"] as? String ?? "", limit: request["limit"] as? Int ?? 20)
+                    reply.send(["messages": messages.map {
+                        ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
+                         "time": Double($0.timestamp), "isOwn": $0.isOwn]
+                    }])
                 case "signOut":
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms and signOut")
+                    reply.fail("matrix answers signIn, rooms, messages and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
