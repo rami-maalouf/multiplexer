@@ -370,6 +370,25 @@ the build size and the start time on a real device.
 **Also check here:** T2.3's offline case (airplane mode: "Not Delivered", then Try Again sends it).
 **Scope:** S
 
+### T2.8 Load older messages
+
+**Description:** Added at the end of T2.5: a chat showed only its last 20 messages, with
+no way to read older ones. Scrolling up loads 20 more each time, up to the room's first
+message, and keeps the reader's place.
+
+**Acceptance criteria:**
+- [x] Scrolling up near the top of a chat loads 20 older messages. (2026-10-27: the count goes from 20 to 40.)
+- [x] The rows I read do not move when older ones are added above. (`tree --ax`: 9 visible rows at the same place before and after.)
+- [x] At the room's first message, loading stops. (The test room's 58 messages, from "Multiplexer test 48643855…".)
+- [ ] A sign that older messages are loading, and that the chat has reached its start. (Not possible yet in Exact's virtualized list: finding 20.)
+
+**Verification:**
+- [x] MatrixCore test `testOlderMessagesLoadUntilTheStart`.
+- [x] A drive that scrolls to the top of the test room.
+
+**Dependencies:** T2.2
+**Scope:** S
+
 ### Checkpoint M2: daily reading and sending
 
 - [ ] On my iPhone, against our server: live updates, sending, unread counts.

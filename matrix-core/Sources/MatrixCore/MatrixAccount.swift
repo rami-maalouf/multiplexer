@@ -137,19 +137,24 @@ public final class MatrixAccount: @unchecked Sendable {
         let timeline = try await room(roomId, timeout: timeout).timeline()
         let items = TimelineItems()
         let handle = await timeline.addListener(listener: items)
-        // a page holds state events too (joins, names), so page back until there are
-        // enough messages or the room's start; at most 5 pages.
-        for _ in 0..<5 {
-            // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
-            await items.settle()
-            if items.messages().count >= limit { break }
-            if try await timeline.paginateBackwards(numEvents: UInt16(clamping: limit)) { break }
-        }
-        await items.settle()
+        let live = LiveTimeline(timeline: timeline, items: items, handle: handle)
+        try await live.pageBack(until: limit)
+        live.show(last: limit)
         // from here on, a change is news: a message came, or one was sent, edited or removed.
         items.onChange = { [weak self] in self?.notify(.room(roomId)) }
-        return LiveTimeline(timeline: timeline, items: items, handle: handle,
-                            firstShown: items.messages().suffix(limit).first?.id)
+        return live
+    }
+
+    /// Shows `count` older messages in an open chat: those the timeline has, then pages
+    /// back from the server.
+    public func loadOlder(roomId: String, count: Int = 20, timeout: TimeInterval = 30) async throws {
+        let live = try await liveTimeline(roomId, limit: count, timeout: timeout)
+        try await live.showOlder(count)
+    }
+
+    /// True once an open chat shows the room's first message: there is nothing older to load.
+    public func isAtStart(roomId: String, timeout: TimeInterval = 30) async throws -> Bool {
+        try await liveTimeline(roomId, limit: 20, timeout: timeout).atStart
     }
 
     /// Puts a text message in the room's send queue and returns at once. The chat shows
@@ -291,22 +296,62 @@ private final class LiveTimeline: @unchecked Sendable {
     let timeline: Timeline
     let items: TimelineItems
     private let handle: TaskHandle
-    /// The oldest message the chat showed when it opened.
-    private let firstShown: String?
+    private let lock = NSLock()
+    /// The oldest message the chat shows; older ones are loaded but not shown yet.
+    private var firstShown: String?
+    /// The server has no older events: the timeline holds the room's first one.
+    private var reachedStart = false
 
-    init(timeline: Timeline, items: TimelineItems, handle: TaskHandle, firstShown: String?) {
+    init(timeline: Timeline, items: TimelineItems, handle: TaskHandle) {
         self.timeline = timeline
         self.items = items
         self.handle = handle
-        self.firstShown = firstShown
     }
 
-    /// The messages from the first one shown at open to the newest; the last `limit` if
-    /// that one is gone (the timeline was reset).
+    /// The messages from the first one shown to the newest; the last `limit` if that one
+    /// is gone (the timeline was reset).
     func shown(limit: Int) -> [Message] {
-        let all = items.messages()
-        guard let firstShown, let start = all.firstIndex(where: { $0.id == firstShown }) else { return Array(all.suffix(limit)) }
+        let all = items.messages(), first = lock.withLock { firstShown }
+        guard let first, let start = all.firstIndex(where: { $0.id == first }) else { return Array(all.suffix(limit)) }
         return Array(all[start...])
+    }
+
+    var atStart: Bool {
+        let all = items.messages()
+        return lock.withLock { reachedStart && (all.first == nil || all.first?.id == firstShown) }
+    }
+
+    func show(last count: Int) {
+        let first = items.messages().suffix(count).first?.id
+        lock.withLock { firstShown = first }
+    }
+
+    /// Pages back until the timeline holds at least `count` messages before the first one
+    /// shown (all of them when none is shown yet), or the room's start; at most 5 pages,
+    /// since a page holds state events too (joins, names).
+    func pageBack(until count: Int) async throws {
+        for _ in 0..<5 {
+            // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
+            await items.settle()
+            if lock.withLock({ reachedStart }) || olderThanShown() >= count { return }
+            let start = try await timeline.paginateBackwards(numEvents: UInt16(clamping: count))
+            lock.withLock { reachedStart = start }
+        }
+        await items.settle()
+    }
+
+    func showOlder(_ count: Int) async throws {
+        try await pageBack(until: count)
+        let all = items.messages(), older = olderThanShown()
+        let first = all.isEmpty ? nil : all[max(0, older - count)].id
+        lock.withLock { firstShown = first }
+    }
+
+    /// How many loaded messages come before the first one shown.
+    private func olderThanShown() -> Int {
+        let all = items.messages(), first = lock.withLock { firstShown }
+        guard let first else { return all.count }
+        return all.firstIndex(where: { $0.id == first }) ?? 0
     }
 
     deinit { handle.cancel() }

@@ -216,6 +216,39 @@ final class MatrixCoreTests: XCTestCase {
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
     }
 
+    func testOlderMessagesLoadUntilTheStart() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let rooms = try await account.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let opened = try await account.messages(roomId: roomId, limit: 20)
+        XCTAssertEqual(opened.count, 20)
+        let openedAtStart = try await account.isAtStart(roomId: roomId)
+        XCTAssertFalse(openedAtStart, "the test room has more than 20 messages")
+
+        // 20 more, before the ones shown; those stay as they were.
+        try await account.loadOlder(roomId: roomId, count: 20)
+        let more = try await account.messages(roomId: roomId, limit: 20)
+        XCTAssertEqual(more.count, 40)
+        XCTAssertEqual(Array(more.suffix(20)).map(\.id), opened.map(\.id))
+
+        // on to the room's first message; there, a load changes nothing.
+        for _ in 0..<20 {
+            if try await account.isAtStart(roomId: roomId) { break }
+            try await account.loadOlder(roomId: roomId, count: 20)
+        }
+        let atStart = try await account.isAtStart(roomId: roomId)
+        XCTAssertTrue(atStart)
+        let all = try await account.messages(roomId: roomId, limit: 20)
+        try await account.loadOlder(roomId: roomId, count: 20)
+        let again = try await account.messages(roomId: roomId, limit: 20)
+        XCTAssertEqual(again.count, all.count)
+        print("the test room has \(all.count) messages")
+    }
+
     func testSignOutOnServerWithoutTheStore() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {

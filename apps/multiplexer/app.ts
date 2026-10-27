@@ -9,6 +9,7 @@ export const grants = '';
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
 type RoomsAnswer = { rooms: Result<'loadRooms'>['rooms'] };
 type MessagesAnswer = {
+  atStart: boolean;
   messages: {
     id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
     isImage: boolean; image: string; imageWidth: number; imageHeight: number;
@@ -42,7 +43,7 @@ const sources: Sources = {
     return { owner: userId, rooms: answer.rooms };
   },
   loadMessages: async ([roomId, isDirect], _store, _storage, native): Promise<Result<'loadMessages'>> => {
-    if (roomId === '' || !native?.available) return { room: roomId, messages: [] };
+    if (roomId === '' || !native?.available) return { room: roomId, atStart: true, messages: [] };
     native.watch(`thread:${roomId}`);
     const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
     const messages = answer.messages.map((m, i) => {
@@ -57,7 +58,11 @@ const sources: Sources = {
           ? Math.min(PHOTO_MAX_WIDTH, (PHOTO_MAX_HEIGHT * m.imageWidth) / m.imageHeight) : PHOTO_MAX_WIDTH,
       };
     });
-    return { room: roomId, messages };
+    return { room: roomId, atStart: answer.atStart, messages };
+  },
+  loadOlderMessages: async ([roomId], _store, _storage, native): Promise<Result<'loadOlderMessages'>> => {
+    await native!.later({ op: 'older', roomId });
+    return { ok: true };
   },
   loadPhoto: async ([roomId, messageId], _store, _storage, native): Promise<Result<'loadPhoto'>> => {
     if (messageId === '' || !native?.available) return { message: messageId, path: '' };

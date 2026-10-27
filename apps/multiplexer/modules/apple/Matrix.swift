@@ -42,12 +42,19 @@ final class Matrix: ExactModule {
                 case "messages":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
-                    reply.send(["messages": messages.map {
+                    let atStart = try await account.isAtStart(roomId: roomId)
+                    reply.send(["atStart": atStart, "messages": messages.map {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
                          "isImage": $0.image != nil, "image": thumbnail(account, roomId: roomId, message: $0),
                          "imageWidth": $0.image?.width ?? 0, "imageHeight": $0.image?.height ?? 0]
                     }])
+                case "older":
+                    let roomId = request["roomId"] as? String ?? ""
+                    try await signedIn().loadOlder(roomId: roomId)
+                    // older messages the timeline already held bring no change of their own.
+                    changed(.room(roomId))
+                    reply.send(["ok": true])
                 case "photo":
                     let file = try await signedIn().imageFile(roomId: request["roomId"] as? String ?? "",
                                                               messageId: request["messageId"] as? String ?? "", full: true, directory: media)
@@ -66,7 +73,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, messages, photo, send, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, messages, older, photo, send, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))

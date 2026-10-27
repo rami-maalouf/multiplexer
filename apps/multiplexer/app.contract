@@ -43,9 +43,11 @@ shape Photo
   message: string
   path: string
 
-// room is the chat the messages belong to, so a chat never shows another's.
+// room is the chat the messages belong to, so a chat never shows another's. atStart:
+// the chat shows the room's first message, so there is nothing older to load.
 shape Thread
   room: string
+  atStart: bool
   messages: Message[]
 
 shape Time
@@ -82,6 +84,7 @@ component Multiplexer
   mutation sent as shape Reply then afterSend
   mutation retried as shape Reply
   mutation discarded as shape Reply
+  mutation older as shape Reply
   derive canSignIn = server.trim() != "" and user.trim() != "" and password != "" and not pending(signedIn)
   derive refusal = match signedIn { case some(r) => r.ok ? "" : r.error, case none => "" }
   derive roomsShown = roomList.owner == session.userId
@@ -146,6 +149,9 @@ component Multiplexer
     nav = push(nav, path("photo", openRoom, id))
   action retry(id: string)
     send retried = retryMessage(openRoom, id)
+  action loadOlder
+    if threadShown and not thread.atStart and not pending(older)
+      send older = loadOlderMessages(openRoom)
   action discard(id: string)
     send discarded = discardMessage(openRoom, id)
 
@@ -244,7 +250,7 @@ component Multiplexer
                 EmptyState(symbol="symbol:messages", title="No Messages Yet", message="Messages in this chat show here.")
               else
                 list id="transcript" appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
-                  flex=1 min-height=0 testId="transcript"
+                  reachstart=loadOlder flex=1 min-height=0 testId="transcript"
                   for m in thread.messages key=m.id
                     column align-items=(m.isOwn ? "flex-end" : "flex-start") padding="2px 12px" gap=2
                       if m.startsGroup

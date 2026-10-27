@@ -38,6 +38,7 @@ Each finding was rechecked against exact2 `cee509ac82` (2026-10-27).
 | 17 | `clock until state` and `expect state` take different path forms, and the refusal shows only the grammar. | About 3 min and a wasted drive | P3 | [clock-until-state-and-expect-state](issues/20261027-clock-until-state-and-expect-state.md) |
 | 18 | A `compare` step empties the store for the whole drive, and nothing says so. | About 5 min | P3 | [a-compare-step-empties-the-store](issues/20261027-a-compare-step-empties-the-store.md) |
 | 19 | A transcript moved by one row when an update removed its first row above the view (seen once, not isolated). | About 10 min to measure | P3 | [a-transcript-moved-by-one-row](issues/20261027-a-transcript-moved-by-one-row.md) |
+| 20 | A virtualized list has no place for a row outside its `for`, so a chat cannot show that it is loading older messages, or that it has reached the start. | About 3 min, and a gap in the chat | P3 | [a-virtualized-list-has-no-place](issues/20261027-a-virtualized-list-has-no-place.md) |
 
 ## What worked well
 

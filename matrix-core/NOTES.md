@@ -62,6 +62,9 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - The first `messages(roomId:)` opens a live timeline and pages back to the last `limit`
   messages. It stays open; later calls read it, from the first message shown at open to
   the newest. Timelines close at sign-out.
+- `loadOlder(roomId:count:)` shows `count` older messages: those the timeline holds,
+  then paged back from the server. `isAtStart(roomId:)` is true once the chat shows the
+  room's first message.
 - The module merges the changes of 0.2 s into one `context.changed` for each topic
   (`rooms`, `thread:<room id>`).
 
