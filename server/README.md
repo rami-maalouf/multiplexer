@@ -66,8 +66,11 @@ To paste a password on the iPhone (Universal Clipboard):
   `public/.well-known/matrix/`. They must equal the files that Synapse's side generates
   (`https://matrix.ramimaalouf.com/.well-known/matrix/...`); the self-check compares them.
   `ramimaalouf.com` answers 301 to `www.ramimaalouf.com`. Synapse and matrix-rust-sdk
-  (Element X, our app) follow it; a browser client does not find the server from the user
-  ID, because the 301 has no CORS header.
+  (Element X, our app) follow it; a browser client (Element Web, Element Desktop) does not,
+  because the 301 has no CORS header. In a browser client, enter `www.ramimaalouf.com` or
+  `matrix.ramimaalouf.com` as the server; the user ID stays `@name:ramimaalouf.com`.
+- **Registration leaves a session.** `register-user.sh` (the playbook's `register_new_matrix_user`)
+  signs the new user in once, so each user starts with one unnamed session that nobody uses.
 - **Oracle security list** (the cloud firewall, set by Rami in the console): region
   `ca-toronto-1`, VCN `vcn-20250515-0038` > Security > Default Security List > Security
   rules. Ingress from `0.0.0.0/0`, all stateful: TCP 22, 80, 443 (old, "run n8n publicly"),
