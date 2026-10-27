@@ -1,7 +1,7 @@
 # Multiplexer: instructions for agents
 
 Multiplexer is Rami's own replacement for Beeper: one app (iPhone first, Mac later)
-that shows all his chats (WhatsApp, Signal, Telegram, Instagram, ...). Messages go
+that shows all of Rami's chats (WhatsApp, Signal, Telegram, Instagram, ...). Messages go
 through a Matrix server that Rami controls. Rami is the only user for now.
 
 **Read `tasks/plan.md` first** (Status, decisions D1 to D8, invariants, facts, risks,
@@ -85,8 +85,26 @@ bun exact.mjs contract build app.contract --json --errors-only
   again (about 30 to 40 s).
 - Exact's only required reading: `/Users/rami/Documents/code/exact/exact2/docs/start-here.md`.
   For a chat screen, see its `chat-thread` recipe.
-- Exact asks apps to keep a local diary (`bun exact.mjs feedback status` says `ask`).
-  Write it in `apps/multiplexer/.exact/diary/`. Never send it without Rami's yes.
+
+## Exact feedback: always keep the diary
+
+Rami uses this app to improve Exact. Every place where Exact slowed you down is
+feedback, and recording it is part of each task, not optional.
+
+- Keep one diary entry per task: `apps/multiplexer/.exact/diary/<YYYY-MM-DD>-<topic>.md`,
+  in the format of `<exact2>/docs/diary.md` (Rough, Lean in, Needed, Checkpoints).
+- **Write a Rough entry when the struggle happens**, not from memory at the end. Record
+  what you tried, the error text, about how long it cost, what you did instead, and what
+  would have helped (a message, a doc line, a feature).
+- Count as Rough: a compile or build error that was not clear, a doc you had to grep
+  for, a `contract vocab` lookup that gave nothing useful, Exact source you had to read,
+  a drive or `verify` result that misled you, a slow loop, editor noise, and **every
+  workaround you write into this file**.
+- Keep it generic: no app name, no product purpose, no server names, no account names,
+  no secrets. Write "a chat app", "a public server", "a third-party library".
+- At the end of each task, run `bun exact.mjs feedback status`. The answer is `ask`, so
+  ask Rami once whether to send the diary, quoting 2 to 4 lines. Send nothing without
+  Rami's yes.
 
 ## Test accounts
 
