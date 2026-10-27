@@ -117,8 +117,8 @@ WhatsApp account. Messages must flow in both directions.
 
 **Acceptance criteria:**
 - [x] `matrix_bridge_mautrix_whatsapp_enabled: true` and Appservice Double Puppet are on. Self-check is green. (2026-10-27: install `ok=218 changed=15 failed=0`; mautrix-whatsapp `v0.2610.0`, arm64 image pulled, nothing built; Synapse loads both registrations; `@whatsappbot:ramimaalouf.com` exists; self-check `ok=36 failed=0`. Bridged rooms are not end-to-end encrypted: the playbook's default.)
-- [ ] `login qr` to `@whatsappbot:<base domain>` links my WhatsApp.
-- [ ] A WhatsApp message sent to me shows in Element X. My reply from Element X arrives in WhatsApp.
+- [x] `login qr` to `@whatsappbot:<base domain>` links my WhatsApp. (2026-10-27: linked; the bridge holds 1 login and made rooms for Rami's chats, with history. Details: `server/notes/install.md`.)
+- [ ] A WhatsApp message sent to me shows in Element X. My reply from Element X arrives in WhatsApp. (2026-10-27: incoming works, Rami saw it in Element X. The reply from Element X and double puppeting wait for Rami.)
 
 **Verification:**
 - [ ] A manual test with a second person or a second phone. Screenshots of both sides.

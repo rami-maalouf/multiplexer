@@ -83,3 +83,17 @@ Appservice Double Puppet has no container: it is only a registration in Synapse.
 backfills history (the playbook's default) and makes a space for the WhatsApp chats. Its rooms
 are not end-to-end encrypted (`matrix_bridges_encryption_enabled` stays `false`). The
 self-check stays green (`ok=36 failed=0`).
+
+**Linked** (2026-10-27, about 22:42 UTC): Rami linked his WhatsApp account; the bridge holds
+1 login. The history sync then made the rooms: 31 of 71 chats had a room at 22:44:07, 48 of
+91 at 22:44:25 (the bridge finds more chats as the sync goes on). Rami saw an incoming
+WhatsApp message and his history in Element X.
+
+**Load during the history sync** (22:44:25): load average 2.35; 2.4 GiB of 23 GiB used.
+Synapse 180% CPU (of 400%) and 375 MiB, Postgres 112% and 301 MiB, the bridge 21% and 84 MiB.
+
+**Bridge log during the sync:** warnings for old messages it cannot place (unknown sender,
+group messages without their sender key), and 4 errors in 30 minutes, none for new messages:
+old link-preview pictures that WhatsApp no longer serves (HTTP 403), and old reactions with
+no emoji that Synapse refuses ("Missing aggregation key"). The bridge log holds phone numbers
+and chat IDs: read only counts, or hide the numbers, when you look at it.
