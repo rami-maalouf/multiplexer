@@ -8,7 +8,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 |---|---|
 | Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; the self-check is green; T0.5 waits for Element X). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
 | Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): Element X, then T0.6. |
-| Blocked on Rami | Element X sign-in (T0.5). |
+| Blocked on Rami | Element X sign-in (T0.5); yes or no to removing the 3 unused sessions from registration. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
 | Last updated | 2026-10-27 |
@@ -230,3 +230,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T0.5 install done: Synapse 1.164.0, PostgreSQL 18.6 and Traefik run on the Oracle server, all arm64 images. `https://matrix.ramimaalouf.com` has a Let's Encrypt certificate and password sign-in. Users `@rami` (admin), `@test1`, `@test2` exist; passwords only in the Keychain. The self-check waits for port 8448 and the website: with Rami's yes, the website commit `80e243a` went to its `main`, but Vercel's production deploy failed (cause not known yet). |
 | 2026-10-27 | The website's Matrix files are live (`ramimaalouf.com/.well-known/matrix/{server,client}`, through the 301 to `www`). Its deploys had failed since Vercel dropped Node 20; with Rami's go-ahead to merge, the website moved to Node 24 with a small post-build script for the Astro 4 adapter's function runtime, checked on a preview deploy first. Upgrading the website to Astro 5 or newer would remove the script. |
 | 2026-10-27 | T0.4 done: Rami added TCP 8448, UDP 443 and UDP 8448 to the Oracle security list (VCN `vcn-20250515-0038`, Default Security List). The playbook's self-check is all green, and matrix.org's federation tester finds `ramimaalouf.com` through the website's 301 (`FederationOK: True`). |
+| 2026-10-27 | First messages: `@rami:ramimaalouf.com` (Element Web, through `www.ramimaalouf.com`) and Rami's own `@rami-m:matrix.org` exchanged encrypted messages in a new room, both ways. Federation works. T0.5 now waits only for Element X on the iPhone. |

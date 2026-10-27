@@ -89,7 +89,7 @@ on aarch64 and that Element X can use it.
 
 **Acceptance criteria:**
 - [x] `--tags=self-check` is all green. (2026-10-27: `ok=36 failed=0`: the client API, the federation API on 8448, and the well-known files on both names. matrix.org's federation tester: `FederationOK: True`, found through the website's 301.)
-- [ ] User `rami` exists (`--tags=register-user`). Element X on my iPhone signs in and sends a message to a test room. (2026-10-27: `@rami:ramimaalouf.com` exists, admin. Also `@test1` and `@test2` for the app. Element X waits for Rami.)
+- [ ] User `rami` exists (`--tags=register-user`). Element X on my iPhone signs in and sends a message to a test room. (2026-10-27: `@rami:ramimaalouf.com` exists, admin. Also `@test1` and `@test2` for the app. Rami signed in with Element Web and exchanged encrypted messages with `@rami-m:matrix.org` in a new room, both ways, over federation (the server's database shows both `m.room.encrypted` events, 22:17 UTC). Element X on the iPhone waits for Rami.)
 - [x] We note which images were pulled for arm64 and which were built on the server. (All 7 pulled for arm64, none built: `server/notes/install.md`.)
 
 **Verification:**
