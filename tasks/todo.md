@@ -116,7 +116,7 @@ The install also replaces `/etc/apt/sources.list.d/docker.list` with an equal `d
 WhatsApp account. Messages must flow in both directions.
 
 **Acceptance criteria:**
-- [ ] `matrix_bridge_mautrix_whatsapp_enabled: true` and Appservice Double Puppet are on. Self-check is green.
+- [x] `matrix_bridge_mautrix_whatsapp_enabled: true` and Appservice Double Puppet are on. Self-check is green. (2026-10-27: install `ok=218 changed=15 failed=0`; mautrix-whatsapp `v0.2610.0`, arm64 image pulled, nothing built; Synapse loads both registrations; `@whatsappbot:ramimaalouf.com` exists; self-check `ok=36 failed=0`. Bridged rooms are not end-to-end encrypted: the playbook's default.)
 - [ ] `login qr` to `@whatsappbot:<base domain>` links my WhatsApp.
 - [ ] A WhatsApp message sent to me shows in Element X. My reply from Element X arrives in WhatsApp.
 

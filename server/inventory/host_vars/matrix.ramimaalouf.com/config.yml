@@ -32,3 +32,14 @@ matrix_static_files_file_matrix_client_property_cc_etke_ketesa_enabled: false
 # /.well-known/matrix/client does not follow redirects by default, but matrix-rust-sdk
 # (element x, our app) and synapse do, so the check follows them too.
 matrix_static_files_self_check_well_known_matrix_client_follow_redirects: safe
+
+# the whatsapp bridge (t0.6). rami links his account by sending `login qr` to
+# @whatsappbot:ramimaalouf.com and scanning the code in whatsapp > linked devices.
+# the image is prebuilt for arm64. bridged rooms are not end-to-end encrypted (the
+# playbook's default, matrix_bridges_encryption_enabled: false): the bridge reads every
+# message anyway, and plain rooms keep push notifications (phase 3) simple.
+matrix_bridge_mautrix_whatsapp_enabled: true
+
+# double puppeting: what rami sends from whatsapp on his phone shows in matrix as sent by
+# @rami:ramimaalouf.com, not by a stand-in user of the bridge.
+matrix_appservice_double_puppet_enabled: true

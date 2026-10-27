@@ -67,3 +67,19 @@ This is far below Oracle's 20% reclaim line (see the M0 checkpoint): one user, n
   cross-signing signature for the Element X session. Not known which step fixed it. If it
   hangs again: start the verification from Element Web (Settings > Sessions > the session >
   Verify session) and do not tap Start on the iPhone.
+
+## 2026-10-27: the WhatsApp bridge (T0.6)
+
+`config.yml` turns on `matrix_bridge_mautrix_whatsapp_enabled` and
+`matrix_appservice_double_puppet_enabled`. `./server/playbook.sh
+--tags=install-all,ensure-matrix-users-created,start`: `ok=218 changed=15 failed=0`.
+Synapse restarted to load the two appservice registrations.
+
+| Container | Image | Arch |
+|---|---|---|
+| `matrix-mautrix-whatsapp` | `dock.mau.dev/mautrix/whatsapp:v0.2610.0` | arm64, pulled |
+
+Appservice Double Puppet has no container: it is only a registration in Synapse. The bridge
+backfills history (the playbook's default) and makes a space for the WhatsApp chats. Its rooms
+are not end-to-end encrypted (`matrix_bridges_encryption_enabled` stays `false`). The
+self-check stays green (`ok=36 failed=0`).
