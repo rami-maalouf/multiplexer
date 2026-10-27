@@ -5,3 +5,7 @@
 /apps/multiplexer/modules/apple/MatrixSDKFFI.xcframework
 /apps/multiplexer/modules/apple/sdk-*.swift
 /apps/multiplexer/modules/apple/core-*.swift
+
+# swift package build output
+/matrix-core/.build/
+/matrix-core/.swiftpm/

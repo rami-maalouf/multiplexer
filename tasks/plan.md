@@ -6,8 +6,8 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server. Phase 1: T1.1 and T1.2 done. |
-| Next task | T1.3 on the matrix.org practice account (D8). Q1 (domain) still blocks Phase 0. |
+| Current phase | Phase 0: prove the server. Phase 1: T1.1, T1.2 and T1.3 (practice account) done. |
+| Next task | T1.4 Sign-in screen. Q1 (domain) still blocks Phase 0. |
 | Blocked on Rami | Q1 (domain) |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `65577096ed` (2026-10-27) |
@@ -201,3 +201,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | Named the app **Multiplexer** (Rami). Bundle id `com.ramimaalouf.multiplexer`, following `com.ramimaalouf.openmulticam` and `com.ramimaalouf.opensplit`. Folder and T3 project renamed. Alternatives considered: Estuary (no messaging conflict, warmer), Switchboard, Braid, Hearth, Patchbay, Weft (each already used by a chat or social product). |
 | 2026-10-27 | T1.2 passed: an Exact native module calls matrix-rust-sdk on the iOS Simulator (approach A: the release's xcframework and Swift bindings in `modules/apple/`). Exact refuses symlinks in the app, so `scripts/setup-matrix-sdk.sh` copies them. Cost to watch: each module edit recompiles 2 MB of bindings (about 40 s). Details in `matrix-core/NOTES.md`. D4 (Exact) stands. |
 | 2026-10-27 | D8: Rami chose to build the client against matrix.org for now. The domain (Q1) is still needed for Phase 0. |
+| 2026-10-27 | T1.3 passed on matrix.org with `@rami-m-test:matrix.org` (password in the Keychain, service `multiplexer-test-account`). MatrixCore builds as a Swift package with the pinned SDK and inside the Exact app. The WhatsApp part of T1.3 waits for T0.6. |
