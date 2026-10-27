@@ -6,7 +6,8 @@ purpose: Rami and the Exact team can improve the framework. Read this page first
 | What | Where |
 |---|---|
 | Findings, one file each, in exact2's issue format | [`issues/`](issues/) |
-| Raw notes, one file per task, in Exact's diary format | [`apps/multiplexer/.exact/diary/`](../../apps/multiplexer/.exact/diary/) |
+| Raw notes, one file per task, in Exact's diary format | [`apps/multiplexer/.exact/diary/`](../../apps/multiplexer/.exact/diary/); entries already sent are in `sent/` |
+| What was sent to the Exact team, and when | "Sent to the Exact team", below |
 | The rule that every agent follows | `AGENTS.md`, "Exact feedback: always record it" |
 
 The findings use no app name, server name or account name, so they can go to the
@@ -61,15 +62,25 @@ Each finding was rechecked against exact2 `cee509ac82` (2026-10-27).
 If a new diary file does not show in `git status`, check `apps/multiplexer/.gitignore`:
 it must keep `!/.exact/diary/`.
 
-## Sending the findings to the Exact team
+## Sent to the Exact team
 
-Not sent yet. exact2 (`ccheever/exact47`) is public, and Rami's GitHub account can only
-read it. Two ways, each needs Rami's yes:
+Findings go to the team through Exact's private feedback tool. Run it from
+`apps/multiplexer/`: `bun exact.mjs feedback preview` shows what would go, and
+`bun exact.mjs feedback send` sends it. The tool sends only the entries at the top of
+`.exact/diary/` and the new command-log lines. It then moves those entries into
+`.exact/diary/sent/`, so commit that move.
 
-- **A pull request:** the files in `issues/` go into exact2's `issues/` folder, from a
-  fork. The team files issues in this way. The pull request is public.
-- **The feedback tool:** `bun exact.mjs feedback send` sends the diary entries to the
-  Exact team. It is not public.
+| Date | Receipt | What | Sent by |
+|---|---|---|---|
+| 2026-10-27 | `4c8a0a07-60a8-466e-ae9a-bef9a0b29f82` | 4 diary entries (findings 1 to 15, in their Rough sections) and 77 command-log lines | Rami |
+| 2026-10-27 | `ac63ff5c-08e3-461b-ae7f-5f1598b2125b` | Findings 1 to 15 as issue files, rechecked at exact2 `cee509ac82`, in the entry `2026-10-27-findings-for-the-team.md` | Claude, at Rami's request |
 
-After a finding is in exact2, exact2's copy is the one to update. Delete the file here,
-and link the row to exact2's file.
+To take a send back: `bun exact.mjs feedback delete <receipt>`.
+
+To send a new finding: write it as an issue file here and in the task's diary entry, add
+its row above, then send. Each send needs Rami's yes.
+
+A public pull request to exact2 (`ccheever/exact47`) is the other way: the files in
+`issues/` go into exact2's `issues/` folder, from a fork, because Rami's GitHub account can
+only read the repo. Not done; it needs Rami's yes. After a finding is in exact2, exact2's
+copy is the one to update: delete the file here and link the row to exact2's file.
