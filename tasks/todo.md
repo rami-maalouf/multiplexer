@@ -1,4 +1,4 @@
-# Switchboard: tasks
+# Multiplexer: tasks
 
 The plan, decisions and facts are in `tasks/plan.md`. Phases 0 and 1 are in
 detail. Later phases are rough. We detail each one at the checkpoint before it.
@@ -126,15 +126,15 @@ Run it after 48 hours of use.
 `exact2/docs/start-here.md` first.
 
 **Acceptance criteria:**
-- [ ] `bun <exact2>/scripts/exact.mjs new apps/<name> --name <Name> --bundle-id <id>` is done.
+- [ ] `bun <exact2>/scripts/exact.mjs new apps/multiplexer --name Multiplexer --bundle-id com.ramimaalouf.multiplexer` is done.
 - [ ] `bun exact.mjs ios --prebuild` finishes. The empty app opens in the iOS Simulator.
 - [ ] `bun exact.mjs feedback status` has run, and the diary follows its answer.
 
 **Verification:**
 - [ ] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app.
 
-**Dependencies:** Q2
-**Files:** `apps/<name>/` (generated)
+**Dependencies:** None (Q2 answered)
+**Files:** `apps/multiplexer/` (generated)
 **Scope:** S
 
 ### T1.2 Spike: call matrix-rust-sdk from an Exact native module
@@ -155,7 +155,7 @@ call it. No network and no UI design. Try A first, then B.
 - [ ] An `agent ios` screenshot with the SDK's text.
 
 **Dependencies:** T1.1
-**Files:** `apps/<name>/modules/apple/*`, `matrix-core/NOTES.md`
+**Files:** `apps/multiplexer/modules/apple/*`, `matrix-core/NOTES.md`
 **Scope:** M
 
 ### T1.3 MatrixCore: sign in, rooms, messages

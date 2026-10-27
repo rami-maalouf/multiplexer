@@ -1,15 +1,15 @@
-# Switchboard: plan
+# Multiplexer: plan
 
-"Switchboard" is a working name. Q2 decides the final name.
+Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
 | | |
 |---|---|
 | Current phase | Phase 0: prove the server |
-| Next task | T0.1 Inventory the server |
-| Blocked on Rami | Q1 (domain), Q2 (app name and bundle id) |
-| Project | `/Users/rami/Documents/code/switchboard` (own git repo, own T3 project) |
+| Next task | T1.1 Create the Exact app, then T1.2 (they do not need the server) |
+| Blocked on Rami | Q1 (domain) |
+| Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `65577096ed` (2026-10-27) |
 | Last updated | 2026-10-27 |
 
@@ -82,7 +82,7 @@ Each milestone is a thing Rami can see work. Each one is small and can fail.
 |---|---|---|---|
 | Server config | `server/` | The matrix-docker-ansible-deploy inventory: Synapse, PostgreSQL, Traefik, bridges, later Sygnal. | Anything about our client. |
 | MatrixCore | `matrix-core/` | Matrix, through matrix-rust-sdk: sign in, sync, rooms, messages, send, encryption. | UI, Exact, Expo. |
-| App | `apps/switchboard/` (name set by Q2) | Screens (Contract), data (`app.ts`), one Swift native module that calls MatrixCore. | Matrix protocol details. It sees only MatrixCore's API. |
+| App | `apps/multiplexer/` | Screens (Contract), data (`app.ts`), one Swift native module that calls MatrixCore. | Matrix protocol details. It sees only MatrixCore's API. |
 | Notification extension | later | Uses MatrixCore to fetch and decrypt one event. | UI. |
 
 ### Invariants
@@ -185,7 +185,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | # | Question | Blocks |
 |---|---|---|
 | Q1 | Which domain? User IDs become `@rami:<base domain>`. Does the base domain already host a website? (That decides how we serve `/.well-known/matrix/server`.) | T0.4 |
-| Q2 | App name and bundle id (for example `com.<you>.switchboard`)? | T1.1 |
+| Q2 | ~~App name and bundle id~~ Answered 2026-10-27: Multiplexer, `com.ramimaalouf.multiplexer`. | T1.1 |
 | Q3 | Is WhatsApp the right first network? | T0.6 |
 | Q4 | Which Apple Developer team signs device builds and owns the APNs key? | Phase 2, Phase 3 |
 | Q5 | Is the Oracle account Always Free or Pay As You Go? Is the 4 CPU / 23 GiB instance free on it? | Cost |
@@ -197,3 +197,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | Plan created. D1 to D7 recorded. Rami is the only user for now. |
 | 2026-10-27 | Project moved out of the `exact` folder to `/Users/rami/Documents/code/switchboard` and registered as its own T3 project. The Exact framework is only a dependency, used by path. |
 | 2026-10-27 | Pulled the latest Exact. Its `main` history was rewritten on the remote, so local `main` now matches `origin/main` (`65577096ed`). The old local `main` is kept in exact2 as `backup/main-before-2026-10-27-rewrite`. The facts above still hold. |
+| 2026-10-27 | Named the app **Multiplexer** (Rami). Bundle id `com.ramimaalouf.multiplexer`, following `com.ramimaalouf.openmulticam` and `com.ramimaalouf.opensplit`. Folder and T3 project renamed. Alternatives considered: Estuary (no messaging conflict, warmer), Switchboard, Braid, Hearth, Patchbay, Weft (each already used by a chat or social product). |
