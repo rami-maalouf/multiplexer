@@ -30,3 +30,15 @@ Three lines in the recipe, and pointers to the two other topics.
 ## Evidence
 
 The recipe is unchanged between `65577096ed` and `cee509ac82`.
+
+## More evidence: handing the view a file the module wrote
+
+A module downloaded pictures into `context.cache` and the view showed them with
+`image "app:/cache/<name>"`. It worked, but nothing says so. `contract vocab image` printed
+"image: tag, Image (html); positional imageSource", and `bun exact.mjs docs image` printed
+the app.json recipe. The rule ("A media source is the string an `image` takes, `app:/data`
+files included") is one sentence in `docs/contract-for-agents.md`'s media section, found by
+grep. What would help: one line in `docs/recipes/native-module.md` ("write under
+`context.data` or `context.cache` and pass `app:/data/<name>` or `app:/cache/<name>`"), and
+`contract vocab image` naming its sources. Seen on 2026-10-27 at `cee509ac82`. About 5 minutes.
+

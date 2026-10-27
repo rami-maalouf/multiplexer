@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 #if canImport(MatrixRustSDK)
 import MatrixRustSDK
@@ -182,6 +183,31 @@ public final class MatrixAccount: @unchecked Sendable {
         }
     }
 
+    /// A photo message's picture as a file in `directory`: its thumbnail (at most
+    /// `thumbnailSide` pixels a side), or with `full` the original. Downloaded once; later
+    /// calls return the same file.
+    public func imageFile(roomId: String, messageId: String, full: Bool, directory: URL,
+                          thumbnailSide: UInt64 = 800, timeout: TimeInterval = 30) async throws -> URL {
+        let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
+        guard let (content, image) = live.items.image(of: messageId) else { throw MatrixCoreError.noImage(messageId) }
+        let file = directory.appendingPathComponent(full ? image.fullName : image.thumbnailName)
+        if FileManager.default.fileExists(atPath: file.path) { return file }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data: Data
+        if full {
+            data = try await client.getMediaContent(mediaSource: content.source)
+        } else {
+            // a server may have no thumbnail for a small picture: then the picture itself.
+            do {
+                data = try await client.getMediaThumbnail(mediaSource: content.source, width: thumbnailSide, height: thumbnailSide)
+            } catch {
+                data = try await client.getMediaContent(mediaSource: content.source)
+            }
+        }
+        try data.write(to: file, options: .atomic)
+        return file
+    }
+
     /// Removes a message that the server does not have (it failed, or still waits in the
     /// queue). A sent message is left alone.
     public func discard(roomId: String, messageId: String, timeout: TimeInterval = 30) async throws {
@@ -339,6 +365,15 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
         lock.withLock { items.compactMap { item in item.asEvent().flatMap { Message($0, id: item.uniqueId().id) } } }
     }
 
+    func image(of messageId: String) -> (ImageMessageContent, MessageImage)? {
+        lock.withLock {
+            guard let event = items.first(where: { $0.uniqueId().id == messageId })?.asEvent(),
+                  case .msgLike(let like) = event.content, case .message(let message) = like.kind,
+                  case .image(let content) = message.msgType else { return nil }
+            return (content, MessageImage(content))
+        }
+    }
+
     func eventOrTransactionId(of messageId: String) -> EventOrTransactionId? {
         lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent()?.eventOrTransactionId }
     }
@@ -402,7 +437,29 @@ extension Message {
         // a remote echo has no local send state: the server has it.
         case .sent?, nil: sendState = .sent
         }
-        self.init(id: id, sender: event.sender, senderName: name, body: message.body, timestamp: event.timestamp,
-                  isOwn: event.isOwn, sendState: sendState)
+        var body = message.body, image: MessageImage?
+        if case .image(let content) = message.msgType {
+            body = content.caption ?? ""
+            image = MessageImage(content)
+        }
+        self.init(id: id, sender: event.sender, senderName: name, body: body, timestamp: event.timestamp,
+                  isOwn: event.isOwn, sendState: sendState, image: image)
+    }
+}
+
+extension MessageImage {
+    init(_ content: ImageMessageContent) {
+        // the media url names the picture for good; its hash makes a safe file name.
+        let key = SHA256.hash(data: Data(content.source.url().utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
+        let ext: String
+        switch content.info?.mimetype {
+        case "image/png"?: ext = "png"
+        case "image/gif"?: ext = "gif"
+        case "image/webp"?: ext = "webp"
+        case "image/heic"?: ext = "heic"
+        default: ext = "jpg"
+        }
+        self.init(width: Int(content.info?.width ?? 0), height: Int(content.info?.height ?? 0),
+                  thumbnailName: "\(key)-thumbnail.\(ext)", fullName: "\(key).\(ext)")
     }
 }

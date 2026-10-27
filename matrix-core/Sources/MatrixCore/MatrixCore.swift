@@ -55,6 +55,18 @@ public struct Message: Equatable, Sendable {
     public var timestamp: UInt64
     public var isOwn: Bool
     public var sendState: SendState
+    /// The picture of a photo message; nil for text. `body` is then its caption, or "".
+    public var image: MessageImage?
+}
+
+public struct MessageImage: Equatable, Sendable {
+    /// In pixels; 0 when the sender did not say.
+    public var width: Int
+    public var height: Int
+    /// File names for `MatrixAccount.imageFile`: the same for the same picture, so a
+    /// downloaded file can be found again.
+    public var thumbnailName: String
+    public var fullName: String
 }
 
 /// Where a message is on its way to the server. Others' messages are `sent`.
@@ -69,6 +81,8 @@ public enum MatrixCoreError: Error, Equatable {
     case noRoom(String)
     case timedOut(String)
     case sendFailed(String)
+    /// The message is not a photo, or not in the open chat.
+    case noImage(String)
     /// A Keychain call failed with this `OSStatus`.
     case keychain(Int32)
 }

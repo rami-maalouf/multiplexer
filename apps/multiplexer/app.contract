@@ -20,7 +20,9 @@ shape RoomList
   rooms: Room[]
 
 // state: "sending", "sent" or "failed". startsGroup: the time shows above it.
-// showName: the sender's name shows above it.
+// showName: the sender's name shows above it. A photo (isImage) has its size in pixels
+// (0 when unknown), its width in the chat in rem, and its thumbnail's path once it is
+// downloaded ("" until then); its body is the caption, or "".
 shape Message
   id: string
   senderName: string
@@ -30,6 +32,16 @@ shape Message
   state: string
   startsGroup: bool
   showName: bool
+  isImage: bool
+  image: string
+  imageWidth: number
+  imageHeight: number
+  photoWidth: number
+
+// the full picture of the photo open in the viewer; message names it.
+shape Photo
+  message: string
+  path: string
 
 // room is the chat the messages belong to, so a chat never shows another's.
 shape Thread
@@ -50,6 +62,7 @@ shape Reply
 routes nav
   home "/"
     room "/room/:id"
+      photo "/room/:id/photo/:message"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
@@ -73,7 +86,11 @@ component Multiplexer
   derive refusal = match signedIn { case some(r) => r.ok ? "" : r.error, case none => "" }
   derive roomsShown = roomList.owner == session.userId
   derive shown = time.epochAtZero + now
-  derive openRoom = top(nav).name == "room" ? top(nav).params.id : ""
+  // the chat stays open under its photo viewer, so the open room is the stack's, not the top's.
+  derive openRoom = match first(stack(nav).filter(x => x.name == "room")) { case some(r) => r.params.id, case none => "" }
+  derive shownPhoto = top(nav).name == "photo" ? top(nav).params.message : ""
+  derive shownPhotoMessage = first(thread.messages.filter(m => m.id == shownPhoto))
+  resource photo = loadPhoto(openRoom, shownPhoto) as shape Photo else empty()
   derive openRoomInfo = first(roomList.rooms.filter(r => r.id == openRoom))
   derive openName = match openRoomInfo { case some(r) => r.name, case none => "" }
   derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
@@ -125,6 +142,8 @@ component Multiplexer
   action afterSend
     if match sent { case some(r) => r.ok, case none => false }
       draft = ""
+  action showPhoto(id: string)
+    nav = push(nav, path("photo", openRoom, id))
   action retry(id: string)
     send retried = retryMessage(openRoom, id)
   action discard(id: string)
@@ -201,6 +220,21 @@ component Multiplexer
                 else
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
+        if e.name == "photo"
+          column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`photo-${e.params.message}`
+            position="absolute" inset=0 display="flex" flex-direction="column"
+            header display="flex" align-items="center"
+              button id="back" press=back aria-label="Close" testId="close-photo"
+                image "symbol:close"
+              text (match shownPhotoMessage { case some(m) => m.isOwn ? "You" : m.senderName, case none => "Photo" }) role="heading" aria-level=2
+              text (match shownPhotoMessage { case some(m) => formatDay(m.time, shown, time.utcOffset, "day-time"), case none => "" })
+            // the thumbnail shows at once; the full picture replaces it when it is here.
+            match shownPhotoMessage
+              case some(m)
+                image (photo.message == m.id and photo.path != "" ? photo.path : m.image) flex=1 min-height=0 width="100%"
+                  object-fit="contain" aria-label=(m.body != "" ? m.body : "Photo") testId="photo-full"
+              case none
+                column flex=1
         if e.name == "room"
           column navigationKey=`${e.id}` navigationScroll="transcript" position="absolute" inset=0 display="flex" flex-direction="column"
             header display="flex" align-items="center"
@@ -219,10 +253,19 @@ component Multiplexer
                       // no name in a chat named after the sender (a one-to-one chat that is not marked direct).
                       if m.showName and m.senderName != openName
                         text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding="0 12px"
+                      // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box.
+                      if m.isImage
+                        button appearance="none" press=showPhoto(m.id) id=`photo-${m.id}` width=`${m.photoWidth}rem` max-width="75%"
+                          aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
+                          border-radius=18 overflow="hidden" background-color="-exact-secondary-background"
+                          aria-label=(m.body != "" ? m.body : "Photo") testId=`photo-${m.id}`
+                          if m.image != ""
+                            image m.image width="100%" height="100%" object-fit="cover"
                       // a message on its way is dimmed; one that failed says so, with a way to send it again.
-                      text m.body padding="8px 12px" border-radius=18 max-width="75%" overflow-wrap="break-word"
-                        background-color=(m.isOwn ? "AccentColor" : "-exact-fill") color=(m.isOwn ? "AccentColorText" : "-exact-label")
-                        opacity=(m.state == "sending" ? 0.6 : 1) testId=`message-${m.id}`
+                      if not m.isImage or m.body != ""
+                        text m.body padding="8px 12px" border-radius=18 max-width="75%" overflow-wrap="break-word"
+                          background-color=(m.isOwn ? "AccentColor" : "-exact-fill") color=(m.isOwn ? "AccentColorText" : "-exact-label")
+                          opacity=(m.state == "sending" ? 0.6 : 1) testId=`message-${m.id}`
                       if m.state == "failed"
                         row gap=12 align-items="center"
                           text "Not Delivered" font="-exact-footnote" color="-exact-system-red" testId=`failed-${m.id}`

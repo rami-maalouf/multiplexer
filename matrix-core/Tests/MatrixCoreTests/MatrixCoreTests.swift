@@ -1,4 +1,5 @@
 import MatrixCore
+import UIKit
 import XCTest
 
 /// Talks to a real homeserver. `scripts/test-matrix-core.sh` passes the account
@@ -15,8 +16,7 @@ final class MatrixCoreTests: XCTestCase {
         let text = "Multiplexer test \(UUID().uuidString)"
 
         // the first device finds or makes the test room, sends, and signs out.
-        let first = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                   deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let first = try await signIn(homeserver, user, password)
         let rooms = try await first.rooms()
         let existing = rooms.first { $0.name == roomName }?.id
         let roomId: String
@@ -25,8 +25,7 @@ final class MatrixCoreTests: XCTestCase {
         try await first.signOut()
 
         // a second device with an empty store must get both from the server.
-        let second = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                    deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let second = try await signIn(homeserver, user, password)
         let seen = try await second.rooms()
         XCTAssertTrue(seen.contains { $0.id == roomId && $0.name == roomName }, "rooms: \(seen.map(\.name))")
         let summary = seen.first { $0.id == roomId }
@@ -47,8 +46,7 @@ final class MatrixCoreTests: XCTestCase {
               let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
             throw XCTSkip("MATRIX_TEST_FILL is not set")
         }
-        let account = try await MatrixAccount.signIn(homeserver: env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user: user,
-                                                     password: password, deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let rooms = try await account.rooms()
         let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
         for n in 1...count {
@@ -63,8 +61,7 @@ final class MatrixCoreTests: XCTestCase {
             throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
         }
         let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
-        let reader = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                    deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let reader = try await signIn(homeserver, user, password)
         let changes = Changes()
         reader.onChange { changes.add($0) }
         let rooms = try await reader.rooms()
@@ -75,8 +72,7 @@ final class MatrixCoreTests: XCTestCase {
         _ = try await reader.messages(roomId: roomId, limit: 20)
         XCTAssertLessThan(Date().timeIntervalSince(again), 0.3)
 
-        let writer = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                    deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let writer = try await signIn(homeserver, user, password)
         let text = "Live \(UUID().uuidString)"
         _ = try await writer.rooms()
         try await writer.sendAndWait(roomId: roomId, text: text)
@@ -107,8 +103,7 @@ final class MatrixCoreTests: XCTestCase {
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
             throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
         }
-        let account = try await MatrixAccount.signIn(homeserver: env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user: user,
-                                                     password: password, deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let rooms = try await account.rooms()
         let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
         _ = try await account.messages(roomId: roomId, limit: 20)
@@ -156,13 +151,77 @@ final class MatrixCoreTests: XCTestCase {
         }
     }
 
+    func testAPhotoMessageHasItsSizeAndDownloads() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let rooms = try await account.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        _ = try await account.messages(roomId: roomId, limit: 20)
+
+        // a portrait photo, sent as another client would: uploaded, then an m.image event.
+        let caption = "Photo \(UUID().uuidString)"
+        let jpeg = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 900), format: {
+            let f = UIGraphicsImageRendererFormat(); f.scale = 1; return f }()).jpegData(withCompressionQuality: 0.8) { c in
+            UIColor.systemTeal.setFill(); c.fill(CGRect(x: 0, y: 0, width: 600, height: 900))
+        }
+        try await sendPhoto(jpeg, width: 600, height: 900, caption: caption, roomId: roomId, session: try account.savedSession())
+
+        let start = Date()
+        var photo = try await account.messages(roomId: roomId, limit: 20).last { $0.body == caption }
+        while photo == nil, Date().timeIntervalSince(start) < 15 {
+            try await Task.sleep(nanoseconds: 200_000_000)
+            photo = try await account.messages(roomId: roomId, limit: 20).last { $0.body == caption }
+        }
+        let found = try XCTUnwrap(photo, "the photo message did not arrive")
+        XCTAssertEqual(found.image?.width, 600)
+        XCTAssertEqual(found.image?.height, 900)
+
+        let directory = freshDirectory()
+        let thumbnail = try await account.imageFile(roomId: roomId, messageId: found.id, full: false, directory: directory)
+        let full = try await account.imageFile(roomId: roomId, messageId: found.id, full: true, directory: directory)
+        let small = try XCTUnwrap(UIImage(contentsOfFile: thumbnail.path), "the thumbnail is not a picture")
+        let large = try XCTUnwrap(UIImage(contentsOfFile: full.path), "the full file is not a picture")
+        XCTAssertEqual(large.size, CGSize(width: 600, height: 900))
+        XCTAssertLessThanOrEqual(max(small.size.width, small.size.height), 900)
+        XCTAssertEqual(small.size.width / small.size.height, 600.0 / 900.0, accuracy: 0.02)
+        // a second call finds the file and downloads nothing.
+        let written = try FileManager.default.attributesOfItem(atPath: full.path)[.modificationDate] as? Date
+        _ = try await account.imageFile(roomId: roomId, messageId: found.id, full: true, directory: directory)
+        XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: full.path)[.modificationDate] as? Date, written)
+        try await account.signOut()
+    }
+
+    /// Uploads a jpeg and sends it as an m.image event, through the client-server api.
+    private func sendPhoto(_ jpeg: Data, width: Int, height: Int, caption: String, roomId: String, session: SavedSession) async throws {
+        let base = URL(string: session.homeserverUrl)!
+        var upload = URLRequest(url: base.appendingPathComponent("_matrix/media/v3/upload"))
+        upload.httpMethod = "POST"
+        upload.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        upload.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        let (uploaded, _) = try await URLSession.shared.upload(for: upload, from: jpeg)
+        let uri = try XCTUnwrap((try JSONSerialization.jsonObject(with: uploaded) as? [String: Any])?["content_uri"] as? String)
+        var send = URLRequest(url: base.appendingPathComponent("_matrix/client/v3/rooms").appendingPathComponent(roomId)
+            .appendingPathComponent("send/m.room.message").appendingPathComponent(UUID().uuidString))
+        send.httpMethod = "PUT"
+        send.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        send.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        send.httpBody = try JSONSerialization.data(withJSONObject: [
+            "msgtype": "m.image", "url": uri, "body": caption, "filename": "photo.jpg",
+            "info": ["w": width, "h": height, "mimetype": "image/jpeg", "size": jpeg.count],
+        ])
+        let (_, response) = try await URLSession.shared.data(for: send)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+    }
+
     func testSignOutOnServerWithoutTheStore() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
             throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
         }
-        let account = try await MatrixAccount.signIn(homeserver: env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user: user,
-                                                     password: password, deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let saved = try account.savedSession()
         let before = try await whoamiStatus(saved)
         XCTAssertEqual(before, 200)
@@ -214,6 +273,15 @@ final class MatrixCoreTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? SignInError, expected, "\(error)", line: line)
         }
+    }
+
+    /// Signs in as a new device that the test signs out at its end, even when the test
+    /// fails, so a failed run leaves no device on the account.
+    private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
+        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
+                                                     deviceName: "Multiplexer test", storeDirectory: freshDirectory())
+        addTeardownBlock { try? await account.signOut() }
+        return account
     }
 
     private func freshDirectory() -> URL {

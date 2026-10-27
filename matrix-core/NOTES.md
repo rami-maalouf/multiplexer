@@ -77,6 +77,17 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   a sent message.
 - `sendAndWait` returns once the server has the message, for tests and scripts.
 
+## Photos
+
+- A photo message has `Message.image` (its size, and stable file names from a hash of
+  its media url); `body` is its caption, or "".
+- `imageFile(roomId:messageId:full:directory:)` downloads the thumbnail (at most 800
+  pixels a side, or the picture when the server has no thumbnail) or the full picture
+  once, through the signed-in client (matrix.org serves media only to signed-in
+  requests), and returns the file.
+- The module keeps them in `<Exact's context.cache>/matrix-media/`, which the view shows
+  as `app:/cache/matrix-media/<name>`, and deletes them at sign-out.
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The

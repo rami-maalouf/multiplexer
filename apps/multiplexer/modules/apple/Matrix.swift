@@ -13,6 +13,10 @@ final class Matrix: ExactModule {
     private var account: Task<MatrixAccount, Error>?
     /// Topics that changed and app.ts has not heard of yet: a burst of changes becomes one ask.
     private var changedTopics: Set<String> = []
+    /// Downloaded pictures, as `app:/cache/matrix-media/<name>` in the view.
+    private var media: URL { context.cache.appendingPathComponent("matrix-media", isDirectory: true) }
+    /// Thumbnails on their way, and ones that failed (not tried again until the next launch).
+    private var downloading: Set<String> = [], failedDownloads: Set<String> = []
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
         switch request["op"] as? String {
@@ -36,11 +40,18 @@ final class Matrix: ExactModule {
                          "lastSender": $0.lastSenderName, "lastIsOwn": $0.lastIsOwn, "lastTime": Double($0.lastTimestamp)]
                     }])
                 case "messages":
-                    let messages = try await signedIn().messages(roomId: request["roomId"] as? String ?? "", limit: request["limit"] as? Int ?? 20)
+                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
                     reply.send(["messages": messages.map {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
-                         "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue]
+                         "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
+                         "isImage": $0.image != nil, "image": thumbnail(account, roomId: roomId, message: $0),
+                         "imageWidth": $0.image?.width ?? 0, "imageHeight": $0.image?.height ?? 0]
                     }])
+                case "photo":
+                    let file = try await signedIn().imageFile(roomId: request["roomId"] as? String ?? "",
+                                                              messageId: request["messageId"] as? String ?? "", full: true, directory: media)
+                    reply.send(["path": "app:/cache/matrix-media/\(file.lastPathComponent)"])
                 case "send":
                     // the message shows in the chat at once; its state says how the sending goes.
                     try await signedIn().send(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "")
@@ -55,7 +66,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, messages, send, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, messages, photo, send, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -137,6 +148,24 @@ final class Matrix: ExactModule {
         }
     }
 
+    /// A photo message's thumbnail as an `app:/` path once it is here; until then "", and
+    /// the download starts, and the chat is asked again when it ends.
+    @MainActor private func thumbnail(_ account: MatrixAccount, roomId: String, message: Message) -> String {
+        guard let name = message.image?.thumbnailName else { return "" }
+        if FileManager.default.fileExists(atPath: media.appendingPathComponent(name).path) { return "app:/cache/matrix-media/\(name)" }
+        guard !failedDownloads.contains(name), downloading.insert(name).inserted else { return "" }
+        Task { @MainActor in
+            do {
+                _ = try await account.imageFile(roomId: roomId, messageId: message.id, full: false, directory: media)
+                changed(.room(roomId))
+            } catch {
+                failedDownloads.insert(name)
+            }
+            downloading.remove(name)
+        }
+        return ""
+    }
+
     /// Passes the account's changes to app.ts, as the topics its sources watch:
     /// `rooms`, and `thread:<room id>` for an open chat.
     private func tellChanges(_ account: MatrixAccount) {
@@ -170,6 +199,7 @@ final class Matrix: ExactModule {
         if !forgotten, let stored { try pending.write(stored) }
         try keychain.delete()
         try? FileManager.default.removeItem(at: stores)
+        try? FileManager.default.removeItem(at: media)
         if !forgotten { signOutPending() }
     }
 }

@@ -329,9 +329,16 @@ marks it read on the server, so Element and my other devices agree.
 the thumbnail into the app's cache; the view shows the file. A tap opens it full screen.
 
 **Acceptance criteria:**
-- [ ] A photo sent from Element (later, from WhatsApp) shows as a thumbnail with the right aspect ratio.
-- [ ] The room list preview says "Photo".
-- [ ] A tap shows the full image; Back returns to the chat.
+- [x] A photo sent from another client (later, from WhatsApp) shows as a thumbnail with the right aspect ratio. (2026-10-27: photos sent through the client-server API, 1200×800, 800×1200 and 600×900, show at their ratio in a box at most 15 rem wide and 18 rem tall; the box keeps its shape while the thumbnail downloads; a caption shows as a bubble below.)
+- [x] The room list preview says "Photo".
+- [x] A tap shows the full image; Back returns to the chat. (A full-screen viewer that zooms out of the thumbnail, with the sender and the time in its bar; the full picture replaces the thumbnail when it is here.)
+
+**Verification:**
+- [x] MatrixCore test `testAPhotoMessageHasItsSizeAndDownloads`: the size and caption; the thumbnail and the full picture decode, at the right size and ratio; a second call downloads nothing.
+- [x] `check` is clean on the chat and the viewer in light, dark and at the largest text size.
+
+**Found on the way:**
+- A test that failed before its last line left its device on the account. Every test sign-in now signs out in a teardown, even when the test fails (checked with a forced early stop: no device left).
 
 **Dependencies:** T2.2
 **Scope:** M

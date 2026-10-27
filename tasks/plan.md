@@ -7,7 +7,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 | | |
 |---|---|
 | Current phase | Phase 0: prove the server (waits for Q1). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | T2.4 Unread counts (needs a second test account). Phase 0 waits for Q1 (domain); T0.1 is done. |
+| Next task | App: T2.4 Unread counts, once the server conversation has made test users (T0.5). Server: Phase 0 runs in its own conversation (branch `server/phase-0`). |
 | Blocked on Rami | Q1 (domain) |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
@@ -211,3 +211,5 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T0.1 done (read only): ports 80, 443 and 8448 are free; Docker is disabled; old n8n and Postiz images (13 GB) and volumes (294 MB) remain; T3 Code and Syncthing run and do not conflict. Rami decides what stays. |
 | 2026-10-27 | T2.2 passed: MatrixCore watches the room list and keeps one live timeline per opened chat; the module passes changes to `app.ts` as `context.changed` topics. A new message shows in 1 to 2 s, and a reader scrolled up keeps their place. |
 | 2026-10-27 | T2.3 passed, except the offline case (needs a device, T2.7): the composer sends through the room's send queue; a message shows at once, dimmed, then sent; a failed one shows "Not Delivered" with Try Again and Delete. |
+| 2026-10-27 | Rami: keep the old Docker data on the server; set up the server now. Phase 0 runs in a second conversation, in its own worktree on the branch `server/phase-0`, merged into `main` by the app conversation. The domain recommendation is `@rami:ramimaalouf.com`; Rami confirms it before the install. |
+| 2026-10-27 | T2.5 passed: photo messages show at their ratio, download through the sdk into the app's cache, and open in a full-screen viewer. |
