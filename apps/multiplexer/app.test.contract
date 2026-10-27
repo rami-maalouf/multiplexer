@@ -1,0 +1,3 @@
+test "the screen shows the Matrix SDK row"
+  expect tree has "root"
+  expect tree has "sdk-commit"

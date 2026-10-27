@@ -1,0 +1,7 @@
+.DS_Store
+
+# the matrix sdk binary and sources, fetched by scripts/setup-matrix-sdk.sh
+/vendor/
+/apps/multiplexer/modules/apple/MatrixSDKFFI.xcframework
+/apps/multiplexer/modules/apple/sdk-*.swift
+/apps/multiplexer/modules/apple/core-*.swift

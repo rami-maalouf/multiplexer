@@ -126,9 +126,9 @@ Run it after 48 hours of use.
 `exact2/docs/start-here.md` first.
 
 **Acceptance criteria:**
-- [ ] `bun <exact2>/scripts/exact.mjs new apps/multiplexer --name Multiplexer --bundle-id com.ramimaalouf.multiplexer` is done.
-- [ ] `bun exact.mjs ios --prebuild` finishes. The empty app opens in the iOS Simulator.
-- [ ] `bun exact.mjs feedback status` has run, and the diary follows its answer.
+- [x] `bun <exact2>/scripts/exact.mjs new apps/multiplexer --name Multiplexer --bundle-id com.ramimaalouf.multiplexer` is done.
+- [x] `bun exact.mjs ios --prebuild` finishes. The empty app opens in the iOS Simulator. (2026-10-27: built and installed on the iPhone 17 Pro Simulator in about 2 minutes.)
+- [x] `bun exact.mjs feedback status` has run, and the diary follows its answer. (Answer: `ask`. The diary is in `apps/multiplexer/.exact/diary/`. Nothing is sent without Rami's yes.)
 
 **Verification:**
 - [ ] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app.
@@ -147,12 +147,12 @@ call it. No network and no UI design. Try A first, then B.
 - **B:** build our own `MatrixCore.xcframework` that contains everything, and put it in `modules/apple/`.
 
 **Acceptance criteria:**
-- [ ] In the iOS Simulator, the app shows text that a matrix-rust-sdk call returned.
-- [ ] `matrix-core/NOTES.md` explains how it links: which files, how we build them, and the deployment target (the SDK needs iOS 16).
-- [ ] If neither A nor B works after 3 rounds: write down the blocker and stop for a decision (an Exact change, or Expo).
+- [x] In the iOS Simulator, the app shows text that a matrix-rust-sdk call returned. (2026-10-27: `sdkGitSha()` shows `14a0ada4fc`. Approach A worked.)
+- [x] `matrix-core/NOTES.md` explains how it links: which files, how we build them, and the deployment target (the SDK needs iOS 16).
+- [x] If neither A nor B works after 3 rounds: write down the blocker and stop for a decision (an Exact change, or Expo). (Not needed: A worked after one fix, copies instead of symlinks.)
 
 **Verification:**
-- [ ] An `agent ios` screenshot with the SDK's text.
+- [x] An `agent ios` screenshot with the SDK's text, in light and dark mode (`apps/multiplexer/.exact/t1.2-sdk*.png`, not in git).
 
 **Dependencies:** T1.1
 **Files:** `apps/multiplexer/modules/apple/*`, `matrix-core/NOTES.md`
