@@ -13,12 +13,12 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 Docker and ports 80, 443 and 8448, so we must know what is there first.
 
 **Acceptance criteria:**
-- [ ] A list of containers, services that listen on ports, and the largest disk users.
-- [ ] We know if ports 80, 443 and 8448 are free, or what uses them.
-- [ ] Rami decides what stays. The decision is in the plan's decision log.
+- [x] A list of containers, services that listen on ports, and the largest disk users. (2026-10-27: `server/notes/inventory.md`.)
+- [x] We know if ports 80, 443 and 8448 are free, or what uses them. (Free. Docker is installed but disabled; old n8n and Postiz images and volumes remain.)
+- [ ] Rami decides what stays. The decision is in the plan's decision log. (Three questions at the end of the inventory.)
 
 **Verification:**
-- [ ] Output of `sudo docker ps -a`, `sudo ss -tlnup` and `sudo du -xh -d 1 /` saved in `server/notes/inventory.md`.
+- [x] The containers, the listening ports and the disk use, saved in `server/notes/inventory.md`. (The Docker daemon is stopped, so the old images and volumes were read from `/var/lib/docker` without starting it.)
 
 **Dependencies:** None
 **Files:** `server/notes/inventory.md`
