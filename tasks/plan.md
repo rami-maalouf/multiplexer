@@ -9,6 +9,8 @@
 | Current phase | Phase 0: prove the server |
 | Next task | T0.1 Inventory the server |
 | Blocked on Rami | Q1 (domain), Q2 (app name and bundle id) |
+| Project | `/Users/rami/Documents/code/switchboard` (own git repo, own T3 project) |
+| Exact | `/Users/rami/Documents/code/exact/exact2` at `65577096ed` (2026-10-27) |
 | Last updated | 2026-10-27 |
 
 Update this table at the end of every work session.
@@ -161,6 +163,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 - There is no notification extension target. The WidgetKit `.appex` build is a pattern for one.
 - A general web view is out for v1.
 - `docs/recipes/chat-thread.md` is the transcript and composer pattern.
+- An app made by `exact new` runs `bun exact.mjs feedback status` at the start and keeps a diary in `.exact/diary/` (`docs/diary.md`). Nothing is sent without Rami's yes.
 
 ## Risks
 
@@ -192,3 +195,5 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Date | Entry |
 |---|---|
 | 2026-10-27 | Plan created. D1 to D7 recorded. Rami is the only user for now. |
+| 2026-10-27 | Project moved out of the `exact` folder to `/Users/rami/Documents/code/switchboard` and registered as its own T3 project. The Exact framework is only a dependency, used by path. |
+| 2026-10-27 | Pulled the latest Exact. Its `main` history was rewritten on the remote, so local `main` now matches `origin/main` (`65577096ed`). The old local `main` is kept in exact2 as `backup/main-before-2026-10-27-rewrite`. The facts above still hold. |

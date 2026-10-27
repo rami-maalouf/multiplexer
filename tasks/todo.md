@@ -128,6 +128,7 @@ Run it after 48 hours of use.
 **Acceptance criteria:**
 - [ ] `bun <exact2>/scripts/exact.mjs new apps/<name> --name <Name> --bundle-id <id>` is done.
 - [ ] `bun exact.mjs ios --prebuild` finishes. The empty app opens in the iOS Simulator.
+- [ ] `bun exact.mjs feedback status` has run, and the diary follows its answer.
 
 **Verification:**
 - [ ] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app.
