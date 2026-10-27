@@ -67,7 +67,7 @@ and no bridges yet.
 security list and on the server.
 
 **Acceptance criteria:**
-- [ ] `dig +short matrix.<domain>` returns the server's public IP. (Rami: Cloudflare `A matrix -> 192.18.154.172`, proxy off.)
+- [x] `dig +short matrix.<domain>` returns the server's public IP. (2026-10-27: Rami added Cloudflare `A matrix -> 192.18.154.172`, DNS only. 1.1.1.1, 8.8.8.8 and Cloudflare's name server return it.)
 - [ ] From the Mac, TCP ports 80, 443 and 8448 reach the server. (2026-10-27: 80 and 443 yes, 8448 no. Rami: Oracle security list ingress for TCP 8448 and UDP 443, 8448.)
 - [ ] The base domain can serve `/.well-known/matrix/server` (the choice from T0.2). (Ready on the website's branch `matrix-well-known`; Rami reviews and pushes.)
 
