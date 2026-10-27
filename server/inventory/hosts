@@ -1,0 +1,4 @@
+# the matrix server is the oracle machine. ansible reaches it through `Host oracle`
+# in ~/.ssh/config (address, user and key), like `ssh oracle`.
+[matrix_servers]
+matrix.ramimaalouf.com ansible_host=oracle ansible_ssh_user=ubuntu ansible_become=true ansible_become_user=root ansible_python_interpreter=/usr/bin/python3

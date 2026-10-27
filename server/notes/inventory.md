@@ -40,6 +40,14 @@ Read on 2026-10-27 over `ssh oracle`, with read-only commands. Nothing was chang
 - `iptables -S INPUT` shows only the ACCEPT policy, but the nftables ruleset has rules,
   and `/etc/iptables/rules.v4` has 4 REJECT lines (Oracle's Ubuntu image blocks every
   port except 22). T0.4 must open 80, 443 and 8448 here and in Oracle's security list.
+- **Correction (2026-10-27, T0.3, read only):** nothing loads `rules.v4`.
+  `iptables-persistent` was removed on 2025-08-11 (`dpkg -l`: `rc`), so
+  `/usr/share/netfilter-persistent/plugins.d/` is empty and the boot service loads no
+  rules. The live `INPUT` chain is empty with policy ACCEPT; the nftables rules are only
+  Docker's `FORWARD` and `nat` chains. So the host blocks no port, and T0.4 needs no host
+  change. From the Mac, TCP 80 and 443 answer "connection refused" (they pass Oracle's
+  security list); TCP 8448 times out (the security list blocks it). `rules.v4` still holds
+  old n8n rules (port 5678); it is left as is.
 
 ## For Rami to decide
 

@@ -9,3 +9,7 @@
 # swift package build output
 /matrix-core/.build/
 /matrix-core/.swiftpm/
+
+# the matrix playbook checkout and the server secrets (both written by server/setup.sh)
+/server/vendor/
+/server/inventory/host_vars/*/vars.yml

@@ -1,0 +1,5 @@
+# the shape of server/inventory/host_vars/matrix.ramimaalouf.com/vars.yml, which is
+# gitignored. do not copy this by hand: server/setup.sh writes the real file from the
+# keychain (service multiplexer-server, one item per name below).
+matrix_homeserver_generic_secret_key: "<64 hex characters>"
+postgres_connection_password: "<64 hex characters>"

@@ -1,0 +1,30 @@
+# the settings of the matrix server, for the playbook at the commit in server/setup.sh.
+# no secrets here: they are in vars.yml next to this file (gitignored, written by
+# server/setup.sh from the keychain). the playbook's examples/vars.yml is the model.
+---
+# breaking changes of the playbook reviewed up to this version (see its CHANGELOG.md).
+matrix_playbook_migration_validated_version: v2026.05.18.0
+
+# user ids are @name:ramimaalouf.com. the server runs at matrix.ramimaalouf.com, and
+# ramimaalouf.com delegates to it with /.well-known/matrix/{server,client}, served by
+# the website (repo ~/Documents/code/web/portfolio, folder public/.well-known/matrix).
+# this can never change after the first install.
+matrix_domain: ramimaalouf.com
+
+matrix_homeserver_implementation: synapse
+
+# traefik answers on 80, 443 and 8448 and gets let's encrypt certificates.
+# let's encrypt needs no e-mail address, so traefik_config_certificatesResolvers_acme_email stays empty.
+matrix_playbook_reverse_proxy_type: playbook-managed-traefik
+
+# as the playbook's example recommends. the server has no public ipv6 address yet,
+# so there is no AAAA record.
+devture_systemd_docker_base_ipv6_enabled: true
+
+# no web client: element x and our app are the clients.
+matrix_client_element_enabled: false
+
+# ramimaalouf.com answers 301 to www.ramimaalouf.com (vercel). the playbook's check of
+# /.well-known/matrix/client does not follow redirects by default, but matrix-rust-sdk
+# (element x, our app) and synapse do, so the check follows them too.
+matrix_static_files_self_check_well_known_matrix_client_follow_redirects: safe
