@@ -60,8 +60,10 @@ This is far below Oracle's 20% reclaim line (see the M0 checkpoint): one user, n
 - Element Web (app.element.io, Firefox): sign-in with `www.ramimaalouf.com` (not
   `ramimaalouf.com`: the 301 has no CORS header). Exchanged encrypted messages with
   `@rami-m:matrix.org` over federation, both ways.
-- Element X (iPhone): sign-in with `ramimaalouf.com`. Verifying the new session hung on the
-  iPhone's "Start verification" spinner, twice. Started from Element Web instead (Settings >
-  Sessions > Element X iOS > Verify session), with no Start on the iPhone, it worked. The
-  server delivered every verification message both times (nothing waited in `device_inbox`),
-  so the hang was in the client, not the server.
+- Element X (iPhone): sign-in worked (session `Element X iOS`). Verifying it from Element Web
+  hung on the iPhone's "Start verification" spinner; Firefox showed no problem. At the two
+  times checked, nothing waited in `device_inbox` for either session, so the server had
+  delivered the verification messages. Then it worked (Rami, 22:30 UTC); the server holds a
+  cross-signing signature for the Element X session. Not known which step fixed it. If it
+  hangs again: start the verification from Element Web (Settings > Sessions > the session >
+  Verify session) and do not tap Start on the iPhone.
