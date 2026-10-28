@@ -51,6 +51,14 @@ matrix_appservice_double_puppet_enabled: true
 # for whatsapp. the bridge's api: https://matrix.ramimaalouf.com/bridges/meta-instagram.
 matrix_bridge_mautrix_meta_instagram_enabled: true
 
+# our own copy of the instagram bridge, until the fix is merged upstream: mautrix/meta
+# main (0371efa, 2026-10-28) plus one fix for the android login's password key request
+# (docs/connectors/patches/mautrix-meta-ig-qe-sync-get.patch), built on the server.
+# to go back to the published image, delete these three lines.
+matrix_bridge_mautrix_meta_instagram_container_image_self_build: true
+matrix_bridge_mautrix_meta_instagram_container_image_self_build_repo: "https://github.com/rami-maalouf/meta.git"
+matrix_bridge_mautrix_meta_instagram_version: "bce18b56e20616a9347450e24062936ba67ade4b"
+
 # a small daily backup of the databases (synapse and the bridges), on the server itself, in
 # /matrix/postgres-backup. it keeps 7 daily dumps and 2 weekly ones, no monthly: the weekly
 # file is a hard link to a daily one, so it takes space only after that daily one is gone.

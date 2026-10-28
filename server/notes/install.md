@@ -146,3 +146,43 @@ dump holds it. After a login, that database holds an Instagram session, so the b
 secret, like the WhatsApp bridge's (which holds the WhatsApp link). `/matrix/postgres-backup`
 and its `data` folder are `drwx------ matrix:matrix`: only the `matrix` user and root can
 read the dumps.
+
+## 2026-10-28: our own copy of the Instagram bridge (T4.1)
+
+Rami's decision ("let's also own our own copy"), relayed by the connectors conversation: the
+published bridge's `login android` fails, because Instagram answers its first request
+(`POST i.instagram.com/api/v1/qe/sync/`) with HTTP 500. The fix is one commit on Rami's
+public fork (proposal: `docs/connectors/instagram.md` on branch `connectors/instagram`).
+
+**Checked before the build (read only):** `rami-maalouf/meta@bce18b56` has upstream
+`mautrix/meta@0371efa` (2026-10-28) as its only parent and changes one file,
+`pkg/instameow/login_mobile.go` (+14 −31). Its hunks equal
+`docs/connectors/patches/mautrix-meta-ig-qe-sync-get.patch`. It asks Instagram for the
+password key with a GET instead of a POST, to the same address, and adds no new destination.
+The build uses upstream's `Dockerfile.ig` (`golang:1-alpine3.24`, then `alpine:3.24`).
+
+**Waited for the dead login:** the bridge held one login of `@rami` from the morning.
+The build waited until Rami removed it (`logout`); at 23:14 UTC it held 0 logins, so the
+restart did not try the dead session against Instagram.
+
+`config.yml` sets `matrix_bridge_mautrix_meta_instagram_container_image_self_build: true`,
+the fork as `..._self_build_repo`, and `..._version: bce18b56e20616a9347450e24062936ba67ade4b`.
+To go back to the published image, delete those three lines and install again.
+
+- Install `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`:
+  `ok=250 changed=6 failed=0`, 300 s in total. The role cloned the fork into
+  `/matrix/mautrix-meta-instagram/container-src` (6.6 MB, at `bce18b56`) and built the image
+  on the server in about 2 minutes (checkout done 23:16:09, image made 23:18:15 UTC). Only the
+  Instagram bridge restarted; Synapse and the WhatsApp bridge did not.
+- Self-check: `ok=36 failed=0`, all 6 checks working.
+
+| Container | Image | Arch |
+|---|---|---|
+| `matrix-mautrix-meta-instagram` | `localhost/mautrix/meta:ig-bce18b56e20616a9347450e24062936ba67ade4b-arm64` (177 MB) | arm64, built on the server |
+
+**After:** the bridge runs, logs no `ERR` or `FTL` line, and holds 0 logins. WhatsApp runs
+with its 1 login and no errors. Memory 2.7 GiB of 23 GiB (2.6 before); the bridge uses 9 MiB.
+Load 0.74 just after the build. Disk 34 of 96 GB (33 before): the new image, and Docker's
+build cache, now 2.6 GB (2.4 GB of it can be freed, for example with the playbook's system
+cleanup; that is a deletion, so it waits for Rami). The old published image
+`dock.mau.dev/mautrix/meta:ig-v0.2610.0` stays on disk, unused.
