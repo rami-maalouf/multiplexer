@@ -333,13 +333,15 @@ and a way to try again.
 marks it read on the server, so Element and my other devices agree.
 
 **Acceptance criteria:**
-- [ ] A message from another device shows a count on its room, and the room title is bold.
-- [ ] Opening the chat clears the count here and in Element.
+- [ ] A message from another person (`@test2` to `@test1`) shows a count on its room, and the room title is bold.
+- [ ] Opening the chat clears the count here, and the read receipt reaches the server (another client of `@test1` shows the room read).
+- [ ] Never sent from a test on `@rami`: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp.
 
 **Verification:**
-- [ ] A drive with a send from another device, before and after opening the chat.
+- [ ] A MatrixCore test with `@test1` and `@test2` on our server.
+- [ ] A drive with a send from another person, before and after opening the chat.
 
-**Dependencies:** T2.2
+**Dependencies:** T2.2, the test users (done in T0.5)
 **Scope:** S
 
 ### T2.5 Show images
@@ -389,7 +391,12 @@ the build size and the start time on a real device.
 - [ ] `bun exact.mjs ios --device --run` installs and opens the app on my iPhone.
 - [ ] Sign in, relaunch, chats and sending work as on the Simulator.
 
-**Dependencies:** Q4 (the Apple team). It can move earlier as soon as Q4 is answered.
+**Facts (2026-10-27):** Q4 answered: team `3V2UU7RRK9` ("Rami Maalouf"; the Mac's one
+signing certificate, "Apple Development: Rami Maalouf", belongs to it). The phone: "Rami
+Maalouf's iPhone", iPhone 16 Pro, UDID `00008140-0002155C01F3001C`, paired. The App ID
+`com.ramimaalouf.multiplexer` may need registering, and the phone needs Developer Mode.
+
+**Dependencies:** Q4 (answered).
 **Also check here:** T2.3's offline case (airplane mode: "Not Delivered", then Try Again sends it).
 **Scope:** S
 
@@ -433,6 +440,52 @@ initials.
 **Dependencies:** T2.2
 **Scope:** S
 
+### T2.10 Your real account, read only
+
+**Description:** From the server conversation's review (2026-10-27): the app was built
+against 2 to 5 rooms; Rami's account `@rami:ramimaalouf.com` has 269 (265 WhatsApp chats,
+the bridge bot, a "WhatsApp" space, an encrypted DM). Sign in on the Simulator, read only
+(Rami's OK, 2026-10-27), and fix what the real size shows. Spaces are not chats: hide them.
+
+**Acceptance criteria:**
+- [ ] The list is usable (rows with names) within 10 s of signing in; the time is recorded.
+- [ ] Spaces do not show as chats.
+- [ ] One WhatsApp chat opens and shows its last messages with senders, text and photos.
+- [ ] Nothing is sent, reacted to, deleted or marked as read; the drive signs out at the end.
+- [ ] Memory and the picture downloads at first load are measured and recorded.
+
+**Dependencies:** T0.6 (done)
+**Scope:** S (more if the size shows problems)
+
+### T2.11 WhatsApp message kinds
+
+**Description:** Today a chat shows text, photos and "Waiting for this message". Voice
+notes, videos and files show only their body text; stickers, polls and deleted messages
+are hidden; reactions, reply quotes and "edited" are not shown. Look at what the bridge
+sends (read only, on `@rami`), then build them in this order: voice notes (play), replies
+(the quote above the bubble), reactions (under the bubble), videos (a poster, then play),
+files (name and size, open), stickers (as a picture), "Edited" and "Message deleted".
+
+**Acceptance criteria:**
+- [ ] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size.
+- [ ] A voice note plays and shows its length; a video plays.
+- [ ] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API).
+
+**Dependencies:** T2.10 (to see real examples)
+**Scope:** L (one commit per kind)
+
+### T2.12 Send photos
+
+**Description:** Pick a photo (the system's picker) and send it, with an optional caption.
+It shows at once, dimmed while it uploads.
+
+**Acceptance criteria:**
+- [ ] A photo sent from the app reaches another client at its size, with its caption.
+- [ ] A failed upload shows "Not Delivered", with Try Again and Delete.
+
+**Dependencies:** T2.3, T2.5
+**Scope:** M
+
 ### Checkpoint M2: daily reading and sending
 
 - [ ] On my iPhone, against our server: live updates, sending, unread counts.
@@ -441,10 +494,20 @@ initials.
 
 ## Phase 3: push notifications (M3), rough
 
-- Sygnal on the server with an APNs key (Q4).
-- The APNs token in the app. Exact has `subscribePush()` designed but not built. Choose: an app module, or a change to Exact.
-- A notification extension target that uses MatrixCore's notification client to decrypt.
-- Test memory and the 30-second limit on a real iPhone.
+The biggest gap for daily use (the server conversation's review, 2026-10-27): without
+push, Rami does not know a message came unless the app is open. Detail it before it
+starts; the parts:
+
+- The app (this side): the APNs device token. Exact has `subscribePush()` designed but not
+  built (LLP 1133.004 §9): a native module, or a change to Exact.
+- The app: a pusher on the homeserver (`set_pusher`) that points at Sygnal.
+- The app: a notification service extension that uses MatrixCore's notification client to
+  fetch the event and show the sender and the text. Exact has no extension target; the
+  WidgetKit `.appex` build is a pattern.
+- The server (the server conversation): Sygnal with the APNs key from team `3V2UU7RRK9`.
+  Tell it when the app side and the key are ready.
+- Test memory and the 30-second limit on the real iPhone. Muted WhatsApp chats: the
+  bridge sets push rules for them.
 
 ## Phase 4: more networks (M4), rough
 

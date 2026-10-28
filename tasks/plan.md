@@ -194,7 +194,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Q1 | Which domain? User IDs become `@rami:<base domain>`. Does the base domain already host a website? (That decides how we serve `/.well-known/matrix/server`.) Answered 2026-10-27 (Rami): `ramimaalouf.com` (Vercel site; well-known files on the website's branch `matrix-well-known`), Synapse at `matrix.ramimaalouf.com`. | T0.5 |
 | Q2 | ~~App name and bundle id~~ Answered 2026-10-27: Multiplexer, `com.ramimaalouf.multiplexer`. | T1.1 |
 | Q3 | Is WhatsApp the right first network? | T0.6 |
-| Q4 | Which Apple Developer team signs device builds and owns the APNs key? | Phase 2, Phase 3 |
+| Q4 | ~~Which Apple Developer team signs device builds and owns the APNs key?~~ Answered 2026-10-27: `3V2UU7RRK9`. | Phase 2, Phase 3 |
 | Q5 | Is the Oracle account Always Free or Pay As You Go? Is the 4 CPU / 23 GiB instance free on it? | Cost |
 
 ## Decision log
@@ -234,3 +234,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T0.5 done: Element X on Rami's iPhone signed in to `@rami:ramimaalouf.com`, was verified from Element Web, and sent an encrypted message. One hour after the install the server used 1.8 GiB of 23 GiB, load 0.08. |
 | 2026-10-27 | T0.6, first part: the WhatsApp bridge (mautrix-whatsapp `v0.2610.0`, arm64 image) and Appservice Double Puppet run; Rami linked WhatsApp, and his chats and their history arrive in Element X. Bridged rooms are not end-to-end encrypted (the playbook's default). During the history sync the server's load rose to 2.35 and memory to 2.4 GiB. |
 | 2026-10-27 | T0.6 done: WhatsApp messages flow both ways through our server, with double puppeting (Rami, in Element X). 265 of 267 WhatsApp chats became rooms with their history. `@rami:ramimaalouf.com` now holds Rami's real WhatsApp chats: a message sent there reaches a real person. |
+| 2026-10-27 | The server conversation's review ("is the app ready for prime time?"): not yet. Turned into T2.10 (the real account, read only), T2.11 (WhatsApp message kinds), T2.12 (send photos) and Phase 3's parts. Rami: a read-only drive on `@rami:ramimaalouf.com` is OK; Q4 is team `3V2UU7RRK9`. Safety rule: tests send only as `@test1` or `@test2`; nothing is ever sent, reacted to, deleted or marked read on `@rami` from a test. |
