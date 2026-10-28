@@ -43,3 +43,16 @@ matrix_bridge_mautrix_whatsapp_enabled: true
 # double puppeting: what rami sends from whatsapp on his phone shows in matrix as sent by
 # @rami:ramimaalouf.com, not by a stand-in user of the bridge.
 matrix_appservice_double_puppet_enabled: true
+
+# a small daily backup of the databases (synapse and the bridges), on the server itself, in
+# /matrix/postgres-backup. it keeps 7 daily dumps and 2 weekly ones, no monthly: the weekly
+# file is a hard link to a daily one, so it takes space only after that daily one is gone.
+# it protects against a broken database or a mistake, not against losing the server, and it
+# does not hold media (photos). a dump also runs when the container starts (after an install
+# or a reboot); it replaces that day's file, so it does not add copies.
+postgres_backup_enabled: true
+postgres_backup_keep_days: 7
+postgres_backup_keep_weeks: 2
+postgres_backup_keep_months: 0
+postgres_backup_environment_variables_additional_variables: |
+  BACKUP_ON_START=TRUE

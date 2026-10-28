@@ -56,6 +56,20 @@ All in the Mac's login Keychain. Never in git, chat or logs.
 To paste a password on the iPhone (Universal Clipboard):
 `security find-generic-password -s multiplexer-matrix -a @rami:ramimaalouf.com -w | pbcopy`.
 
+## Backups
+
+- **What:** a gzip dump of each database (Synapse, the WhatsApp bridge) every day at 00:00 UTC,
+  and at each start of the `matrix-postgres-backup` container. The playbook's `postgres-backup`
+  role, set in `config.yml`.
+- **Where:** on the server, in `/matrix/postgres-backup/data/{last,daily,weekly}/`. It keeps 7
+  daily dumps and 2 weekly ones, no monthly. The files of one dump are hard links, so they use
+  its space once. First dump (2026-10-28): 42 MB in total.
+- **Limits:** it does not hold media (photos, 718 MB on 2026-10-28), and it does not protect
+  against losing the server: an off-server copy is a later step, for Rami's yes.
+- **Restore:** the playbook's `docs/importing-postgres.md`. After restoring a dump older than
+  the server's state, truncate Synapse's `e2e_one_time_keys_json` table before Synapse starts
+  (the playbook's `docs/maintenance-postgres.md`).
+
 ## Network
 
 - **Names.** User IDs are `@name:ramimaalouf.com`. Synapse runs at `matrix.ramimaalouf.com`.

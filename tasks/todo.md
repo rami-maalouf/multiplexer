@@ -129,13 +129,13 @@ WhatsApp account. Messages must flow in both directions.
 
 ### Checkpoint M0: server proof
 
-Run it after 48 hours of use.
+Run it after 48 hours of use. (2026-10-28, Rami: closed early, without the 48-hour wait. He uses WhatsApp through the server daily, so he sees a disconnect himself; the bridge also warns in its bot chat after 12 days without the phone.)
 
-- [ ] Messages flow in both directions. No bridge disconnects in 48 hours.
-- [ ] Memory and CPU use noted. Compare them with Oracle's 20% reclaim rule.
-- [ ] PostgreSQL backup method chosen.
-- [ ] Rami reviews. Decision: continue to Phase 1, or change the server plan.
-- [ ] Update **Status** and the **Decision log** in `plan.md`.
+- [x] Messages flow in both directions. No bridge disconnects in 48 hours. (Both directions and double puppeting work, T0.6. No 48-hour watch, see above.)
+- [x] Memory and CPU use noted. Compare them with Oracle's 20% reclaim rule. (Idle: 1.8 GiB of 23 GiB, load 0.06. History sync: 2.4 GiB, load 2.35. Below 20%, but the account is Pay As You Go, so idle reclaim should not apply. Open: the cost of 4 OCPUs and 24 GB, Q5; 2 OCPUs and 12 GB would be enough.)
+- [x] PostgreSQL backup method chosen. (The playbook's `postgres-backup`: a daily dump of each database on the server, 7 daily and 2 weekly kept, no monthly; first dump 42 MB, checked intact. An off-server copy is a later step, for Rami's yes. `server/README.md`, Backups.)
+- [x] Rami reviews. Decision: continue to Phase 1, or change the server plan. (Rami: check M0 off. The server plan stays.)
+- [x] Update **Status** and the **Decision log** in `plan.md`.
 
 ## Phase 1: first own screen (M1)
 

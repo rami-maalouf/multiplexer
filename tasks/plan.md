@@ -6,8 +6,8 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; T0.2 to T0.6 done; the M0 checkpoint after 48 hours of use). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): the M0 checkpoint after 48 hours of use (from 2026-10-27, 23:00 UTC). |
+| Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; done: M0 passed on 2026-10-28). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 is done (branch `server/phase-0`). Next server work comes from the app (Sygnal for Phase 3) or a new network (Instagram ideas: branch `connectors/instagram`). |
 | Blocked on Rami | Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
@@ -234,3 +234,5 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T0.5 done: Element X on Rami's iPhone signed in to `@rami:ramimaalouf.com`, was verified from Element Web, and sent an encrypted message. One hour after the install the server used 1.8 GiB of 23 GiB, load 0.08. |
 | 2026-10-27 | T0.6, first part: the WhatsApp bridge (mautrix-whatsapp `v0.2610.0`, arm64 image) and Appservice Double Puppet run; Rami linked WhatsApp, and his chats and their history arrive in Element X. Bridged rooms are not end-to-end encrypted (the playbook's default). During the history sync the server's load rose to 2.35 and memory to 2.4 GiB. |
 | 2026-10-27 | T0.6 done: WhatsApp messages flow both ways through our server, with double puppeting (Rami, in Element X). 265 of 267 WhatsApp chats became rooms with their history. `@rami:ramimaalouf.com` now holds Rami's real WhatsApp chats: a message sent there reaches a real person. |
+| 2026-10-28 | M0 passed, without the 48-hour wait (Rami: he uses it daily and sees a disconnect himself). Added a small daily database backup on the server (the playbook's `postgres-backup`: 7 daily and 2 weekly dumps, no monthly, a dump at each container start; first dump 42 MB, intact). It does not cover media or the loss of the server; an off-server copy waits for Rami. |
+| 2026-10-28 | Rami asked for Instagram ideas in a separate chat (branch `connectors/instagram`, docs only). It tests the account and cloud-IP risks before any build; Phase 4 stays after M2 and M3. |
