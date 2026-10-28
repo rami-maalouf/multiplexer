@@ -133,8 +133,11 @@ chat read in WhatsApp (double puppeting).
   messages: `MATRIX_TEST_FILL=24 ./scripts/test-matrix-core.sh -only-testing:MatrixCoreTests/MatrixCoreTests/testFillTheTestRoom`.
 - A drive's clock starts at 2026-01-01, so today's messages show as dates. Add
   `--epoch now --time-zone America/New_York` to `agent ios` to see real times.
-- `./scripts/send-test-message.sh "<text>"` sends a message to the test room from a
-  short-lived second device; `--image <photo.jpg> ["<caption>"]` sends a photo. To see it arrive in a drive, start it in the background with
+- `./scripts/send-test-message.sh "<text>"` sends a message from a short-lived device of a
+  test user (default `SENDER=@test2:ramimaalouf.com`, `ROOM="Multiplexer two-person test"`);
+  `--image <photo.jpg> ["<caption>"]` sends a photo. It refuses `@rami`.
+- In a drive, the app sends read receipts only for `@test` users (`Matrix.swift`,
+  `sendsReadReceipts`). To see it arrive in a drive, start it in the background with
   a delay, then wait with `"clock until state thread.messages.20.body == \"<text>\" within 45000"`
   (no space after the index here, unlike `expect state`).
 - A drive with `screenshot … compare` starts with an empty store, so it starts signed out.

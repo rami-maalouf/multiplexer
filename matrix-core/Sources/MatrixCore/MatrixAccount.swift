@@ -108,7 +108,8 @@ public final class MatrixAccount: @unchecked Sendable {
         for room in joined {
             var summary = RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect(),
                                       lastMessage: "", lastSenderName: "", lastIsOwn: false, lastTimestamp: 0,
-                                      avatarName: room.avatarUrl().map(avatarFileName) ?? "")
+                                      avatarName: room.avatarUrl().map(avatarFileName) ?? "",
+                                      unreadCount: Int((try? await room.roomInfo())?.numUnreadMessages ?? 0))
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
@@ -244,6 +245,12 @@ public final class MatrixAccount: @unchecked Sendable {
         }
         try data.write(to: file, options: .atomic)
         return file
+    }
+
+    /// Sends a read receipt for the room's newest message. Others see it as read; a bridge
+    /// with double puppeting passes it on (on WhatsApp, the chat turns read too).
+    public func markRead(roomId: String, timeout: TimeInterval = 30) async throws {
+        try await room(roomId, timeout: timeout).markAsRead(receiptType: .read)
     }
 
     /// Removes a message that the server does not have (it failed, or still waits in the

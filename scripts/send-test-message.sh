@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# sends one message to the practice account's room "Multiplexer test" from a short-lived
-# device: it signs in with the password from the mac's keychain and signs out after.
-# use it to see a message arrive in the app while a drive has it open.
+# sends one message to a test room from a short-lived device of a test user: it signs in
+# with the password from the mac's keychain (service multiplexer-test-account) and signs out
+# after. use it to see a message arrive in the app while a drive has it open. it sends only
+# as a test user, never as @rami (AGENTS.md, the safety rule).
 #   send-test-message.sh "<text>"
 #   send-test-message.sh --image <photo.jpg> ["<caption>"]
+#   SENDER=@test2:ramimaalouf.com ROOM="Multiplexer two-person test" (the defaults)
 set -euo pipefail
 usage="usage: send-test-message.sh <text> | --image <file> [caption]"
 image=""; caption=""
@@ -12,9 +14,14 @@ if [ "${1:-}" = "--image" ]; then
 else
   text="${1:?$usage}"
 fi
-base="https://matrix-client.matrix.org/_matrix"
-pw="$(security find-generic-password -s multiplexer-test-account -a @rami-m-test:matrix.org -w)"
-login="$(jq -n --arg pw "$pw" '{type:"m.login.password",identifier:{type:"m.id.user",user:"rami-m-test"},password:$pw,initial_device_display_name:"test message sender"}')"
+sender="${SENDER:-@test2:ramimaalouf.com}"
+roomname="${ROOM:-Multiplexer two-person test}"
+case "$sender" in @rami:*) echo "refused: tests never send as $sender" >&2; exit 1;; esac
+server="${sender#*:}"
+localpart="${sender%%:*}"; localpart="${localpart#@}"
+base="$(curl -sfL "https://$server/.well-known/matrix/client" | jq -r '."m.homeserver".base_url' | sed 's|/*$||')/_matrix"
+pw="$(security find-generic-password -s multiplexer-test-account -a "$sender" -w)"
+login="$(jq -n --arg pw "$pw" --arg user "$localpart" '{type:"m.login.password",identifier:{type:"m.id.user",user:$user},password:$pw,initial_device_display_name:"test message sender"}')"
 tok="$(curl -sf -X POST "$base/client/v3/login" -H 'Content-Type: application/json' --data-binary @- <<<"$login" | jq -r .access_token)"
 auth="Authorization: Bearer $tok"
 trap 'curl -sf -X POST "$base/client/v3/logout" -H "$auth" -H "Content-Type: application/json" -d "{}" >/dev/null' EXIT
@@ -23,9 +30,9 @@ room=""
 for id in $(curl -sf "$base/client/v3/joined_rooms" -H "$auth" | jq -r '.joined_rooms[]'); do
   enc="$(jq -rn --arg r "$id" '$r|@uri')"
   name="$(curl -s "$base/client/v3/rooms/$enc/state/m.room.name" -H "$auth" | jq -r '.name // empty')"
-  if [ "$name" = "Multiplexer test" ]; then room="$enc"; break; fi
+  if [ "$name" = "$roomname" ]; then room="$enc"; break; fi
 done
-[ -n "$room" ] || { echo "no room named Multiplexer test" >&2; exit 1; }
+[ -n "$room" ] || { echo "$sender is in no room named $roomname" >&2; exit 1; }
 
 if [ -n "$image" ]; then
   file="$(basename "$image")"

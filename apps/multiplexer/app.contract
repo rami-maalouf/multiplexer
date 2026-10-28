@@ -1,6 +1,7 @@
 // Multiplexer: the view. app.ts answers what it asks for, through the native module
 // (modules/apple/Matrix.swift), which calls MatrixCore.
 use EmptyState from "exact:content"
+use Badge from "exact:content"
 
 shape Session
   userId: string
@@ -16,6 +17,7 @@ shape Room
   lastTime: number
   avatar: string
   initials: string
+  unread: number
 
 // owner is the account the rooms belong to, so a list never shows under another account.
 shape RoomList
@@ -223,15 +225,18 @@ component Multiplexer
                           column flex=1 min-width=0 gap=2 padding="10px 0"
                             // at large text sizes the time wraps under the name instead of covering it.
                             row flex-wrap="wrap" column-gap=6 align-items="baseline"
-                              text r.name font="-exact-headline" flex="1 1 10rem" min-width=0
+                              text r.name font="-exact-headline" font-weight=(r.unread > 0 ? 700 : 600) flex="1 1 10rem" min-width=0
                               row gap=6 align-items="baseline" flex-shrink=0 margin-left="auto"
                                 if r.lastTime > 0
                                   text formatDay(r.lastTime, shown, time.utcOffset, "list") font="-exact-subheadline"
-                                    color="-exact-secondary-label"
+                                    color=(r.unread > 0 ? "AccentColor" : "-exact-secondary-label")
                                 image "symbol:forward-chevron" font="-exact-footnote" color="-exact-tertiary-label"
-                            if r.lastMessage != ""
-                              text preview(r) font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
-                                testId=`room-preview-${r.id}`
+                            // an unread chat: a bold name and a count beside the preview.
+                            row gap=8 align-items="flex-start"
+                              text (r.lastMessage != "" ? preview(r) : "") font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
+                                flex=1 min-width=0 testId=`room-preview-${r.id}`
+                              if r.unread > 0
+                                Badge(label=(r.unread > 99 ? "99+" : r.unread.toString()), tint=some("AccentColor"))
               else
                 if failed(roomList) and not pending(roomList)
                   column flex=1 justify-content="center" align-items="center" gap=12 padding=24

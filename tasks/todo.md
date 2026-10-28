@@ -333,9 +333,9 @@ and a way to try again.
 marks it read on the server, so Element and my other devices agree.
 
 **Acceptance criteria:**
-- [ ] A message from another person (`@test2` to `@test1`) shows a count on its room, and the room title is bold.
-- [ ] Opening the chat clears the count here, and the read receipt reaches the server (another client of `@test1` shows the room read).
-- [ ] Never sent from a test on `@rami`: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp.
+- [x] A message from another person (`@test2` to `@test1`) shows a count on its room, and the room title is bold. (2026-10-27: a "1" badge, a bold name and an accent-coloured time; the count is the sdk's `numUnreadMessages`.)
+- [x] Opening the chat clears the count here, and the read receipt reaches the server (another client of `@test1` shows the room read). (The MatrixCore test signs in a second `@test1` device, which sees 0.)
+- [x] Never sent from a test on `@rami`: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp. (In a drive, the module sends receipts only for a user whose id starts with `@test`.)
 
 **Verification:**
 - [ ] A MatrixCore test with `@test1` and `@test2` on our server.

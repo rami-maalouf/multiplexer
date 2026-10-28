@@ -108,6 +108,8 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - `rooms()` returns the joined rooms in the room list service's order (the server's
   recency ranking, kept from the entries listener's diffs); a room it has not ranked yet
   comes after, in the client's order.
+- `RoomSummary.unreadCount` is the sdk's `numUnreadMessages`; `markRead(roomId:)` sends a
+  read receipt for the room's newest message.
 - Spaces are not chats: `rooms()` leaves them out (`isSpace()`), and the list service's
   filter is `joined` and `nonSpace`.
 - `RoomSummary.avatarName` names the room's picture; `avatarFile(roomId:directory:)`

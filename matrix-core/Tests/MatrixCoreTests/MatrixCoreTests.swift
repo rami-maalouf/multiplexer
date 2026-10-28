@@ -7,6 +7,7 @@ import XCTest
 final class MatrixCoreTests: XCTestCase {
     private let roomName = "Multiplexer test"
     private let encryptedRoomName = "Multiplexer encrypted test"
+    private let twoPersonRoomName = "Multiplexer two-person test"
 
     func testSignInSendAndReadBackOnANewDevice() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -346,6 +347,64 @@ final class MatrixCoreTests: XCTestCase {
         let listed = try await account.rooms()
         XCTAssertFalse(listed.contains { $0.id == spaceId }, "the space shows as a chat")
         XCTAssertTrue(listed.contains { $0.id == roomId })
+    }
+
+    func testUnreadMessagesCountUntilRead() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty,
+              let user2 = env["MATRIX_TEST_USER2"], let password2 = env["MATRIX_TEST_PASSWORD2"], !password2.isEmpty else {
+            throw XCTSkip("two test users are needed (MATRIX_TEST_USER2 and MATRIX_TEST_PASSWORD2)")
+        }
+        let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let reader = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+
+        // a room the two share, made on the first run.
+        let rooms = try await reader.rooms()
+        let roomId: String
+        if let id = rooms.first(where: { $0.name == twoPersonRoomName })?.id { roomId = id }
+        else { roomId = try await reader.createRoom(name: twoPersonRoomName) }
+        try await post("invite", ["user_id": user2], roomId: roomId, session: try reader.savedSession())
+        try await post("join", [:], roomId: roomId, session: try sender.savedSession())
+        _ = try await sender.rooms()
+        _ = try await reader.messages(roomId: roomId, limit: 20)
+        try await reader.markRead(roomId: roomId)
+
+        // another person's message counts as unread...
+        try await sender.sendAndWait(roomId: roomId, text: "Unread \(UUID().uuidString)")
+        let unread = try await unreadCount(reader, roomId, until: { $0 >= 1 })
+        XCTAssertGreaterThanOrEqual(unread, 1)
+        // ...until the reader marks the room read, on this device and on a new one.
+        try await reader.markRead(roomId: roomId)
+        let read = try await unreadCount(reader, roomId, until: { $0 == 0 })
+        XCTAssertEqual(read, 0)
+        let other = try await signIn(homeserver, user, password)
+        let elsewhere = try await unreadCount(other, roomId, until: { $0 == 0 })
+        XCTAssertEqual(elsewhere, 0, "the read receipt did not reach the server")
+    }
+
+    /// The room's unread count once it matches `until`, or the last one after 15 s.
+    private func unreadCount(_ account: MatrixAccount, _ roomId: String, until done: (Int) -> Bool) async throws -> Int {
+        let start = Date()
+        var count = try await account.rooms().first { $0.id == roomId }?.unreadCount ?? -1
+        while !done(count), Date().timeIntervalSince(start) < 15 {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            count = try await account.rooms().first { $0.id == roomId }?.unreadCount ?? -1
+        }
+        return count
+    }
+
+    /// POST /rooms/{roomId}/invite or /join/{roomId}; a person already in the room is no error.
+    private func post(_ action: String, _ body: [String: Any], roomId: String, session: SavedSession) async throws {
+        let base = URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3")
+        let url = action == "join" ? base.appendingPathComponent("join").appendingPathComponent(roomId)
+            : base.appendingPathComponent("rooms").appendingPathComponent(roomId).appendingPathComponent(action)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        _ = try await URLSession.shared.data(for: request)
     }
 
     func testOlderMessagesLoadUntilTheStart() async throws {
