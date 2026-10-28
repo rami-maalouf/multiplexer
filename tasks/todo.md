@@ -211,7 +211,7 @@ the native module.
 **Verification:**
 - [x] An `app.test.contract` test for the error state. (3 tests: Sign In waits for all fields; an unknown server; a wrong password. `verify ios` is clean.)
 - [x] A manual sign-in on the Simulator against the practice account on matrix.org (D8).
-- [ ] After T0.6: the same sign-in against our server.
+- [x] After T0.6: the same sign-in against our server. (2026-10-27, T2.10.)
 
 **Dependencies:** T1.3
 **Files:** `app.contract`, `app.ts`, `modules/apple/Matrix.swift`
@@ -240,7 +240,7 @@ the native module.
 
 ### Checkpoint M1: first own screen
 
-- [ ] I can read my WhatsApp chat in our app on the Simulator. (Waits for Phase 0, which waits for Q1.)
+- [x] I can read my WhatsApp chat in our app on the Simulator. (2026-10-27, T2.10: read only, with Rami's OK.)
 - [x] Framework decision: continue with Exact, or move to Expo with the same MatrixCore. Record why. (2026-10-27, Rami: Exact. See the decision log.)
 - [x] Rami reviews. (2026-10-27)
 - [x] Write Phase 2 in detail here, with what we learned.
@@ -333,13 +333,15 @@ and a way to try again.
 marks it read on the server, so Element and my other devices agree.
 
 **Acceptance criteria:**
-- [ ] A message from another device shows a count on its room, and the room title is bold.
-- [ ] Opening the chat clears the count here and in Element.
+- [x] A message from another person (`@test2` to `@test1`) shows a count on its room, and the room title is bold. (2026-10-27: a "1" badge, a bold name and an accent-coloured time; the count is the sdk's `numUnreadMessages`.)
+- [x] Opening the chat clears the count here, and the read receipt reaches the server (another client of `@test1` shows the room read). (The MatrixCore test signs in a second `@test1` device, which sees 0.)
+- [x] Never sent from a test on `@rami`: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp. (In a drive, the module sends receipts only for a user whose id starts with `@test`.)
 
 **Verification:**
-- [ ] A drive with a send from another device, before and after opening the chat.
+- [ ] A MatrixCore test with `@test1` and `@test2` on our server.
+- [ ] A drive with a send from another person, before and after opening the chat.
 
-**Dependencies:** T2.2
+**Dependencies:** T2.2, the test users (done in T0.5)
 **Scope:** S
 
 ### T2.5 Show images
@@ -386,10 +388,16 @@ with other Matrix users usually are.
 the build size and the start time on a real device.
 
 **Acceptance criteria:**
-- [ ] `bun exact.mjs ios --device --run` installs and opens the app on my iPhone.
-- [ ] Sign in, relaunch, chats and sending work as on the Simulator.
+- [x] `bun exact.mjs ios --device --run` installs and opens the app on my iPhone. (2026-10-27: `--device --phone 00008140-0002155C01F3001C`, signed with the team wildcard development profile `3V2UU7RRK9.*`; the first build 1.5 min. It needed the Rust target `aarch64-apple-ios` for toolchain 1.97.0, now installed. One install failed when the Wi-Fi connection to the phone dropped; the next worked.)
+- [x] Sign in, relaunch, chats and sending work as on the Simulator. (A drive on the phone as `@test1`: sign-in, the chat list with pictures, a relaunch that opens signed in, a message sent and read back from the server; signed out after.)
+- [ ] The offline case from T2.3: airplane mode, "Not Delivered", then Try Again sends it. (Needs Rami's hands.)
 
-**Dependencies:** Q4 (the Apple team). It can move earlier as soon as Q4 is answered.
+**Facts (2026-10-27):** Q4 answered: team `3V2UU7RRK9` ("Rami Maalouf"; the Mac's one
+signing certificate, "Apple Development: Rami Maalouf", belongs to it). The phone: "Rami
+Maalouf's iPhone", iPhone 16 Pro, UDID `00008140-0002155C01F3001C`, paired. The App ID
+`com.ramimaalouf.multiplexer` may need registering, and the phone needs Developer Mode.
+
+**Dependencies:** Q4 (answered).
 **Also check here:** T2.3's offline case (airplane mode: "Not Delivered", then Try Again sends it).
 **Scope:** S
 
@@ -433,6 +441,56 @@ initials.
 **Dependencies:** T2.2
 **Scope:** S
 
+### T2.10 Your real account, read only
+
+**Description:** From the server conversation's review (2026-10-27): the app was built
+against 2 to 5 rooms; Rami's account `@rami:ramimaalouf.com` has 269 (265 WhatsApp chats,
+the bridge bot, a "WhatsApp" space, an encrypted DM). Sign in on the Simulator, read only
+(Rami's OK, 2026-10-27), and fix what the real size shows. Spaces are not chats: hide them.
+
+**Acceptance criteria:**
+- [x] The list is usable (rows with names) within 10 s of signing in; the time is recorded. (2026-10-27: the first answer 0.7 s after sign-in with 93 chats, all 254 within seconds as the sync went on; after a relaunch, 254 chats in 0.24 s.)
+- [x] Spaces do not show as chats. (269 joined rooms, 15 of them spaces: 254 chats.)
+- [x] One WhatsApp chat opens and shows its last messages with senders, text and photos. (A group chat. Senders first showed as raw ids; now the chat loads its members on open, and the names come in.)
+- [x] Nothing is sent, reacted to, deleted or marked as read; the drive signs out at the end. (The app sends no read receipts yet.)
+- [x] Memory and the picture downloads at first load are measured and recorded. (Footprint 59 MB with 254 chats and their pictures; the 410 to 490 MB resident size on the Simulator counts shared and reclaimable pages.)
+
+**Found on the way:**
+- Every WhatsApp contact's name ends in " (WA)", in the list and above messages: the bridge's name template on the server. A decision for Rami.
+- Links in messages are plain text, not tappable (T2.11).
+
+**Dependencies:** T0.6 (done)
+**Scope:** S (more if the size shows problems)
+
+### T2.11 WhatsApp message kinds
+
+**Description:** Today a chat shows text, photos and "Waiting for this message". Voice
+notes, videos and files show only their body text; stickers, polls and deleted messages
+are hidden; reactions, reply quotes and "edited" are not shown. Look at what the bridge
+sends (read only, on `@rami`), then build them in this order: voice notes (play), replies
+(the quote above the bubble), reactions (under the bubble), videos (a poster, then play),
+files (name and size, open), stickers (as a picture), "Edited" and "Message deleted".
+
+**Acceptance criteria:**
+- [ ] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size.
+- [ ] A voice note plays and shows its length; a video plays.
+- [ ] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API).
+
+**Dependencies:** T2.10 (to see real examples)
+**Scope:** L (one commit per kind)
+
+### T2.12 Send photos
+
+**Description:** Pick a photo (the system's picker) and send it, with an optional caption.
+It shows at once, dimmed while it uploads.
+
+**Acceptance criteria:**
+- [ ] A photo sent from the app reaches another client at its size, with its caption.
+- [ ] A failed upload shows "Not Delivered", with Try Again and Delete.
+
+**Dependencies:** T2.3, T2.5
+**Scope:** M
+
 ### Checkpoint M2: daily reading and sending
 
 - [ ] On my iPhone, against our server: live updates, sending, unread counts.
@@ -441,10 +499,20 @@ initials.
 
 ## Phase 3: push notifications (M3), rough
 
-- Sygnal on the server with an APNs key (Q4).
-- The APNs token in the app. Exact has `subscribePush()` designed but not built. Choose: an app module, or a change to Exact.
-- A notification extension target that uses MatrixCore's notification client to decrypt.
-- Test memory and the 30-second limit on a real iPhone.
+The biggest gap for daily use (the server conversation's review, 2026-10-27): without
+push, Rami does not know a message came unless the app is open. Detail it before it
+starts; the parts:
+
+- The app (this side): the APNs device token. Exact has `subscribePush()` designed but not
+  built (LLP 1133.004 §9): a native module, or a change to Exact.
+- The app: a pusher on the homeserver (`set_pusher`) that points at Sygnal.
+- The app: a notification service extension that uses MatrixCore's notification client to
+  fetch the event and show the sender and the text. Exact has no extension target; the
+  WidgetKit `.appex` build is a pattern.
+- The server (the server conversation): Sygnal with the APNs key from team `3V2UU7RRK9`.
+  Tell it when the app side and the key are ready.
+- Test memory and the 30-second limit on the real iPhone. Muted WhatsApp chats: the
+  bridge sets push rules for them.
 
 ## Phase 4: more networks (M4), rough
 

@@ -35,10 +35,12 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    let account = try await signedIn()
-                    reply.send(["rooms": try await account.rooms().map { room in
+                    let started = Date(), account = try await signedIn(), rooms = try await account.rooms()
+                    print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+                    reply.send(["rooms": rooms.map { room in
                         ["id": room.id, "name": room.name, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
                          "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
+                         "unread": room.unreadCount,
                          "avatar": cached(room.avatarName, then: .rooms) {
                              _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
                     }])
@@ -46,6 +48,8 @@ final class Matrix: ExactModule {
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
                     let atStart = try await account.isAtStart(roomId: roomId)
+                    // the chat is open, so what it shows is read.
+                    if try sendsReadReceipts(account) { try? await account.markRead(roomId: roomId) }
                     reply.send(["atStart": atStart, "messages": messages.map {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
@@ -157,6 +161,14 @@ final class Matrix: ExactModule {
             account = nil
             throw error
         }
+    }
+
+    /// Read receipts go out, except in a drive on an account that is not a test user: a drive
+    /// on Rami's real account must never mark a chat read (AGENTS.md, the safety rule), and
+    /// with the WhatsApp bridge a receipt also marks the chat read in WhatsApp.
+    private func sendsReadReceipts(_ account: MatrixAccount) throws -> Bool {
+        if !context.agent { return true }
+        return try account.userId.hasPrefix("@test")
     }
 
     /// A photo message's thumbnail as an `app:/` path once it is here (see `cached`).

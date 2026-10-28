@@ -91,7 +91,8 @@ public final class MatrixAccount: @unchecked Sendable {
         lock.withLock { changeHandler }?(change)
     }
 
-    /// The rooms this account has joined, after the first sync: the most recent activity first.
+    /// The chats this account has joined (no spaces), after the first sync: the most recent
+    /// activity first.
     public func rooms(timeout: TimeInterval = 30) async throws -> [RoomSummary] {
         try await startSync(timeout: timeout)
         var rooms: [RoomSummary] = []
@@ -100,13 +101,15 @@ public final class MatrixAccount: @unchecked Sendable {
         let ordered = lock.withLock { roomOrder }?.ids() ?? []
         let rank = Dictionary(ordered.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
         // a room the service has not ranked yet keeps the client's order, after the ranked ones.
-        let joined = client.rooms().filter { $0.membership() == .joined }.enumerated()
+        // a space groups rooms; it is not a chat.
+        let joined = client.rooms().filter { $0.membership() == .joined && !$0.isSpace() }.enumerated()
             .sorted { (rank[$0.element.id()] ?? Int.max, $0.offset) < (rank[$1.element.id()] ?? Int.max, $1.offset) }
             .map(\.element)
         for room in joined {
             var summary = RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect(),
                                       lastMessage: "", lastSenderName: "", lastIsOwn: false, lastTimestamp: 0,
-                                      avatarName: room.avatarUrl().map(avatarFileName) ?? "")
+                                      avatarName: room.avatarUrl().map(avatarFileName) ?? "",
+                                      unreadCount: Int((try? await room.roomInfo())?.numUnreadMessages ?? 0))
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
@@ -152,6 +155,9 @@ public final class MatrixAccount: @unchecked Sendable {
         live.show(last: limit)
         // from here on, a change is news: a message came, or one was sent, edited or removed.
         items.onChange = { [weak self] in self?.notify(.room(roomId)) }
+        // a sender's name comes with the room's members; until they load, a message shows the
+        // sender's id. Their profiles arrive as timeline changes.
+        Task { await timeline.fetchMembers() }
         return live
     }
 
@@ -241,6 +247,12 @@ public final class MatrixAccount: @unchecked Sendable {
         return file
     }
 
+    /// Sends a read receipt for the room's newest message. Others see it as read; a bridge
+    /// with double puppeting passes it on (on WhatsApp, the chat turns read too).
+    public func markRead(roomId: String, timeout: TimeInterval = 30) async throws {
+        try await room(roomId, timeout: timeout).markAsRead(receiptType: .read)
+    }
+
     /// Removes a message that the server does not have (it failed, or still waits in the
     /// queue). A sent message is left alone.
     public func discard(roomId: String, messageId: String, timeout: TimeInterval = 30) async throws {
@@ -290,7 +302,7 @@ public final class MatrixAccount: @unchecked Sendable {
         try await poll(timeout: timeout, what: "the first sync") { state.current == .running }
         let order = RoomEntries { [weak self] in self?.notify(.rooms) }
         let entries = try await service.roomListService().allRooms().entriesWithDynamicAdapters(pageSize: 1000, listener: order)
-        _ = entries.controller().setFilter(kind: .joined)
+        _ = entries.controller().setFilter(kind: .all(filters: [.joined, .nonSpace]))
         lock.withLock {
             roomEntries = entries
             roomOrder = order
