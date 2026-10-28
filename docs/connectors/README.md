@@ -148,7 +148,11 @@ joined room), then one per new chat. The app gets a plain `network: String?` per
 
 The app uses the bridge's provisioning API (bridgev2, `/_matrix/provision/v3`, behind
 `https://matrix.ramimaalouf.com/bridges/<name>`), with the user's Matrix access token as
-`Authorization: Bearer`. MatrixCore owns these calls; the app sees plain steps.
+`Authorization: Bearer` **and** the user's ID as `?user_id=@name:ramimaalouf.com` on
+every call. Without `user_id`, a valid token gets HTTP 401 `M_UNKNOWN_TOKEN` (checked
+2026-10-28 as `@test1`; the bridge checks the token for that user ID). With it,
+`/v3/login/flows` lists `qr` and `phone` for WhatsApp, and `android`, `instagram` and
+`instagram-password` for Instagram. MatrixCore owns these calls; the app sees plain steps.
 
 | Call | Use |
 |---|---|

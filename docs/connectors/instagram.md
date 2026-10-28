@@ -241,6 +241,23 @@ home, or no Instagram for now.
 4. Then decide how many chats to bring in: `thread_backfill.batch_count` adds 5 chats per
    batch, 2 s apart (section 4).
 
+## Observed (the spike, from 2026-10-28)
+
+**Setup, 2026-10-28 (Rami's yes: "please proceed with the setup and let's give it a
+test").** M0 was closed and Rami skipped its 48-hour wait, so the spike started at once.
+- The server conversation installed the bridge (commit `d0789a3` on `server/phase-0`):
+  `ok=248 changed=13 failed=0`, self-check `ok=36 failed=0`. Image
+  `dock.mau.dev/mautrix/meta:ig-v0.2610.0`, arm64, pulled. Synapse and the WhatsApp
+  bridge restarted once; WhatsApp kept its login. The bridge uses 9 MiB at rest. The
+  daily backup includes its database with no new setting. Details:
+  `server/notes/install.md`.
+- `@test1` made a direct chat with `@instagrambot:ramimaalouf.com` through the API (no
+  encryption). The bot joined, and answered `list-logins` with "You're not logged in".
+- The bridge's API answers `@test1` with the flows `android`, `instagram` and
+  `instagram-password`, when the call has `?user_id=` (see `README.md`).
+
+**Next:** Rami logs in with the secondary account (section 2, steps 2, 3 and 5).
+
 ## 3. Message kinds
 
 What the pinned bridge sends to Matrix for each Instagram kind. Source: the code at
