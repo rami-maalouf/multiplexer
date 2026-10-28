@@ -310,8 +310,8 @@ session.
 whether we were hacked. No sign of it on the server:
 - SSH accepts only keys (`passwordauthentication no`), and the only key is the Mac's
   `oracle.key`. 28,762 failed attempts in 30 days, all refused (internet scanners).
-  Successful logins came from 6 addresses; the Mac's own made 562 of them; Rami
-  must confirm the other 5.
+  Successful logins came from 7 addresses; the Mac's own made 562 of them; Rami
+  must confirm the other 6.
 - Open ports: SSH, Traefik (80, 443, 8448, and 5350, the playbook's LiveKit TURN port),
   Syncthing, and local-only T3 Code. The 10 containers are all the playbook's.
 - Matrix: 3 real users, registration off. `@rami` has 4 sessions: Element Web, the
