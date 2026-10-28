@@ -306,6 +306,25 @@ bridge's docs ask for a private window, and cookies from his normal browser woul
 made the same jump to the server. Meta would then also have ended his normal browser's
 session.
 
+**Beeper, at the same time (Rami, 2026-10-28).** Rami also uses Beeper's Instagram
+connection on the same account. Meta's logout ended Beeper's session too. Rami logged in
+to Beeper again, and it works. So Meta reacted to something that our setup did, not to
+bridges in general. What our setup did that Beeper's does not (checked in the bridge's
+code at `v0.2610.0`, and in the pasted cURL's headers):
+- **A session moved between two identities.** The cookies came from Firefox 158 on macOS
+  (the cURL's `User-Agent`). After a cookie login, the bridge sends its web requests as
+  Chrome 141 on Linux (`pkg/messagix/useragent/useragent.go`: `ChromeVersion = "141"`,
+  `X11; Linux x86_64`), from an Oracle data-center address, about a minute later. To
+  Meta this looks like a stolen session cookie. In Beeper, the login happens inside
+  Beeper, so the session starts where it runs; Beeper says it shows up as an Android
+  phone or a Linux computer.
+- **The place.** Beeper's on-device connection runs on Rami's own device (not checked
+  which mode his Beeper uses); ours runs in a data center.
+- **Two unofficial clients at once** on one account (Beeper's and ours) may add to it.
+So a next try must avoid the cookie move: the bridge's own login (`android`, which got
+HTTP 500 from the server's address), from a home address (a proxy), with Beeper's
+Instagram connection off during the test.
+
 **Security check after the logout (read only, 2026-10-28, about 05:45 UTC).** Rami asked
 whether we were hacked. No sign of it on the server:
 - SSH accepts only keys (`passwordauthentication no`), and the only key is the Mac's
