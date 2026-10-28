@@ -6,9 +6,9 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; T0.5 done; T0.6: WhatsApp linked, the reply direction waits for Rami). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
-| Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): finish T0.6, then the M0 checkpoint after 48 hours of use. |
-| Blocked on Rami | T0.6: a reply from Element X that arrives in WhatsApp, and a message from the phone that shows as `@rami` (double puppeting). |
+| Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; T0.2 to T0.6 done; the M0 checkpoint after 48 hours of use). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): the M0 checkpoint after 48 hours of use (from 2026-10-27, 23:00 UTC). |
+| Blocked on Rami | Q5 (Always Free or Pay As You Go: the server's use is below Oracle's 20% idle line). |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
 | Last updated | 2026-10-27 |
@@ -233,3 +233,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | First messages: `@rami:ramimaalouf.com` (Element Web, through `www.ramimaalouf.com`) and Rami's own `@rami-m:matrix.org` exchanged encrypted messages in a new room, both ways. Federation works. T0.5 now waits only for Element X on the iPhone. |
 | 2026-10-27 | T0.5 done: Element X on Rami's iPhone signed in to `@rami:ramimaalouf.com`, was verified from Element Web, and sent an encrypted message. One hour after the install the server used 1.8 GiB of 23 GiB, load 0.08. |
 | 2026-10-27 | T0.6, first part: the WhatsApp bridge (mautrix-whatsapp `v0.2610.0`, arm64 image) and Appservice Double Puppet run; Rami linked WhatsApp, and his chats and their history arrive in Element X. Bridged rooms are not end-to-end encrypted (the playbook's default). During the history sync the server's load rose to 2.35 and memory to 2.4 GiB. |
+| 2026-10-27 | T0.6 done: WhatsApp messages flow both ways through our server, with double puppeting (Rami, in Element X). 265 of 267 WhatsApp chats became rooms with their history. `@rami:ramimaalouf.com` now holds Rami's real WhatsApp chats: a message sent there reaches a real person. |
