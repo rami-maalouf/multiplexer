@@ -1,8 +1,25 @@
+From bce18b56e20616a9347450e24062936ba67ade4b Mon Sep 17 00:00:00 2001
+From: Rami Maalouf <me@ramimaalouf.com>
+Date: Wed, 28 Oct 2026 17:09:43 -0400
+Subject: [PATCH] ig/login: fetch the password key with a GET
+
+---
+ pkg/instameow/login_mobile.go | 45 +++++++++++------------------------
+ 1 file changed, 14 insertions(+), 31 deletions(-)
+
 diff --git a/pkg/instameow/login_mobile.go b/pkg/instameow/login_mobile.go
-index 90b1e0b..4b6dca0 100644
+index 90b1e0b..77845e1 100644
 --- a/pkg/instameow/login_mobile.go
 +++ b/pkg/instameow/login_mobile.go
-@@ -252,20 +252,25 @@ func (c *Client) prepareMobilePasswordLogin(ctx context.Context) (*mobileLoginSt
+@@ -29,7 +29,6 @@ import (
+ 	"errors"
+ 	"fmt"
+ 	"net/http"
+-	"net/url"
+ 	"strconv"
+ 	"strings"
+ 	"time"
+@@ -252,20 +251,25 @@ func (c *Client) prepareMobilePasswordLogin(ctx context.Context) (*mobileLoginSt
  		return state, nil
  	}
  
@@ -37,3 +54,34 @@ index 90b1e0b..4b6dca0 100644
  		return nil, requestErr
  	}
  	keyID, err := strconv.ParseUint(
+@@ -285,27 +289,6 @@ func (c *Client) prepareMobilePasswordLogin(ctx context.Context) (*mobileLoginSt
+ 	return state, nil
+ }
+ 
+-func (c *Client) makeMobileSignedRequest(
+-	ctx context.Context,
+-	state *mobileLoginState,
+-	endpoint string,
+-	payload any,
+-) (*http.Response, []byte, error) {
+-	payloadJSON, err := json.Marshal(payload)
+-	if err != nil {
+-		return nil, nil, fmt.Errorf("failed to marshal Instagram app request: %w", err)
+-	}
+-	body := []byte("signed_body=SIGNATURE." + url.QueryEscape(string(payloadJSON)))
+-	return c.http.MakeRequest(
+-		ctx,
+-		instagramMobileAPIBase+endpoint,
+-		http.MethodPost,
+-		c.mobileLoginHeaders(state),
+-		body,
+-		types.FORM,
+-	)
+-}
+-
+ func (c *Client) mobileLoginHeaders(state *mobileLoginState) http.Header {
+ 	_, timezoneOffset := time.Now().Zone()
+ 	headers := make(http.Header)
+-- 
+2.54.0 (Apple Git-157)
+

@@ -349,14 +349,27 @@ GET and take it from the headers whatever the status. Not known yet: whether the
 later steps (the login itself, 2FA) work; only a real login can show it. No issue in the
 bridge's tracker reports this yet.
 
-**The fix, written and checked (2026-10-28).** `patches/mautrix-meta-ig-qe-sync-get.patch`
-(against `main` `0371efa`) fetches the key with a GET and accepts any answer that carries
-the key headers. With it, the bridge's own `prepareMobilePasswordLogin` got a key ID and
-a public key from Instagram (one request, no account), and the unit tests of
-`pkg/instameow` and `pkg/igconnector` pass. Two ways to run it: send it to the bridge's
-authors as a pull request and pin the merged commit, or build a patched image ourselves
-(the playbook's `matrix_bridge_mautrix_meta_instagram_container_image_self_build`, from
-a fork). Rami decides; the first real login with it should use a second account.
+**The fix, and our own copy of the bridge (2026-10-28).** Rami chose both: a pull request
+to the bridge's authors, and our own copy now.
+- The fix is one commit, `bce18b5` ("ig/login: fetch the password key with a GET"), on
+  the branch `multiplexer` of Rami's public fork `https://github.com/rami-maalouf/meta`,
+  on top of `mautrix/meta` `main` `0371efa` (2026-10-28). It fetches the key with a GET,
+  accepts any answer that carries the key headers, and removes the POST helper that
+  nothing else used. The same commit as a file: `patches/mautrix-meta-ig-qe-sync-get.patch`.
+- Checked on the Mac with Go 1.27.2 and the tag `goolm` (no `libolm` on the Mac):
+  `goimports`, `go vet`, `staticcheck` and `go test ./...` pass, and the bridge's own
+  `prepareMobilePasswordLogin` got a key ID and a public key from Instagram (one
+  request, no account).
+- Not known yet: whether the later steps (the login itself, 2FA) work.
+- Our server builds this commit itself (the playbook's self-build; see section 4).
+
+**The bridge project's rules for the pull request**
+(<https://docs.mau.fi/bridges/general/contributing.html>): AI help with code is allowed,
+but "issues, pull request descriptions and comments should be written by yourself, not
+an AI"; the author must understand and test the change; and for changes of more than a
+few lines, the author first explains the plan in the project's Matrix room
+(`#meta:maunium.net`). So Rami writes the pull request and any message himself, after a
+real login with our copy works. The facts for it are in this section.
 
 **Security check after the logout (read only, 2026-10-28, about 05:45 UTC).** Rami asked
 whether we were hacked. No sign of it on the server:
@@ -433,6 +446,18 @@ matrix_bridge_mautrix_meta_instagram_configuration_extension_yaml: |
     disable_view_once: true
     thread_backfill:
       batch_count: 20
+```
+
+Our own copy of the bridge, until the fix is merged (the server conversation applies it):
+
+```yaml
+# our own copy of the instagram bridge, until the fix is merged upstream: mautrix/meta
+# main (0371efa, 2026-10-28) plus one fix for the android login's password key request
+# (docs/connectors/patches/mautrix-meta-ig-qe-sync-get.patch), built on the server.
+# to go back to the published image, delete these three lines.
+matrix_bridge_mautrix_meta_instagram_container_image_self_build: true
+matrix_bridge_mautrix_meta_instagram_container_image_self_build_repo: "https://github.com/rami-maalouf/meta.git"
+matrix_bridge_mautrix_meta_instagram_version: "bce18b56e20616a9347450e24062936ba67ade4b"
 ```
 
 Keep the defaults for the rest: double puppeting (already on), encryption off,
