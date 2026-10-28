@@ -105,3 +105,44 @@ and chat IDs: read only counts, or hide the numbers, when you look at it.
 container's start (01:23 UTC): Synapse 40.5 MB and the WhatsApp bridge 3.1 MB, gzip; `gzip -t`
 passes, and the Synapse dump has 174 tables and ends cleanly. The daily, weekly, monthly and
 last files are hard links to one dump: 42 MB on disk. Disk: 33 of 96 GB used.
+
+## 2026-10-28: the Instagram bridge, for the spike (T4.1)
+
+With Rami's yes ("please proceed with the setup and let's give it a test"), relayed by the
+connectors conversation (proposal: `docs/connectors/instagram.md` on branch
+`connectors/instagram`, sections 2 and 4). `config.yml` turns on
+`matrix_bridge_mautrix_meta_instagram_enabled`; all other settings stay at the playbook's
+defaults (encryption off, backfill, the " (IG)" name suffix, no proxy).
+
+- Install `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`:
+  `ok=248 changed=13 failed=0`. It restarted Synapse and the WhatsApp bridge; WhatsApp came
+  back with its 1 login, no errors and no logout in its log.
+- Self-check: `ok=36 failed=0`, all 6 checks working.
+
+| Container | Image | Arch |
+|---|---|---|
+| `matrix-mautrix-meta-instagram` | `dock.mau.dev/mautrix/meta:ig-v0.2610.0` | arm64, pulled |
+
+Nothing was built on the server (no `localhost/` images).
+
+**Checked from the Mac:**
+- Synapse loads the bridge's registration; the bot `@instagrambot:ramimaalouf.com` exists
+  ("Instagram bridge bot").
+- `https://matrix.ramimaalouf.com/.well-known/matrix/mautrix` lists
+  `https://matrix.ramimaalouf.com/bridges/meta-instagram` and `.../bridges/whatsapp`.
+- `.../bridges/meta-instagram/_matrix/provision/v3/login/flows` without a token: HTTP 401,
+  `M_MISSING_TOKEN`.
+- The bridge logged no `ERR` or `FTL` line after its start. Nobody has logged in to Instagram.
+
+**Memory:** before, 4.0 GiB of 23 GiB used (Synapse 1.8 GiB after a day of caching, Postgres
+670 MiB, the WhatsApp bridge 95 MiB). After, 2.3 GiB: the restart emptied Synapse's caches
+(138 MiB) and the WhatsApp bridge's (13 MiB). The Instagram bridge itself uses 9 MiB idle.
+Load 0.39.
+
+**Backup:** the daily backup takes its list from the playbook's managed databases, so it
+includes `matrix_mautrix_meta_instagram` with no new setting. The dump at the backup
+container's restart (488 bytes) came before the bridge filled its database; the next daily
+dump holds it. After a login, that database holds an Instagram session, so the backup is a
+secret, like the WhatsApp bridge's (which holds the WhatsApp link). `/matrix/postgres-backup`
+and its `data` folder are `drwx------ matrix:matrix`: only the `matrix` user and root can
+read the dumps.

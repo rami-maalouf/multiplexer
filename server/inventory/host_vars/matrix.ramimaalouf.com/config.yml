@@ -44,6 +44,13 @@ matrix_bridge_mautrix_whatsapp_enabled: true
 # @rami:ramimaalouf.com, not by a stand-in user of the bridge.
 matrix_appservice_double_puppet_enabled: true
 
+# the instagram bridge (mautrix-meta's instagram bridge). a user connects by sending
+# `login instagram` (cookies from a browser) or `login android` (user name and password)
+# to @instagrambot:ramimaalouf.com. the image is prebuilt for arm64. instagram dms have
+# no end-to-end encryption since 2026-05-08, and the bridged rooms stay unencrypted, as
+# for whatsapp. the bridge's api: https://matrix.ramimaalouf.com/bridges/meta-instagram.
+matrix_bridge_mautrix_meta_instagram_enabled: true
+
 # a small daily backup of the databases (synapse and the bridges), on the server itself, in
 # /matrix/postgres-backup. it keeps 7 daily dumps and 2 weekly ones, no monthly: the weekly
 # file is a hard link to a daily one, so it takes space only after that daily one is gone.

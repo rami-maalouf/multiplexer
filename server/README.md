@@ -58,12 +58,15 @@ To paste a password on the iPhone (Universal Clipboard):
 
 ## Backups
 
-- **What:** a gzip dump of each database (Synapse, the WhatsApp bridge) every day at 00:00 UTC,
+- **What:** a gzip dump of each database (Synapse and each bridge) every day at 00:00 UTC,
   and at each start of the `matrix-postgres-backup` container. The playbook's `postgres-backup`
   role, set in `config.yml`.
 - **Where:** on the server, in `/matrix/postgres-backup/data/{last,daily,weekly}/`. It keeps 7
   daily dumps and 2 weekly ones, no monthly. The files of one dump are hard links, so they use
   its space once. First dump (2026-10-28): 42 MB in total.
+- **Secret:** the bridges' dumps hold their login sessions (the WhatsApp link, an Instagram
+  session). The folder is readable only by the `matrix` user and root; never copy a dump to
+  git or chat.
 - **Limits:** it does not hold media (photos, 718 MB on 2026-10-28), and it does not protect
   against losing the server: an off-server copy is a later step, for Rami's yes.
 - **Restore:** the playbook's `docs/importing-postgres.md`. After restoring a dump older than
