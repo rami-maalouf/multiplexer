@@ -349,6 +349,15 @@ GET and take it from the headers whatever the status. Not known yet: whether the
 later steps (the login itself, 2FA) work; only a real login can show it. No issue in the
 bridge's tracker reports this yet.
 
+**The fix, written and checked (2026-10-28).** `patches/mautrix-meta-ig-qe-sync-get.patch`
+(against `main` `0371efa`) fetches the key with a GET and accepts any answer that carries
+the key headers. With it, the bridge's own `prepareMobilePasswordLogin` got a key ID and
+a public key from Instagram (one request, no account), and the unit tests of
+`pkg/instameow` and `pkg/igconnector` pass. Two ways to run it: send it to the bridge's
+authors as a pull request and pin the merged commit, or build a patched image ourselves
+(the playbook's `matrix_bridge_mautrix_meta_instagram_container_image_self_build`, from
+a fork). Rami decides; the first real login with it should use a second account.
+
 **Security check after the logout (read only, 2026-10-28, about 05:45 UTC).** Rami asked
 whether we were hacked. No sign of it on the server:
 - SSH accepts only keys (`passwordauthentication no`), and the only key is the Mac's

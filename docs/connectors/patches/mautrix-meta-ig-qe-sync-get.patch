@@ -1,0 +1,39 @@
+diff --git a/pkg/instameow/login_mobile.go b/pkg/instameow/login_mobile.go
+index 90b1e0b..4b6dca0 100644
+--- a/pkg/instameow/login_mobile.go
++++ b/pkg/instameow/login_mobile.go
+@@ -252,20 +252,25 @@ func (c *Client) prepareMobilePasswordLogin(ctx context.Context) (*mobileLoginSt
+ 		return state, nil
+ 	}
+ 
+-	keyRequest := struct {
+-		ID                    string `json:"id"`
+-		ServerConfigRetrieval string `json:"server_config_retrieval"`
+-	}{
+-		ID:                    state.DeviceID,
+-		ServerConfigRetrieval: "1",
+-	}
+-	response, _, requestErr := c.makeMobileSignedRequest(ctx, state, "qe/sync/", keyRequest)
++	// Instagram answers a POST to qe/sync with HTTP 500 (seen 2026-10-28), but every
++	// answer to a GET, even its HTTP 405, carries the password encryption key headers.
++	response, _, requestErr := c.http.MakeRequest(
++		ctx,
++		instagramMobileAPIBase+"qe/sync/",
++		http.MethodGet,
++		c.mobileLoginHeaders(state),
++		nil,
++		types.FORM,
++	)
+ 	if response != nil {
+ 		if err := c.updateMobileLoginResponseState(ctx, state, response); err != nil {
+ 			return nil, err
+ 		}
+ 	}
+-	if requestErr != nil {
++	if response == nil || response.Header.Get("ig-set-password-encryption-pub-key") == "" {
++		if requestErr == nil {
++			requestErr = errors.New("instagram app did not provide a password public key")
++		}
+ 		return nil, requestErr
+ 	}
+ 	keyID, err := strconv.ParseUint(
