@@ -388,8 +388,9 @@ with other Matrix users usually are.
 the build size and the start time on a real device.
 
 **Acceptance criteria:**
-- [ ] `bun exact.mjs ios --device --run` installs and opens the app on my iPhone.
-- [ ] Sign in, relaunch, chats and sending work as on the Simulator.
+- [x] `bun exact.mjs ios --device --run` installs and opens the app on my iPhone. (2026-10-27: `--device --phone 00008140-0002155C01F3001C`, signed with the team wildcard development profile `3V2UU7RRK9.*`; the first build 1.5 min. It needed the Rust target `aarch64-apple-ios` for toolchain 1.97.0, now installed. One install failed when the Wi-Fi connection to the phone dropped; the next worked.)
+- [x] Sign in, relaunch, chats and sending work as on the Simulator. (A drive on the phone as `@test1`: sign-in, the chat list with pictures, a relaunch that opens signed in, a message sent and read back from the server; signed out after.)
+- [ ] The offline case from T2.3: airplane mode, "Not Delivered", then Try Again sends it. (Needs Rami's hands.)
 
 **Facts (2026-10-27):** Q4 answered: team `3V2UU7RRK9` ("Rami Maalouf"; the Mac's one
 signing certificate, "Apple Development: Rami Maalouf", belongs to it). The phone: "Rami
