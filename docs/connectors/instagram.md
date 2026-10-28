@@ -256,7 +256,18 @@ test").** M0 was closed and Rami skipped its 48-hour wait, so the spike started 
 - The bridge's API answers `@test1` with the flows `android`, `instagram` and
   `instagram-password`, when the call has `?user_id=` (see `README.md`).
 
-**Next:** Rami logs in with the secondary account (section 2, steps 2, 3 and 5).
+**Account choice, 2026-10-28 (Rami: "let's use @rami").** Rami chose his **main**
+Instagram account on `@rami:ramimaalouf.com`, not a secondary account on `@test1`. He
+accepts the risk to the main account. What changes from section 2:
+- Rami starts the bot chat as `@rami` and types `login android` himself. Agents never
+  send, react, delete or mark read as `@rami` (the safety rule); they only read on the
+  server, and only counts and event shapes, never message text.
+- The test messages come from Rami and his contacts on the phone, not from `@test1`.
+- The main password stays (redacted) in Synapse for 7 days; Rami may change it after the
+  48 hours.
+- The `@test1` bot chat made above stays unused.
+
+**Next:** Rami logs in; then the 48 hours of watching (section 2).
 
 ## 3. Message kinds
 
