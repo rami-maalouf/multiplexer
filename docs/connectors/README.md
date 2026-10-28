@@ -68,7 +68,7 @@ them only after we see the real numbers.
 | Bridge | First sync | Per chat |
 |---|---|---|
 | WhatsApp | History sync from the phone (265 of 267 chats came). | The playbook's default. |
-| Instagram | The first inbox page only (`thread_backfill.batch_count: 0`). Other users saw 15 to 17 chats. | 50 messages; 500 after a restart. |
+| Instagram | The first inbox page only (`thread_backfill.batch_count: 0`). One report (issue #374): 15 to 17 chats per account. | 50 messages; 500 after a restart. |
 
 **Log privacy.** Bridge logs hold phone numbers, user names and chat IDs. Read only
 counts, or hide the identifiers. The default log level is `warn`; raise it only for a
