@@ -267,7 +267,18 @@ accepts the risk to the main account. What changes from section 2:
   48 hours.
 - The `@test1` bot chat made above stays unused.
 
-**Next:** Rami logs in; then the 48 hours of watching (section 2).
+**`login android` failed, 2026-10-28, 04:25 UTC.** The bot answered: "Failed to submit
+input: Instagram couldn't complete this sign-in step. Try again." The bridge log (read
+with names and IDs hidden): the flow's first app request, `POST
+https://i.instagram.com/api/v1/qe/sync/`, got HTTP 500 six times, then "failed to prepare
+Instagram CAA login: maximum retries reached". That request fetches the key that
+encrypts the password (`prepareMobilePasswordLogin` in `pkg/instameow/login_mobile.go`),
+so the password was never sent to Instagram. The bridge copies the Instagram Android app
+`446.0.0.49.77`. Cause not known: Instagram may refuse app requests from a data-center
+address, or that app version may be too old. No issue in the bridge's tracker mentions
+it. So the app's Instagram login cannot rely on the `android` flow yet.
+
+**Next:** the cookie flow (section 2, step 4), then the 48 hours of watching.
 
 ## 3. Message kinds
 
