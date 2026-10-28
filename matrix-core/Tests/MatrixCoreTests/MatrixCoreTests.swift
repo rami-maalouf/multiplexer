@@ -49,7 +49,7 @@ final class MatrixCoreTests: XCTestCase {
         }
         let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let rooms = try await account.rooms()
-        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let roomId = try await testRoom(account, rooms)
         for n in 1...count {
             try await account.sendAndWait(roomId: roomId, text: "Fill \(n) of \(count)", timeout: 120)
         }
@@ -66,7 +66,7 @@ final class MatrixCoreTests: XCTestCase {
         let changes = Changes()
         reader.onChange { changes.add($0) }
         let rooms = try await reader.rooms()
-        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let roomId = try await testRoom(reader, rooms)
         let opened = try await reader.messages(roomId: roomId, limit: 20)
         // a chat opened again reads its live timeline: no paging back, no wait.
         let again = Date()
@@ -113,7 +113,7 @@ final class MatrixCoreTests: XCTestCase {
         }
         let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let rooms = try await account.rooms()
-        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let roomId = try await testRoom(account, rooms)
         _ = try await account.messages(roomId: roomId, limit: 20)
 
         // a message shows at once, then as sent, under the same id.
@@ -166,7 +166,7 @@ final class MatrixCoreTests: XCTestCase {
         }
         let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let rooms = try await account.rooms()
-        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let roomId = try await testRoom(account, rooms)
         _ = try await account.messages(roomId: roomId, limit: 20)
 
         // a portrait photo, sent as another client would: uploaded, then an m.image event.
@@ -209,7 +209,7 @@ final class MatrixCoreTests: XCTestCase {
         }
         let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let rooms = try await account.rooms()
-        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let roomId = try await testRoom(account, rooms)
         let before = rooms.first { $0.id == roomId }?.avatarName ?? ""
 
         // a new picture for the test room, set as another client would.
@@ -312,6 +312,42 @@ final class MatrixCoreTests: XCTestCase {
         print("the reader showed the encrypted message after \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
     }
 
+    func testASpaceIsNotAChat() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        _ = try await account.rooms()
+        // a space, made as another client would (createRoom has no space option).
+        let session = try account.savedSession()
+        var create = URLRequest(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3/createRoom"))
+        create.httpMethod = "POST"
+        create.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        create.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        create.httpBody = try JSONSerialization.data(withJSONObject: [
+            "name": "Multiplexer test space", "preset": "private_chat", "creation_content": ["type": "m.space"],
+        ])
+        let (created, _) = try await URLSession.shared.data(for: create)
+        let spaceId = try XCTUnwrap((try JSONSerialization.jsonObject(with: created) as? [String: Any])?["room_id"] as? String)
+        addTeardownBlock {
+            var leave = URLRequest(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3/rooms")
+                .appendingPathComponent(spaceId).appendingPathComponent("leave"))
+            leave.httpMethod = "POST"
+            leave.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+            leave.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            leave.httpBody = Data("{}".utf8)
+            _ = try? await URLSession.shared.data(for: leave)
+        }
+
+        // opening the space waits until it has reached this device; the list leaves it out.
+        _ = try await account.messages(roomId: spaceId, limit: 1)
+        let roomId = try await testRoom(account, try await account.rooms())
+        let listed = try await account.rooms()
+        XCTAssertFalse(listed.contains { $0.id == spaceId }, "the space shows as a chat")
+        XCTAssertTrue(listed.contains { $0.id == roomId })
+    }
+
     func testOlderMessagesLoadUntilTheStart() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
@@ -319,7 +355,7 @@ final class MatrixCoreTests: XCTestCase {
         }
         let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let rooms = try await account.rooms()
-        let roomId = try XCTUnwrap(rooms.first { $0.name == roomName }?.id)
+        let roomId = try await testRoom(account, rooms)
         let opened = try await account.messages(roomId: roomId, limit: 20)
         XCTAssertEqual(opened.count, 20)
         let openedAtStart = try await account.isAtStart(roomId: roomId)
@@ -402,6 +438,12 @@ final class MatrixCoreTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? SignInError, expected, "\(error)", line: line)
         }
+    }
+
+    /// The test room, made on a test user's first run.
+    private func testRoom(_ account: MatrixAccount, _ rooms: [RoomSummary]) async throws -> String {
+        if let id = rooms.first(where: { $0.name == roomName })?.id { return id }
+        return try await account.createRoom(name: roomName)
     }
 
     /// Signs in as a new device that the test signs out at its end, even when the test

@@ -211,7 +211,7 @@ the native module.
 **Verification:**
 - [x] An `app.test.contract` test for the error state. (3 tests: Sign In waits for all fields; an unknown server; a wrong password. `verify ios` is clean.)
 - [x] A manual sign-in on the Simulator against the practice account on matrix.org (D8).
-- [ ] After T0.6: the same sign-in against our server.
+- [x] After T0.6: the same sign-in against our server. (2026-10-27, T2.10.)
 
 **Dependencies:** T1.3
 **Files:** `app.contract`, `app.ts`, `modules/apple/Matrix.swift`
@@ -240,7 +240,7 @@ the native module.
 
 ### Checkpoint M1: first own screen
 
-- [ ] I can read my WhatsApp chat in our app on the Simulator. (Waits for Phase 0, which waits for Q1.)
+- [x] I can read my WhatsApp chat in our app on the Simulator. (2026-10-27, T2.10: read only, with Rami's OK.)
 - [x] Framework decision: continue with Exact, or move to Expo with the same MatrixCore. Record why. (2026-10-27, Rami: Exact. See the decision log.)
 - [x] Rami reviews. (2026-10-27)
 - [x] Write Phase 2 in detail here, with what we learned.
@@ -448,11 +448,15 @@ the bridge bot, a "WhatsApp" space, an encrypted DM). Sign in on the Simulator, 
 (Rami's OK, 2026-10-27), and fix what the real size shows. Spaces are not chats: hide them.
 
 **Acceptance criteria:**
-- [ ] The list is usable (rows with names) within 10 s of signing in; the time is recorded.
-- [ ] Spaces do not show as chats.
-- [ ] One WhatsApp chat opens and shows its last messages with senders, text and photos.
-- [ ] Nothing is sent, reacted to, deleted or marked as read; the drive signs out at the end.
-- [ ] Memory and the picture downloads at first load are measured and recorded.
+- [x] The list is usable (rows with names) within 10 s of signing in; the time is recorded. (2026-10-27: the first answer 0.7 s after sign-in with 93 chats, all 254 within seconds as the sync went on; after a relaunch, 254 chats in 0.24 s.)
+- [x] Spaces do not show as chats. (269 joined rooms, 15 of them spaces: 254 chats.)
+- [x] One WhatsApp chat opens and shows its last messages with senders, text and photos. (A group chat. Senders first showed as raw ids; now the chat loads its members on open, and the names come in.)
+- [x] Nothing is sent, reacted to, deleted or marked as read; the drive signs out at the end. (The app sends no read receipts yet.)
+- [x] Memory and the picture downloads at first load are measured and recorded. (Footprint 59 MB with 254 chats and their pictures; the 410 to 490 MB resident size on the Simulator counts shared and reclaimable pages.)
+
+**Found on the way:**
+- Every WhatsApp contact's name ends in " (WA)", in the list and above messages: the bridge's name template on the server. A decision for Rami.
+- Links in messages are plain text, not tappable (T2.11).
 
 **Dependencies:** T0.6 (done)
 **Scope:** S (more if the size shows problems)

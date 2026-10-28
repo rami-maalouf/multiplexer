@@ -35,8 +35,9 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    let account = try await signedIn()
-                    reply.send(["rooms": try await account.rooms().map { room in
+                    let started = Date(), account = try await signedIn(), rooms = try await account.rooms()
+                    print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+                    reply.send(["rooms": rooms.map { room in
                         ["id": room.id, "name": room.name, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
                          "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
                          "avatar": cached(room.avatarName, then: .rooms) {

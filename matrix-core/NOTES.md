@@ -59,6 +59,8 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - `MatrixAccount.onChange` reports `MatrixChange.rooms` (from the room list service's
   entries listener, which needs `setFilter(kind: .joined)` before it reports) and
   `MatrixChange.room(id)` (from an open chat's timeline listener).
+- Opening a chat also loads its members in the background (`fetchMembers`); until then a
+  sender shows as their id.
 - The first `messages(roomId:)` opens a live timeline and pages back to the last `limit`
   messages. It stays open; later calls read it, from the first message shown at open to
   the newest. Timelines close at sign-out.
@@ -106,6 +108,8 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - `rooms()` returns the joined rooms in the room list service's order (the server's
   recency ranking, kept from the entries listener's diffs); a room it has not ranked yet
   comes after, in the client's order.
+- Spaces are not chats: `rooms()` leaves them out (`isSpace()`), and the list service's
+  filter is `joined` and `nonSpace`.
 - `RoomSummary.avatarName` names the room's picture; `avatarFile(roomId:directory:)`
   downloads a thumbnail of at most 160 pixels a side once.
 
