@@ -6,7 +6,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 | | |
 |---|---|
-| Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; done: M0 passed on 2026-10-28). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Current phase | Phase 0 done: M0 passed on 2026-10-28 (Synapse and WhatsApp on our server). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
 | Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 is done (branch `server/phase-0`). Next server work comes from the app (Sygnal for Phase 3) or a new network (Instagram ideas: branch `connectors/instagram`). |
 | Blocked on Rami | Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |

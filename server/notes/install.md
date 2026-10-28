@@ -97,3 +97,11 @@ group messages without their sender key), and 4 errors in 30 minutes, none for n
 old link-preview pictures that WhatsApp no longer serves (HTTP 403), and old reactions with
 no emoji that Synapse refuses ("Missing aggregation key"). The bridge log holds phone numbers
 and chat IDs: read only counts, or hide the numbers, when you look at it.
+
+## 2026-10-28: a small database backup (M0)
+
+`config.yml` turns on the playbook's `postgres-backup` (7 daily and 2 weekly dumps, no monthly,
+`BACKUP_ON_START=TRUE`). Install: `ok=236 changed=6 failed=0`. The first dump ran at the
+container's start (01:23 UTC): Synapse 40.5 MB and the WhatsApp bridge 3.1 MB, gzip; `gzip -t`
+passes, and the Synapse dump has 174 tables and ends cleanly. The daily, weekly, monthly and
+last files are hard links to one dump: 42 MB on disk. Disk: 33 of 96 GB used.
