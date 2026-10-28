@@ -278,7 +278,36 @@ so the password was never sent to Instagram. The bridge copies the Instagram And
 address, or that app version may be too old. No issue in the bridge's tracker mentions
 it. So the app's Instagram login cannot rely on the `android` flow yet.
 
-**Next:** the cookie flow (section 2, step 4), then the 48 hours of watching.
+A second `login android` try at 04:32 UTC failed the same way (six more HTTP 500s).
+
+**Cookie login, then Meta logged the account out (the stop rule).** Rami logged in to
+Instagram in a private Firefox window on his Mac at home, and pasted the cURL into the bot
+chat. Times in UTC, from the bridge log and the bot's state messages:
+- 05:15:13: the login worked; the bridge started the first sync (about 10 chats).
+- 05:15:44 on: each chat took more than 30 s; server load 2.7.
+- 05:16:37 and 05:16:58: Instagram refused two chats' history: "1357031: The content you
+  requested cannot be displayed right now".
+- 05:20:47: Instagram closed the connection as unauthorized. The bot posted
+  `BAD_CREDENTIALS` (`dgw-connection-unauthorized`): "Logged out, please relogin to
+  continue". The bridge stopped reconnecting, as R3 expects.
+- Rami: Instagram "detected suspicious activity" and logged him out.
+- No Instagram room reached `@rami` (0 rooms with `protocol.id` `instagram`).
+
+**Result: the spike failed after about 5 minutes, on the main account.** Meta does not
+say why. The facts that fit, from most to least likely (a judgment):
+1. Within minutes, the session moved from Rami's home address and Firefox to an Oracle
+   data-center address and the bridge's own client identity.
+2. 40 minutes before, the same server address made 12 failed app requests
+   (`login android`, HTTP 500).
+3. The first sync asked for about 10 chats and their messages in about a minute.
+The first refusal came 1.5 minutes after the login, before most of the sync, so 1 and 2
+fit better than 3. Rami asked whether the private window caused it. Probably not: the
+bridge's docs ask for a private window, and cookies from his normal browser would have
+made the same jump to the server. Meta would then also have ended his normal browser's
+session.
+
+**Next:** Rami decides (see the chat): secure the account, remove the dead login from the
+bridge, and pause Instagram or try a proxy through home.
 
 ## 3. Message kinds
 
