@@ -291,7 +291,7 @@ chat. Times in UTC, from the bridge log and the bot's state messages:
   `BAD_CREDENTIALS` (`dgw-connection-unauthorized`): "Logged out, please relogin to
   continue". The bridge stopped reconnecting, as R3 expects.
 - Rami: Instagram "detected suspicious activity" and logged him out.
-- No Instagram room reached `@rami` (0 rooms with `protocol.id` `instagram`).
+- The first sync made 16 rooms for `@rami` before the logout: 10 direct chats, 5 groups and 1 Instagram space. Their `m.bridge` `protocol.id` is `instagramgo`, not `instagram`, so the first count (filtered on `instagram`) showed 0 by mistake.
 
 **Result: the spike failed after about 5 minutes, on the main account.** Meta does not
 say why. The facts that fit, from most to least likely (a judgment):
@@ -305,6 +305,20 @@ fit better than 3. Rami asked whether the private window caused it. Probably not
 bridge's docs ask for a private window, and cookies from his normal browser would have
 made the same jump to the server. Meta would then also have ended his normal browser's
 session.
+
+**Security check after the logout (read only, 2026-10-28, about 05:45 UTC).** Rami asked
+whether we were hacked. No sign of it on the server:
+- SSH accepts only keys (`passwordauthentication no`), and the only key is the Mac's
+  `oracle.key`. 28,762 failed attempts in 30 days, all refused (internet scanners).
+  Successful logins came from 6 addresses; the Mac's own made 562 of them; Rami
+  must confirm the other 5.
+- Open ports: SSH, Traefik (80, 443, 8448, and 5350, the playbook's LiveKit TURN port),
+  Syncthing, and local-only T3 Code. The 10 containers are all the playbook's.
+- Matrix: 3 real users, registration off. `@rami` has 4 sessions: Element Web, the
+  app, Element X, and the unused session from registration (`LCCCMXGHUT`, never used).
+- The bot chats hold only `@rami` (or `@test1`) and the bot. 3 of Rami's messages there
+  are redacted, which matches 2 passwords and 1 cURL. The bridge has only `@rami` and `@test1`.
+The Instagram side (its list of sessions and its security emails) only Rami can check.
 
 **Next:** Rami decides (see the chat): secure the account, remove the dead login from the
 bridge, and pause Instagram or try a proxy through home.
@@ -414,7 +428,7 @@ Not applied: two other conversations edit those files. Rami, or one of them, pas
 > - Instagram ended end-to-end encrypted DMs on 2026-05-08. The bridge reads every DM.
 > - The bridge stops after one "unauthorized" close from Meta and waits for a new login (issue #346).
 >
-> **Bridged rooms:** each has an `m.bridge` state event; `protocol.id` names the network (`whatsapp`, `instagram`). 266 rooms on 2026-10-28.
+> **Bridged rooms:** each has an `m.bridge` state event; `protocol.id` names the network (`whatsapp`, `instagramgo`). 266 rooms on 2026-10-28.
 
 **Risks:** replace the row "A network blocks logins from cloud IP addresses (not verified)" with
 

@@ -117,7 +117,7 @@ The fields that matter:
 
 | Field | Example | Use |
 |---|---|---|
-| `protocol.id` | `whatsapp`, `instagram` | The network. The app's only key. |
+| `protocol.id` | `whatsapp`, `instagramgo` (checked on the server; not the bridge's network ID `instagram`) | The network. The app's only key. |
 | `protocol.displayname` | `Instagram` | The badge's label. |
 | `protocol.avatar_url` | `mxc://maunium.net/…` | The badge's icon (or an icon in the app). |
 | `com.beeper.room_type.v2` | `dm`, empty for groups, `space`, `personal_filtering_space` | DM or group. |
