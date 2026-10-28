@@ -325,6 +325,30 @@ So a next try must avoid the cookie move: the bridge's own login (`android`, whi
 HTTP 500 from the server's address), from a home address (a proxy), with Beeper's
 Instagram connection off during the test.
 
+**Why `login android` fails (found 2026-10-28, about 15:00 UTC).** A probe ran the
+bridge's own code for the flow's first request (`POST i.instagram.com/api/v1/qe/sync/`,
+which fetches the key that encrypts the password) once per variant. No account and no
+password: it is the request a new app install makes before any login. Go 1.27.2 from
+go.dev in `/tmp`; the server's address through an SSH SOCKS proxy (nothing changed on
+the server).
+
+| Code | From | Request | Answer |
+|---|---|---|---|
+| `v0.2610.0` | Rami's home | the bridge's POST | 500 "Oops, an error occurred.", no key |
+| `v0.2610.0` | the server's address | the bridge's POST | 500, same |
+| `main` `0371efa` (2026-10-28) | home | the bridge's POST | 500, same |
+| `main` | home | POST without `x-meta-usdid` | 500, same |
+| `main` | home | POST, plain form fields | 500, same |
+| `main` | home | GET | 405, **with** the key headers `ig-set-password-encryption-key-id` and `-pub-key` |
+
+So the address is not the cause: Instagram now fails every POST to `qe/sync/`, and the
+bridge's newest code still sends one (`prepareMobilePasswordLogin` in
+`pkg/instameow/login_mobile.go`, unchanged since `v0.2610.0`). A GET still returns the
+key in its headers, as other Instagram libraries read it. The fix: fetch the key with a
+GET and take it from the headers whatever the status. Not known yet: whether the flow's
+later steps (the login itself, 2FA) work; only a real login can show it. No issue in the
+bridge's tracker reports this yet.
+
 **Security check after the logout (read only, 2026-10-28, about 05:45 UTC).** Rami asked
 whether we were hacked. No sign of it on the server:
 - SSH accepts only keys (`passwordauthentication no`), and the only key is the Mac's
