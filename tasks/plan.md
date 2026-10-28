@@ -8,7 +8,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 |---|---|
 | Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; T0.2 to T0.6 done; the M0 checkpoint after 48 hours of use). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
 | Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): the M0 checkpoint after 48 hours of use (from 2026-10-27, 23:00 UTC). |
-| Blocked on Rami | Q5 (Always Free or Pay As You Go: the server's use is below Oracle's 20% idle line). |
+| Blocked on Rami | Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
 | Last updated | 2026-10-27 |
