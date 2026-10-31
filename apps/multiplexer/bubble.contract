@@ -1,0 +1,43 @@
+// a chat's bubble and a sender's picture, after Exact's Messages app (apps/messages/bubble.contract),
+// in the platform's roles: the accent for yours, the app's bubble.incoming token for others'.
+
+// iOS's tail, fitted from Messages: it hangs 6.65 points below the bubble and stays inside its width.
+component Tail
+  props
+    outgoing: bool
+    fill: string
+  view
+    svg position="absolute" bottom=-6.65 left=(outgoing ? "calc(100% - 26px)" : "0px") width=26 height=26.65 viewBox="0 0 26 26.65" aria-hidden=true
+      path d=(outgoing ? "M 0 0 L 26 0 A 20 20 0 0 1 19.229 15 C 17.614 16.424 16.06 18.013 16.06 20.38 C 16.06 23.394 18.599 25.038 18.19 25.72 C 17.854 26.28 18.27 26.954 16 26.5 C 14.119 25.91 11.195 24.012 10 23.21 C 7.769 21.711 6.038 20 4 20 L 0 20 Z" : "M 26 0 L 0 0 A 20 20 0 0 0 6.771 15 C 8.386 16.424 9.94 18.013 9.94 20.38 C 9.94 23.394 7.401 25.038 7.81 25.72 C 8.146 26.28 7.73 26.954 10 26.5 C 11.881 25.91 14.805 24.012 16 23.21 C 18.231 21.711 19.962 20 22 20 L 26 20 Z") fill=fill
+
+// the last bubble of a run has the tail. The fill is opaque, so the tail can lie over the rounded
+// corner: its top follows that corner's curve. The text's own box paints the fill, so `check`
+// judges the accent's ink on it as it judges a filled button's label.
+component Balloon
+  props
+    body: string
+    outgoing: bool
+    tail: bool
+    dimmed: bool
+    identifier: string
+  derive fill = outgoing ? "AccentColor" : "bubble.incoming"
+  view
+    box id=identifier testId=identifier position="relative" min-width=44 max-width="100%" box-sizing="border-box"
+      padding="8px 14px 9px" border-radius=20 background-color=fill opacity=(dimmed ? 0.6 : 1)
+      if tail
+        Tail(outgoing=outgoing, fill=fill)
+      text body position="relative" color=(outgoing ? "AccentColorText" : "-exact-label") white-space="pre-wrap" overflow-wrap="anywhere" min-width=0
+
+// a sender's picture, or their initials while there is none.
+component Face
+  props
+    picture: string
+    initials: string
+    size: number
+  view
+    view width=size height=size border-radius=(size / 2) overflow="hidden" flex-shrink=0
+      background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
+      if picture != ""
+        image picture width="100%" height="100%" object-fit="cover" aria-label=""
+      else
+        text initials font-size=(size * 0.4) font-weight=600 color="-exact-secondary-label"

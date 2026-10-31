@@ -2,6 +2,7 @@
 // (modules/apple/Matrix.swift), which calls MatrixCore.
 use EmptyState from "exact:content"
 use Badge from "exact:content"
+use Balloon, Face from "./bubble.contract"
 
 shape Session
   userId: string
@@ -24,7 +25,8 @@ shape RoomList
   owner: string
   rooms: Room[]
 
-// state: "sending", "sent" or "failed". startsGroup: the time shows above it.
+// state: "sending", "sent" or "failed". startsGroup: the time shows above it. endsRun: the
+// sender's next message is not next, so this bubble has the tail and their picture beside it.
 // showName: the sender's name shows above it. A photo (isImage) has its size in pixels
 // (0 when unknown), its width in the chat in rem, and its thumbnail's path once it is
 // downloaded ("" until then); its body is the caption, or "". waitingForKey: an encrypted
@@ -32,11 +34,14 @@ shape RoomList
 shape Message
   id: string
   senderName: string
+  senderInitials: string
+  senderPicture: string
   body: string
   time: number
   isOwn: bool
   state: string
   startsGroup: bool
+  endsRun: bool
   showName: bool
   isImage: bool
   image: string
@@ -51,10 +56,12 @@ shape Photo
   path: string
 
 // room is the chat the messages belong to, so a chat never shows another's. atStart:
-// the chat shows the room's first message, so there is nothing older to load.
+// the chat shows the room's first message, so there is nothing older to load. group: others'
+// messages show their sender's name and picture.
 shape Thread
   room: string
   atStart: bool
+  group: bool
   messages: Message[]
 
 shape Time
@@ -89,7 +96,7 @@ component Multiplexer
   resource roomList = loadRoomsByRecency(session.userId) as shape RoomList else empty()
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
-  mutation sent as shape Reply then afterSend
+  mutation sent as shape Reply then toEnd
   mutation retried as shape Reply
   mutation discarded as shape Reply
   mutation older as shape Reply
@@ -105,7 +112,8 @@ component Multiplexer
   derive openRoomInfo = first(roomList.rooms.filter(r => r.id == openRoom))
   derive openName = match openRoomInfo { case some(r) => r.name, case none => "" }
   derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
-  resource thread = loadMessages(openRoom, openIsDirect) as shape Thread else empty()
+  resource thread = loadMessages(openRoom, openIsDirect, openName) as shape Thread else empty()
+  derive lastId = match thread.messages.at(-1) { case some(m) => m.id, case none => "" }
   derive threadShown = thread.room == openRoom
   task tick mount
     every(60000, step)
@@ -146,13 +154,14 @@ component Multiplexer
     refresh thread
   action editDraft(v: string)
     draft = v
+  // as Messages does, Send clears the composer at once and scrolls to the end, even from far up.
   action post
     if draft.trim() != "" and not pending(sent)
       send sent = sendMessage(openRoom, draft.trim())
-    focus("composer")
-  action afterSend
-    if match sent { case some(r) => r.ok, case none => false }
       draft = ""
+    focus("composer")
+  action toEnd
+    scrollIntoView("transcript", lastId, block="end")
   action showPhoto(id: string)
     nav = push(nav, path("photo", openRoom, id))
   action retry(id: string)
@@ -272,29 +281,34 @@ component Multiplexer
                 list id="transcript" appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
                   reachstart=loadOlder flex=1 min-height=0 testId="transcript"
                   for m in thread.messages key=m.id
-                    column align-items=(m.isOwn ? "flex-end" : "flex-start") padding="2px 12px" gap=2
+                    column align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
                       if m.startsGroup
                         text formatDay(m.time, shown, time.utcOffset, "day-time") font="-exact-caption1"
                           color="-exact-secondary-label" align-self="center" padding="12px 0 4px"
-                      // no name in a chat named after the sender (a one-to-one chat that is not marked direct).
-                      if m.showName and m.senderName != openName
-                        text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding="0 12px"
-                      // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box.
-                      if m.isImage
-                        button appearance="none" press=showPhoto(m.id) id=`photo-${m.id}` width=`${m.photoWidth}rem` max-width="75%"
-                          aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
-                          border-radius=18 overflow="hidden" background-color="-exact-secondary-background"
-                          aria-label=(m.body != "" ? m.body : "Photo") testId=`photo-${m.id}`
-                          if m.image != ""
-                            image m.image width="100%" height="100%" object-fit="cover"
-                      // a message on its way is dimmed; one that failed says so, with a way to send it again.
-                      if m.waitingForKey
-                        text "Waiting for this message" padding="8px 12px" border-radius=18 max-width="75%" font-style="italic"
-                          background-color="-exact-fill" color="-exact-secondary-label" testId=`message-${m.id}`
-                      else if not m.isImage or m.body != ""
-                        text m.body padding="8px 12px" border-radius=18 max-width="75%" overflow-wrap="break-word"
-                          background-color=(m.isOwn ? "AccentColor" : "-exact-fill") color=(m.isOwn ? "AccentColorText" : "-exact-label")
-                          opacity=(m.state == "sending" ? 0.6 : 1) testId=`message-${m.id}`
+                      if m.showName
+                        text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding-left=(thread.group ? 50 : 14)
+                          margin-bottom=2
+                      // in a group, the sender's picture sits beside the last bubble of their run.
+                      row position="relative" max-width="80%" min-width=0 padding-left=(thread.group and not m.isOwn ? 36 : 0)
+                        padding-bottom=(m.endsRun and not m.waitingForKey and (not m.isImage or m.body != "") ? 6.65 : 0)
+                        if thread.group and not m.isOwn and m.endsRun
+                          view position="absolute" left=0 bottom=(not m.waitingForKey and (not m.isImage or m.body != "") ? 6.65 : 0)
+                            Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
+                        column align-items=(m.isOwn ? "flex-end" : "flex-start") gap=2 min-width=0
+                          // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box.
+                          if m.isImage
+                            button appearance="none" press=showPhoto(m.id) id=`photo-${m.id}` width=`${m.photoWidth}rem` max-width="100%"
+                              aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
+                              border-radius=18 overflow="hidden" background-color="-exact-secondary-background"
+                              aria-label=(m.body != "" ? m.body : "Photo") testId=`photo-${m.id}`
+                              if m.image != ""
+                                image m.image width="100%" height="100%" object-fit="cover"
+                          // a message on its way is dimmed; one that failed says so, with a way to send it again.
+                          if m.waitingForKey
+                            text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
+                              background-color="-exact-fill" color="-exact-secondary-label" testId=`message-${m.id}`
+                          else if not m.isImage or m.body != ""
+                            Balloon(body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
                       if m.state == "failed"
                         row gap=12 align-items="center"
                           text "Not Delivered" font="-exact-footnote" color="-exact-system-red" testId=`failed-${m.id}`

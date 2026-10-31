@@ -47,24 +47,30 @@ const sources: Sources = {
     const answer = (await native.later({ op: 'rooms' })) as RoomsAnswer;
     return { owner: userId, rooms: answer.rooms.map((r) => ({ ...r, initials: initials(r.name) })) };
   },
-  loadMessages: async ([roomId, isDirect], _store, _storage, native): Promise<Result<'loadMessages'>> => {
-    if (roomId === '' || !native?.available) return { room: roomId, atStart: true, messages: [] };
+  loadMessages: async ([roomId, isDirect, roomName], _store, _storage, native): Promise<Result<'loadMessages'>> => {
+    if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, messages: [] };
     native.watch(`thread:${roomId}`);
     const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
+    // a bridged one-to-one chat is often not marked direct, but it is named after the other person.
+    const group = !isDirect && answer.messages.some((m) => !m.isOwn && m.senderName !== roomName);
     const messages = answer.messages.map((m, i) => {
       const before = answer.messages[i - 1];
+      const after = answer.messages[i + 1];
       const startsGroup = before === undefined || m.time - before.time > GROUP_GAP_MS;
+      // a run is one sender's messages in a row; its last bubble has the tail and the sender's picture.
+      const endsRun = after === undefined || after.sender !== m.sender || after.time - m.time > GROUP_GAP_MS;
       // a group chat names the sender above the first message of each run.
-      const showName = !isDirect && !m.isOwn && (startsGroup || before.sender !== m.sender);
+      const showName = group && !m.isOwn && (startsGroup || before.sender !== m.sender);
       return {
-        id: m.id, senderName: m.senderName, body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, showName,
+        id: m.id, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: '',
+        body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage, image: m.image, imageWidth: m.imageWidth, imageHeight: m.imageHeight,
         waitingForKey: m.waitingForKey,
         photoWidth: m.imageWidth > 0 && m.imageHeight > 0
           ? Math.min(PHOTO_MAX_WIDTH, (PHOTO_MAX_HEIGHT * m.imageWidth) / m.imageHeight) : PHOTO_MAX_WIDTH,
       };
     });
-    return { room: roomId, atStart: answer.atStart, messages };
+    return { room: roomId, atStart: answer.atStart, group, messages };
   },
   loadOlderMessages: async ([roomId], _store, _storage, native): Promise<Result<'loadOlderMessages'>> => {
     await native!.later({ op: 'older', roomId });

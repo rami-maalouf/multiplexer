@@ -1,0 +1,5 @@
+tamber multiplexer
+
+theme
+  // others' bubbles: Messages' grey, opaque so the tail and the body join without a seam.
+  bubble.incoming = light-dark(#e9e9eb, #262629)
