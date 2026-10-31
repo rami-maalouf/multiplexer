@@ -200,7 +200,7 @@ final class Matrix: ExactModule {
     /// `rooms`, and `thread:<room id>` for an open chat.
     private func tellChanges(_ account: MatrixAccount) {
         account.onChange { [weak self] change in
-            DispatchQueue.main.async { self?.changed(change) }
+            Task { @MainActor in self?.changed(change) }
         }
     }
 
