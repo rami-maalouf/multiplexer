@@ -26,7 +26,7 @@ component Balloon
       padding="8px 14px 9px" border-radius=20 background-color=fill opacity=(dimmed ? 0.6 : 1)
       if tail
         Tail(outgoing=outgoing, fill=fill)
-      text body position="relative" color=(outgoing ? "AccentColorText" : "-exact-label") white-space="pre-wrap" overflow-wrap="anywhere" min-width=0
+      text body position="relative" color=(outgoing ? "AccentColorText" : "-exact-label") white-space="pre-wrap" overflow-wrap="break-word" min-width=0
 
 // a sender's picture, or their initials while there is none.
 component Face

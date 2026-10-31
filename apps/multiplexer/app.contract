@@ -450,9 +450,9 @@ component Multiplexer
                   top=max(76, min(heldY - 64, viewport.height - heldHeight - 220))
                   row gap=2 padding=6 border-radius=28 backgroundMaterial="glass" testId="quick-reactions"
                     for k in quickReactions key=k
-                      button appearance="none" press=react(k) width=44 height=44 border-radius=22 aria-label=k testId=`react-${k}`
+                      button appearance="none" press=react(k) min-width=44 min-height=44 border-radius=22 aria-label=k testId=`react-${k}`
                         display="flex" align-items="center" justify-content="center"
-                        text k font-size=26
+                        text k font="-exact-title1"
                   column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" max-height=320 overflow="hidden"
                     padding-bottom=6.65
                     Balloon(body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
