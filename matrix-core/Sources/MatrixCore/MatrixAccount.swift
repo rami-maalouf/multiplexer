@@ -148,7 +148,7 @@ public final class MatrixAccount: @unchecked Sendable {
 
     private func openTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
         let timeline = try await room(roomId, timeout: timeout).timeline()
-        let items = TimelineItems()
+        let items = TimelineItems(me: (try? client.userId()) ?? "")
         let handle = await timeline.addListener(listener: items)
         let live = LiveTimeline(timeline: timeline, items: items, handle: handle)
         try await live.pageBack(until: limit)
@@ -174,10 +174,24 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// Puts a text message in the room's send queue and returns at once. The chat shows
-    /// it at once as `sending`, then `sent`, or `failed`.
-    public func send(roomId: String, text: String, timeout: TimeInterval = 30) async throws {
+    /// it at once as `sending`, then `sent`, or `failed`. With `replyTo`, a message's id, it
+    /// answers that message; one the server does not have yet cannot be answered.
+    public func send(roomId: String, text: String, replyTo: String? = nil, timeout: TimeInterval = 30) async throws {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        _ = try await live.timeline.send(msg: messageEventContentFromMarkdown(md: text))
+        let content = messageEventContentFromMarkdown(md: text)
+        if let replyTo, case .eventId(let eventId)? = live.items.eventOrTransactionId(of: replyTo) {
+            _ = try await live.timeline.sendReply(msg: content, eventId: eventId)
+        } else {
+            _ = try await live.timeline.send(msg: content)
+        }
+    }
+
+    /// Adds this account's reaction `key` (an emoji) to a message, or takes it back when it
+    /// is there.
+    public func toggleReaction(roomId: String, messageId: String, key: String, timeout: TimeInterval = 30) async throws {
+        let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
+        guard let itemId = live.items.eventOrTransactionId(of: messageId) else { return }
+        _ = try await live.timeline.toggleReaction(itemId: itemId, key: key)
     }
 
     /// Sends a text message and returns once the server has accepted it.
@@ -233,6 +247,12 @@ public final class MatrixAccount: @unchecked Sendable {
     /// room has none. Downloaded once; later calls return the same file.
     public func avatarFile(roomId: String, directory: URL, side: UInt64 = 160) async throws -> URL? {
         guard let url = try client.getRoom(roomId: roomId)?.avatarUrl() else { return nil }
+        return try await pictureFile(url: url, directory: directory, side: side)
+    }
+
+    /// A picture's media url (a sender's, `Message.senderPicture`) as a file in `directory`,
+    /// at most `side` pixels a side. Downloaded once; later calls return the same file.
+    public func pictureFile(url: String, directory: URL, side: UInt64 = 160) async throws -> URL {
         let file = directory.appendingPathComponent(avatarFileName(url))
         if FileManager.default.fileExists(atPath: file.path) { return file }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -394,8 +414,23 @@ private final class LiveTimeline: @unchecked Sendable {
     /// is gone (the timeline was reset).
     func shown(limit: Int) -> [Message] {
         let all = items.messages(), first = lock.withLock { firstShown }
+        fetchQuoted()
         guard let first, let start = all.firstIndex(where: { $0.id == first }) else { return Array(all.suffix(limit)) }
         return Array(all[start...])
+    }
+
+    /// The timeline loads the message a reply answers only when asked; its details then
+    /// arrive as a change. Each is asked for once.
+    private var askedForDetails: Set<String> = []
+
+    private func fetchQuoted() {
+        let missing = items.missingQuotes()
+        let asks = lock.withLock { () -> [String] in
+            let new = missing.filter { !askedForDetails.contains($0) }
+            askedForDetails.formUnion(new)
+            return new
+        }
+        for eventId in asks { Task { try? await timeline.fetchDetailsForEvent(eventId: eventId) } }
     }
 
     var atStart: Bool {
@@ -441,10 +476,14 @@ private final class LiveTimeline: @unchecked Sendable {
 
 /// A timeline's items, kept current by applying the sdk's diffs in order.
 private final class TimelineItems: TimelineListener, @unchecked Sendable {
+    /// This account's user id: its reactions are marked as its own.
+    private let me: String
     private let lock = NSLock()
     private var items: [TimelineItem] = []
     private var lastUpdate = Date()
     private var changed: (@Sendable () -> Void)?
+
+    init(me: String) { self.me = me }
 
     /// Called after each batch of diffs, from the sdk's task.
     var onChange: (@Sendable () -> Void)? {
@@ -489,7 +528,20 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     func messages() -> [Message] {
-        lock.withLock { items.compactMap { item in item.asEvent().flatMap { Message($0, id: item.uniqueId().id) } } }
+        lock.withLock { items.compactMap { item in item.asEvent().flatMap { Message($0, id: item.uniqueId().id, me: me) } } }
+    }
+
+    /// The event ids of messages that replies answer, whose details are not loaded.
+    func missingQuotes() -> [String] {
+        lock.withLock {
+            items.compactMap { item in
+                guard case .msgLike(let like)? = item.asEvent()?.content, let reply = like.inReplyTo else { return nil }
+                switch reply.event() {
+                case .unavailable, .error: return reply.eventId()
+                case .pending, .ready: return nil
+                }
+            }
+        }
     }
 
     func image(of messageId: String) -> (ImageMessageContent, MessageImage)? {
@@ -529,44 +581,55 @@ extension RoomSummary {
         // the newest event orders the list even when it is no message (a new picture, a
         // join); then there is no preview.
         lastTimestamp = timestamp
-        guard case .msgLike(let like) = content else { return }
-        switch like.kind {
-        case .message(let message):
-            switch message.msgType {
-            case .image: lastMessage = "Photo"
-            case .gallery: lastMessage = "Photos"
-            case .video: lastMessage = "Video"
-            case .audio: lastMessage = "Audio"
-            case .file: lastMessage = "File"
-            case .location: lastMessage = "Location"
-            default: lastMessage = message.body
-            }
-        case .sticker: lastMessage = "Sticker"
-        case .poll(let question, _, _, _, _, _, _): lastMessage = question
-        case .redacted: lastMessage = "Message deleted"
-        case .unableToDecrypt: lastMessage = "Encrypted message"
-        case .liveLocation: lastMessage = "Live location"
-        case .other: lastMessage = "Message"
-        }
-        lastSenderName = sender
-        if case .ready(let displayName, _, _, _, _) = profile, let displayName { lastSenderName = displayName }
+        guard let preview = preview(content) else { return }
+        lastMessage = preview
+        lastSenderName = displayName(sender, profile)
         lastIsOwn = isOwn
     }
 }
 
+/// One line for a message: its text, or what it is when it has none ("Photo"). Nil for an
+/// event that is no message (a join, a new name).
+private func preview(_ content: TimelineItemContent) -> String? {
+    guard case .msgLike(let like) = content else { return nil }
+    switch like.kind {
+    case .message(let message):
+        switch message.msgType {
+        case .image: return "Photo"
+        case .gallery: return "Photos"
+        case .video: return "Video"
+        case .audio: return "Audio"
+        case .file: return "File"
+        case .location: return "Location"
+        default: return message.body
+        }
+    case .sticker: return "Sticker"
+    case .poll(let question, _, _, _, _, _, _): return question
+    case .redacted: return "Message deleted"
+    case .unableToDecrypt: return "Encrypted message"
+    case .liveLocation: return "Live location"
+    case .other: return "Message"
+    }
+}
+
+/// A sender's display name, or their id until their profile loads.
+private func displayName(_ sender: String, _ profile: ProfileDetails) -> String {
+    if case .ready(let displayName, _, _, _, _) = profile, let displayName { return displayName }
+    return sender
+}
+
 extension Message {
-    init?(_ event: EventTimelineItem, id: String) {
+    init?(_ event: EventTimelineItem, id: String, me: String) {
         guard case .msgLike(let content) = event.content else { return nil }
+        let name = displayName(event.sender, event.senderProfile)
+        var picture = ""
+        if case .ready(_, _, let avatarUrl?, _, _) = event.senderProfile { picture = avatarUrl }
         if case .unableToDecrypt = content.kind {
-            var name = event.sender
-            if case .ready(let displayName, _, _, _, _) = event.senderProfile, let displayName { name = displayName }
             self.init(id: id, sender: event.sender, senderName: name, body: "", timestamp: event.timestamp,
-                      isOwn: event.isOwn, sendState: .sent, image: nil, waitingForKey: true)
+                      isOwn: event.isOwn, sendState: .sent, image: nil, waitingForKey: true, senderPicture: picture)
             return
         }
         guard case .message(let message) = content.kind else { return nil }
-        var name = event.sender
-        if case .ready(let displayName, _, _, _, _) = event.senderProfile, let displayName { name = displayName }
         let sendState: SendState
         switch event.localSendState {
         case .notSentYet?: sendState = .sending
@@ -580,7 +643,24 @@ extension Message {
             image = MessageImage(content)
         }
         self.init(id: id, sender: event.sender, senderName: name, body: body, timestamp: event.timestamp,
-                  isOwn: event.isOwn, sendState: sendState, image: image)
+                  isOwn: event.isOwn, sendState: sendState, image: image, isEdited: message.isEdited,
+                  reply: content.inReplyTo.map { QuotedMessage($0, me: me) },
+                  reactions: event.reactions.map { reaction in
+                      MessageReaction(key: reaction.key, count: reaction.senders.count,
+                                      isMine: reaction.senders.contains { $0.senderId == me })
+                  },
+                  senderPicture: picture)
+    }
+}
+
+extension QuotedMessage {
+    init(_ details: InReplyToDetails, me: String) {
+        switch details.event() {
+        case .ready(let content, let sender, let profile, _, _):
+            self.init(senderName: displayName(sender, profile), body: preview(content) ?? "Message", isOwn: sender == me)
+        case .unavailable, .pending, .error:
+            self.init(senderName: "", body: "", isOwn: false)
+        }
     }
 }
 

@@ -383,6 +383,56 @@ final class MatrixCoreTests: XCTestCase {
         XCTAssertEqual(elsewhere, 0, "the read receipt did not reach the server")
     }
 
+    func testAReplyQuotesItsMessageAndReactionsCount() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty,
+              let user2 = env["MATRIX_TEST_USER2"], let password2 = env["MATRIX_TEST_PASSWORD2"], !password2.isEmpty else {
+            throw XCTSkip("two test users are needed (MATRIX_TEST_USER2 and MATRIX_TEST_PASSWORD2)")
+        }
+        let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let reader = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let rooms = try await reader.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == twoPersonRoomName }?.id,
+                                   "the two-person room comes from testUnreadMessagesCountUntilRead")
+        _ = try await sender.rooms()
+
+        // the reader asks; the other person answers it and reacts to it.
+        let question = "Question \(UUID().uuidString)"
+        try await reader.sendAndWait(roomId: roomId, text: question)
+        let asked = try await message(sender, roomId, within: 15) { $0.body == question }
+        let answer = "Answer \(UUID().uuidString)"
+        try await sender.send(roomId: roomId, text: answer, replyTo: asked.id)
+        try await sender.toggleReaction(roomId: roomId, messageId: asked.id, key: "👍")
+
+        let reply = try await message(reader, roomId, within: 15) { $0.body == answer && $0.reply?.body == question }
+        XCTAssertEqual(reply.reply?.isOwn, true, "the quoted message is the reader's own")
+        XCTAssertFalse(reply.reply?.senderName.isEmpty ?? true)
+        XCTAssertFalse(reply.isEdited)
+        let liked = try await message(reader, roomId, within: 15) { $0.body == question && !$0.reactions.isEmpty }
+        XCTAssertEqual(liked.reactions.map { "\($0.key) \($0.count) \($0.isMine)" }, ["👍 1 false"])
+
+        // the reader's own reaction with the same emoji counts as theirs; again takes it back.
+        try await reader.toggleReaction(roomId: roomId, messageId: liked.id, key: "👍")
+        let both = try await message(reader, roomId, within: 15) { $0.id == liked.id && $0.reactions.first?.count == 2 }
+        XCTAssertEqual(both.reactions.map { "\($0.key) \($0.count) \($0.isMine)" }, ["👍 2 true"])
+        try await reader.toggleReaction(roomId: roomId, messageId: liked.id, key: "👍")
+        let back = try await message(reader, roomId, within: 15) { $0.id == liked.id && $0.reactions.first?.count == 1 }
+        XCTAssertEqual(back.reactions.first?.isMine, false)
+    }
+
+    /// The newest message in the room's chat that matches `found`, once it does.
+    private func message(_ account: MatrixAccount, _ roomId: String, within seconds: TimeInterval,
+                         _ found: (Message) -> Bool) async throws -> Message {
+        let start = Date()
+        while Date().timeIntervalSince(start) < seconds {
+            if let match = try await account.messages(roomId: roomId, limit: 20).last(where: found) { return match }
+            try await Task.sleep(nanoseconds: 300_000_000)
+        }
+        XCTFail("no matching message within \(seconds) s")
+        throw CancellationError()
+    }
+
     /// The room's unread count once it matches `until`, or the last one after 15 s.
     private func unreadCount(_ account: MatrixAccount, _ roomId: String, until done: (Int) -> Bool) async throws -> Int {
         let start = Date()

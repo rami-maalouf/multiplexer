@@ -64,6 +64,30 @@ public struct Message: Equatable, Sendable {
     /// An encrypted message this device has no key for yet (`body` is ""). It turns into
     /// the message when the key comes: from the sender, or from the key backup (`recover`).
     public var waitingForKey: Bool = false
+    /// The sender changed the text after sending it.
+    public var isEdited: Bool = false
+    /// The message this one answers; nil when it answers none.
+    public var reply: QuotedMessage?
+    /// Each emoji someone reacted with, in the order the first reaction came.
+    public var reactions: [MessageReaction] = []
+    /// The sender's picture as a media url for `MatrixAccount.pictureFile`; "" when they have none.
+    public var senderPicture: String = ""
+}
+
+/// What a reply shows of the message it answers.
+public struct QuotedMessage: Equatable, Sendable {
+    /// "" while the message is not loaded yet.
+    public var senderName: String
+    /// Its text, or what it is ("Photo") when it has none.
+    public var body: String
+    public var isOwn: Bool
+}
+
+public struct MessageReaction: Equatable, Sendable {
+    public var key: String
+    public var count: Int
+    /// This account is one of those who reacted with it.
+    public var isMine: Bool
 }
 
 /// Whether the account keeps its message keys in a backup that a recovery key opens.
