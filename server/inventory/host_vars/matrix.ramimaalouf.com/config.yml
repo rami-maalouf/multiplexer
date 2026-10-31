@@ -51,13 +51,12 @@ matrix_appservice_double_puppet_enabled: true
 # for whatsapp. the bridge's api: https://matrix.ramimaalouf.com/bridges/meta-instagram.
 matrix_bridge_mautrix_meta_instagram_enabled: true
 
-# our own copy of the instagram bridge, until the fix is merged upstream: mautrix/meta
-# main (0371efa, 2026-10-28) plus one fix for the android login's password key request
-# (docs/connectors/patches/mautrix-meta-ig-qe-sync-get.patch), built on the server.
-# to go back to the published image, delete these three lines.
-matrix_bridge_mautrix_meta_instagram_container_image_self_build: true
-matrix_bridge_mautrix_meta_instagram_container_image_self_build_repo: "https://github.com/rami-maalouf/meta.git"
-matrix_bridge_mautrix_meta_instagram_version: "bce18b56e20616a9347450e24062936ba67ade4b"
+# upstream mautrix/meta main (4a7ebd9, 2026-10-30), not a release: no release has the fix
+# for the android login's password key request yet (mautrix/meta#483, which replaced our
+# fork's fix), nor the login code step fixes (#484). the image is prebuilt for arm64
+# (dock.mau.dev/mautrix/meta:ig-<commit>-arm64). go back to the playbook's release when one
+# has both, by deleting this line.
+matrix_bridge_mautrix_meta_instagram_version: "4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d"
 
 # debug logs for the main account's login (2026-10-31): they show each meta login screen,
 # and the login responses with names and values hidden. after a login, debug also logs

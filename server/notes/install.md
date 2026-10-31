@@ -206,3 +206,36 @@ submit with a rate limit. The `warn` level hides the screen names in between.
 `config.yml` sets `matrix_bridge_mautrix_meta_instagram_logging_min_level: debug`. Install:
 `ok=250 changed=5 failed=0`. The Instagram and WhatsApp bridges restarted at 05:09:55 UTC;
 Synapse did not. WhatsApp: 1 login, no `WRN` or `ERR`. Delete the line after the login.
+
+## 2026-10-31: the Instagram bridge back on upstream (T4.1)
+
+Upstream merged its own fix for the password key request on 2026-10-28, about 5 hours
+after our fork's commit: mautrix/meta#483 (`64e2f61`) asks `launcher/sync/` instead of
+`qe/sync/`. Our fix conflicts with it, so we send no pull request. Upstream `main` also has
+#484, fixes for the login code step (where the main account's login stopped with a 429).
+No release has them yet (the last one is `v0.2610.0`, 2026-10-16).
+
+Rami's decision: go back to upstream. `config.yml` removes the self-build and the fork, and
+sets `matrix_bridge_mautrix_meta_instagram_version` to upstream `main`
+`4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d` (2026-10-30). Its CI passed (arm64 build
+included), and `dock.mau.dev` has its image, so the server pulls it and builds nothing.
+
+**Before:** the bridge held 0 logins. The main account's last try ended at 05:30 UTC with
+HTTP 429 on `GET www.instagram.com/accounts/login/` ("temporarily limiting login attempts
+from this network"); no login was in progress.
+
+- Install `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`:
+  `ok=248 changed=5 failed=0`, 3 min. The Instagram bridge, the WhatsApp bridge and Traefik
+  restarted at 05:41:45 UTC; Synapse did not.
+- Self-check: `ok=36 failed=0`.
+
+| Container | Image |
+|---|---|
+| `matrix-mautrix-meta-instagram` | `dock.mau.dev/mautrix/meta:ig-4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d-arm64` (177 MB) |
+
+**After:** the bridge reports `version=v26.10+dev.4a7ebd92`, starts with no `WRN` or `ERR`,
+and holds 0 logins. WhatsApp logged one `WRN` at the shutdown (websocket close) and none
+after. Memory 3 of 23 GiB, disk 47 of 96 GB, load 0.66. Two unused images stay on disk:
+our fork's `localhost/mautrix/meta:ig-bce18b56…-arm64` and `ig-v0.2610.0` (177 MB each),
+with the build cache; removing them is a deletion, so it waits for Rami. The debug log
+level stays on for the main account's next login.
