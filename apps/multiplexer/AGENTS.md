@@ -9,9 +9,9 @@ This file is already in your instructions. Start from the nearest pattern: `bun 
 pattern` lists them and `pattern <name>` writes one, tested. ../../../exact/exact2/docs/start-here.md is the guide,
 the only required reading (LLP 1115 D7). `bun exact.mjs contract vocab <name>` answers a
 name (none: the card, ../../../exact/exact2/docs/card.md); `bun exact.mjs docs <heading words>` a guide's
-section. Run `bun exact.mjs verify` when the features work, and `verify ios` once at the end for an iPhone
-app. `bun exact.mjs help` lists the verbs, and your own in app.json `"commands"`.
-`bun exact.mjs update` refreshes files; `bun exact.mjs lock` repairs Cargo lock drift.
+section. Run `bun exact.mjs verify` when the features work, and `verify ios|android` at the end for a
+phone app. `bun exact.mjs help` lists the verbs, and your own in app.json `"commands"`.
+`bun exact.mjs update` refreshes files. `bun exact.mjs lock` repairs Cargo lock drift.
 `bun exact.mjs update --without linux` stops shipping Linux.
 `bun ../../../exact/exact2/scripts/exact.mjs setup --check` names what a native build lacks.
 The authoring diary: `bun exact.mjs feedback status` says whether this project keeps one.

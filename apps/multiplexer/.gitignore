@@ -3,6 +3,10 @@
 /dist.*
 /node_modules/
 /app.contract.d.ts
+/.env.local
 # exact's scratch folder; the diary is kept in git (docs/exact-feedback/README.md).
+# exact update adds `/.exact/`, which would hide the diary too; the lines after it keep the diary.
+/.exact/
+!/.exact/
 /.exact/*
 !/.exact/diary/
