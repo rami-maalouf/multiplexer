@@ -7,11 +7,12 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 | | |
 |---|---|
 | Current phase | Phase 0: prove the server (T0.2 and T0.3 done; Synapse runs, the users exist; T0.2 to T0.6 done; the M0 checkpoint after 48 hours of use). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Beeper parity | 2026-10-31: Rami's Beeper walkthrough (7 min video) is analysed in a local report, `research/beeper-walkthrough/report/index.html` (gitignored: it shows real chats). Rami answers its 23 questions; then its 7 steps become tasks in `tasks/todo.md`. |
 | Next task | App: T2.4 Unread counts and T2.6's recovery key: the test users `@test1:ramimaalouf.com` and `@test2:ramimaalouf.com` exist (Keychain service `multiplexer-test-account`). Server: Phase 0 runs in its own conversation (branch `server/phase-0`): the M0 checkpoint after 48 hours of use (from 2026-10-27, 23:00 UTC). |
 | Blocked on Rami | Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `cee509ac82` (2026-10-27) |
-| Last updated | 2026-10-27 |
+| Last updated | 2026-10-31 |
 
 Update this table at the end of every work session.
 
@@ -238,3 +239,4 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T2.10 passed, read only on `@rami` (signed out after): 254 chats (269 rooms, 15 spaces hidden), a usable list 0.7 s after sign-in, 59 MB footprint. Fixed: spaces showed as chats; senders showed as raw ids until the chat loads its members. The MatrixCore tests now run as `@test1` on our server. M1's last item is done. |
 | 2026-10-27 | T2.7 passed on Rami's iPhone 16 Pro (team `3V2UU7RRK9`, the wildcard development profile): it installs, signs in, relaunches signed in, shows chats and sends. Exact's agent drives the phone too (`agent ios --device --phone <udid>`). The offline check waits for Rami. |
 | 2026-10-27 | T2.4 passed with `@test1` and `@test2`: unread counts in the chat list; opening a chat sends a read receipt. In a drive, receipts go out only for `@test` users, so a read-only drive on `@rami` cannot mark a chat read. `scripts/send-test-message.sh` now sends as `@test2` by default and refuses `@rami`. |
+| 2026-10-31 | Rami: the app must look and work like Beeper's iOS app ("very native and intuitive"), most important first. His walkthrough video is analysed in `research/beeper-walkthrough/report/index.html` (local only; `research/` is gitignored because the video shows real chats): 18 topics with his exact words, clips, stills, what to build, 23 open questions and a proposed order. His top wants, in his words: filter by network ("what I care about the most"), the unread filter, pinned people, photos and GIFs ("the two most important"), then Send Later. Read-only checks: Exact supports 14 of the 21 UI patterns fully and 7 partly (a Swift view covers each gap); the SDK has an API for 19 of 24 features (gaps: writing custom tags for Archive and labels, forward, scheduled sending, search inside one chat, jump to a date). |
