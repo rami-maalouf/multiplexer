@@ -121,11 +121,11 @@ you down is feedback, and recording it is part of each task, not optional. Start
 ## Test accounts
 
 **Safety rule.** `@rami:ramimaalouf.com` is Rami's real account: it holds his real
-WhatsApp, so a message sent in one of its rooms reaches a real person. Tests and drives
+WhatsApp and Instagram, so a message sent in one of its rooms reaches a real person. Tests and drives
 send, react, delete and mark as read only as `@test1:ramimaalouf.com` or
 `@test2:ramimaalouf.com` (Keychain service `multiplexer-test-account`). On `@rami`: read-only
 drives, and only with Rami's OK; sign out at the end. A read receipt there also marks the
-chat read in WhatsApp (double puppeting).
+chat read in WhatsApp or Instagram (double puppeting).
 
 
 - Practice: `@rami-m-test:matrix.org`. Its password is in the Keychain. Its room "Multiplexer test" is for tests.

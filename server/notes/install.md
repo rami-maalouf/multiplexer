@@ -186,3 +186,11 @@ Load 0.74 just after the build. Disk 34 of 96 GB (33 before): the new image, and
 build cache, now 2.6 GB (2.4 GB of it can be freed, for example with the playbook's system
 cleanup; that is a deletion, so it waits for Rami). The old published image
 `dock.mau.dev/mautrix/meta:ig-v0.2610.0` stays on disk, unused.
+
+## 2026-10-30: Rami's Instagram login on the fork (T4.1)
+
+Rami linked Instagram with `login android` from `@rami`. Read only, after the login: the
+bridge holds 1 login, owned by `@rami:ramimaalouf.com`, and 24 of 24 chats have rooms.
+During the login it logged 2 `ERR` lines: `GET qe/sync` answered HTTP 405 (expected: the
+password key comes with that answer), and one reconnection state update that it could not
+send. No `ERR` line after the login.
