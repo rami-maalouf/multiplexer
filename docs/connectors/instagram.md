@@ -360,16 +360,23 @@ to the bridge's authors, and our own copy now.
   `goimports`, `go vet`, `staticcheck` and `go test ./...` pass, and the bridge's own
   `prepareMobilePasswordLogin` got a key ID and a public key from Instagram (one
   request, no account).
-- Not known yet: whether the later steps (the login itself, 2FA) work.
-- Our server builds this commit itself (the playbook's self-build; see section 4).
+- A real login with it worked: Rami's `login android` from `@rami` on 2026-10-30.
 
-**The bridge project's rules for the pull request**
+**Upstream fixed it first; no pull request (2026-10-31).** Upstream merged its own fix on
+2026-10-28 at 22:40 UTC, about 5 hours after our commit: mautrix/meta#483 (`64e2f61`,
+"ig/login: fetch the native password key from launcher/sync") keeps the signed POST and
+sends it to `launcher/sync/`, which answers 200 with the same key headers. Our commit
+conflicts with it and adds nothing, so we send no pull request. The fork and the patch file
+stay as a record. Rami's decision: the server runs upstream `main` `4a7ebd9`
+(2026-10-30), the prebuilt image, until a release has #483 and #484 (fixes for the login
+code step). See `server/notes/install.md` on branch `server/phase-0`.
+
+**The bridge project's rules for any later pull request**
 (<https://docs.mau.fi/bridges/general/contributing.html>): AI help with code is allowed,
 but "issues, pull request descriptions and comments should be written by yourself, not
 an AI"; the author must understand and test the change; and for changes of more than a
 few lines, the author first explains the plan in the project's Matrix room
-(`#meta:maunium.net`). So Rami writes the pull request and any message himself, after a
-real login with our copy works. The facts for it are in this section.
+(`#meta:maunium.net`). So Rami writes any pull request and any message himself.
 
 **Security check after the logout (read only, 2026-10-28, about 05:45 UTC).** Rami asked
 whether we were hacked. No sign of it on the server:
@@ -448,16 +455,11 @@ matrix_bridge_mautrix_meta_instagram_configuration_extension_yaml: |
       batch_count: 20
 ```
 
-Our own copy of the bridge, until the fix is merged (the server conversation applies it):
+Upstream `main`, until a release has the login fixes (applied on 2026-10-31; it replaced
+our own copy of the bridge):
 
 ```yaml
-# our own copy of the instagram bridge, until the fix is merged upstream: mautrix/meta
-# main (0371efa, 2026-10-28) plus one fix for the android login's password key request
-# (docs/connectors/patches/mautrix-meta-ig-qe-sync-get.patch), built on the server.
-# to go back to the published image, delete these three lines.
-matrix_bridge_mautrix_meta_instagram_container_image_self_build: true
-matrix_bridge_mautrix_meta_instagram_container_image_self_build_repo: "https://github.com/rami-maalouf/meta.git"
-matrix_bridge_mautrix_meta_instagram_version: "bce18b56e20616a9347450e24062936ba67ade4b"
+matrix_bridge_mautrix_meta_instagram_version: "4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d"
 ```
 
 Keep the defaults for the rest: double puppeting (already on), encryption off,
