@@ -33,3 +33,10 @@ vertical padding moved into the field (`padding="12px 0"` on the `textarea`, `ma
 on Send), so the field is 44 points tall and the composer keeps its height. `check` is
 then clean in light and dark, and at the largest text size. Seen on 2026-10-27 at
 `cee509ac82`. Cost: about 5 minutes.
+
+## Seen again at `1bc4c36cb7` (2026-10-31)
+
+The recipe still has `overflow-wrap="anywhere"`; the sample chat app's bubble
+(`apps/messages/bubble.contract`) uses `break-word`. A bubble copied
+with `anywhere` gave the same `verify ios` finding ("breaks inside words (Octo/ber)");
+`break-word` made `verify ios` clean.

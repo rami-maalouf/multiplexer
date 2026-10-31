@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Each finding was rechecked against exact2 `cee509ac82` (2026-10-27).
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence).
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -41,6 +41,11 @@ Each finding was rechecked against exact2 `cee509ac82` (2026-10-27).
 | 20 | A virtualized list has no place for a row outside its `for`, so a chat cannot show that it is loading older messages, or that it has reached the start. | About 3 min, and a gap in the chat | P3 | [a-virtualized-list-has-no-place](issues/20261027-a-virtualized-list-has-no-place.md) |
 | 21 | `rem` cannot go inside `min()`, so a size cannot both scale with the text and stop at a cap. | About 2 min, and a fixed-size picture | P3 | [rem-cannot-go-inside-min-so](issues/20261027-rem-cannot-go-inside-min-so.md) |
 | 22 | `ios --device` does not check the pinned toolchain's iPhone Rust target before building; it fails a minute in. | About 3 min | P3 | [ios-device-does-not-check-the](issues/20261028-ios-device-does-not-check-the.md) |
+| 23 | `exact update` appends `/.exact/` to `.gitignore` on every run, so an app that keeps its diary in git loses new diary files. | About 10 min | P3 | [exact-update-re-adds-a-gitignore](issues/20261031-exact-update-re-adds-a-gitignore.md) |
+| 24 | The theme recipe says `contract vocab -exact-label` answers a role; it does not, and no page lists the roles. | About 10 min | P3 | [the-theme-recipe-says-contract-vocab](issues/20261031-the-theme-recipe-says-contract-vocab.md) |
+| 25 | `check` misses the accent fill under a bubble that a sibling paints, so the sample chat app's tailed bubble fails contrast. | About 15 min | P3 | [check-misses-the-accent-fill-under](issues/20261031-check-misses-the-accent-fill-under.md) |
+| 26 | A drive cannot fire `swiperight`, and under a real touch a tap on a `link` row misses. | About 10 min | P3 | [a-drive-cannot-fire-swiperight-and](issues/20261031-a-drive-cannot-fire-swiperight-and.md) |
+| 27 | A long-press menu has no row of reactions, so a chat app draws its message menu by hand. | About 40 lines | P3 | [a-long-press-menu-has-no](issues/20261031-a-long-press-menu-has-no.md) |
 
 ## What worked well
 

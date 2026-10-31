@@ -21,3 +21,9 @@ that `update` just changed.
 ## Evidence
 
 From the app's diary entry for the update to `cee509ac82`.
+
+## Seen again at `1bc4c36cb7` (2026-10-31)
+
+`update` printed "Cargo.lock: does not match the app manifests; run `bun exact.mjs lock`",
+and `lock` then said "current; no changes". `update` also prints "app.contract: every file
+names what it uses", which reads like a problem; it is the module-scope check passing.

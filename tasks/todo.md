@@ -466,7 +466,7 @@ the bridge bot, a "WhatsApp" space, an encrypted DM). Sign in on the Simulator, 
 
 **Description:** Today a chat shows text, photos and "Waiting for this message". Voice
 notes, videos and files show only their body text; stickers, polls and deleted messages
-are hidden; reactions, reply quotes and "edited" are not shown. Look at what the bridge
+are hidden. Reactions, reply quotes and "Edited" are done in T2.13. Look at what the bridge
 sends (read only, on `@rami`), then build them in this order: voice notes (play), replies
 (the quote above the bubble), reactions (under the bubble), videos (a poster, then play),
 files (name and size, open), stickers (as a picture), "Edited" and "Message deleted".
@@ -489,6 +489,36 @@ It shows at once, dimmed while it uploads.
 - [ ] A failed upload shows "Not Delivered", with Try Again and Delete.
 
 **Dependencies:** T2.3, T2.5
+**Scope:** M
+
+### T2.13 The chat like Messages: bubbles, replies, reactions
+
+**Description:** Added 2026-10-31 (Rami: pull the latest Exact and bring its sample chat
+apps' parts into our chat). Exact moved to `1bc4c36cb7`. From `apps/messages` (the bubble,
+runs, the long-press overlay) and `apps/excord` (reaction pills), in system colours, plus
+Beeper's wants from `research/beeper-walkthrough/report/index.html` ("The chat screen and
+swipe to reply", "Hold a message").
+
+**Acceptance criteria:**
+- [x] Bubbles with iOS tails on the last bubble of a sender's run; 1-point gaps in a run, 8 between runs; others' bubbles in an opaque grey token (`app.tamber`), yours in the accent. (2026-10-31: light, dark and the largest text size; `check` clean.)
+- [x] In a group chat, the sender's name above a run and their picture (or initials) beside its last bubble. (Pictures come from MatrixCore's `senderPicture`; the test users have none, so only initials were seen.)
+- [x] Send clears the composer at once and scrolls to the end (the recipe's change at `8de5b7c264`).
+- [x] Swipe right on a bubble to reply: a bar above the composer ("Replying to …", Cancel); the sent reply shows its quote above it, on every device. (Driven with a real touch, `--touch platform`.)
+- [x] Long press: the chat blurs, the bubble lifts in place, Beeper's six quick reactions above it, Reply and Copy under it.
+- [x] Reactions as pills under the bubble, with a count; yours outlined in the accent; a tap adds or takes back yours.
+- [x] "Edited" under an edited message. (Not seen: no edited message in the test rooms.)
+- [ ] The rest of Beeper's long-press menu: Forward, Share, Mark as Unread, Bookmark, Edit and Delete on your own, and the + for all emojis.
+- [ ] Long press on a photo (only text bubbles have it now).
+
+**Verification:**
+- [x] MatrixCore test `testAReplyQuotesItsMessageAndReactionsCount` (`@test1` and `@test2`): both see the quote; a reaction counts and is marked as yours; a second tap takes it back. The whole suite passes (12, 1 skipped).
+- [x] `verify ios` clean; drives with `check both` clean on the chat and the open menu.
+
+**Found on the way:**
+- A reply read back from the store can keep its quote "pending" with nothing loading it; MatrixCore now asks for the details of any quote that is not ready, once per opened chat.
+- While the menu is open, UIKit's navigation bar stays sharp above the blur; in light mode its title turns white over the pale blur. Not fixable from the app (Exact finding 27).
+
+**Dependencies:** T2.2, T2.3
 **Scope:** M
 
 ### Checkpoint M2: daily reading and sending
