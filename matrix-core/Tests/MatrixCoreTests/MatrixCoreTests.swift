@@ -405,6 +405,9 @@ final class MatrixCoreTests: XCTestCase {
         try await sender.send(roomId: roomId, text: answer, replyTo: asked.id)
         try await sender.toggleReaction(roomId: roomId, messageId: asked.id, key: "👍")
 
+        // the person who answered sees the quote on their own reply too.
+        let sent = try await message(sender, roomId, within: 15) { $0.body == answer && $0.reply?.body == question }
+        XCTAssertEqual(sent.reply?.isOwn, false)
         let reply = try await message(reader, roomId, within: 15) { $0.body == answer && $0.reply?.body == question }
         XCTAssertEqual(reply.reply?.isOwn, true, "the quoted message is the reader's own")
         XCTAssertFalse(reply.reply?.senderName.isEmpty ?? true)

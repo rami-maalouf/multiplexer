@@ -53,9 +53,12 @@ final class Matrix: ExactModule {
                     reply.send(["atStart": atStart, "messages": messages.map {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
-                         "waitingForKey": $0.waitingForKey,
+                         "waitingForKey": $0.waitingForKey, "isEdited": $0.isEdited,
                          "isImage": $0.image != nil, "image": thumbnail(account, roomId: roomId, message: $0),
-                         "imageWidth": $0.image?.width ?? 0, "imageHeight": $0.image?.height ?? 0]
+                         "imageWidth": $0.image?.width ?? 0, "imageHeight": $0.image?.height ?? 0,
+                         "senderPicture": senderPicture(account, roomId: roomId, message: $0),
+                         "reply": $0.reply.map { ["senderName": $0.senderName, "body": $0.body, "isOwn": $0.isOwn] } ?? [:],
+                         "reactions": $0.reactions.map { ["key": $0.key, "count": $0.count, "isMine": $0.isMine] }]
                     }])
                 case "older":
                     let roomId = request["roomId"] as? String ?? ""
@@ -69,7 +72,13 @@ final class Matrix: ExactModule {
                     reply.send(["path": "app:/cache/matrix-media/\(file.lastPathComponent)"])
                 case "send":
                     // the message shows in the chat at once; its state says how the sending goes.
-                    try await signedIn().send(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "")
+                    let replyTo = request["replyTo"] as? String ?? ""
+                    try await signedIn().send(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "",
+                                              replyTo: replyTo.isEmpty ? nil : replyTo)
+                    reply.send(["ok": true])
+                case "react":
+                    try await signedIn().toggleReaction(roomId: request["roomId"] as? String ?? "",
+                                                        messageId: request["messageId"] as? String ?? "", key: request["key"] as? String ?? "")
                     reply.send(["ok": true])
                 case "discard":
                     try await signedIn().discard(roomId: request["roomId"] as? String ?? "", messageId: request["messageId"] as? String ?? "")
@@ -81,7 +90,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, messages, older, photo, send, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, messages, older, photo, send, react, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -175,6 +184,14 @@ final class Matrix: ExactModule {
     @MainActor private func thumbnail(_ account: MatrixAccount, roomId: String, message: Message) -> String {
         cached(message.image?.thumbnailName ?? "", then: .room(roomId)) {
             _ = try await account.imageFile(roomId: roomId, messageId: message.id, full: false, directory: self.media)
+        }
+    }
+
+    /// A sender's picture as an `app:/` path once it is here (see `cached`).
+    @MainActor private func senderPicture(_ account: MatrixAccount, roomId: String, message: Message) -> String {
+        let url = message.senderPicture
+        return cached(message.senderPictureName, then: .room(roomId)) {
+            _ = try await account.pictureFile(url: url, directory: self.media)
         }
     }
 

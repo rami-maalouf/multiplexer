@@ -18,6 +18,10 @@ type MessagesAnswer = {
   messages: {
     id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
     isImage: boolean; image: string; imageWidth: number; imageHeight: number; waitingForKey: boolean;
+    isEdited: boolean; senderPicture: string;
+    // empty when the message answers none.
+    reply: { senderName?: string; body?: string; isOwn?: boolean };
+    reactions: { key: string; count: number; isMine: boolean }[];
   }[];
 };
 
@@ -62,10 +66,14 @@ const sources: Sources = {
       // a group chat names the sender above the first message of each run.
       const showName = group && !m.isOwn && (startsGroup || before.sender !== m.sender);
       return {
-        id: m.id, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: '',
+        id: m.id, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage, image: m.image, imageWidth: m.imageWidth, imageHeight: m.imageHeight,
-        waitingForKey: m.waitingForKey,
+        waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
+        // a reply shows who wrote what it answers ("" until that message loads).
+        hasReply: m.reply.body !== undefined,
+        replyName: m.reply.isOwn ? 'You' : (m.reply.senderName ?? ''),
+        replyBody: m.reply.body ?? '',
         photoWidth: m.imageWidth > 0 && m.imageHeight > 0
           ? Math.min(PHOTO_MAX_WIDTH, (PHOTO_MAX_HEIGHT * m.imageWidth) / m.imageHeight) : PHOTO_MAX_WIDTH,
       };
@@ -88,8 +96,13 @@ const sources: Sources = {
     return { ok: false, error: problems[answer.problem]?.(server) ?? `Multiplexer could not sign in: ${answer.detail}` };
   },
   // a failure to send shows on the message itself (state "failed"), not as a refusal here.
-  sendMessage: async ([roomId, text], _store, _storage, native): Promise<Result<'sendMessage'>> => {
-    await native!.later({ op: 'send', roomId, text });
+  sendMessage: async ([roomId, text, replyTo], _store, _storage, native): Promise<Result<'sendMessage'>> => {
+    await native!.later({ op: 'send', roomId, text, replyTo });
+    return { ok: true };
+  },
+  // adds this account's reaction, or takes it back; the chat shows it when the timeline does.
+  react: async ([roomId, messageId, key], _store, _storage, native): Promise<Result<'react'>> => {
+    await native!.later({ op: 'react', roomId, messageId, key });
     return { ok: true };
   },
   retryMessage: async ([roomId, messageId], _store, _storage, native): Promise<Result<'retryMessage'>> => {

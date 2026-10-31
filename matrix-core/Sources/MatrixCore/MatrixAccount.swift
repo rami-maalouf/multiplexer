@@ -531,15 +531,14 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
         lock.withLock { items.compactMap { item in item.asEvent().flatMap { Message($0, id: item.uniqueId().id, me: me) } } }
     }
 
-    /// The event ids of messages that replies answer, whose details are not loaded.
+    /// The event ids of messages that replies answer, whose details are not loaded. A reply
+    /// read back from the store can stay pending with nothing loading it, so pending counts.
     func missingQuotes() -> [String] {
         lock.withLock {
             items.compactMap { item in
                 guard case .msgLike(let like)? = item.asEvent()?.content, let reply = like.inReplyTo else { return nil }
-                switch reply.event() {
-                case .unavailable, .error: return reply.eventId()
-                case .pending, .ready: return nil
-                }
+                if case .ready = reply.event() { return nil }
+                return reply.eventId()
             }
         }
     }
@@ -651,6 +650,11 @@ extension Message {
                   },
                   senderPicture: picture)
     }
+}
+
+extension Message {
+    /// The file name `MatrixAccount.pictureFile` gives the sender's picture; "" when they have none.
+    public var senderPictureName: String { senderPicture.isEmpty ? "" : avatarFileName(senderPicture) }
 }
 
 extension QuotedMessage {
