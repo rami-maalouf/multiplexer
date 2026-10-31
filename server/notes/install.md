@@ -194,3 +194,15 @@ bridge holds 1 login, owned by `@rami:ramimaalouf.com`, and 24 of 24 chats have 
 During the login it logged 2 `ERR` lines: `GET qe/sync` answered HTTP 405 (expected: the
 password key comes with that answer), and one reconnection state update that it could not
 send. No `ERR` line after the login.
+
+## 2026-10-31: debug logs for the main account's login (T4.1)
+
+The main account's try (03:36 UTC) logged 2 `ERR` lines at the `warn` level: the expected
+405 on `GET qe/sync`, then HTTP 429 on
+`POST api/v1/bloks/async_action/com.bloks.www.caa.ar.submit_code.async/`, 68 s later. So
+Meta sent the login to its account recovery ("caa.ar") code step, and refused the code
+submit with a rate limit. The `warn` level hides the screen names in between.
+
+`config.yml` sets `matrix_bridge_mautrix_meta_instagram_logging_min_level: debug`. Install:
+`ok=250 changed=5 failed=0`. The Instagram and WhatsApp bridges restarted at 05:09:55 UTC;
+Synapse did not. WhatsApp: 1 login, no `WRN` or `ERR`. Delete the line after the login.

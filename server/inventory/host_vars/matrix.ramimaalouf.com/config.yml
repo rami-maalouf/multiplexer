@@ -59,6 +59,11 @@ matrix_bridge_mautrix_meta_instagram_container_image_self_build: true
 matrix_bridge_mautrix_meta_instagram_container_image_self_build_repo: "https://github.com/rami-maalouf/meta.git"
 matrix_bridge_mautrix_meta_instagram_version: "bce18b56e20616a9347450e24062936ba67ade4b"
 
+# debug logs for the main account's login (2026-10-31): they show each meta login screen,
+# and the login responses with names and values hidden. after a login, debug also logs
+# chat data, so set it back to warn (the default) by deleting this line.
+matrix_bridge_mautrix_meta_instagram_logging_min_level: debug
+
 # a small daily backup of the databases (synapse and the bridges), on the server itself, in
 # /matrix/postgres-backup. it keeps 7 daily dumps and 2 weekly ones, no monthly: the weekly
 # file is a hard link to a daily one, so it takes space only after that daily one is gone.
