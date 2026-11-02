@@ -452,6 +452,47 @@ final class MatrixCoreTests: XCTestCase {
         XCTAssertFalse(reply.reply?.senderName.isEmpty ?? true)
     }
 
+    /// A draft is kept in the account's store with the message it answers, by its id in the chat
+    /// or, for a message the chat has not loaded, by its event id; empty, or once sent, it goes.
+    func testADraftKeepsItsTextAndReplyUntilSent() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let rooms = try await account.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == twoPersonRoomName }?.id,
+                                   "the two-person room comes from testUnreadMessagesCountUntilRead")
+
+        // a reply to a message the chat shows.
+        let shown = try await account.messages(roomId: roomId, limit: 20)
+        let target = try XCTUnwrap(shown.last { !$0.body.isEmpty && $0.image == nil })
+        let text = "Draft \(UUID().uuidString)"
+        try await account.saveDraft(roomId: roomId, text: text, replyTo: target.id)
+        let kept = try await account.draft(roomId: roomId)
+        XCTAssertEqual(kept?.text, text)
+        XCTAssertEqual(kept?.reply?.messageId, target.id)
+        XCTAssertEqual(kept?.reply?.body, target.body)
+        XCTAssertEqual(kept?.reply?.isOwn, target.isOwn)
+
+        // a reply to the room's first message, which the chat has not loaded: named by its event id.
+        let first = try await firstTextMessage(roomId: roomId, session: try account.savedSession())
+        try await account.saveDraft(roomId: roomId, text: text, replyTo: first.eventId)
+        let older = try await account.draft(roomId: roomId)
+        XCTAssertEqual(older?.reply?.messageId, first.eventId)
+        XCTAssertEqual(older?.reply?.body, first.body)
+        XCTAssertFalse(older?.reply?.senderName.isEmpty ?? true)
+
+        // nothing left to keep removes it; a sent message removes it too.
+        try await account.saveDraft(roomId: roomId, text: "", replyTo: nil)
+        let none = try await account.draft(roomId: roomId)
+        XCTAssertNil(none)
+        try await account.saveDraft(roomId: roomId, text: text)
+        try await account.sendAndWait(roomId: roomId, text: text)
+        let afterSend = try await account.draft(roomId: roomId)
+        XCTAssertNil(afterSend)
+    }
+
     /// The room's first text message, through the client-server api.
     private func firstTextMessage(roomId: String, session: SavedSession) async throws -> (eventId: String, body: String) {
         var url = URLComponents(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3/rooms")

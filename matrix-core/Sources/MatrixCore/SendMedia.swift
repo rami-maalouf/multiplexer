@@ -10,13 +10,12 @@ extension MatrixAccount {
     /// with the id of its message in the chat (nil if it did not show within a second).
     /// The chat shows it at once as `sending`, with its `uploadProgress`, then `sent`, or
     /// `failed` (then `retry` and `discard` work as for text). `caption` shows with it; with
-    /// `replyTo`, a message's id, it answers that message.
+    /// `replyTo`, a message's id (or the event id a draft keeps), it answers that message.
     @discardableResult
     public func sendAttachment(roomId: String, attachment: Attachment, caption: String? = nil, replyTo: String? = nil,
                                timeout: TimeInterval = 30) async throws -> String? {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        var inReplyTo: String?
-        if let replyTo, case .eventId(let eventId)? = live.items.eventOrTransactionId(of: replyTo) { inReplyTo = eventId }
+        let inReplyTo = live.items.replyEventId(replyTo)
         // the sdk names the media after the file's last path component, so a file whose name is
         // not the one to show goes as a link of that name (no copy), until the queue holds it.
         var source = attachment.file
@@ -45,6 +44,8 @@ extension MatrixAccount {
         }
         let before = Set(live.items.messages().map(\.id))
         try await live.timeline.sendAttachment(params: params, attachment: kind).join()
+        // the caption was the chat's draft: a relaunch does not offer it again.
+        try? await room(roomId, timeout: timeout).clearComposerDraft(threadRoot: nil)
         // its local echo reaches the timeline on the sdk's own task, a moment after.
         let start = Date()
         repeat {

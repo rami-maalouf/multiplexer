@@ -79,6 +79,18 @@ final class Matrix: ExactModule {
                     let account = try await signedIn()
                     if try sendsReadReceipts(account) { try await account.markRead(roomId: request["roomId"] as? String ?? "") }
                     reply.send(["ok": true])
+                case "draft":
+                    // the chat's kept draft, as the view's composer holds one; "" for none.
+                    let roomId = request["roomId"] as? String ?? ""
+                    let draft = try await signedIn().draft(roomId: roomId)
+                    reply.send(["room": roomId, "text": draft?.text ?? "", "replyTo": draft?.reply?.messageId ?? "",
+                                "replyName": draft?.reply.map { $0.isOwn ? "You" : $0.senderName } ?? "",
+                                "replyBody": draft?.reply?.body ?? ""])
+                case "saveDraft":
+                    let replyTo = request["replyTo"] as? String ?? ""
+                    try await signedIn().saveDraft(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "",
+                                                   replyTo: replyTo.isEmpty ? nil : replyTo)
+                    reply.send(["ok": true])
                 case "older":
                     let roomId = request["roomId"] as? String ?? ""
                     try await signedIn().loadOlder(roomId: roomId)
@@ -119,7 +131,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, pin, unpin, messages, markRead, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, pin, unpin, messages, markRead, draft, saveDraft, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))

@@ -142,10 +142,12 @@ routes nav
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
-// a chat's composer: the one it keeps, or an empty one.
-fn composerOf(cs: Composer[], room: string): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => Composer(room=room, text="", replyTo="", replyName="", replyBody="", attachments=[]) }
-// cs with c in place of its chat's composer; an empty one is not kept.
-fn withComposer(cs: Composer[], c: Composer): Composer[] = cs.filter(x => x.room != c.room).concat(c.text == "" and c.replyTo == "" and c.attachments.length == 0 ? [] : [c])
+// a chat's composer: the one touched in this launch, else the draft kept in the account's store
+// (saved, once it is this chat's), else an empty one.
+fn composerOf(cs: Composer[], room: string, saved: Composer): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => saved.room == room ? saved : Composer(room=room, text="", replyTo="", replyName="", replyBody="", attachments=[]) }
+// cs with c in place of its chat's composer. An empty one stays, so a sent draft that the store
+// still held a moment ago does not show again.
+fn withComposer(cs: Composer[], c: Composer): Composer[] = cs.filter(x => x.room != c.room).concat([c])
 
 component Multiplexer
   state server = ""
@@ -153,8 +155,10 @@ component Multiplexer
   state password = ""
   state problem = ""
   state now = 0
-  // each chat's draft and reply, for this launch (see Composer).
+  // each chat's composer once it is touched in this launch (see composerOf).
   state composers: Composer[] = []
+  // the chat whose draft changed since it was last kept in the account's store ("" for none).
+  state unsaved = ""
   // the message held down: its menu and reactions show over the chat.
   state held = ""
   state heldBody = ""
@@ -198,6 +202,7 @@ component Multiplexer
   mutation older as shape Reply
   mutation reacted as shape Reply
   mutation markedRead as shape Reply
+  mutation keptDraft as shape Reply
   derive canSignIn = server.trim() != "" and user.trim() != "" and password != "" and not pending(signedIn)
   derive refusal = match signedIn { case some(r) => r.ok ? "" : r.error, case none => "" }
   derive roomsShown = roomList.owner == session.userId
@@ -211,7 +216,10 @@ component Multiplexer
   derive openName = match openRoomInfo { case some(r) => r.name, case none => "" }
   derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
   resource thread = loadMessages(openRoom, openIsDirect, openName) as shape Thread else empty()
-  derive composer = composerOf(composers, openRoom)
+  // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
+  resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
+  derive composer = composerOf(composers, openRoom, savedDraft)
+  derive unsavedComposer = composerOf(composers, unsaved, savedDraft)
   derive lastId = match thread.messages.at(-1) { case some(m) => m.id, case none => "" }
   // the reactions a long press offers first, as Beeper does.
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
@@ -238,11 +246,18 @@ component Multiplexer
     after(1000, readNow)
   task reveal when revealing != "" key=revealing
     after(300, revealNow, wait=idle, max=1000)
+  // a draft is kept a moment after typing stops, when its chat is left (follow, back), and when
+  // the app goes to the background, where iOS may end it.
+  task keepDraft when unsaved != "" key=`${unsaved}/${unsavedComposer.text}/${unsavedComposer.replyTo}`
+    after(600, keepDraftNow)
+  task keepDraftHidden when unsaved != "" and page.visibilityState == "hidden"
+    after(1, keepDraftNow)
 
   action step
     now = performanceNow()
   // leaving a screen closes a long-press menu: the bar's Back stays live above it.
   action follow(url: string)
+    keepDraftNow()
     nav = go(nav, url)
     held = ""
     panel = false
@@ -252,12 +267,17 @@ component Multiplexer
   action back
     if reading and not away and openUnread > 0
       send markedRead = markRead(openRoom)
+    keepDraftNow()
     nav = back(nav)
     held = ""
     panel = false
     tooLarge = ""
   action readNow
     send markedRead = markRead(openRoom)
+  action keepDraftNow
+    if unsaved != ""
+      send keptDraft = saveDraft(unsaved, unsavedComposer.text, unsavedComposer.replyTo)
+      unsaved = ""
   // the newest message is in view while its row's top is above the chat's bottom edge.
   action scrolled(x: number, y: number, e: ScrollEvent)
     let isAway = e.scrollHeight - e.scrollTop - e.clientHeight > max(1, frame(`row-${lastId}`).height)
@@ -291,12 +311,14 @@ component Multiplexer
   action signOut
     send signedOut = signOut()
     composers = []
+    unsaved = ""
   action reloadRooms
     refresh roomList
   action reloadThread
     refresh thread
   action editDraft(v: string)
     composers = withComposer(composers, Composer(composer, text=v))
+    unsaved = openRoom
   // as Messages does, Send clears the composer at once and scrolls to the end, even from far up.
   action post
     if composer.attachments.length > 0
@@ -304,10 +326,12 @@ component Multiplexer
         // the text is the caption: it goes with the last photo or file, the reply with the first.
         send sentMedia = sendMedia(openRoom, composer.attachments, composer.text.trim(), composer.replyTo)
         composers = withComposer(composers, Composer(composer, text="", replyTo="", attachments=[]))
+        unsaved = openRoom
         tooLarge = ""
     else if composer.text.trim() != "" and not pending(sent)
       send sent = sendMessage(openRoom, composer.text.trim(), composer.replyTo)
       composers = withComposer(composers, Composer(composer, text="", replyTo=""))
+      unsaved = openRoom
     focus("composer")
   // "+" puts the keyboard away and shows the panel in its place; X brings the keyboard back.
   action togglePanel
@@ -358,11 +382,13 @@ component Multiplexer
   // swipe's haptic is Exact's, at the point where letting go replies; a second one here doubled it.
   action startReply(id: string, name: string, body: string)
     composers = withComposer(composers, Composer(composer, replyTo=id, replyName=name, replyBody=body))
+    unsaved = openRoom
     held = ""
     revealing = id
     focus("composer")
   action cancelReply
     composers = withComposer(composers, Composer(composer, replyTo=""))
+    unsaved = openRoom
   // a long press lifts the bubble where it is, with reactions above it and actions under it.
   action hold(id: string, body: string, name: string, own: bool, tail: bool)
     heldY = frame(`message-${id}`).y
