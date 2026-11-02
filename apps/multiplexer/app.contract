@@ -482,23 +482,26 @@ component Multiplexer
               else
                 column flex=1 justify-content="center" align-items="center"
                   progress aria-label="Loading messages" testId="thread-loading"
-            if threadShown and composer.replyTo != ""
-              row inert=(held != "") align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="reply-bar"
-                column flex=1 min-width=0
-                  text `Replying to ${composer.replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
-                  text composer.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
-                button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
-                  image "symbol:close"
+            // the reply bar and the composer share one bar in the page's colour: the chat's rows scroll
+            // on past the list's frame, and without it they show through the reply and the field.
             if threadShown
-              // the field's own padding makes it a 44-point target; the row adds none above or below.
-              row inert=(held != "") align-items="flex-end" margin="6px 12px" padding="0 4px 0 12px" border-radius=22
-                border="1px solid -exact-separator"
-                textarea id="composer" value=composer.text input=editDraft rows=1 field-sizing="content" max-height=140
-                  placeholder="Message" aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
-                  border="none" background-color="transparent"
-                button press=post disabled=(composer.text.trim() == "" or pending(sent)) buttonStyle="filled" margin="4px 0"
-                  retainFocus=true aria-label="Send" testId="send"
-                  image "symbol:send"
+              column inert=(held != "") flex-shrink=0 background-color="-exact-background" testId="composer-bar"
+                if composer.replyTo != ""
+                  row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="reply-bar"
+                    column flex=1 min-width=0
+                      text `Replying to ${composer.replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
+                      text composer.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
+                    button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
+                      image "symbol:close"
+                // the field's own padding makes it a 44-point target; the row adds none above or below.
+                row align-items="flex-end" margin="6px 12px" padding="0 4px 0 12px" border-radius=22
+                  border="1px solid -exact-separator"
+                  textarea id="composer" value=composer.text input=editDraft rows=1 field-sizing="content" max-height=140
+                    placeholder="Message" aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
+                    border="none" background-color="transparent"
+                  button press=post disabled=(composer.text.trim() == "" or pending(sent)) buttonStyle="filled" margin="4px 0"
+                    retainFocus=true aria-label="Send" testId="send"
+                    image "symbol:send"
             // a held message: the chat blurs, the bubble stays where it was, the reactions sit above it
             // and its actions under it, as Beeper and Messages show them.
             if held != ""
