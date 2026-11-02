@@ -424,6 +424,62 @@ final class MatrixCoreTests: XCTestCase {
         XCTAssertEqual(back.reactions.first?.isMine, false)
     }
 
+    /// A reply to a message older than what the chat loads shows its quote: the timeline does not
+    /// hold that message, so MatrixCore asks the sdk to load it. (Until 2026-11-02 it asked with the
+    /// quoted message's id, not the reply's, and the quote stayed empty.)
+    func testAReplyToAnOldMessageShowsItsQuote() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty,
+              let user2 = env["MATRIX_TEST_USER2"], let password2 = env["MATRIX_TEST_PASSWORD2"], !password2.isEmpty else {
+            throw XCTSkip("two test users are needed (MATRIX_TEST_USER2 and MATRIX_TEST_PASSWORD2)")
+        }
+        let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let sender = try await signIn(homeserver, user2, password2)
+        let rooms = try await sender.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == twoPersonRoomName }?.id,
+                                   "the two-person room comes from testUnreadMessagesCountUntilRead")
+
+        // the other person answers the room's first message, which no chat loads when it opens.
+        let session = try sender.savedSession()
+        let first = try await firstTextMessage(roomId: roomId, session: session)
+        let answer = "Answers the first message \(UUID().uuidString)"
+        try await sendText(answer, replyTo: first.eventId, roomId: roomId, session: session)
+
+        let reader = try await signIn(homeserver, user, password)
+        _ = try await reader.rooms()
+        let reply = try await message(reader, roomId, within: 20) { $0.body == answer && $0.reply?.body == first.body }
+        XCTAssertFalse(reply.reply?.senderName.isEmpty ?? true)
+    }
+
+    /// The room's first text message, through the client-server api.
+    private func firstTextMessage(roomId: String, session: SavedSession) async throws -> (eventId: String, body: String) {
+        var url = URLComponents(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3/rooms")
+            .appendingPathComponent(roomId).appendingPathComponent("messages"), resolvingAgainstBaseURL: false)!
+        url.queryItems = [URLQueryItem(name: "dir", value: "f"), URLQueryItem(name: "limit", value: "100")]
+        var request = URLRequest(url: url.url!)
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let chunk = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["chunk"] as? [[String: Any]] ?? []
+        let event = try XCTUnwrap(chunk.first {
+            $0["type"] as? String == "m.room.message" && ($0["content"] as? [String: Any])?["msgtype"] as? String == "m.text"
+        }, "the room has no text message at its start")
+        return (try XCTUnwrap(event["event_id"] as? String), try XCTUnwrap((event["content"] as? [String: Any])?["body"] as? String))
+    }
+
+    /// Sends a text that answers `replyTo` (an event id), through the client-server api.
+    private func sendText(_ text: String, replyTo: String, roomId: String, session: SavedSession) async throws {
+        var send = URLRequest(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3/rooms")
+            .appendingPathComponent(roomId).appendingPathComponent("send/m.room.message").appendingPathComponent(UUID().uuidString))
+        send.httpMethod = "PUT"
+        send.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        send.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        send.httpBody = try JSONSerialization.data(withJSONObject: [
+            "msgtype": "m.text", "body": text, "m.relates_to": ["m.in_reply_to": ["event_id": replyTo]],
+        ])
+        let (_, response) = try await URLSession.shared.data(for: send)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+    }
+
     /// The newest message in the room's chat that matches `found`, once it does.
     private func message(_ account: MatrixAccount, _ roomId: String, within seconds: TimeInterval,
                          _ found: (Message) -> Bool) async throws -> Message {

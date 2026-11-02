@@ -44,8 +44,8 @@ final class Matrix: ExactModule {
                     reply.send(["rooms": rooms.map { room in
                         ["id": room.id, "name": room.name, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
                          "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
-                         "unread": room.unreadCount, "markedUnread": room.isMarkedUnread, "oneToOne": room.isOneToOne,
-                         "listed": inbox.listed.contains(room.id),
+                         "unread": room.unreadCount, "network": room.network, "markedUnread": room.isMarkedUnread,
+                         "oneToOne": room.isOneToOne, "listed": inbox.listed.contains(room.id),
                          "avatar": cached(room.avatarName, then: .rooms) {
                              _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
                     }, "pinned": inbox.pinned.map(\.id)])

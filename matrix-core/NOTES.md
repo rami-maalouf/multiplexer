@@ -115,6 +115,42 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - `RoomSummary.avatarName` names the room's picture; `avatarFile(roomId:directory:)`
   downloads a thumbnail of at most 160 pixels a side once.
 
+## A chat's network
+
+`RoomSummary.network` is `whatsapp`, `instagram`, `messenger`, `telegram`, `signal`,
+`discord` or `linkedin`, or `matrix` when no bridge serves the room (`RoomNetwork.swift`).
+
+- **The sdk cannot read `m.bridge`.** A mautrix bridge puts `m.bridge` and
+  `uk.half-shot.bridge` in each room it makes (mautrix-go `bridgev2/portal.go`,
+  `CreateMatrixRoom`; the content is `event.BridgeEventContent`, and `protocol.id` is the
+  bridge's `BeeperBridgeType`). `Room.stateEvents` reads only the local store, and the room
+  list's sliding sync asks for a fixed list of state types (`DEFAULT_REQUIRED_STATE` in
+  matrix-sdk-ui, `room_list_service/mod.rs`). The bindings cannot add a type to it.
+- **The spike (2026-11-02, `@test1` on our server):** the server returned the room's
+  `m.bridge` (HTTP 200, with its content). `stateEvents` returned 0 events for `m.bridge` and
+  `uk.half-shot.bridge`: on a new device, on the device that set them, and after the chat was
+  opened.
+- **What works: the bridge's bot.** The same bridges also put
+  `io.element.functional_members` in each room (MSC4171; `service_members` holds the bridge
+  bot). The sync asks for that type (`MemberHints`), so on a new device
+  `RoomInfo.serviceMembers` holds the bot (`@whatsappbot:<server>`). Its localpart
+  `<word>bot` names the network.
+- **The fallback: the room's heroes.** For a bridge that sets no service members
+  (mautrix-discord is not on bridgev2): a hero on this account's server whose localpart is
+  `<word>bot` or starts with `<word>_` (a ghost, `@discord_123:<server>`). Synapse sends heroes
+  only for a room with no name, so this covers one-to-one chats and the chat with a bridge's
+  bot.
+- **The words** are the playbook's default bot and ghost names: `whatsapp`, `instagram`,
+  `messenger` (also `facebook`), `telegram`, `signal`, `discord`, `linkedin`. A server that
+  gives its bridges other names shows `matrix`.
+- **Limit:** a room with no service members and a name (a group of a bridge that is not on
+  bridgev2) shows `matrix`. Reading `m.bridge` through the API
+  (`GET /rooms/{id}/state/m.bridge/{key}`) would cover it, at one request for each room. Not
+  done.
+- For reference, the `protocol.id` of each bridge (from its source, 2026-11-02): `whatsapp`,
+  `instagramgo`, `facebookgo` (Messenger), `telegram`, `signal`, `discordgo`, `linkedin`.
+- The test: `RoomNetworkTests` (a room of its own, "Multiplexer network test").
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The

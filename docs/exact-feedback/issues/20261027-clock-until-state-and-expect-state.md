@@ -25,3 +25,7 @@ Cost: about 3 minutes, and one wasted drive that had signed in to a real server.
 
 Seen on 2026-10-27 at exact2 `cee509ac82`, on iOS. `clock until state thread.messages.19.body == "x" within 1000`
 was accepted and answered "thread.messages has no field \"19\" (it is [])".
+
+Seen again on 2026-11-02 at exact2 `ed43ad09a0`, on iOS: `"clock until state roomList.rooms.0 .network == \"whatsapp\" within 30000"`
+was refused with the grammar alone (`clock until state <path> == <literal> within <ms> (the literal is JSON: …), not …`),
+though the app's own agent notes warn about it. Cost: one wasted drive, about 1 minute.
