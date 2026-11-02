@@ -20,6 +20,8 @@ public final class MatrixAccount: @unchecked Sendable {
 
     private init(client: Client) {
         self.client = client
+        // a photo or file on its way tells how much of it is uploaded (`Message.uploadProgress`).
+        client.enableSendQueueUploadProgress(enable: true)
     }
 
     /// Signs in with a user name and password. `homeserver` is a server name
@@ -138,7 +140,7 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// The chat's live timeline, opened the first time with its last `limit` messages.
-    private func liveTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
+    func liveTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
         let opening: Task<LiveTimeline, Error> = lock.withLock {
             if let open = timelines[roomId] { return open }
             let task = Task { try await self.openTimeline(roomId, limit: limit, timeout: timeout) }
@@ -181,16 +183,18 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// Puts a text message in the room's send queue and returns at once. The chat shows
-    /// it at once as `sending`, then `sent`, or `failed`. With `replyTo`, a message's id, it
-    /// answers that message; one the server does not have yet cannot be answered.
+    /// it at once as `sending`, then `sent`, or `failed`. With `replyTo`, a message's id (or the
+    /// event id a draft keeps), it answers that message; one the server does not have yet cannot
+    /// be answered. The chat's stored draft goes, so a relaunch does not offer the text again.
     public func send(roomId: String, text: String, replyTo: String? = nil, timeout: TimeInterval = 30) async throws {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         let content = messageEventContentFromMarkdown(md: text)
-        if let replyTo, case .eventId(let eventId)? = live.items.eventOrTransactionId(of: replyTo) {
+        if let eventId = live.items.replyEventId(replyTo) {
             _ = try await live.timeline.sendReply(msg: content, eventId: eventId)
         } else {
             _ = try await live.timeline.send(msg: content)
         }
+        try? await room(roomId, timeout: timeout).clearComposerDraft(threadRoot: nil)
     }
 
     /// Adds this account's reaction `key` (an emoji) to a message, or takes it back when it
@@ -238,6 +242,9 @@ public final class MatrixAccount: @unchecked Sendable {
         let data: Data
         if full {
             data = try await client.getMediaContent(mediaSource: content.source)
+        } else if let thumbnail = content.info?.thumbnailSource, let small = try? await client.getMediaContent(mediaSource: thumbnail) {
+            // the sender's own thumbnail: a photo this device sends has it in the send queue's cache.
+            data = small
         } else {
             // a server may have no thumbnail for a small picture: then the picture itself.
             do {
@@ -401,7 +408,7 @@ private final class RoomEntries: RoomListEntriesListener, @unchecked Sendable {
 }
 
 /// An open chat's timeline and its listener; closing it stops the listener.
-private final class LiveTimeline: @unchecked Sendable {
+final class LiveTimeline: @unchecked Sendable {
     let timeline: Timeline
     let items: TimelineItems
     private let handle: TaskHandle
@@ -482,7 +489,7 @@ private final class LiveTimeline: @unchecked Sendable {
 }
 
 /// A timeline's items, kept current by applying the sdk's diffs in order.
-private final class TimelineItems: TimelineListener, @unchecked Sendable {
+final class TimelineItems: TimelineListener, @unchecked Sendable {
     /// This account's user id: its reactions are marked as its own.
     private let me: String
     private let lock = NSLock()
@@ -562,7 +569,33 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     func eventOrTransactionId(of messageId: String) -> EventOrTransactionId? {
-        lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent()?.eventOrTransactionId }
+        event(of: messageId)?.eventOrTransactionId
+    }
+
+    func event(of messageId: String) -> EventTimelineItem? {
+        lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent() }
+    }
+
+    /// The event a reply answers: `replyTo` is a message's id in this chat, or an event id ("$…")
+    /// as a stored draft keeps one. Nil for none, and for a message the server does not have yet.
+    func replyEventId(_ replyTo: String?) -> String? {
+        guard let replyTo, !replyTo.isEmpty else { return nil }
+        if replyTo.hasPrefix("$") { return replyTo }
+        guard case .eventId(let eventId)? = eventOrTransactionId(of: replyTo) else { return nil }
+        return eventId
+    }
+
+    /// What a reply bar shows of the message with this event id, if the chat holds it.
+    func draftReply(eventId: String) -> DraftReply? {
+        lock.withLock {
+            for item in items {
+                guard let event = item.asEvent(), case .eventId(eventId) = event.eventOrTransactionId else { continue }
+                guard let body = preview(event.content) else { return nil }
+                return DraftReply(messageId: item.uniqueId().id, senderName: displayName(event.sender, event.senderProfile),
+                                  body: body, isOwn: event.sender == me)
+            }
+            return nil
+        }
     }
 }
 
@@ -601,22 +634,37 @@ extension RoomSummary {
 private func preview(_ content: TimelineItemContent) -> String? {
     guard case .msgLike(let like) = content else { return nil }
     switch like.kind {
-    case .message(let message):
-        switch message.msgType {
-        case .image: return "Photo"
-        case .gallery: return "Photos"
-        case .video: return "Video"
-        case .audio: return "Audio"
-        case .file: return "File"
-        case .location: return "Location"
-        default: return message.body
-        }
+    case .message(let message): return preview(message.msgType, body: message.body)
     case .sticker: return "Sticker"
     case .poll(let question, _, _, _, _, _, _): return question
     case .redacted: return "Message deleted"
     case .unableToDecrypt: return "Encrypted message"
     case .liveLocation: return "Live location"
     case .other: return "Message"
+    }
+}
+
+/// One line for a message of this type: what it is ("Photo"), or `body` for text.
+private func preview(_ type: MessageType, body: String) -> String {
+    switch type {
+    case .image: return "Photo"
+    case .gallery: return "Photos"
+    case .video: return "Video"
+    case .audio: return "Audio"
+    case .file: return "File"
+    case .location: return "Location"
+    default: return body
+    }
+}
+
+/// One line for a message fetched by its event id, which comes with no body of its own.
+func preview(_ type: MessageType) -> String {
+    switch type {
+    case .text(let content): return content.body
+    case .notice(let content): return content.body
+    case .emote(let content): return content.body
+    case .other(_, let body): return body
+    default: return preview(type, body: "Message")
     }
 }
 
@@ -639,16 +687,22 @@ extension Message {
         }
         guard case .message(let message) = content.kind else { return nil }
         let sendState: SendState
+        var uploaded: Double?
         switch event.localSendState {
-        case .notSentYet?: sendState = .sending
+        case .notSentYet(let progress)?:
+            sendState = .sending
+            uploaded = progress.map(uploadedFraction)
         case .sendingFailed?: sendState = .failed
         // a remote echo has no local send state: the server has it.
         case .sent?, nil: sendState = .sent
         }
-        var body = message.body, image: MessageImage?
+        var body = message.body, image: MessageImage?, file: MessageFile?
         if case .image(let content) = message.msgType {
             body = content.caption ?? ""
             image = MessageImage(content)
+        } else if case .file(let content) = message.msgType {
+            body = content.caption ?? ""
+            file = MessageFile(content)
         }
         self.init(id: id, sender: event.sender, senderName: name, body: body, timestamp: event.timestamp,
                   isOwn: event.isOwn, sendState: sendState, image: image, isEdited: message.isEdited,
@@ -658,6 +712,8 @@ extension Message {
                                       isMine: reaction.senders.contains { $0.senderId == me })
                   },
                   senderPicture: picture)
+        self.file = file
+        uploadProgress = uploaded
     }
 }
 
@@ -678,7 +734,7 @@ extension QuotedMessage {
 }
 
 /// A media url names its picture for good; its hash makes a safe file name.
-private func mediaKey(_ url: String) -> String {
+func mediaKey(_ url: String) -> String {
     SHA256.hash(data: Data(url.utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
 }
 

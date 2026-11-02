@@ -8,6 +8,7 @@ final class MatrixCoreTests: XCTestCase {
     private let roomName = "Multiplexer test"
     private let encryptedRoomName = "Multiplexer encrypted test"
     private let twoPersonRoomName = "Multiplexer two-person test"
+    private let mediaRoomName = "Multiplexer media test"
 
     func testSignInSendAndReadBackOnANewDevice() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -451,6 +452,47 @@ final class MatrixCoreTests: XCTestCase {
         XCTAssertFalse(reply.reply?.senderName.isEmpty ?? true)
     }
 
+    /// A draft is kept in the account's store with the message it answers, by its id in the chat
+    /// or, for a message the chat has not loaded, by its event id; empty, or once sent, it goes.
+    func testADraftKeepsItsTextAndReplyUntilSent() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let rooms = try await account.rooms()
+        let roomId = try XCTUnwrap(rooms.first { $0.name == twoPersonRoomName }?.id,
+                                   "the two-person room comes from testUnreadMessagesCountUntilRead")
+
+        // a reply to a message the chat shows.
+        let shown = try await account.messages(roomId: roomId, limit: 20)
+        let target = try XCTUnwrap(shown.last { !$0.body.isEmpty && $0.image == nil })
+        let text = "Draft \(UUID().uuidString)"
+        try await account.saveDraft(roomId: roomId, text: text, replyTo: target.id)
+        let kept = try await account.draft(roomId: roomId)
+        XCTAssertEqual(kept?.text, text)
+        XCTAssertEqual(kept?.reply?.messageId, target.id)
+        XCTAssertEqual(kept?.reply?.body, target.body)
+        XCTAssertEqual(kept?.reply?.isOwn, target.isOwn)
+
+        // a reply to the room's first message, which the chat has not loaded: named by its event id.
+        let first = try await firstTextMessage(roomId: roomId, session: try account.savedSession())
+        try await account.saveDraft(roomId: roomId, text: text, replyTo: first.eventId)
+        let older = try await account.draft(roomId: roomId)
+        XCTAssertEqual(older?.reply?.messageId, first.eventId)
+        XCTAssertEqual(older?.reply?.body, first.body)
+        XCTAssertFalse(older?.reply?.senderName.isEmpty ?? true)
+
+        // nothing left to keep removes it; a sent message removes it too.
+        try await account.saveDraft(roomId: roomId, text: "", replyTo: nil)
+        let none = try await account.draft(roomId: roomId)
+        XCTAssertNil(none)
+        try await account.saveDraft(roomId: roomId, text: text)
+        try await account.sendAndWait(roomId: roomId, text: text)
+        let afterSend = try await account.draft(roomId: roomId)
+        XCTAssertNil(afterSend)
+    }
+
     /// The room's first text message, through the client-server api.
     private func firstTextMessage(roomId: String, session: SavedSession) async throws -> (eventId: String, body: String) {
         var url = URLComponents(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3/rooms")
@@ -478,6 +520,103 @@ final class MatrixCoreTests: XCTestCase {
         ])
         let (_, response) = try await URLSession.shared.data(for: send)
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+    }
+
+    func testAPhotoAndAFileReachTheOtherPersonAndARefusedUploadFails() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty,
+              let user2 = env["MATRIX_TEST_USER2"], let password2 = env["MATRIX_TEST_PASSWORD2"], !password2.isEmpty else {
+            throw XCTSkip("two test users are needed (MATRIX_TEST_USER2 and MATRIX_TEST_PASSWORD2)")
+        }
+        let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let sender = try await signIn(homeserver, user, password)
+        let reader = try await signIn(homeserver, user2, password2)
+        // a room the two share for photos and files, made on the first run.
+        let rooms = try await sender.rooms()
+        let roomId: String
+        if let id = rooms.first(where: { $0.name == mediaRoomName })?.id { roomId = id }
+        else { roomId = try await sender.createRoom(name: mediaRoomName) }
+        try await post("invite", ["user_id": user2], roomId: roomId, session: try sender.savedSession())
+        try await post("join", [:], roomId: roomId, session: try reader.savedSession())
+        _ = try await reader.rooms()
+        _ = try await sender.messages(roomId: roomId, limit: 20)
+        _ = try await reader.messages(roomId: roomId, limit: 20)
+        let folder = freshDirectory()
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+
+        // a portrait photo with its own thumbnail and a caption: it shows at once, then sent.
+        let photo = folder.appendingPathComponent("Portrait.jpg"), small = folder.appendingPathComponent("Portrait-thumbnail.jpg")
+        try jpeg(width: 600, height: 900, .systemTeal).write(to: photo)
+        try jpeg(width: 200, height: 300, .systemPink).write(to: small)
+        let caption = "Media \(UUID().uuidString)"
+        let queuedAt = Date()
+        let echo = try await sender.sendAttachment(roomId: roomId, attachment: Attachment(
+            file: photo, mimetype: "image/jpeg", size: try size(photo), kind: .photo(width: 600, height: 900),
+            thumbnail: .init(file: small, mimetype: "image/jpeg", size: try size(small), width: 200, height: 300)), caption: caption)
+        let queued = try await message(sender, roomId, within: 5) { $0.isOwn && $0.body == caption && $0.image != nil }
+        print("the photo showed in the sender's chat after \(String(format: "%.2f", Date().timeIntervalSince(queuedAt))) s, \(queued.sendState)")
+        XCTAssertEqual(echo, queued.id, "sendAttachment names another message")
+        let sent = try await message(sender, roomId, within: 30) { $0.id == queued.id && $0.sendState == .sent }
+        XCTAssertNil(sent.uploadProgress)
+        // the other person gets it at its size, with its caption; its thumbnail is the sender's.
+        let seen = try await message(reader, roomId, within: 30) { $0.body == caption && $0.image != nil }
+        XCTAssertEqual(seen.image?.width, 600)
+        XCTAssertEqual(seen.image?.height, 900)
+        XCTAssertFalse(seen.isOwn)
+        let full = try await reader.imageFile(roomId: roomId, messageId: seen.id, full: true, directory: freshDirectory())
+        XCTAssertEqual(UIImage(contentsOfFile: full.path)?.size, CGSize(width: 600, height: 900))
+        let thumbnail = try await reader.imageFile(roomId: roomId, messageId: seen.id, full: false, directory: freshDirectory())
+        XCTAssertEqual(UIImage(contentsOfFile: thumbnail.path)?.size, CGSize(width: 200, height: 300))
+
+        // a file keeps its name, size and type, and downloads as it was sent.
+        // the file on this device has another name (a picker's copy): the other person sees the one given.
+        let text = "Notes \(UUID().uuidString)\n"
+        let copy = folder.appendingPathComponent("1-3.txt"), name = "Notes \(UUID().uuidString.prefix(8)).txt"
+        try Data(text.utf8).write(to: copy)
+        try await sender.sendAttachment(roomId: roomId, attachment: Attachment(file: copy, name: name, mimetype: "text/plain",
+                                                                               size: text.utf8.count, kind: .file))
+        let got = try await message(reader, roomId, within: 30) { $0.file?.name == name }
+        XCTAssertEqual(got.file?.size, text.utf8.count)
+        XCTAssertEqual(got.file?.mimetype, "text/plain")
+        XCTAssertEqual(got.body, "")
+        let downloaded = try await reader.fileContent(roomId: roomId, messageId: got.id, directory: freshDirectory())
+        XCTAssertEqual(downloaded.lastPathComponent, name)
+        XCTAssertEqual(try String(contentsOf: downloaded, encoding: .utf8), text)
+
+        // a file over the server's limit is refused: it shows as failed, stays failed when
+        // tried again, and Delete removes it.
+        let limit = try await sender.maxUploadSize()
+        let large = folder.appendingPathComponent("Too large \(UUID().uuidString.prefix(8)).bin")
+        FileManager.default.createFile(atPath: large.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: large)
+        try handle.truncate(atOffset: UInt64(limit + 1))
+        try handle.close()
+        let refusedAt = Date()
+        try await sender.sendAttachment(roomId: roomId, attachment: Attachment(file: large, mimetype: "application/octet-stream",
+                                                                               size: limit + 1, kind: .file))
+        let failed = try await message(sender, roomId, within: 120) { $0.file?.name == large.lastPathComponent && $0.sendState == .failed }
+        print("an upload of \(limit + 1) bytes (the server's limit and one) failed after \(String(format: "%.1f", Date().timeIntervalSince(refusedAt))) s")
+        try await sender.retry(roomId: roomId, messageId: failed.id)
+        _ = try await message(sender, roomId, within: 120) { $0.id == failed.id && $0.sendState == .failed }
+        try await sender.discard(roomId: roomId, messageId: failed.id)
+        let start = Date()
+        var left = try await sender.messages(roomId: roomId, limit: 20)
+        while left.contains(where: { $0.id == failed.id }), Date().timeIntervalSince(start) < 10 {
+            try await Task.sleep(nanoseconds: 100_000_000)
+            left = try await sender.messages(roomId: roomId, limit: 20)
+        }
+        XCTAssertFalse(left.contains { $0.id == failed.id }, "the refused file is still in the chat")
+    }
+
+    private func jpeg(width: Int, height: Int, _ color: UIColor) -> Data {
+        UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: {
+            let f = UIGraphicsImageRendererFormat(); f.scale = 1; return f }()).jpegData(withCompressionQuality: 0.8) { c in
+            color.setFill(); c.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        }
+    }
+
+    private func size(_ file: URL) throws -> Int {
+        try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
     }
 
     /// The newest message in the room's chat that matches `found`, once it does.

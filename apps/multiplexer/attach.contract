@@ -1,0 +1,121 @@
+// photos and files in a chat: the composer's "+", the panel that takes the keyboard's place,
+// the tray of what is picked for the next send, a file's bubble, and an upload's ring.
+
+// a photo or file picked for the next send; photo: it came from the photo library, so it goes
+// as a picture (a file from Files goes as a file, whatever it is).
+shape Attachment
+  file: Picked
+  photo: bool
+
+// "12 KB", "3.4 MB": a file's size as Files counts it (1000 bytes a kilobyte).
+fn sizeText(n: number): string = n < 1000 ? `${n} ${n == 1 ? "byte" : "bytes"}` : (n < 1000000 ? `${round(n / 1000)} KB` : `${round(n / 100000) / 10} MB`)
+// a file's kind and size, as Messages names one: "PDF · 2.1 MB".
+fn fileDetail(name: string, size: number): string = match (name.includes(".") ? name.split(".").at(-1) : none) { case some(e) => `${e.toUpperCase()} · ${sizeText(size)}`, case none => sizeText(size) }
+
+keyframes panelIn
+  from opacity=0 translate="0px 40px"
+  to opacity=1 translate="0px 0px"
+
+// "+" opens the panel; while it is open the same button is an X, which closes it.
+component AddButton
+  props
+    open: bool
+    press: action
+  view
+    button press=press buttonStyle="glass" retainFocus=true aria-label=(open ? "Close" : "Add") aria-expanded=open testId="add"
+      width=44 height=44 flex-shrink=0
+      image (open ? "symbol:close" : "symbol:add") font-size="min(-exact-title3, 24px)"
+
+// where the keyboard was, as Beeper's: one row for each way to add, an icon and its name.
+component AddPanel
+  props
+    photos: action
+    files: action
+    reduced: bool
+  view
+    column testId="add-panel" padding="12px 0" padding-bottom="calc(12px + env(safe-area-inset-bottom))"
+      margin-bottom="calc(0px - env(safe-area-inset-bottom))" border-radius="28px 28px 0px 0px"
+      background-color="-exact-secondary-background" animation=(reduced ? "none" : "panelIn 220ms ease-out")
+      button appearance="none" press=photos testId="panel-photos" display="flex" flex-direction="row" align-items="center"
+        gap=16 min-height=52 padding="0px 24px" text-align="start"
+        image "symbol:icon.photos" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
+        text "Photos" color="-exact-label"
+      button appearance="none" press=files testId="panel-files" display="flex" flex-direction="row" align-items="center"
+        gap=16 min-height=52 padding="0px 24px" text-align="start"
+        image "symbol:icon.folder" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
+        text "Send file" color="-exact-label"
+
+// what the next send takes, above the composer's text: a photo as itself, a file as its name and size.
+// at the accessibility text sizes (stacked) a file's tile drops its icon and widens, so its name fits.
+component Tray
+  props
+    items: Attachment[]
+    stacked: bool
+    remove: action
+  view
+    scroll overflow-x="auto" overflow-y="hidden" flex-shrink=0 testId="tray"
+      row gap=8 padding="8px 8px 2px"
+        for a in items key=a.file.path
+          view position="relative" flex-shrink=0
+            if a.photo
+              image a.file.path width=72 height=72 border-radius=14 object-fit="cover" background-color="-exact-tertiary-fill"
+                aria-label=a.file.name testId=`tray-${a.file.name}`
+            else
+              row min-height=72 max-width=(stacked ? "280px" : "min(14rem, 240px)") gap=8 padding="8px 36px 8px 12px" box-sizing="border-box" align-items="center" border-radius=14
+                background-color="-exact-tertiary-fill" aria-label=`${a.file.name}, ${fileDetail(a.file.name, a.file.size)}` testId=`tray-${a.file.name}`
+                if not stacked
+                  image "symbol:document" font-size="min(-exact-title2, 26px)" color="-exact-secondary-label" flex-shrink=0 aria-hidden=true
+                column min-width=0
+                  text a.file.name font="-exact-subheadline" font-weight=600 color="-exact-label" line-clamp=(stacked ? 3 : 2) overflow-wrap="break-word"
+                  text fileDetail(a.file.name, a.file.size) font="-exact-caption1" color="-exact-secondary-label"
+            // a 44-point target around the small round X in the corner.
+            button appearance="none" press=remove(a.file.path) aria-label=`Remove ${a.file.name}` testId=`untray-${a.file.name}`
+              position="absolute" top=-8 right=-8 width=44 height=44 display="flex" align-items="center" justify-content="center"
+              view width=22 height=22 border-radius=11 background-color="-exact-secondary-label" display="flex" align-items="center" justify-content="center"
+                image "symbol:close" font-size="min(-exact-caption2, 13px)" font-weight=700 color="-exact-background"
+
+// how much of a photo or file on its way is uploaded: a ring that fills clockwise from the top.
+component UploadRing
+  props
+    fraction: number
+    size: number
+    color: string
+    track: string
+  view
+    svg width=size height=size viewBox="0 0 32 32" role="progressbar" aria-label="Uploading" aria-valuemin=0 aria-valuemax=100
+      aria-valuenow=round(fraction * 100)
+      circle cx=16 cy=16 r=13 fill="none" stroke=track stroke-width=3
+      path d="M 16 3 A 13 13 0 1 1 15.99 3" fill="none" stroke=color stroke-width=3 stroke-linecap="round" pathLength=1
+        stroke-dasharray=`${max(0.001, fraction)} 1`
+
+// a file message: its icon, name, kind and size in a bubble; a tap opens it. While it uploads
+// it is dimmed and its icon is the upload's ring; while it downloads to open, a spinner. At the
+// accessibility text sizes (stacked) the icon sits above the name, as UIKit stacks its rows.
+component FileBubble
+  props
+    name: string
+    size: number
+    outgoing: bool
+    progress: number
+    opening: bool
+    stacked: bool
+    open: action
+    identifier: string
+  derive ink = outgoing ? "AccentColorText" : "-exact-label"
+  view
+    button appearance="none" press=open id=identifier testId=identifier aria-label=`${name}, ${fileDetail(name, size)}`
+      display="flex" flex-direction=(stacked ? "column" : "row") align-items=(stacked ? "flex-start" : "center") gap=10 min-width=44
+      max-width="100%" box-sizing="border-box"
+      padding="10px 16px 10px 10px" border-radius=20 background-color=(outgoing ? "AccentColor" : "bubble.incoming")
+      opacity=(progress >= 0 ? 0.6 : 1) text-align="start"
+      view width=40 height=40 border-radius=20 flex-shrink=0 display="flex" align-items="center" justify-content="center"
+        background-color=(outgoing ? "bubble.outgoing-disc" : "-exact-tertiary-fill")
+        if progress >= 0
+          UploadRing(fraction=progress, size=28, color=ink, track="rgba(255, 255, 255, 0.3)")
+        else if opening
+          progress aria-label="Opening"
+        else
+          image "symbol:document" font-size="min(-exact-title3, 22px)" color=ink aria-hidden=true
+      column min-width=0 gap=1
+        text name color=ink font-weight=600 overflow-wrap="break-word"
+        text fileDetail(name, size) font="-exact-footnote" color=ink

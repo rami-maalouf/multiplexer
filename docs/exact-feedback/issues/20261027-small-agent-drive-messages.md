@@ -1,4 +1,4 @@
-# Seven agent messages that could say what to do next
+# Eight agent messages that could say what to do next
 
 **Status:** Open
 **Systems:** agent (`scripts/agent.mjs`, `scripts/agent-test.mjs`), `verify`
@@ -32,7 +32,7 @@ The messages in items 1 and 2 are unchanged at `cee509ac82`.
    with no word that `--json` was not taken there. `"state thread.messages.19"` worked. About
    3 minutes and three drives.
 
-## Two more (2026-11-02, `ed43ad09a0`)
+## Three more (2026-11-02, `ed43ad09a0`)
 
 6. A bar was a `row position="absolute"` with `pointer-events="none"` (only its buttons take
    touches), and its pull-down menu (a `popover` column) was inside it. In a drive the
@@ -46,3 +46,10 @@ The messages in items 1 and 2 are unchanged at `cee509ac82`.
    was approximate. I took the display with the simulator's own screenshot command during a
    long `clock +12000 real` instead. The step could wait for a quiet moment, or say what kept
    changing. About 8 minutes.
+8. A held file picker answered with one quoted path that has a space,
+   `"type @pick-files '/tmp/x/Trip plan.pdf'"`, failed with `type @pick-files: no such file
+   /tmp/x/Trip`: `type @` splits its text on any whitespace when it has no newline
+   (`pickedPaths`, `scripts/agent-keys.mjs:369`). `agent-pitfalls.md` names the step that keeps
+   the path whole (`pick pick-files "<path>"`), but the message does not, and the line on held
+   requests in `contract-for-agents.md` (around 3756) shows only `type @pick photo.jpg`. The
+   message could say "a path with a space: `pick <id> \"<path>\"`". About 3 minutes and a drive.

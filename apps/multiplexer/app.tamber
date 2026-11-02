@@ -3,8 +3,15 @@ tamber multiplexer
 theme
   // others' bubbles: Messages' grey, opaque so the tail and the body join without a seam.
   bubble.incoming = light-dark(#e9e9eb, #262629)
+  // the disc behind a file's icon in your own bubble: the accent's white text, faint, in both schemes.
+  bubble.outgoing-disc = rgba(255, 255, 255, 0.22)
+  // the disc behind an upload's ring on a photo: it sits on the photo, so it is dark in both schemes.
+  media.scrim = rgba(0, 0, 0, 0.5)
 
 icons
+  // the "+" panel's rows, as Beeper draws them; the svg is for hosts without SF Symbols.
+  icon.photos = icon(sf "photo.on.rectangle", svg "icons/photos.svg")
+  icon.folder = icon(sf "folder", svg "icons/folder.svg")
   // Beeper's inbox tray, and a pin's Unpin; each has a drawing for the hosts without SF Symbols.
   icon.tray = icon(sf "tray", svg "icons/tray.svg")
   icon.pin-slash = icon(sf "pin.slash", svg "icons/pin-slash.svg")
