@@ -165,10 +165,13 @@ component Multiplexer
 
   action step
     now = performanceNow()
+  // leaving a screen closes a long-press menu: the bar's Back stays live above it.
   action follow(url: string)
     nav = go(nav, url)
+    held = ""
   action back
     nav = back(nav)
+    held = ""
 
   action editServer(v: string)
     server = v
