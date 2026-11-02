@@ -24,7 +24,7 @@ component AddButton
   view
     button press=press buttonStyle="glass" retainFocus=true aria-label=(open ? "Close" : "Add") aria-expanded=open testId="add"
       width=44 height=44 flex-shrink=0
-      image (open ? "symbol:close" : "symbol:add")
+      image (open ? "symbol:close" : "symbol:add") font-size=20
 
 // where the keyboard was, as Beeper's: one row for each way to add, an icon and its name.
 component AddPanel
@@ -38,17 +38,19 @@ component AddPanel
       background-color="-exact-secondary-background" animation=(reduced ? "none" : "panelIn 220ms ease-out")
       button appearance="none" press=photos testId="panel-photos" display="flex" flex-direction="row" align-items="center"
         gap=16 min-height=52 padding="0px 24px" text-align="start"
-        image "symbol:sf/photo.on.rectangle" font="-exact-title3" width=32 color="-exact-label" aria-hidden=true
+        image "symbol:sf/photo.on.rectangle" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
         text "Photos" color="-exact-label"
       button appearance="none" press=files testId="panel-files" display="flex" flex-direction="row" align-items="center"
         gap=16 min-height=52 padding="0px 24px" text-align="start"
-        image "symbol:sf/folder" font="-exact-title3" width=32 color="-exact-label" aria-hidden=true
+        image "symbol:sf/folder" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
         text "Send file" color="-exact-label"
 
 // what the next send takes, above the composer's text: a photo as itself, a file as its name and size.
+// at the accessibility text sizes (stacked) a file's tile drops its icon and widens, so its name fits.
 component Tray
   props
     items: Attachment[]
+    stacked: bool
     remove: action
   view
     scroll overflow-x="auto" overflow-y="hidden" flex-shrink=0 testId="tray"
@@ -59,17 +61,18 @@ component Tray
               image a.file.path width=72 height=72 border-radius=14 object-fit="cover" background-color="-exact-tertiary-fill"
                 aria-label=a.file.name testId=`tray-${a.file.name}`
             else
-              row height=72 max-width=220 gap=8 padding="0px 36px 0px 12px" align-items="center" border-radius=14
+              row min-height=72 max-width=(stacked ? "280px" : "min(14rem, 240px)") gap=8 padding="8px 36px 8px 12px" box-sizing="border-box" align-items="center" border-radius=14
                 background-color="-exact-tertiary-fill" aria-label=`${a.file.name}, ${fileDetail(a.file.name, a.file.size)}` testId=`tray-${a.file.name}`
-                image "symbol:document" font="-exact-title2" color="-exact-secondary-label" flex-shrink=0 aria-hidden=true
+                if not stacked
+                  image "symbol:document" font-size="min(-exact-title2, 26px)" color="-exact-secondary-label" flex-shrink=0 aria-hidden=true
                 column min-width=0
-                  text a.file.name font="-exact-subheadline" font-weight=600 line-clamp=2 overflow-wrap="break-word"
+                  text a.file.name font="-exact-subheadline" font-weight=600 color="-exact-label" line-clamp=(stacked ? 3 : 2) overflow-wrap="break-word"
                   text fileDetail(a.file.name, a.file.size) font="-exact-caption1" color="-exact-secondary-label"
             // a 44-point target around the small round X in the corner.
             button appearance="none" press=remove(a.file.path) aria-label=`Remove ${a.file.name}` testId=`untray-${a.file.name}`
               position="absolute" top=-8 right=-8 width=44 height=44 display="flex" align-items="center" justify-content="center"
               view width=22 height=22 border-radius=11 background-color="-exact-secondary-label" display="flex" align-items="center" justify-content="center"
-                image "symbol:close" font="-exact-caption2" font-weight=700 color="-exact-background"
+                image "symbol:close" font-size=11 font-weight=700 color="-exact-background"
 
 // how much of a photo or file on its way is uploaded: a ring that fills clockwise from the top.
 component UploadRing
@@ -86,7 +89,8 @@ component UploadRing
         stroke-dasharray=`${max(0.001, fraction)} 1`
 
 // a file message: its icon, name, kind and size in a bubble; a tap opens it. While it uploads
-// it is dimmed and its icon is the upload's ring; while it downloads to open, a spinner.
+// it is dimmed and its icon is the upload's ring; while it downloads to open, a spinner. At the
+// accessibility text sizes (stacked) the icon sits above the name, as UIKit stacks its rows.
 component FileBubble
   props
     name: string
@@ -94,12 +98,14 @@ component FileBubble
     outgoing: bool
     progress: number
     opening: bool
+    stacked: bool
     open: action
     identifier: string
   derive ink = outgoing ? "AccentColorText" : "-exact-label"
   view
     button appearance="none" press=open id=identifier testId=identifier aria-label=`${name}, ${fileDetail(name, size)}`
-      display="flex" flex-direction="row" align-items="center" gap=10 min-width=44 max-width="100%" box-sizing="border-box"
+      display="flex" flex-direction=(stacked ? "column" : "row") align-items=(stacked ? "flex-start" : "center") gap=10 min-width=44
+      max-width="100%" box-sizing="border-box"
       padding="10px 16px 10px 10px" border-radius=20 background-color=(outgoing ? "AccentColor" : "bubble.incoming")
       opacity=(progress >= 0 ? 0.6 : 1) text-align="start"
       view width=40 height=40 border-radius=20 flex-shrink=0 display="flex" align-items="center" justify-content="center"
@@ -109,7 +115,7 @@ component FileBubble
         else if opening
           progress aria-label="Opening"
         else
-          image "symbol:document" font="-exact-title3" color=ink aria-hidden=true
+          image "symbol:document" font-size="min(-exact-title3, 22px)" color=ink aria-hidden=true
       column min-width=0 gap=1
-        text name color=ink font-weight=600 line-clamp=2 overflow-wrap="break-word"
-        text fileDetail(name, size) font="-exact-footnote" color=ink opacity=0.8
+        text name color=ink font-weight=600 overflow-wrap="break-word"
+        text fileDetail(name, size) font="-exact-footnote" color=ink

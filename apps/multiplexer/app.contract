@@ -91,6 +91,7 @@ shape Viewport
   width: number
   height: number
   prefersReducedMotion: bool
+  accessibilityTextSize: bool
 
 shape Page
   visibilityState: string
@@ -508,7 +509,7 @@ component Multiplexer
                                     UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
                           if m.isFile
                             FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
-                              opening=(opening == m.id and pending(opened)), open=openFile(m.id), identifier=`file-${m.id}`)
+                              opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize, open=openFile(m.id), identifier=`file-${m.id}`)
                           // a message on its way is dimmed; one that failed says so, with a way to send it again.
                           if m.waitingForKey
                             text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
@@ -575,7 +576,7 @@ component Multiplexer
                 input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
                 column flex=1 min-width=0 border-radius=22 border="1px solid -exact-separator"
                   if composer.attachments.length > 0
-                    Tray(items=composer.attachments, remove=unpick)
+                    Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
                   if tooLarge != ""
                     text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
                       font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
