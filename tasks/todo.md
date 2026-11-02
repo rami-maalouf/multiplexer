@@ -577,19 +577,28 @@ SDK may return nothing for the bridge's `m.bridge` state (its sync does not ask 
 types), so prove that first.
 
 **Acceptance criteria:**
-- [ ] A spike answers how to read a chat's network: `Room.stateEvents` for `m.bridge` (or
-  `uk.half-shot.bridge`), or, if that comes back empty, another sign (for example the ids of the
-  bridge's users). The answer goes into `matrix-core/NOTES.md`.
-- [ ] `RoomSummary` has a `network` (plain string). A room with no bridge is `matrix`.
-- [ ] Each row shows the network's logo (about 18 pt, with a ring in the background colour) on the
+- [x] A spike answers how to read a chat's network. (2026-11-02, `matrix-core/NOTES.md`, "A chat's
+  network": the SDK returns no `m.bridge` state, even though the server has it. mautrix bridges
+  also set `io.element.functional_members`, which the SDK syncs: `RoomInfo.serviceMembers` names
+  the bridge bot, and `<word>bot` gives the network. Fallback: a ghost or bot among the room's
+  heroes. Limit: a bridge not on bridgev2 (mautrix-discord) sets neither, so its groups show no logo.)
+- [x] `RoomSummary` has a `network` (plain string). A room with no bridge is `matrix`.
+- [x] Each row shows the network's logo (15 pt in a 1.5 pt ring of the background colour) on the
   picture's corner, outside the picture's clipped box. No logo for plain Matrix chats.
-- [ ] Logos for WhatsApp, Instagram, Messenger, Telegram, Signal, Discord and LinkedIn are in the app.
+  (`network.contract`, `NetworkBadge`.)
+- [x] Logos for WhatsApp, Instagram, Messenger, Telegram, Signal, Discord and LinkedIn are in the
+  app (`assets/networks/`, sources and licences in `SOURCES.md`).
+- [ ] VoiceOver: the row's spoken label leaves the network out (Exact finding 32). A hand-written
+  `aria-label` on the row would fix it.
 
 **Verification:**
-- [ ] A MatrixCore test: `@test1` puts an `m.bridge` state event (protocol `whatsapp`) in a test
-  room, and the room's `network` is `whatsapp`. If the test users cannot send it, say why.
-- [ ] A read-only drive on `@rami` (with Rami's OK): WhatsApp chats show the logo. Dark, then
-  light, then the largest text size; signed out at the end.
+- [x] MatrixCore test `testABridgedRoomShowsItsNetworkOnANewDevice`: `@test1` sets the state a
+  mautrix bridge sets in "Multiplexer network test"; a new device reads `whatsapp`, the plain test
+  rooms read `matrix`, and a change to `telegram` and back shows live. The whole suite passes
+  (16, 1 skipped); `verify ios` clean.
+- [x] A read-only drive on `@rami` (Rami's OK, 2026-11-02): 292 chats: 259 WhatsApp, 30 Instagram,
+  3 Matrix, each with the right logo; `check` clean in dark, light and the largest text size; no
+  chat opened; signed out at the end.
 
 **Dependencies:** none. **Scope:** M
 
