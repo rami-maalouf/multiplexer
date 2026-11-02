@@ -237,11 +237,11 @@ component Multiplexer
       send sent = sendMessage(openRoom, composer.text.trim(), composer.replyTo)
       composers = withComposer(composers, Composer(composer, text="", replyTo=""))
     focus("composer")
-  // a swipe right on a bubble, or Reply in its menu: the open chat's composer answers it.
+  // a swipe right on a bubble, or Reply in its menu: the open chat's composer answers it. The
+  // swipe's haptic is Exact's, at the point where letting go replies; a second one here doubled it.
   action startReply(id: string, name: string, body: string)
     composers = withComposer(composers, Composer(composer, replyTo=id, replyName=name, replyBody=body))
     held = ""
-    haptic("selection")
     focus("composer")
   action cancelReply
     composers = withComposer(composers, Composer(composer, replyTo=""))
@@ -426,9 +426,10 @@ component Multiplexer
                                 testId=`quote-${m.id}`
                                 text m.replyName font="-exact-caption1" font-weight=600 color="-exact-secondary-label" line-clamp=1
                                 text m.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
-                            // a swipe right answers it; a long press opens its reactions and actions.
+                            // a swipe right answers it; a long press opens its reactions and actions. The bubble
+                            // follows the finger and, with the transition, springs back when it lets go.
                             box id=`bubble-${m.id}` testId=`bubble-${m.id}` tabindex=0 retainFocus=true user-select="none" max-width="100%"
-                              touch-action="pan-y" opacity=(held == m.id ? 0 : 1)
+                              touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)" opacity=(held == m.id ? 0 : 1)
                               swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body)
                               contextmenu=hold(m.id, m.body, m.isOwn ? "You" : m.senderName, m.isOwn, m.endsRun) aria-label=m.body
                               Balloon(body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
