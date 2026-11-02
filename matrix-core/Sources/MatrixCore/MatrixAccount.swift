@@ -534,14 +534,16 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
         lock.withLock { items.compactMap { item in item.asEvent().flatMap { Message($0, id: item.uniqueId().id, me: me) } } }
     }
 
-    /// The event ids of messages that replies answer, whose details are not loaded. A reply
-    /// read back from the store can stay pending with nothing loading it, so pending counts.
+    /// The event ids of replies whose quoted message is not loaded: the sdk loads a quote when
+    /// asked with the reply's own id, and only for a reply the server has. A reply read back
+    /// from the store can stay pending with nothing loading it, so pending counts.
     func missingQuotes() -> [String] {
         lock.withLock {
             items.compactMap { item in
-                guard case .msgLike(let like)? = item.asEvent()?.content, let reply = like.inReplyTo else { return nil }
+                guard let event = item.asEvent(), case .msgLike(let like) = event.content, let reply = like.inReplyTo,
+                      case .eventId(let replyId) = event.eventOrTransactionId else { return nil }
                 if case .ready = reply.event() { return nil }
-                return reply.eventId()
+                return replyId
             }
         }
     }

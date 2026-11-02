@@ -70,8 +70,9 @@ const sources: Sources = {
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage, image: m.image, imageWidth: m.imageWidth, imageHeight: m.imageHeight,
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
-        // a reply shows who wrote what it answers ("" until that message loads).
-        hasReply: m.reply.body !== undefined,
+        // a reply shows who wrote what it answers once that message is loaded; until then, or if
+        // it cannot load, no quote shows rather than an empty one.
+        hasReply: (m.reply.body ?? '') !== '',
         replyName: m.reply.isOwn ? 'You' : (m.reply.senderName ?? ''),
         replyBody: m.reply.body ?? '',
         photoWidth: m.imageWidth > 0 && m.imageHeight > 0
