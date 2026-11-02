@@ -40,3 +40,11 @@ or 24 from `exactViewport().accessibilityTextSize`. Another 10 minutes.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, iOS Simulator (iOS 26.5).
+
+Seen again on 2026-11-02 at `ed43ad09a0`, in a bottom sheet's rows (a symbol in a fixed box
+beside network logos): `verify ios` flagged `image ... font-size=(largeText ? 30 : 22)` as
+fixed type ("stays 30 pt as Dynamic Type grows"), while the same app's bar writes
+`derive symbolSize = largeText ? 24 : 20` and `font-size=symbolSize`, which it does not flag.
+Both grow the same way at the accessibility sizes. With the sizes in a `derive`, `verify` was
+clean. So the fixed-type check treats two equal forms differently, and still names no capped
+form it accepts. About 2 minutes.
