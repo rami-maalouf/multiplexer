@@ -168,6 +168,64 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   `instagramgo`, `facebookgo` (Messenger), `telegram`, `signal`, `discordgo`, `linkedin`.
 - The test: `RoomNetworkTests` (a room of its own, "Multiplexer network test").
 
+## A chat's actions
+
+The long-press menu's actions (`ChatActions.swift`), how each is kept on the server, and what
+reaches the chat's network. The bridge sees only room events and read receipts: Synapse
+(1.164.0, `synapse/appservice/api.py`, `push_bulk`) sends an appservice room events, ephemeral
+events (receipts, typing), to-device messages and key counts, never account data. mautrix-go's
+bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a WhatsApp pin,
+`m.marked_unread` into WhatsApp's unread mark and `com.beeper.mute` into a WhatsApp mute
+(`pkg/connector/handlematrix.go`), but only on a server that sends it account data (Beeper's).
+
+| Action | Kept as | Reaches WhatsApp |
+|---|---|---|
+| Mark as Unread | `m.marked_unread` (`Room.setUnreadFlag`); `markRead` clears it, which the sdk's read receipt does not | no |
+| Mark as Read | a read receipt (`markRead`) | yes: the chat turns read there (double puppeting) |
+| Mute | push rules: the sdk's room mute (an override rule with no actions), and a rule of ours before it that highlights a mention without a notification | no |
+| Low Priority | `m.lowpriority` (`Room.setIsLowPriority`); the sdk removes `m.favourite`, so a pinned chat unpins | no |
+| Archive, Delete | our own global account data, `com.ramimaalouf.multiplexer.chats` | no |
+
+- **Muted.** `RoomSummary.isMuted` is the sdk's user-defined mode `mute` or
+  `mentionsAndKeywordsOnly` (`RoomInfo.cachedUserDefinedNotificationMode`, which the sliding sync
+  refreshes for every room when `m.push_rules` changes). A bridge mutes a chat muted on its
+  network with a room rule with no actions (bridgev2 `ASIntent.MuteRoom`), which the sdk calls
+  mentions only. Unmute removes the room's own rules (`restoreDefaultRoomNotificationMode`), or
+  sets all messages when the account's default is mute.
+- **The "@" of a muted chat.** A muted room's override rule matches every event before the
+  server's mention rules, so a mention there counts nothing. Mute adds an override rule
+  `com.ramimaalouf.multiplexer.mention.<room id>` (`event_property_contains`
+  `content.m\.mentions.user_ids` = this user, in this room) with only `highlight`: the sdk counts
+  a highlight as a mention without a notify (`numUnreadMentions`), and a push gateway pushes only
+  `notify`. It has a `room_id` condition, so the sdk counts it among the room's rules and Unmute
+  removes it. Mentions by display name only, and `@room`, do not count in a muted chat.
+- **Archive and Delete.** The sdk cannot read a custom room tag (`u.archive`) as it is now:
+  `Client.observeRoomAccountDataEvent` reports only the events of later syncs (`observe_room_events`
+  in `bindings/matrix-sdk-ffi/src/client.rs`), and `RoomInfo` keeps only `m.favourite` and
+  `m.lowpriority`. Tags would need one request per chat at each launch. One global account data
+  event instead: the sdk writes it (`Client.setAccountData`) and reads it from its store
+  (`Client.accountData`), which the sync fills. Its content: `{"archived": {"<room id>": {"ts":
+  <ms>}}, "hidden": {...}}`, `ts` being the time of the chat's newest message when it was marked.
+  Other keys (a later version's labels) are kept as they are.
+- **A new message brings a chat back** (Rami: an archived chat comes back unless it is muted;
+  a deleted one comes back too). Nothing is written then: a chat is archived while it is muted or
+  its newest message (`RoomSummary.lastTimestamp`: a message, a call, a poll, a sticker or our own
+  join, never someone else's join or a reaction) is not newer than its mark. Unmuting an archived
+  chat moves its mark to its newest message, so the messages that came while it was muted do not
+  bring it back. A change of the marks drops the marks of chats that came back.
+- **Delete does not leave the room.** bridgev2 drops our own leave unless `bridge_matrix_leave`
+  is on (the playbook writes `false` for the WhatsApp and Instagram bridges); with it on, mautrix-
+  whatsapp's `HandleMatrixMembership` leaves the WhatsApp group (`UpdateGroupParticipants`,
+  remove). A deleted chat stays joined and keeps its history, which shows again when it comes back.
+- **Shown at once.** Each action shows in the list before the server confirms it (`ChatStates`,
+  as `Pins` does for a pin); an answer the server never confirms is dropped after 30 s. Changes of
+  the marks go one at a time from the newest content this device knows.
+- **Limit: another device's archive or delete** shows at the next change of the room list (a new
+  message in any chat) or launch: the sdk tells no listener of a custom global account data event,
+  and that change alone moves nothing in the room list. A timer reading `Client.accountData` would
+  close the gap.
+- The tests: `ChatActionsTests` (rooms "Multiplexer hold test", "... archive", "... delete").
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The
