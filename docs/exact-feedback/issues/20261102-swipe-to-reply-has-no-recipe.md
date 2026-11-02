@@ -56,3 +56,12 @@ Pull request https://github.com/ccheever/exact2/pull/1323: a "Swipe to reply" su
 `docs/contract-for-agents.md` (the follow, the 64-point threshold, `touch-action`, the
 transition, `swipeIndicator`, the haptic, a test's drag), and the agent-pitfalls line
 corrected. The recipe itself has no room for it: recipes have a 3,072-byte cap.
+
+## More (2026-11-02)
+
+Building the arrow in the app found three more gaps, now in the same pull request: `symbol:reply`
+is a speech bubble (SF Symbols' `bubble.left`), and the left-turning reply arrow has no named
+symbol, so the app declares it as an icon token; the swiped node needs `position="relative"`
+so the indicator is placed against it; and the indicator's own `transition` sets how it leaves
+after the lift (with the node's spring it trailed the bubble by about 50 ms, so the app gave it
+a stiffer one).
