@@ -7,6 +7,7 @@ export const grants = '';
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
+// every chat (listed: the list shows it under the filter).
 type RoomsAnswer = { rooms: Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'>[] };
 
 // a chat with no picture shows the first letters of its first two words, as Messages does.
@@ -45,11 +46,12 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  loadRoomsByRecency: async ([userId], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
-    if (userId === '' || !native?.available) return { owner: userId, rooms: [] };
+  // matrixcore filters the list (filter: all, unread, unanswered, people or groups).
+  loadRoomsByRecency: async ([userId, filter], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, filter, rooms: [] };
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
-    const answer = (await native.later({ op: 'rooms' })) as RoomsAnswer;
-    return { owner: userId, rooms: answer.rooms.map((r) => ({ ...r, initials: initials(r.name) })) };
+    const answer = (await native.later({ op: 'rooms', filter })) as RoomsAnswer;
+    return { owner: userId, filter, rooms: answer.rooms.map((r) => ({ ...r, initials: initials(r.name) })) };
   },
   loadMessages: async ([roomId, isDirect, roomName], _store, _storage, native): Promise<Result<'loadMessages'>> => {
     if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, messages: [] };

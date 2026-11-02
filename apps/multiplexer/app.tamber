@@ -3,3 +3,7 @@ tamber multiplexer
 theme
   // others' bubbles: Messages' grey, opaque so the tail and the body join without a seam.
   bubble.incoming = light-dark(#e9e9eb, #262629)
+
+icons
+  // Beeper's inbox tray, with a drawing for the hosts without SF Symbols.
+  icon.tray = icon(sf "tray", svg "icons/tray.svg")

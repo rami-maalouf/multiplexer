@@ -3,11 +3,14 @@
 use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
+use BottomBar, emptyTitle, emptyMessage from "./inbox.contract"
 
 shape Session
   userId: string
 
-// avatar: the room's picture once it is downloaded (""), else its initials show.
+// avatar: the room's picture once it is downloaded (""), else its initials show. listed: the
+// list shows it under the filter menu's choice (one the filter leaves out is still here, so an
+// open chat keeps its name).
 shape Room
   id: string
   name: string
@@ -19,10 +22,13 @@ shape Room
   avatar: string
   initials: string
   unread: number
+  listed: bool
 
-// owner is the account the rooms belong to, so a list never shows under another account.
+// owner is the account the rooms belong to, so a list never shows under another account; filter
+// the filter menu's choice the list is for.
 shape RoomList
   owner: string
+  filter: string
   rooms: Room[]
 
 // state: "sending", "sent" or "failed". startsGroup: the time shows above it. endsRun: the
@@ -135,12 +141,14 @@ component Multiplexer
   state heldWidth = 0
   // the reader scrolled the chat's newest message out of view.
   state away = false
+  // the filter menu's choice (inbox.contract's filterName), kept across launches.
+  state filter = "all" persist
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
-  resource roomList = loadRoomsByRecency(session.userId) as shape RoomList else empty()
+  resource roomList = loadRoomsByRecency(session.userId, filter) as shape RoomList else empty()
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
   mutation sent as shape Reply then toEnd
@@ -168,6 +176,8 @@ component Multiplexer
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
   derive threadShown = thread.room == openRoom
   derive openUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
+  // the list under the filter menu's choice.
+  derive listedRooms = roomList.rooms.filter(r => r.listed)
   // the chat is in front, not behind its photo viewer, and the app is too.
   derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
   task tick mount
@@ -285,6 +295,12 @@ component Multiplexer
   action discard(id: string)
     send discarded = discardMessage(openRoom, id)
 
+  // the inbox: the filter menu, and Inbox in the bar.
+  action chooseFilter(f: string)
+    filter = f
+  action toTop
+    scrollIntoView(match first(listedRooms) { case some(r) => `room-${r.id}`, case none => "rooms" }, block="start")
+
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content"
       width="100%" height="100%"
@@ -329,12 +345,18 @@ component Multiplexer
                 button press=askSignOut testId="sign-out"
                   text "Sign Out"
               if roomsShown
-                if roomList.rooms.length == 0
-                  EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
+                if listedRooms.length == 0
+                  if roomList.filter == "all"
+                    EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
+                  else
+                    EmptyState(symbol="symbol:filter", title=emptyTitle(roomList.filter), message=emptyMessage(roomList.filter))
+                      button press=chooseFilter("all") buttonStyle="bordered" testId="show-all"
+                        text "Show All Chats"
                 else
-                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 testId="room-list"
-                    for r in roomList.rooms key=r.id
-                      link href=path("room", r.id) testId=`room-${r.id}`
+                  // the last row scrolls up above the floating bar.
+                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=64 testId="room-list"
+                    for r in listedRooms key=r.id
+                      link href=path("room", r.id) id=`room-${r.id}` testId=`room-${r.id}`
                         row align-items="center" flex=1 min-width=0
                           // a fixed 44-point picture, as Messages has; initials grow with the text size, to a cap.
                           view width=44 height=44 border-radius=22 overflow="hidden" flex-shrink=0 margin-right=12
@@ -368,6 +390,8 @@ component Multiplexer
                 else
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
+              if roomsShown
+                BottomBar(filter=filter, choose=chooseFilter, top=toTop)
         if e.name == "photo"
           column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`photo-${e.params.message}`
             position="absolute" inset=0 display="flex" flex-direction="column"

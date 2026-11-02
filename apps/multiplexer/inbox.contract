@@ -1,0 +1,38 @@
+// the inbox's own parts, after Beeper's chat list: the floating bar under the list with its
+// filter menu. the platform's glass and menu draw them.
+
+// the filter menu's choices, in Beeper's order; Drafts waits for drafts that the app keeps.
+fn filterName(f: string): string = f == "unread" ? "Unread" : (f == "unanswered" ? "Unanswered" : (f == "people" ? "DMs" : (f == "groups" ? "Groups" : "All")))
+// what the list says when a filter leaves no chat in it.
+fn emptyTitle(f: string): string = f == "unread" ? "No Unread Chats" : (f == "unanswered" ? "No Unanswered Chats" : (f == "people" ? "No DMs" : "No Groups"))
+fn emptyMessage(f: string): string = f == "unread" ? "You’ve read every chat." : (f == "unanswered" ? "You answered the last message in every chat." : (f == "people" ? "Chats with one other person show here." : "Chats with more than one other person show here."))
+
+// the floating bar over the chat list: a round filter button on the left (filled with the accent
+// while a filter is on), and a capsule in the middle with Inbox, selected. a press on Inbox
+// goes back to the list's top. glass that comes close merges, as the platform's does.
+component BottomBar
+  props
+    filter: string
+    choose: action
+    top: action
+  derive filtered = filter != "all"
+  view
+    row position="absolute" left=0 right=0 bottom=0 padding="0 16px" align-items="center" justify-content="space-between"
+      glassGroup=12 pointer-events="none" testId="bottom-bar"
+      // a bar's symbols keep their size at every text size, as UIKit's bars do.
+      button popovertarget="filter-menu" buttonStyle=(filtered ? "prominent-glass" : "glass") width=48 height=48 pointer-events="auto"
+        aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
+        image "symbol:filter" font-size=20
+      row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
+        button appearance="none" press=top aria-label="Inbox" aria-selected=true testId="inbox"
+          min-width=68 height=44 border-radius=22 background-color="-exact-tertiary-fill"
+          display="flex" align-items="center" justify-content="center"
+          image "symbol:icon.tray" font-size=20 color="-exact-label"
+      // search comes here with its task; until then the capsule stays in the middle.
+      view width=48 height=48 aria-hidden=true
+      column id="filter-menu" popover="auto" role="menu" pointer-events="auto"
+        for f in ["all", "unread", "unanswered", "people", "groups"] key=f
+          button role="menuitemradio" aria-checked=(filter == f) press=choose(f)
+            popovertarget="filter-menu" popovertargetaction="hide" testId=`filter-${f}`
+            text filterName(f)
+

@@ -47,6 +47,10 @@ public struct RoomSummary: Equatable, Sendable {
     public var avatarName: String = ""
     /// Messages after this account's read receipt.
     public var unreadCount: Int = 0
+    /// Marked unread by hand (`m.marked_unread`), whatever its count says.
+    public var isMarkedUnread: Bool = false
+    /// A chat with one other person (`RoomFilter.people`); every other chat is a group.
+    public var isOneToOne: Bool = false
 }
 
 public struct Message: Equatable, Sendable {

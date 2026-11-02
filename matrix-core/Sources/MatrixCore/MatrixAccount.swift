@@ -106,10 +106,12 @@ public final class MatrixAccount: @unchecked Sendable {
             .sorted { (rank[$0.element.id()] ?? Int.max, $0.offset) < (rank[$1.element.id()] ?? Int.max, $1.offset) }
             .map(\.element)
         for room in joined {
+            let info = try? await room.roomInfo()
             var summary = RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect(),
                                       lastMessage: "", lastSenderName: "", lastIsOwn: false, lastTimestamp: 0,
                                       avatarName: room.avatarUrl().map(avatarFileName) ?? "",
-                                      unreadCount: Int((try? await room.roomInfo())?.numUnreadMessages ?? 0))
+                                      unreadCount: Int(info?.numUnreadMessages ?? 0))
+            if let info { summary.fillKind(info) }
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)

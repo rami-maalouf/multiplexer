@@ -35,12 +35,16 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    let started = Date(), account = try await signedIn(), rooms = try await account.rooms()
+                    // every chat, each saying whether the list shows it under the filter menu's choice.
+                    let started = Date(), account = try await signedIn()
+                    let inbox = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all)
+                    let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { room in
                         ["id": room.id, "name": room.name, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
                          "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
                          "unread": room.unreadCount,
+                         "listed": inbox.listed.contains(room.id),
                          "avatar": cached(room.avatarName, then: .rooms) {
                              _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
                     }])
