@@ -648,11 +648,18 @@ Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and com
 "Later"), the gear and Edit.
 
 **Acceptance criteria:**
-- [ ] The sheet opens at half height and pulls up to full (`navigationDetent="medium large"`).
-- [ ] Choosing WhatsApp shows only WhatsApp chats; Inbox shows all. The capsule shows the choice.
-- [ ] The choice is kept across launches (`persist`).
-- [ ] MatrixCore filters the list itself: today `rooms()` returns every chat and takes only its
-  order from the room list service. The filter uses `.identifiers([...])` for a network.
+- [x] The sheet opens at half height and pulls up to full (`navigationDetent="medium large"`).
+  (2026-11-02, `sheet.contract`.) Rows: Inbox, then Matrix (chats no bridge serves, like Beeper's
+  own row) and one row per network, each with its unread chats' count.
+- [x] Choosing WhatsApp shows only WhatsApp chats; Inbox shows all. The title becomes the network's
+  name and the capsule shows its logo. It combines with the filter menu, and the pinned grid shows
+  only that network's pins.
+- [x] The choice is kept across launches; a new sign-in starts at Inbox.
+- [x] MatrixCore filters the list itself (`NetworkFilter.swift`, `NetworkFilterTests`).
+- [ ] After a network change in a list scrolled down, the large title stays collapsed (Exact
+  finding 50); a short line shows above the pinned grid (finding 49).
+- [ ] **Ask Rami:** keep the Matrix row (first), move it last, or remove it; count unread chats
+  or messages; the title shows the network's name.
 
 **Dependencies:** B1, B3. **Scope:** M
 
