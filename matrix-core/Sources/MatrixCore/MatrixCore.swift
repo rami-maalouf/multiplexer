@@ -89,7 +89,7 @@ public struct MessageFile: Equatable, Sendable {
 }
 
 /// A photo or a file to send (`MatrixAccount.sendAttachment`): a file on this device, and what
-/// other clients show of it. The file's own name is the name they see.
+/// other clients show of it.
 public struct Attachment: Equatable, Sendable {
     public enum Kind: Equatable, Sendable {
         /// A picture, its size in pixels.
@@ -115,14 +115,17 @@ public struct Attachment: Equatable, Sendable {
     }
 
     public var file: URL
+    /// The name other clients show ("Trip plan.pdf"); the file's own name unless said.
+    public var name: String
     public var mimetype: String
     /// In bytes.
     public var size: Int
     public var kind: Kind
     public var thumbnail: Thumbnail?
 
-    public init(file: URL, mimetype: String, size: Int, kind: Kind, thumbnail: Thumbnail? = nil) {
+    public init(file: URL, name: String? = nil, mimetype: String, size: Int, kind: Kind, thumbnail: Thumbnail? = nil) {
         self.file = file
+        self.name = name ?? file.lastPathComponent
         self.mimetype = mimetype
         self.size = size
         self.kind = kind

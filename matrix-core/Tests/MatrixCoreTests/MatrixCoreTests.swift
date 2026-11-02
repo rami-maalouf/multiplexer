@@ -453,11 +453,12 @@ final class MatrixCoreTests: XCTestCase {
         try jpeg(width: 200, height: 300, .systemPink).write(to: small)
         let caption = "Media \(UUID().uuidString)"
         let queuedAt = Date()
-        try await sender.sendAttachment(roomId: roomId, attachment: Attachment(
+        let echo = try await sender.sendAttachment(roomId: roomId, attachment: Attachment(
             file: photo, mimetype: "image/jpeg", size: try size(photo), kind: .photo(width: 600, height: 900),
             thumbnail: .init(file: small, mimetype: "image/jpeg", size: try size(small), width: 200, height: 300)), caption: caption)
         let queued = try await message(sender, roomId, within: 5) { $0.isOwn && $0.body == caption && $0.image != nil }
         print("the photo showed in the sender's chat after \(String(format: "%.2f", Date().timeIntervalSince(queuedAt))) s, \(queued.sendState)")
+        XCTAssertEqual(echo, queued.id, "sendAttachment names another message")
         let sent = try await message(sender, roomId, within: 30) { $0.id == queued.id && $0.sendState == .sent }
         XCTAssertNil(sent.uploadProgress)
         // the other person gets it at its size, with its caption; its thumbnail is the sender's.
@@ -471,16 +472,18 @@ final class MatrixCoreTests: XCTestCase {
         XCTAssertEqual(UIImage(contentsOfFile: thumbnail.path)?.size, CGSize(width: 200, height: 300))
 
         // a file keeps its name, size and type, and downloads as it was sent.
+        // the file on this device has another name (a picker's copy): the other person sees the one given.
         let text = "Notes \(UUID().uuidString)\n"
-        let notes = folder.appendingPathComponent("Notes \(UUID().uuidString.prefix(8)).txt")
-        try Data(text.utf8).write(to: notes)
-        try await sender.sendAttachment(roomId: roomId, attachment: Attachment(file: notes, mimetype: "text/plain", size: text.utf8.count, kind: .file))
-        let got = try await message(reader, roomId, within: 30) { $0.file?.name == notes.lastPathComponent }
+        let copy = folder.appendingPathComponent("1-3.txt"), name = "Notes \(UUID().uuidString.prefix(8)).txt"
+        try Data(text.utf8).write(to: copy)
+        try await sender.sendAttachment(roomId: roomId, attachment: Attachment(file: copy, name: name, mimetype: "text/plain",
+                                                                               size: text.utf8.count, kind: .file))
+        let got = try await message(reader, roomId, within: 30) { $0.file?.name == name }
         XCTAssertEqual(got.file?.size, text.utf8.count)
         XCTAssertEqual(got.file?.mimetype, "text/plain")
         XCTAssertEqual(got.body, "")
         let downloaded = try await reader.fileContent(roomId: roomId, messageId: got.id, directory: freshDirectory())
-        XCTAssertEqual(downloaded.lastPathComponent, notes.lastPathComponent)
+        XCTAssertEqual(downloaded.lastPathComponent, name)
         XCTAssertEqual(try String(contentsOf: downloaded, encoding: .utf8), text)
 
         // a file over the server's limit is refused: it shows as failed, stays failed when

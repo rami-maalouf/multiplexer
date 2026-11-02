@@ -6,17 +6,29 @@ import MatrixRustSDK
 /// Photos and files: sending them through the room's send queue, and downloading a file
 /// message's file to open it.
 extension MatrixAccount {
-    /// Puts a photo or a file in the room's send queue and returns once the queue holds it.
+    /// Puts a photo or a file in the room's send queue and returns once the queue holds it,
+    /// with the id of its message in the chat (nil if it did not show within a second).
     /// The chat shows it at once as `sending`, with its `uploadProgress`, then `sent`, or
     /// `failed` (then `retry` and `discard` work as for text). `caption` shows with it; with
     /// `replyTo`, a message's id, it answers that message.
+    @discardableResult
     public func sendAttachment(roomId: String, attachment: Attachment, caption: String? = nil, replyTo: String? = nil,
-                               timeout: TimeInterval = 30) async throws {
+                               timeout: TimeInterval = 30) async throws -> String? {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         var inReplyTo: String?
         if let replyTo, case .eventId(let eventId)? = live.items.eventOrTransactionId(of: replyTo) { inReplyTo = eventId }
-        // the sdk names the media after the file's last path component.
-        let params = UploadParameters(source: .file(filename: attachment.file.path), caption: caption?.isEmpty == false ? caption : nil,
+        // the sdk names the media after the file's last path component, so a file whose name is
+        // not the one to show goes as a link of that name (no copy), until the queue holds it.
+        var source = attachment.file
+        let named = safeFileName(attachment.name)
+        if source.lastPathComponent != named {
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("matrix-upload-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            source = folder.appendingPathComponent(named)
+            do { try FileManager.default.linkItem(at: attachment.file, to: source) } catch { try FileManager.default.copyItem(at: attachment.file, to: source) }
+        }
+        defer { if source != attachment.file { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) } }
+        let params = UploadParameters(source: .file(filename: source.path), caption: caption?.isEmpty == false ? caption : nil,
                                       formattedCaption: nil, mentions: nil, inReplyTo: inReplyTo)
         let kind: AttachmentKind
         switch attachment.kind {
@@ -31,7 +43,15 @@ extension MatrixAccount {
         case .file:
             kind = .file(fileInfo: FileInfo(mimetype: attachment.mimetype, size: UInt64(attachment.size), thumbnailInfo: nil, thumbnailSource: nil))
         }
+        let before = Set(live.items.messages().map(\.id))
         try await live.timeline.sendAttachment(params: params, attachment: kind).join()
+        // its local echo reaches the timeline on the sdk's own task, a moment after.
+        let start = Date()
+        repeat {
+            if let echo = live.items.messages().last(where: { $0.isOwn && $0.sendState != .sent && !before.contains($0.id) }) { return echo.id }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        } while Date().timeIntervalSince(start) < 1
+        return nil
     }
 
     /// The largest upload the server takes, in bytes.
