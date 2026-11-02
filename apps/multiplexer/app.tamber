@@ -15,3 +15,5 @@ icons
   // Beeper's inbox tray, and a pin's Unpin; each has a drawing for the hosts without SF Symbols.
   icon.tray = icon(sf "tray", svg "icons/tray.svg")
   icon.pin-slash = icon(sf "pin.slash", svg "icons/pin-slash.svg")
+  // the reply arrow beside a swiped bubble; the svg is Exact's forward arrow, mirrored.
+  icon.arrowshape-turn-up-left = icon(sf "arrowshape.turn.up.left", svg "icons/arrowshape-turn-up-left.svg")

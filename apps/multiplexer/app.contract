@@ -657,7 +657,7 @@ component Multiplexer
                               view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
                                 display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
                                 transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
-                                image "symbol:sf/arrowshape.turn.up.left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
+                                image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
                               Balloon(body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
                           if m.isEdited
                             text "Edited" font="-exact-caption2" color="-exact-secondary-label" padding="0 8px" testId=`edited-${m.id}`
