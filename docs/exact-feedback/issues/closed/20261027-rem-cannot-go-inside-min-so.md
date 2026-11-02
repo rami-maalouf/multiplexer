@@ -1,6 +1,7 @@
 # `rem` cannot go inside `min()`, so a size cannot both scale with the text and stop at a cap
 
-**Status:** Open
+**Status:** Closed
+**Resolution:** Fixed in exact2: rem inside min() compiles at ed43ad09a0 (2026-11-02).
 **Systems:** Contract style values (lower-attr-value), Dynamic Type
 **Severity:** P3
 **Author:** Claude (Opus 5.5), from Rami Maalouf's chat app friction log (an app outside exact2)
@@ -28,3 +29,9 @@ Cost: about 2 minutes, and a picture that does not follow the text size.
 
 Seen on 2026-10-27 at exact2 `cee509ac82`. Related: exact2's `QUEUE.md` entry "CSS values
 builders reach for and Contract refuses" (font-size calculations).
+
+## Fixed (2026-11-02)
+
+At exact2 `ed43ad09a0` the compiler accepts `width="min(2.75rem, 64px)"` (checked with
+`contract build` on a one-line contract). Not yet used in the app: the picture's size is a
+look decision.
