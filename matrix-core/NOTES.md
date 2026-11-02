@@ -93,6 +93,23 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - The module keeps them in `<Exact's context.cache>/matrix-media/`, which the view shows
   as `app:/cache/matrix-media/<name>`, and deletes them at sign-out.
 
+## Sending photos and files
+
+- `sendAttachment(roomId:attachment:caption:replyTo:)` puts a photo (`m.image`, with its size
+  and an optional thumbnail the app made) or a file (`m.file`) in the room's send queue
+  (`Timeline.sendAttachment`) and returns once the queue holds it. The other clients see the
+  file's own name (its last path component).
+- A message on its way has `uploadProgress` (0 to 1, the file and its thumbnail together):
+  the account turns on `enableSendQueueUploadProgress`, and the timeline's local echo carries
+  it (`EventSendState.notSentYet(progress:)`).
+- A photo's thumbnail is the sender's own when it has one (`info.thumbnailSource`): for a photo
+  this device sends, the send queue's cache has it at once, before and after the upload.
+- A file over the server's limit (`maxUploadSize()`, 50 MB on our server) is refused by the
+  sdk before any byte goes (`genericApiError`, "The provided media is too large to upload",
+  not recoverable): the message shows as failed, and the room's queue goes on.
+- `fileContent(roomId:messageId:directory:)` downloads a file message's file once, under the
+  name its sender gave it, in a folder of its own.
+
 ## Encryption
 
 - The sdk encrypts and decrypts by itself. A message this device has no key for is a

@@ -72,6 +72,62 @@ public struct Message: Equatable, Sendable {
     public var reactions: [MessageReaction] = []
     /// The sender's picture as a media url for `MatrixAccount.pictureFile`; "" when they have none.
     public var senderPicture: String = ""
+    /// The file of a file message; nil for others. `body` is then its caption, or "".
+    public var file: MessageFile? = nil
+    /// How much of a photo or file on its way is uploaded, from 0 to 1; nil when nothing uploads.
+    public var uploadProgress: Double? = nil
+}
+
+/// What a file message shows of its file (`MatrixAccount.fileContent` downloads it).
+public struct MessageFile: Equatable, Sendable {
+    /// The name the sender gave it ("Notes.pdf").
+    public var name: String
+    /// In bytes; 0 when the sender did not say.
+    public var size: Int
+    /// "" when the sender did not say.
+    public var mimetype: String
+}
+
+/// A photo or a file to send (`MatrixAccount.sendAttachment`): a file on this device, and what
+/// other clients show of it. The file's own name is the name they see.
+public struct Attachment: Equatable, Sendable {
+    public enum Kind: Equatable, Sendable {
+        /// A picture, its size in pixels.
+        case photo(width: Int, height: Int)
+        case file
+    }
+
+    /// A smaller copy of a photo, which other clients show until they need the photo itself.
+    public struct Thumbnail: Equatable, Sendable {
+        public var file: URL
+        public var mimetype: String
+        public var size: Int
+        public var width: Int
+        public var height: Int
+
+        public init(file: URL, mimetype: String, size: Int, width: Int, height: Int) {
+            self.file = file
+            self.mimetype = mimetype
+            self.size = size
+            self.width = width
+            self.height = height
+        }
+    }
+
+    public var file: URL
+    public var mimetype: String
+    /// In bytes.
+    public var size: Int
+    public var kind: Kind
+    public var thumbnail: Thumbnail?
+
+    public init(file: URL, mimetype: String, size: Int, kind: Kind, thumbnail: Thumbnail? = nil) {
+        self.file = file
+        self.mimetype = mimetype
+        self.size = size
+        self.kind = kind
+        self.thumbnail = thumbnail
+    }
 }
 
 /// What a reply shows of the message it answers.
@@ -125,6 +181,8 @@ public enum MatrixCoreError: Error, Equatable {
     case sendFailed(String)
     /// The message is not a photo, or not in the open chat.
     case noImage(String)
+    /// The message is not a file message, or not in the open chat.
+    case noFile(String)
     /// A Keychain call failed with this `OSStatus`.
     case keychain(Int32)
 }

@@ -6,7 +6,7 @@ import MatrixRustSDK
 
 /// One signed-in Matrix account and its local store.
 public final class MatrixAccount: @unchecked Sendable {
-    private let client: Client
+    let client: Client
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -18,6 +18,8 @@ public final class MatrixAccount: @unchecked Sendable {
 
     private init(client: Client) {
         self.client = client
+        // a photo or file on its way tells how much of it is uploaded (`Message.uploadProgress`).
+        client.enableSendQueueUploadProgress(enable: true)
     }
 
     /// Signs in with a user name and password. `homeserver` is a server name
@@ -131,7 +133,7 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// The chat's live timeline, opened the first time with its last `limit` messages.
-    private func liveTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
+    func liveTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
         let opening: Task<LiveTimeline, Error> = lock.withLock {
             if let open = timelines[roomId] { return open }
             let task = Task { try await self.openTimeline(roomId, limit: limit, timeout: timeout) }
@@ -231,6 +233,9 @@ public final class MatrixAccount: @unchecked Sendable {
         let data: Data
         if full {
             data = try await client.getMediaContent(mediaSource: content.source)
+        } else if let thumbnail = content.info?.thumbnailSource, let small = try? await client.getMediaContent(mediaSource: thumbnail) {
+            // the sender's own thumbnail: a photo this device sends has it in the send queue's cache.
+            data = small
         } else {
             // a server may have no thumbnail for a small picture: then the picture itself.
             do {
@@ -394,7 +399,7 @@ private final class RoomEntries: RoomListEntriesListener, @unchecked Sendable {
 }
 
 /// An open chat's timeline and its listener; closing it stops the listener.
-private final class LiveTimeline: @unchecked Sendable {
+final class LiveTimeline: @unchecked Sendable {
     let timeline: Timeline
     let items: TimelineItems
     private let handle: TaskHandle
@@ -475,7 +480,7 @@ private final class LiveTimeline: @unchecked Sendable {
 }
 
 /// A timeline's items, kept current by applying the sdk's diffs in order.
-private final class TimelineItems: TimelineListener, @unchecked Sendable {
+final class TimelineItems: TimelineListener, @unchecked Sendable {
     /// This account's user id: its reactions are marked as its own.
     private let me: String
     private let lock = NSLock()
@@ -553,7 +558,11 @@ private final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     func eventOrTransactionId(of messageId: String) -> EventOrTransactionId? {
-        lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent()?.eventOrTransactionId }
+        event(of: messageId)?.eventOrTransactionId
+    }
+
+    func event(of messageId: String) -> EventTimelineItem? {
+        lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent() }
     }
 }
 
@@ -630,16 +639,22 @@ extension Message {
         }
         guard case .message(let message) = content.kind else { return nil }
         let sendState: SendState
+        var uploaded: Double?
         switch event.localSendState {
-        case .notSentYet?: sendState = .sending
+        case .notSentYet(let progress)?:
+            sendState = .sending
+            uploaded = progress.map(uploadedFraction)
         case .sendingFailed?: sendState = .failed
         // a remote echo has no local send state: the server has it.
         case .sent?, nil: sendState = .sent
         }
-        var body = message.body, image: MessageImage?
+        var body = message.body, image: MessageImage?, file: MessageFile?
         if case .image(let content) = message.msgType {
             body = content.caption ?? ""
             image = MessageImage(content)
+        } else if case .file(let content) = message.msgType {
+            body = content.caption ?? ""
+            file = MessageFile(content)
         }
         self.init(id: id, sender: event.sender, senderName: name, body: body, timestamp: event.timestamp,
                   isOwn: event.isOwn, sendState: sendState, image: image, isEdited: message.isEdited,
@@ -649,6 +664,8 @@ extension Message {
                                       isMine: reaction.senders.contains { $0.senderId == me })
                   },
                   senderPicture: picture)
+        self.file = file
+        uploadProgress = uploaded
     }
 }
 
@@ -669,7 +686,7 @@ extension QuotedMessage {
 }
 
 /// A media url names its picture for good; its hash makes a safe file name.
-private func mediaKey(_ url: String) -> String {
+func mediaKey(_ url: String) -> String {
     SHA256.hash(data: Data(url.utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
 }
 
