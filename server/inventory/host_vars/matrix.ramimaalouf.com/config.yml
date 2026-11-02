@@ -63,6 +63,18 @@ matrix_bridge_mautrix_meta_instagram_version: "4a7ebd929a549d8dcb4d6c12cd5a94fde
 # chat data, so set it back to warn (the default) by deleting this line.
 matrix_bridge_mautrix_meta_instagram_logging_min_level: debug
 
+# the linkedin bridge (mautrix-linkedin). a user connects by sending `login password`
+# (email or phone, password, then a code or an app approval) or `login cookies` (a cURL
+# from chrome) to @linkedinbot:ramimaalouf.com. bridged rooms are not end-to-end
+# encrypted, as for whatsapp.
+matrix_bridge_mautrix_linkedin_enabled: true
+
+# upstream mautrix/linkedin main (6cc6a89, 2026-11-02), not a release: the password login
+# (158ab42) and its 2fa (#72) came after the last release (v0.2609.0, 2026-09-16). the
+# image is prebuilt for arm64 (dock.mau.dev/mautrix/linkedin:<commit>-arm64). go back to
+# the playbook's release when one has the password login, by deleting this line.
+matrix_bridge_mautrix_linkedin_version: "6cc6a8981941b0ac1d50e4c65cfb210668f8fe7e-arm64"
+
 # a small daily backup of the databases (synapse and the bridges), on the server itself, in
 # /matrix/postgres-backup. it keeps 7 daily dumps and 2 weekly ones, no monthly: the weekly
 # file is a hard link to a daily one, so it takes space only after that daily one is gone.

@@ -239,3 +239,32 @@ after. Memory 3 of 23 GiB, disk 47 of 96 GB, load 0.66. Two unused images stay o
 our fork's `localhost/mautrix/meta:ig-bce18b56…-arm64` and `ig-v0.2610.0` (177 MB each),
 with the build cache; removing them is a deletion, so it waits for Rami. The debug log
 level stays on for the main account's next login.
+
+## 2026-11-02: the LinkedIn bridge (mautrix-linkedin)
+
+Rami's request ("please add linkedin"). The pinned playbook supports `mautrix-linkedin`
+(the older `beeper-linkedin` is archived and stays off). Its default version, the last
+release `v0.2609.0` (2026-09-16), has only the cookie login. Upstream `main` added a
+password login on 2026-10-09 (`158ab42`) and its 2FA on 2026-10-12 (#72): email, SMS or
+authenticator code (6 digits), or an approval in the LinkedIn app, with a browser
+fallback. So `config.yml` enables the bridge and sets
+`matrix_bridge_mautrix_linkedin_version` to `main`
+`6cc6a8981941b0ac1d50e4c65cfb210668f8fe7e-arm64` (2026-11-02). Its CI passed (arm64 build
+included), and `dock.mau.dev` has that tag, so the server pulls it and builds nothing.
+
+- Install `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`:
+  `ok=262 changed=14 failed=0`, 3.5 min. Traefik restarted at 23:28:58 UTC; Synapse, the
+  WhatsApp and Instagram bridges and the new bridge at 23:29:07-08.
+- Self-check: `ok=36 failed=0`.
+- `@test1` made a direct chat with `@linkedinbot:ramimaalouf.com` and sent `login`. The bot
+  answered with 2 flows: `cookies` and `password`. The check's session signed out, and
+  `@test1` left the room.
+
+| Container | Image |
+|---|---|
+| `matrix-mautrix-linkedin` | `dock.mau.dev/mautrix/linkedin:6cc6a8981941b0ac1d50e4c65cfb210668f8fe7e-arm64` |
+
+**After:** the bridge logs at `warn` and logged nothing at that level. WhatsApp and
+Instagram each still hold 1 login, with no `WRN` or `ERR` after the restart. Memory 4 of
+23 GiB, disk 61 of 96 GB. The bridge's first sync makes rooms for the 10 most recent
+chats only (`network.sync.create_limit: 10`, the playbook's default).
