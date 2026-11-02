@@ -17,6 +17,11 @@ final class Matrix: ExactModule {
     private var media: URL { context.cache.appendingPathComponent("matrix-media", isDirectory: true) }
     /// Thumbnails on their way, and ones that failed (not tried again until the next launch).
     private var downloading: Set<String> = [], failedDownloads: Set<String> = []
+    /// Each photo's last thumbnail shown, by room and message: a photo this device sent keeps it
+    /// while the server's copy, under a new name, comes from the cache.
+    private var shownThumbnails: [String: String] = [:]
+    /// Files downloaded to open, as `app:/cache/matrix-files/<folder>/<name>` in the view.
+    private var files: URL { context.cache.appendingPathComponent("matrix-files", isDirectory: true) }
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
         switch request["op"] as? String {
@@ -56,7 +61,9 @@ final class Matrix: ExactModule {
                          "imageWidth": $0.image?.width ?? 0, "imageHeight": $0.image?.height ?? 0,
                          "senderPicture": senderPicture(account, roomId: roomId, message: $0),
                          "reply": $0.reply.map { ["senderName": $0.senderName, "body": $0.body, "isOwn": $0.isOwn] } ?? [:],
-                         "reactions": $0.reactions.map { ["key": $0.key, "count": $0.count, "isMine": $0.isMine] }]
+                         "reactions": $0.reactions.map { ["key": $0.key, "count": $0.count, "isMine": $0.isMine] },
+                         "file": $0.file.map { ["name": $0.name, "size": $0.size, "mimetype": $0.mimetype] } ?? [:],
+                         "progress": $0.uploadProgress ?? -1]
                     }])
                 case "markRead":
                     // the screen asks once the reader has seen the chat's newest message; a load does not.
@@ -79,6 +86,16 @@ final class Matrix: ExactModule {
                     try await signedIn().send(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "",
                                               replyTo: replyTo.isEmpty ? nil : replyTo)
                     reply.send(["ok": true])
+                case "sendMedia":
+                    // the photo or file shows in the chat at once; its state and progress say how the upload goes.
+                    reply.send(["ok": try await sendMedia(request)])
+                case "file":
+                    let file = try await signedIn().fileContent(roomId: request["roomId"] as? String ?? "",
+                                                                 messageId: request["messageId"] as? String ?? "", directory: files)
+                    let folder = file.deletingLastPathComponent().lastPathComponent
+                    reply.send(["path": "app:/cache/matrix-files/\(folder)/\(file.lastPathComponent)", "name": file.lastPathComponent])
+                case "maxUploadSize":
+                    reply.send(["bytes": try await signedIn().maxUploadSize()])
                 case "react":
                     try await signedIn().toggleReaction(roomId: request["roomId"] as? String ?? "",
                                                         messageId: request["messageId"] as? String ?? "", key: request["key"] as? String ?? "")
@@ -93,7 +110,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, messages, markRead, older, photo, send, react, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, messages, markRead, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -130,6 +147,7 @@ final class Matrix: ExactModule {
     /// A refusal is a reply: `problem` names it for app.ts, which says it to the person.
     @MainActor private func signIn(server: String, user: String, password: String) async -> [String: Any] {
         account = nil
+        shownThumbnails = [:]
         try? FileManager.default.removeItem(at: stores)
         let store = UUID().uuidString
         do {
@@ -183,11 +201,50 @@ final class Matrix: ExactModule {
         return try account.userId.hasPrefix("@test")
     }
 
-    /// A photo message's thumbnail as an `app:/` path once it is here (see `cached`).
+    /// A photo message's thumbnail as an `app:/` path once it is here (see `cached`); until then
+    /// the one it showed before, if any.
     @MainActor private func thumbnail(_ account: MatrixAccount, roomId: String, message: Message) -> String {
-        cached(message.image?.thumbnailName ?? "", then: .room(roomId)) {
+        let key = "\(roomId)/\(message.id)"
+        let path = cached(message.image?.thumbnailName ?? "", then: .room(roomId)) {
             _ = try await account.imageFile(roomId: roomId, messageId: message.id, full: false, directory: self.media)
         }
+        if path.isEmpty { return message.image == nil ? "" : shownThumbnails[key] ?? "" }
+        shownThumbnails[key] = path
+        return path
+    }
+
+    /// Puts a picked photo or file, which app.ts prepared under `app:/tmp`, in the room's send queue.
+    @MainActor private func sendMedia(_ request: [String: Any]) async throws -> Bool {
+        func int(_ value: Any?) -> Int { (value as? NSNumber)?.intValue ?? 0 }
+        guard let file = appFile(request["path"] as? String ?? "") else { throw ExactNativeRefusal("sendMedia takes an app:/tmp path") }
+        let small = request["thumbnail"] as? [String: Any]
+        let thumbnail = small.flatMap { t in appFile(t["path"] as? String ?? "").map {
+            Attachment.Thumbnail(file: $0, mimetype: t["mimetype"] as? String ?? "image/jpeg", size: int(t["size"]),
+                                 width: int(t["width"]), height: int(t["height"]))
+        } }
+        let attachment = Attachment(file: file, name: request["name"] as? String, mimetype: request["mimetype"] as? String ?? "application/octet-stream",
+                                    size: int(request["size"]),
+                                    kind: request["photo"] as? Bool == true ? .photo(width: int(request["width"]), height: int(request["height"])) : .file,
+                                    thumbnail: thumbnail)
+        let caption = request["caption"] as? String ?? "", replyTo = request["replyTo"] as? String ?? ""
+        let roomId = request["roomId"] as? String ?? ""
+        let id = try await signedIn().sendAttachment(roomId: roomId, attachment: attachment,
+                                                     caption: caption.isEmpty ? nil : caption, replyTo: replyTo.isEmpty ? nil : replyTo)
+        // the photo shows in the chat from its own thumbnail at once, before the send queue's copy is read.
+        if let id, attachment.kind != .file, let shown = (small?["path"] as? String) ?? (request["path"] as? String) {
+            shownThumbnails["\(roomId)/\(id)"] = shown
+            changed(.room(roomId))
+        }
+        return true
+    }
+
+    /// The file an `app:/tmp/…`, `app:/cache/…` or `app:/data/…` path names in this module's folders.
+    private func appFile(_ path: String) -> URL? {
+        let roots = [("app:/tmp/", context.temporary), ("app:/cache/", context.cache), ("app:/data/", context.data)]
+        guard let (prefix, root) = roots.first(where: { path.hasPrefix($0.0) }) else { return nil }
+        let rest = path.dropFirst(prefix.count).split(separator: "/").map(String.init)
+        guard !rest.isEmpty, !rest.contains(where: { $0 == "." || $0 == ".." }) else { return nil }
+        return rest.reduce(root) { $0.appendingPathComponent($1) }
     }
 
     /// A sender's picture as an `app:/` path once it is here (see `cached`).
@@ -250,6 +307,8 @@ final class Matrix: ExactModule {
         try keychain.delete()
         try? FileManager.default.removeItem(at: stores)
         try? FileManager.default.removeItem(at: media)
+        try? FileManager.default.removeItem(at: files)
+        shownThumbnails = [:]
         if !forgotten { signOutPending() }
     }
 }

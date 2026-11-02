@@ -3,6 +3,7 @@
 use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
+use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText from "./attach.contract"
 
 shape Session
   userId: string
@@ -32,6 +33,8 @@ shape RoomList
 // downloaded ("" until then); its body is the caption, or "". waitingForKey: an encrypted
 // message this device cannot read yet; it turns into the message when its key comes.
 // hasReply: it answers a message, whose sender (replyName, "You" for yours) and text show above it.
+// A file message (isFile) has its name and size in bytes; its body is the caption, or "".
+// progress: how much of a photo or file on its way is uploaded, from 0 to 1; -1 when none uploads.
 shape Message
   id: string
   senderName: string
@@ -55,6 +58,10 @@ shape Message
   replyName: string
   replyBody: string
   reactions: Reaction[]
+  isFile: bool
+  fileName: string
+  fileSize: number
+  progress: number
 
 // isMine: this account reacted with it, so a tap takes it back.
 shape Reaction
@@ -83,6 +90,7 @@ shape Time
 shape Viewport
   width: number
   height: number
+  prefersReducedMotion: bool
 
 shape Page
   visibilityState: string
@@ -94,7 +102,17 @@ shape SignInReply
 shape Reply
   ok: bool
 
-// what a chat's composer holds: its draft, and the message it answers (replyTo, a message's id,
+// the largest file the server takes, in bytes; 0 while it is not known.
+shape UploadLimit
+  bytes: number
+
+// a file message's file, downloaded to open: name names it in the share sheet.
+shape OpenedFile
+  message: string
+  name: string
+  path: string
+
+// what a chat's composer holds: its draft, the photos and files picked to send with it, and the message it answers (replyTo, a message's id,
 // which names a message only in its own chat), with what the bar shows of it. Each chat keeps
 // its own, so a draft or a reply never moves to another chat.
 shape Composer
@@ -103,6 +121,7 @@ shape Composer
   replyTo: string
   replyName: string
   replyBody: string
+  attachments: Attachment[]
 
 routes nav
   home "/"
@@ -112,9 +131,9 @@ routes nav
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
 // a chat's composer: the one it keeps, or an empty one.
-fn composerOf(cs: Composer[], room: string): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => Composer(room=room, text="", replyTo="", replyName="", replyBody="") }
+fn composerOf(cs: Composer[], room: string): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => Composer(room=room, text="", replyTo="", replyName="", replyBody="", attachments=[]) }
 // cs with c in place of its chat's composer; an empty one is not kept.
-fn withComposer(cs: Composer[], c: Composer): Composer[] = cs.filter(x => x.room != c.room).concat(c.text == "" and c.replyTo == "" ? [] : [c])
+fn withComposer(cs: Composer[], c: Composer): Composer[] = cs.filter(x => x.room != c.room).concat(c.text == "" and c.replyTo == "" and c.attachments.length == 0 ? [] : [c])
 
 component Multiplexer
   state server = ""
@@ -135,15 +154,25 @@ component Multiplexer
   state heldWidth = 0
   // the reader scrolled the chat's newest message out of view.
   state away = false
+  // the "+" panel is open, in the keyboard's place.
+  state panel = false
+  // the file message being downloaded to open.
+  state opening = ""
+  // the files just picked that are over the server's limit, by name ("" when none).
+  state tooLarge = ""
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
   resource roomList = loadRoomsByRecency(session.userId) as shape RoomList else empty()
+  resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
   mutation sent as shape Reply then toEnd
+  mutation sentMedia as shape Reply then toEnd
+  mutation staged as shape Reply queue
+  mutation opened as shape OpenedFile then openDownloaded
   mutation retried as shape Reply
   mutation discarded as shape Reply
   mutation older as shape Reply
@@ -183,6 +212,8 @@ component Multiplexer
   action follow(url: string)
     nav = go(nav, url)
     held = ""
+    panel = false
+    tooLarge = ""
     // a chat opens at its newest message.
     away = false
   action back
@@ -190,6 +221,8 @@ component Multiplexer
       send markedRead = markRead(openRoom)
     nav = back(nav)
     held = ""
+    panel = false
+    tooLarge = ""
   action readNow
     send markedRead = markRead(openRoom)
   // the newest message is in view while its row's top is above the chat's bottom edge.
@@ -233,10 +266,61 @@ component Multiplexer
     composers = withComposer(composers, Composer(composer, text=v))
   // as Messages does, Send clears the composer at once and scrolls to the end, even from far up.
   action post
-    if composer.text.trim() != "" and not pending(sent)
+    if composer.attachments.length > 0
+      if not pending(sentMedia)
+        // the text is the caption: it goes with the last photo or file, the reply with the first.
+        send sentMedia = sendMedia(openRoom, composer.attachments, composer.text.trim(), composer.replyTo)
+        composers = withComposer(composers, Composer(composer, text="", replyTo="", attachments=[]))
+        tooLarge = ""
+    else if composer.text.trim() != "" and not pending(sent)
       send sent = sendMessage(openRoom, composer.text.trim(), composer.replyTo)
       composers = withComposer(composers, Composer(composer, text="", replyTo=""))
     focus("composer")
+  // "+" puts the keyboard away and shows the panel in its place; X brings the keyboard back.
+  action togglePanel
+    if panel
+      panel = false
+      focus("composer")
+    else
+      panel = true
+      blur("composer")
+  action composerFocused
+    panel = false
+  action choosePhotos
+    showPicker("pick-photos")
+  action chooseFiles
+    showPicker("pick-files")
+  // what was picked joins the open chat's composer, and the keyboard comes back for a caption.
+  // A photo is made ready (smaller, upright, without its location) while the caption is typed.
+  action photosPicked(files: Picked[])
+    let picked = files.map(f => Attachment(file=f, photo=true))
+    composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(picked)))
+    send staged = stageMedia(picked)
+    panel = false
+    tooLarge = ""
+    focus("composer")
+  // a file over the server's limit would only fail: it stays out, and a line says why.
+  action filesPicked(files: Picked[])
+    let fit = files.filter(f => uploadLimit.bytes == 0 or f.size <= uploadLimit.bytes)
+    composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(fit.map(f => Attachment(file=f, photo=false)))))
+    tooLarge = files.filter(f => uploadLimit.bytes > 0 and f.size > uploadLimit.bytes).map(f => f.name).join(", ")
+    panel = false
+    focus("composer")
+  action unpick(path: string)
+    composers = withComposer(composers, Composer(composer, attachments=composer.attachments.filter(a => a.file.path != path)))
+  // a tap on a file downloads it once, then opens the share sheet, where it opens in its app.
+  action openFile(id: string)
+    if not pending(opened)
+      opening = id
+      send opened = openFile(openRoom, id)
+  action openDownloaded
+    match opened
+      case some(f)
+        if f.message == opening and f.path != ""
+          share(title=f.name, files=[f.path])
+      case none
+        opening = opening
+    opening = ""
   // a swipe right on a bubble, or Reply in its menu: the open chat's composer answers it. The
   // swipe's haptic is Exact's, at the point where letting go replies; a second one here doubled it.
   action startReply(id: string, name: string, body: string)
@@ -403,24 +487,33 @@ component Multiplexer
                           margin-bottom=2
                       // in a group, the sender's picture sits beside the last bubble of their run.
                       row position="relative" max-width="80%" min-width=0 padding-left=(thread.group and not m.isOwn ? 36 : 0)
-                        padding-bottom=(m.endsRun and not m.waitingForKey and (not m.isImage or m.body != "") ? 6.65 : 0)
+                        padding-bottom=(m.endsRun and not m.waitingForKey and (not (m.isImage or m.isFile) or m.body != "") ? 6.65 : 0)
                         if thread.group and not m.isOwn and m.endsRun
-                          view position="absolute" left=0 bottom=(not m.waitingForKey and (not m.isImage or m.body != "") ? 6.65 : 0)
+                          view position="absolute" left=0 bottom=(not m.waitingForKey and (not (m.isImage or m.isFile) or m.body != "") ? 6.65 : 0)
                             Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
                         column align-items=(m.isOwn ? "flex-end" : "flex-start") gap=2 min-width=0
                           // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box.
                           if m.isImage
                             button appearance="none" press=showPhoto(m.id) id=`photo-${m.id}` width=`${m.photoWidth}rem` max-width="100%"
                               aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
-                              border-radius=18 overflow="hidden" background-color="-exact-secondary-background"
+                              border-radius=18 overflow="hidden" background-color="-exact-secondary-background" position="relative"
                               aria-label=(m.body != "" ? m.body : "Photo") testId=`photo-${m.id}`
                               if m.image != ""
-                                image m.image width="100%" height="100%" object-fit="cover"
+                                image m.image width="100%" height="100%" object-fit="cover" opacity=(m.state == "sending" ? 0.6 : 1)
+                              // a photo on its way: its upload's ring over a dark disc, at its middle.
+                              if m.state == "sending"
+                                view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+                                  view width=44 height=44 border-radius=22 background-color="rgba(0, 0, 0, 0.5)" display="flex"
+                                    align-items="center" justify-content="center" testId=`upload-${m.id}`
+                                    UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
+                          if m.isFile
+                            FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
+                              opening=(opening == m.id and pending(opened)), open=openFile(m.id), identifier=`file-${m.id}`)
                           // a message on its way is dimmed; one that failed says so, with a way to send it again.
                           if m.waitingForKey
                             text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
                               background-color="-exact-fill" color="-exact-secondary-label" testId=`message-${m.id}`
-                          else if not m.isImage or m.body != ""
+                          else if not (m.isImage or m.isFile) or m.body != ""
                             if m.hasReply
                               column padding="2px 0 2px 10px" margin="0 6px 2px" border-left="2px solid -exact-separator" max-width="100%"
                                 testId=`quote-${m.id}`
@@ -473,15 +566,29 @@ component Multiplexer
                 button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
                   image "symbol:close"
             if threadShown
-              // the field's own padding makes it a 44-point target; the row adds none above or below.
-              row inert=(held != "") align-items="flex-end" margin="6px 12px" padding="0 4px 0 12px" border-radius=22
-                border="1px solid -exact-separator"
-                textarea id="composer" value=composer.text input=editDraft rows=1 field-sizing="content" max-height=140
-                  placeholder="Message" aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
-                  border="none" background-color="transparent"
-                button press=post disabled=(composer.text.trim() == "" or pending(sent)) buttonStyle="filled" margin="4px 0"
-                  retainFocus=true aria-label="Send" testId="send"
-                  image "symbol:send"
+              // "+" on the left, as Beeper and Messages have it; the photos and files picked sit above the text.
+              row inert=(held != "") align-items="flex-end" gap=8 margin="6px 12px"
+                AddButton(open=panel, press=togglePanel)
+                // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
+                input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp" multiple=true display="none"
+                  change=photosPicked testId="pick-photos"
+                input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
+                column flex=1 min-width=0 border-radius=22 border="1px solid -exact-separator"
+                  if composer.attachments.length > 0
+                    Tray(items=composer.attachments, remove=unpick)
+                  if tooLarge != ""
+                    text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
+                      font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
+                  // the field's own padding makes it a 44-point target; the row adds none above or below.
+                  row align-items="flex-end" padding="0 4px 0 12px"
+                    textarea id="composer" value=composer.text input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
+                      placeholder=(composer.attachments.length > 0 ? "Add a caption" : "Message") aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
+                      border="none" background-color="transparent"
+                    button press=post disabled=((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia))
+                      buttonStyle="filled" margin="4px 0" retainFocus=true aria-label="Send" testId="send"
+                      image "symbol:send"
+            if threadShown and panel
+              AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
             // a held message: the chat blurs, the bubble stays where it was, the reactions sit above it
             // and its actions under it, as Beeper and Messages show them.
             if held != ""
