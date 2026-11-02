@@ -289,19 +289,21 @@ component Multiplexer
   action signIn
     if canSignIn
       send signedIn = signIn(server.trim(), user.trim(), password)
+  // an account starts at its inbox: the network chosen before was another session's, which may
+  // have ended without Sign Out (a lost store).
   action afterSignIn
     if refusal != ""
       problem = refusal
       showModal("sign-in-failed")
     else
       password = ""
+      network = ""
   action askSignOut
     showModal("sign-out")
-  // drafts stay with the account that wrote them, and so does the network chosen.
+  // drafts stay with the account that wrote them.
   action signOut
     send signedOut = signOut()
     composers = []
-    network = ""
   action reloadRooms
     refresh roomList
   action reloadThread
