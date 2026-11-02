@@ -40,3 +40,10 @@ The recipe still has `overflow-wrap="anywhere"`; the sample chat app's bubble
 (`apps/messages/bubble.contract`) uses `break-word`. A bubble copied
 with `anywhere` gave the same `verify ios` finding ("breaks inside words (Octo/ber)");
 `break-word` made `verify ios` clean.
+
+## Seen again at `d165f8959f` (2026-11-02), and a fix
+
+`verify ios` on the recipe as written, in a new app: `check` "composer [25,809 325×20]: 325×20
+pt, under the 44×44 minimum", and "breaks app.contract:35 text overflow-wrap="anywhere"". Fixed
+in pull request https://github.com/ccheever/exact2/pull/1323 (`break-word`, and the vertical
+padding on the field); with it, `verify ios` is clean.
