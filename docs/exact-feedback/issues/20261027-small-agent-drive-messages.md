@@ -31,3 +31,18 @@ The messages in items 1 and 2 are unchanged at `cee509ac82`.
    --json`. As a drive step, `"state thread --json"` printed the same short summary again,
    with no word that `--json` was not taken there. `"state thread.messages.19"` worked. About
    3 minutes and three drives.
+
+## Two more (2026-11-02, `ed43ad09a0`)
+
+6. A bar was a `row position="absolute"` with `pointer-events="none"` (only its buttons take
+   touches), and its pull-down menu (a `popover` column) was inside it. In a drive the
+   painted menu's rows could not be tapped: "tap #116 at (75.83, 663.83): node #90 covers
+   its middle", node #90 being a list row under the menu. The cause was the popover
+   inheriting `pointer-events: none` from the row, as CSS does; `pointer-events="auto"` on
+   the popover fixed it. The refusal could name the inherited `pointer-events: none` on the
+   target. About 4 minutes.
+7. `screenshot <png> window` answered "the picture is the app's own drawing ... (the app
+   changed while the display was read)" in every try during one session, so the glass in it
+   was approximate. I took the display with the simulator's own screenshot command during a
+   long `clock +12000 real` instead. The step could wait for a quiet moment, or say what kept
+   changing. About 8 minutes.
