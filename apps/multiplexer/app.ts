@@ -10,12 +10,20 @@ export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
-type RoomsAnswer = { rooms: Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'>[] };
+// every chat (listed: the list shows it under the filter), and the pinned chats' ids in pin order.
+// markedUnread: marked unread by hand. oneToOne: a chat with one other person.
+type RoomsAnswer = {
+  rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { markedUnread: boolean; oneToOne: boolean })[];
+  pinned: string[];
+};
 
 // a chat with no picture shows the first letters of its first two words, as Messages does.
 const initials = (name: string): string =>
   name.split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).slice(0, 2).map((w) => [...w][0].toUpperCase()).join('')
   || [...name.trim()][0] || '';
+// a pinned person shows by their first name, as Messages does; a group by its whole name.
+const shortName = (name: string, oneToOne: boolean): string =>
+  (oneToOne ? name.trim().split(/\s+/)[0] : '') || name;
 type MessagesAnswer = {
   atStart: boolean;
   messages: {
@@ -96,11 +104,29 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  loadRoomsByRecency: async ([userId], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
-    if (userId === '' || !native?.available) return { owner: userId, rooms: [] };
+  // matrixcore filters the list (filter: all, unread, unanswered, people or groups); with all, the
+  // pinned chats are not in it.
+  loadRoomsByRecency: async ([userId, filter], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, filter, rooms: [], pinned: [] };
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
-    const answer = (await native.later({ op: 'rooms' })) as RoomsAnswer;
-    return { owner: userId, rooms: answer.rooms.map((r) => ({ ...r, initials: initials(r.name) })) };
+    const answer = (await native.later({ op: 'rooms', filter })) as RoomsAnswer;
+    const byId = new Map(answer.rooms.map((r) => [r.id, r]));
+    return {
+      owner: userId, filter,
+      rooms: answer.rooms.map(({ markedUnread: _, oneToOne: __, ...r }) => ({ ...r, initials: initials(r.name) })),
+      pinned: answer.pinned.flatMap((id) => {
+        const r = byId.get(id);
+        return r ? [{
+          id, name: r.name, shortName: shortName(r.name, r.oneToOne), avatar: r.avatar, initials: initials(r.name),
+          unread: r.unread > 0 || r.markedUnread,
+        }] : [];
+      }),
+    };
+  },
+  // a pin is kept on the server, so the account's other devices show it too.
+  setPinned: async ([roomId, pinned], _store, _storage, native): Promise<Result<'setPinned'>> => {
+    await native!.later({ op: pinned ? 'pin' : 'unpin', roomId });
+    return { ok: true };
   },
   loadMessages: async ([roomId, isDirect, roomName], _store, _storage, native): Promise<Result<'loadMessages'>> => {
     if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, messages: [] };
@@ -121,8 +147,9 @@ const sources: Sources = {
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage, image: m.image, imageWidth: m.imageWidth, imageHeight: m.imageHeight,
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
-        // a reply shows who wrote what it answers ("" until that message loads).
-        hasReply: m.reply.body !== undefined,
+        // a reply shows who wrote what it answers once that message is loaded; until then, or if
+        // it cannot load, no quote shows rather than an empty one.
+        hasReply: (m.reply.body ?? '') !== '',
         replyName: m.reply.isOwn ? 'You' : (m.reply.senderName ?? ''),
         replyBody: m.reply.body ?? '',
         isFile: m.file.name !== undefined, fileName: m.file.name ?? '', fileSize: m.file.size ?? 0, progress: m.progress,

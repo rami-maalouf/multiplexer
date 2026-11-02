@@ -7,6 +7,8 @@ import MatrixRustSDK
 /// One signed-in Matrix account and its local store.
 public final class MatrixAccount: @unchecked Sendable {
     let client: Client
+    /// The pins this device knows (Pinned.swift).
+    let pins = Pins()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -89,7 +91,7 @@ public final class MatrixAccount: @unchecked Sendable {
         lock.withLock { changeHandler = handler }
     }
 
-    private func notify(_ change: MatrixChange) {
+    func notify(_ change: MatrixChange) {
         lock.withLock { changeHandler }?(change)
     }
 
@@ -107,11 +109,15 @@ public final class MatrixAccount: @unchecked Sendable {
         let joined = client.rooms().filter { $0.membership() == .joined && !$0.isSpace() }.enumerated()
             .sorted { (rank[$0.element.id()] ?? Int.max, $0.offset) < (rank[$1.element.id()] ?? Int.max, $1.offset) }
             .map(\.element)
+        let me = (try? client.userId()) ?? ""
         for room in joined {
+            let info = try? await room.roomInfo()
             var summary = RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect(),
                                       lastMessage: "", lastSenderName: "", lastIsOwn: false, lastTimestamp: 0,
                                       avatarName: room.avatarUrl().map(avatarFileName) ?? "",
-                                      unreadCount: Int((try? await room.roomInfo())?.numUnreadMessages ?? 0))
+                                      unreadCount: Int(info?.numUnreadMessages ?? 0),
+                                      network: info.map { RoomNetwork.of($0, ownUserId: me) } ?? RoomNetwork.matrix)
+            if let info { summary.fillKind(info, pins: pins) }
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
@@ -122,6 +128,7 @@ public final class MatrixAccount: @unchecked Sendable {
             }
             rooms.append(summary)
         }
+        await fillPinOrders(&rooms)
         return rooms
     }
 
@@ -335,7 +342,7 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.
-    private func room(_ roomId: String, timeout: TimeInterval) async throws -> Room {
+    func room(_ roomId: String, timeout: TimeInterval) async throws -> Room {
         var found: Room?
         try await poll(timeout: timeout, what: "room \(roomId)") {
             found = try client.getRoom(roomId: roomId)
@@ -536,14 +543,16 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
         lock.withLock { items.compactMap { item in item.asEvent().flatMap { Message($0, id: item.uniqueId().id, me: me) } } }
     }
 
-    /// The event ids of messages that replies answer, whose details are not loaded. A reply
-    /// read back from the store can stay pending with nothing loading it, so pending counts.
+    /// The event ids of replies whose quoted message is not loaded: the sdk loads a quote when
+    /// asked with the reply's own id, and only for a reply the server has. A reply read back
+    /// from the store can stay pending with nothing loading it, so pending counts.
     func missingQuotes() -> [String] {
         lock.withLock {
             items.compactMap { item in
-                guard case .msgLike(let like)? = item.asEvent()?.content, let reply = like.inReplyTo else { return nil }
+                guard let event = item.asEvent(), case .msgLike(let like) = event.content, let reply = like.inReplyTo,
+                      case .eventId(let replyId) = event.eventOrTransactionId else { return nil }
                 if case .ready = reply.event() { return nil }
-                return reply.eventId()
+                return replyId
             }
         }
     }

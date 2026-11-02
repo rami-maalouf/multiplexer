@@ -4,11 +4,16 @@ use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
 use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText from "./attach.contract"
+use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage from "./inbox.contract"
+use NetworkBadge from "./network.contract"
 
 shape Session
   userId: string
 
-// avatar: the room's picture once it is downloaded (""), else its initials show.
+// avatar: the room's picture once it is downloaded (""), else its initials show. network: the
+// chat network its bridge brings it from (whatsapp, instagram, ...), or matrix for none. listed:
+// the list shows it under the filter menu's choice (a pinned chat, or one the filter leaves out,
+// is still here, so an open chat keeps its name).
 shape Room
   id: string
   name: string
@@ -20,11 +25,17 @@ shape Room
   avatar: string
   initials: string
   unread: number
+  network: string
+  listed: bool
 
-// owner is the account the rooms belong to, so a list never shows under another account.
+// owner is the account the rooms belong to, so a list never shows under another account; filter
+// the filter menu's choice the list is for. pinned: the pinned chats, in their pin order; they
+// are not in rooms while filter is "all".
 shape RoomList
   owner: string
+  filter: string
   rooms: Room[]
+  pinned: PinnedChat[]
 
 // state: "sending", "sent" or "failed". startsGroup: the time shows above it. endsRun: the
 // sender's next message is not next, so this bubble has the tail and their picture beside it.
@@ -161,13 +172,21 @@ component Multiplexer
   state opening = ""
   // the files just picked that are over the server's limit, by name ("" when none).
   state tooLarge = ""
+  // the filter menu's choice (inbox.contract's filterName), kept across launches.
+  state filter = "all" persist
+  // the chat held down in the list: its menu and preview are of it.
+  state aimed = ""
+  // the message a new reply answers, kept in view once the keyboard and the reply bar are up:
+  // a swipe can start a reply low on the screen, where the keyboard would cover it.
+  state revealing = ""
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
-  resource roomList = loadRoomsByRecency(session.userId) as shape RoomList else empty()
+  resource roomList = loadRoomsByRecency(session.userId, filter) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
+  mutation pinned as shape Reply refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
   mutation sent as shape Reply then toEnd
@@ -198,6 +217,17 @@ component Multiplexer
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
   derive threadShown = thread.room == openRoom
   derive openUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
+  // the list under the filter menu's choice; the pinned grid shows above it only while no filter is on.
+  derive listedRooms = roomList.rooms.filter(r => r.listed)
+  derive gridShown = roomList.filter == "all" and roomList.pinned.length > 0
+  // the held chat's last messages, for its menu's preview. loading them reads nothing: only the
+  // chat screen marks a chat read.
+  derive aimedRoom = first(roomList.rooms.filter(r => r.id == aimed))
+  derive aimedName = match aimedRoom { case some(r) => r.name, case none => "" }
+  derive aimedIsDirect = match aimedRoom { case some(r) => r.isDirect, case none => false }
+  derive aimedPinned = roomList.pinned.map(p => p.id).includes(aimed)
+  resource peek = loadMessages(aimed, aimedIsDirect, aimedName) as shape Thread else empty()
+  derive peekShown = peek.room == aimed and aimed != ""
   // the chat is in front, not behind its photo viewer, and the app is too.
   derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
   task tick mount
@@ -206,6 +236,8 @@ component Multiplexer
   // the end or the chat from there reads it at once (scrolled, back). Older messages read nothing.
   task markSeen when reading and not away and openUnread > 0 key=`${openRoom}/${lastId}`
     after(1000, readNow)
+  task reveal when revealing != "" key=revealing
+    after(300, revealNow, wait=idle, max=1000)
 
   action step
     now = performanceNow()
@@ -327,6 +359,7 @@ component Multiplexer
   action startReply(id: string, name: string, body: string)
     composers = withComposer(composers, Composer(composer, replyTo=id, replyName=name, replyBody=body))
     held = ""
+    revealing = id
     focus("composer")
   action cancelReply
     composers = withComposer(composers, Composer(composer, replyTo=""))
@@ -360,6 +393,9 @@ component Multiplexer
     letGo()
   action toEnd
     scrollIntoView("transcript", lastId, block="end")
+  action revealNow
+    scrollIntoView("transcript", revealing, block="nearest", behavior="smooth")
+    revealing = ""
   action showPhoto(id: string)
     nav = push(nav, path("photo", openRoom, id))
   action retry(id: string)
@@ -369,6 +405,19 @@ component Multiplexer
       send older = loadOlderMessages(openRoom)
   action discard(id: string)
     send discarded = discardMessage(openRoom, id)
+
+  // the inbox: the filter menu, Inbox in the bar, and a chat's long-press menu.
+  action chooseFilter(f: string)
+    filter = f
+  action toTop
+    scrollIntoView(gridShown ? "pinned" : (match first(listedRooms) { case some(r) => `room-${r.id}`, case none => "rooms" }), block="start")
+  action aim(id: string)
+    aimed = id
+  action openChat(id: string)
+    follow(path("room", id))
+  action togglePin
+    send pinned = setPinned(aimed, not aimedPinned)
+    haptic("success")
 
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content"
@@ -414,21 +463,34 @@ component Multiplexer
                 button press=askSignOut testId="sign-out"
                   text "Sign Out"
               if roomsShown
-                if roomList.rooms.length == 0
-                  EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
+                if listedRooms.length == 0 and not gridShown
+                  if roomList.filter == "all"
+                    EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
+                  else
+                    EmptyState(symbol="symbol:filter", title=emptyTitle(roomList.filter), message=emptyMessage(roomList.filter))
+                      button press=chooseFilter("all") buttonStyle="bordered" testId="show-all"
+                        text "Show All Chats"
                 else
-                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 testId="room-list"
-                    for r in roomList.rooms key=r.id
-                      link href=path("room", r.id) testId=`room-${r.id}`
+                  // the last row scrolls up above the floating bar.
+                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=64 testId="room-list"
+                    if gridShown
+                      PinnedGrid(rooms=roomList.pinned, open=openChat, aim=aim, menu="chat-menu")
+                    for r in listedRooms key=r.id
+                      link href=path("room", r.id) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
                         row align-items="center" flex=1 min-width=0
                           // a fixed 44-point picture, as Messages has; initials grow with the text size, to a cap.
-                          view width=44 height=44 border-radius=22 overflow="hidden" flex-shrink=0 margin-right=12
-                            background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
-                            testId=`avatar-${r.id}`
-                            if r.avatar != ""
-                              image r.avatar width="100%" height="100%" object-fit="cover" aria-label=""
-                            else
-                              text r.initials font-size="min(-exact-headline, 20px)" font-weight=600 color="-exact-secondary-label"
+                          // a bridged chat's network logo sits on its corner, outside the clipped circle. The
+                          // margin keeps a chat with no message as tall as Messages' rows.
+                          view position="relative" flex-shrink=0 margin="8px 12px 8px 0"
+                            view width=44 height=44 border-radius=22 overflow="hidden"
+                              background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
+                              testId=`avatar-${r.id}`
+                              if r.avatar != ""
+                                image r.avatar width="100%" height="100%" object-fit="cover" aria-label=""
+                              else
+                                text r.initials font-size="min(-exact-headline, 20px)" font-weight=600 color="-exact-secondary-label"
+                            if r.network != "matrix"
+                              NetworkBadge(network=r.network, identifier=`network-${r.id}`)
                           column flex=1 min-width=0 gap=2 padding="10px 0"
                             // at large text sizes the time wraps under the name instead of covering it.
                             row flex-wrap="wrap" column-gap=6 align-items="baseline"
@@ -453,6 +515,42 @@ component Multiplexer
                 else
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
+              if roomsShown
+                BottomBar(filter=filter, choose=chooseFilter, top=toTop, largeText=viewport.accessibilityTextSize)
+              // a chat's long-press menu, from its row or its pinned picture: a preview of its last
+              // messages (a tap opens the chat), then its actions.
+              column id="chat-menu" popover="auto" role="menu"
+                button contextPreview=true press=openChat(aimed) popovertarget="chat-menu" popovertargetaction="hide"
+                  aria-label=`Open ${aimedName}` testId="chat-preview" width=(viewport.width - 32) height=min(440, viewport.height * 0.55)
+                  display="flex" flex-direction="column" justify-content="flex-end" overflow="hidden" padding="12px 0"
+                  background-color="-exact-background" box-sizing="border-box" text-align="start"
+                  if peekShown and peek.messages.length == 0
+                    column flex=1 justify-content="center" align-items="center"
+                      text "No Messages Yet" font="-exact-headline" color="-exact-secondary-label"
+                  else if peekShown
+                    for m in peek.messages key=m.id
+                      column align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
+                        flex-shrink=0
+                        if m.showName
+                          text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding-left=14 margin-bottom=2
+                        if m.isImage
+                          view width=`${m.photoWidth}rem` max-width="80%"
+                            aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
+                            border-radius=18 overflow="hidden" background-color="-exact-secondary-background"
+                            if m.image != ""
+                              image m.image width="100%" height="100%" object-fit="cover" aria-label=(m.body != "" ? m.body : "Photo")
+                        if m.waitingForKey
+                          text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
+                            background-color="-exact-fill" color="-exact-secondary-label"
+                        else if not m.isImage or m.body != ""
+                          view max-width="80%" padding-bottom=(m.endsRun ? 6.65 : 0)
+                            Balloon(body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`peek-${m.id}`)
+                  else
+                    column flex=1 justify-content="center" align-items="center"
+                      progress aria-label="Loading messages"
+                button press=togglePin popovertarget="chat-menu" popovertargetaction="hide" testId="menu-pin"
+                  image (aimedPinned ? "symbol:icon.pin-slash" : "symbol:pin")
+                  text (aimedPinned ? "Unpin" : "Pin")
         if e.name == "photo"
           column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`photo-${e.params.message}`
             position="absolute" inset=0 display="flex" flex-direction="column"
@@ -559,35 +657,38 @@ component Multiplexer
               else
                 column flex=1 justify-content="center" align-items="center"
                   progress aria-label="Loading messages" testId="thread-loading"
-            if threadShown and composer.replyTo != ""
-              row inert=(held != "") align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="reply-bar"
-                column flex=1 min-width=0
-                  text `Replying to ${composer.replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
-                  text composer.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
-                button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
-                  image "symbol:close"
+            // the reply bar and the composer share one bar in the page's colour: the chat's rows scroll
+            // on past the list's frame, and without it they show through the reply and the field.
             if threadShown
-              // "+" on the left, as Beeper and Messages have it; the photos and files picked sit above the text.
-              row inert=(held != "") align-items="flex-end" gap=8 margin="6px 12px"
-                AddButton(open=panel, press=togglePanel)
-                // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
-                input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp" multiple=true display="none"
-                  change=photosPicked testId="pick-photos"
-                input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
-                column flex=1 min-width=0 border-radius=22 border="1px solid -exact-separator"
-                  if composer.attachments.length > 0
-                    Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
-                  if tooLarge != ""
-                    text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
-                      font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
-                  // the field's own padding makes it a 44-point target; the row adds none above or below.
-                  row align-items="flex-end" padding="0 4px 0 12px"
-                    textarea id="composer" value=composer.text input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
-                      placeholder=(composer.attachments.length > 0 ? "Add a caption" : "Message") aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
-                      border="none" background-color="transparent"
-                    button press=post disabled=((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia))
-                      buttonStyle="filled" margin="4px 0" retainFocus=true aria-label="Send" testId="send"
-                      image "symbol:send"
+              column inert=(held != "") flex-shrink=0 background-color="-exact-background" testId="composer-bar"
+                if composer.replyTo != ""
+                  row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="reply-bar"
+                    column flex=1 min-width=0
+                      text `Replying to ${composer.replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
+                      text composer.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
+                    button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
+                      image "symbol:close"
+                // "+" on the left, as Beeper and Messages have it; the photos and files picked sit above the text.
+                row align-items="flex-end" gap=8 margin="6px 12px"
+                  AddButton(open=panel, press=togglePanel)
+                  // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
+                  input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp" multiple=true display="none"
+                    change=photosPicked testId="pick-photos"
+                  input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
+                  column flex=1 min-width=0 border-radius=22 border="1px solid -exact-separator"
+                    if composer.attachments.length > 0
+                      Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
+                    if tooLarge != ""
+                      text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
+                        font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
+                    // the field's own padding makes it a 44-point target; the row adds none above or below.
+                    row align-items="flex-end" padding="0 4px 0 12px"
+                      textarea id="composer" value=composer.text input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
+                        placeholder=(composer.attachments.length > 0 ? "Add a caption" : "Message") aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
+                        border="none" background-color="transparent"
+                      button press=post disabled=((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia))
+                        buttonStyle="filled" margin="4px 0" retainFocus=true aria-label="Send" testId="send"
+                        image "symbol:send"
             if threadShown and panel
               AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
             // a held message: the chat blurs, the bubble stays where it was, the reactions sit above it

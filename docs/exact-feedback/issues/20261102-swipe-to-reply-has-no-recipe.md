@@ -47,5 +47,12 @@ motion, read the host's source and find the second haptic.
 
 ## Evidence
 
-Seen on 2026-11-02 at exact2 `1bc4c36cb7` (iOS Simulator, iOS 26). Related: finding 26 (a
+Seen on 2026-11-02 at exact2 `1bc4c36cb7` (iOS Simulator, iOS 27.0). Related: finding 26 (a
 drive cannot say "swipe right"), `issues/20261022-no-swipeleft.md`.
+
+## A fix (2026-11-02)
+
+Pull request https://github.com/ccheever/exact2/pull/1323: a "Swipe to reply" subsection in
+`docs/contract-for-agents.md` (the follow, the 64-point threshold, `touch-action`, the
+transition, `swipeIndicator`, the haptic, a test's drag), and the agent-pitfalls line
+corrected. The recipe itself has no room for it: recipes have a 3,072-byte cap.
