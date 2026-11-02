@@ -34,3 +34,39 @@ Cost: about 10 minutes to find the cause in the script's source, then a full fir
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, with `bun exact.mjs ios` for the iOS Simulator.
+
+## Seen again: a second failure after the first is fixed (2026-11-02, `ed43ad09a0`)
+
+A second agent hit the same copy in its own worktree, and after the dep-info error a second one
+followed from Swift's module cache. Its notes, as written:
+
+### What happens
+
+Two agents work on one app at the same time, each in its own git worktree. To skip the
+first build, the second checkout's `target/` was copied from the first one. Then
+`bun exact.mjs ios` failed twice:
+
+1. After cargo finished: "no matching rustc unit dep-info for unicode_ident; searched
+   target directory <second checkout>/target; rebuild the stale Cargo unit or use a
+   private target directory". The `.d` files hold the first checkout's absolute paths, so
+   `scripts/cargo-dep-info.mjs` matches none of them. The message does not say how to
+   rebuild that unit.
+2. After those paths were rewritten: Swift refused "precompiled file
+   '.../target/apple-swift/ios-simulator-17.0/webarm-module-cache/.../SwiftShims-....pcm'
+   was compiled with module cache path '<first checkout>/...', but the path is currently
+   '<second checkout>/...'". Deleting the four `*-module-cache` folders under
+   `target/apple-swift/` fixed it.
+
+Cost: about 8 minutes. (Deleting the whole `target/` also works, at about 2.5 minutes of
+build.)
+
+### What would help
+
+- The build noticing a `target/` that moved (its dep-info or module caches name another
+  folder) and rebuilding those parts by itself, or
+- the first message naming what to delete (`target/host-dev`, the module caches), or that
+  deleting `target/` fixes it.
+
+### Evidence
+
+Seen on 2026-11-02 at exact2 `ed43ad09a0`.

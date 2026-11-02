@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 were seen at `ed43ad09a0`, and 17 was seen again.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 37 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -31,7 +31,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 10 | `contract vocab` names a tag or property but not its attributes or values. | About 5 min | P3 | [vocab-gives-no-attributes-or-values](issues/20261027-vocab-gives-no-attributes-or-values.md) |
 | 11 | `prefer root-font-size` enlarges Exact's text but not native fields. | About 3 min | P3 | [prefer-root-font-size-leaves-native-text](issues/20261027-prefer-root-font-size-leaves-native-text.md) |
 | 12 | The `chat-thread` recipe fails Exact's own checks as written: `overflow-wrap="anywhere"` (`verify ios`), and a composer field under 44 points (`check`). Fixed in PR #1323 (open). | About 7 min | P3 | [chat-thread-recipe-breaks-inside-words](issues/20261027-chat-thread-recipe-breaks-inside-words.md) |
-| 13 | Four agent messages could say what to do next. | 1 or 2 min each | P3 | [small-agent-drive-messages](issues/20261027-small-agent-drive-messages.md) |
+| 13 | Seven agent messages could say what to do next. | 1 or 2 min each | P3 | [small-agent-drive-messages](issues/20261027-small-agent-drive-messages.md) |
 | 14 | Withdrawn: "an app that uses exact2 by path cannot safely follow a rewritten `main`". The cost came from a one-time purge of exact2's git history, not from the framework or from building an app with it. | | | (file removed) |
 | 15 | After `update`, `lock` reports "no changes" for a `Cargo.lock` that `update` rewrote. | About 2 min | P3 | [update-and-lock-disagree-about-cargo-lock](issues/20261027-update-and-lock-disagree-about-cargo-lock.md) |
 | 16 | A drive cannot wait for work that a native module starts by itself or pushes after a mutation, so it needs a fixed real-time wait. | About 6 min, and slow drives | P3 | [a-drive-cannot-wait-for-a](issues/20261027-a-drive-cannot-wait-for-a.md) |
@@ -53,6 +53,9 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 32 | A labelled image inside a `link` row is left out of the row's VoiceOver label, unlike the web. | About 10 min | P3 | [a-labelled-image-inside-a-link](issues/20261102-a-labelled-image-inside-a-link.md) |
 | 33 | `verify` says "tests: did not compile" when it could not pick a simulator. | About 3 min | P3 | [verify-says-the-tests-did-not](issues/20261102-verify-says-the-tests-did-not.md) |
 | 34 | `verify`'s largest-text pass keeps no screenshots, so a finding there cannot be seen. | About 25 min, not isolated | P3 | [verify-s-largest-text-pass-keeps](issues/20261102-verify-s-largest-text-pass-keeps.md) |
+| 35 | A floating bottom bar over a large-title list gets no scroll edge effect, and a route has no bottom toolbar. | About 25 min | P3 | [a-floating-bottom-bar-gets-no-edge-effect](issues/20261102-a-floating-bottom-bar-gets-no-edge-effect.md) |
+| 36 | `match` on a string is refused as "expected `some`, found a string". | About 3 min | P3 | [match-on-a-string-is-refused](issues/20261102-match-on-a-string-is-refused.md) |
+| 37 | A native button's symbol: the hint says "sized by font-size", `font-size` on the button is ignored without a warning, and an image's `font-size` cannot grow to a cap. | About 16 min | P3 | [a-native-buttons-symbol-size](issues/20261102-a-native-buttons-symbol-size.md) |
 
 ## What worked well
 

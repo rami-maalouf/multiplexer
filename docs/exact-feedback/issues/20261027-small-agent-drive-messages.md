@@ -1,4 +1,4 @@
-# Four agent messages that could say what to do next
+# Seven agent messages that could say what to do next
 
 **Status:** Open
 **Systems:** agent (`scripts/agent.mjs`, `scripts/agent-test.mjs`), `verify`
