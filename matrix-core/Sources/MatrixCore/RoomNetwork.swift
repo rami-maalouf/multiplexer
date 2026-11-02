@@ -17,6 +17,10 @@ enum RoomNetwork {
         ("telegram", ["telegram"]), ("signal", ["signal"]), ("discord", ["discord"]), ("linkedin", ["linkedin"]),
     ]
 
+    /// Every network, in the filter sheet's order: Matrix first, as Beeper lists its own
+    /// network first, then the bridged ones.
+    static var all: [String] { [matrix] + words.map(\.network) }
+
     /// A room's network, from the bridge bot it names as a service member (a mautrix bridge
     /// puts `io.element.functional_members` in each room it makes), else from its heroes: a
     /// ghost or a bot of a bridge on this account's own server. `matrix` when none is a bridge's.
