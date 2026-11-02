@@ -529,8 +529,9 @@ component Multiplexer
                           column flex=1 min-width=0 gap=2 padding="10px 0"
                             // at large text sizes the time wraps under the name instead of covering it.
                             row flex-wrap="wrap" column-gap=6 align-items="baseline"
-                              // a muted chat: a crossed bell after its name, as Beeper shows it.
-                              row gap=5 align-items="baseline" flex="1 1 10rem" min-width=0
+                              // a muted chat: a crossed bell after its name, as Beeper shows it; under it
+                              // when the name needs the whole width.
+                              row flex-wrap="wrap" column-gap=5 align-items="baseline" flex="1 1 10rem" min-width=0
                                 text r.name font="-exact-headline" font-weight=(loud(r) ? 700 : 600) min-width=0
                                 if r.muted
                                   image "symbol:icon.bell-slash" font="-exact-footnote" color="-exact-secondary-label" flex-shrink=0
