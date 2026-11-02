@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` and 29 at `ed43ad09a0`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -47,6 +47,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 26 | A drive cannot fire `swiperight`, and under a real touch a tap on a `link` row misses. | About 10 min | P3 | [a-drive-cannot-fire-swiperight-and](issues/20261031-a-drive-cannot-fire-swiperight-and.md) |
 | 27 | A long-press menu has no row of reactions, so a chat app draws its message menu by hand. | About 40 lines | P3 | [a-long-press-menu-has-no](issues/20261031-a-long-press-menu-has-no.md) |
 | 28 | Swipe to reply has no recipe: the `transition` gives the spring back (agent-pitfalls says it gives the follow), and `swipeIndicator` and the host's threshold haptic are undocumented. | A wrong conclusion in one session, about 40 min in the next | P3 | [swipe-to-reply-has-no-recipe](issues/20261102-swipe-to-reply-has-no-recipe.md) |
+| 29 | A drive cannot film a navigation's zoom: `screenshot over` starts after the transition ends (known in exact2's `QUEUE.md`; this adds evidence). | About 10 min | P3 | [a-drive-cannot-film-a-navigation](issues/20261102-a-drive-cannot-film-a-navigation.md) |
 
 ## What worked well
 
