@@ -24,3 +24,10 @@ Each cost 1 or 2 minutes.
 ## Evidence
 
 The messages in items 1 and 2 are unchanged at `cee509ac82`.
+
+## One more (2026-11-02, `1bc4c36cb7`)
+
+5. `state thread` refused to print 8.2 KB and said `all of it: "state thread --full", or
+   --json`. As a drive step, `"state thread --json"` printed the same short summary again,
+   with no word that `--json` was not taken there. `"state thread.messages.19"` worked. About
+   3 minutes and three drives.

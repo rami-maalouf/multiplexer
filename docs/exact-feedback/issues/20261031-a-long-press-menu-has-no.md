@@ -24,3 +24,12 @@ documented pattern for a message's long press.
 ## Evidence
 
 Seen on 2026-10-31 at exact2 `1bc4c36cb7`.
+
+## More evidence (2026-11-02, `1bc4c36cb7`)
+
+The navigation bar is not only sharp above the hand-drawn menu: it stays live. A real tap
+on its Back button (`--touch platform`, `tap root at 37 84`) pops the route while the menu
+is open. The app's `back` action did not clear the menu's state, so the chat opened again
+with the menu already up. The sample chat app clears its selection in `back`; nothing says
+why. A menu that is modal over the bar, or a line in a recipe that `back` must close what
+the screen holds open, would have prevented it.

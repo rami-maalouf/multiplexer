@@ -518,6 +518,21 @@ swipe to reply", "Hold a message").
 - A reply read back from the store can keep its quote "pending" with nothing loading it; MatrixCore now asks for the details of any quote that is not ready, once per opened chat.
 - While the menu is open, UIKit's navigation bar stays sharp above the blur; in light mode its title turns white over the pale blur. Not fixable from the app (Exact finding 27).
 
+**Fixes, 2026-11-02:** a read-only review compared the chat with Exact's sample chat apps.
+Each bug was first reproduced in a drive as `@test1` (two test chats), then fixed and driven again.
+- [x] Each chat keeps its own draft and its own reply. Before: a reply started in chat A showed its bar and draft in chat B, and Send there sent a reply that quoted a photo of chat B. A message's id is its timeline's own count ("9"), so it names another message in another chat. (Drive: a reply and a draft in A, another draft in B; each comes back in its chat; the reply sent in A quotes the chosen message.)
+- [x] Leaving a chat closes its long-press menu. Before: the bar's Back stays live above the menu (finding 27), and the chat opened again with the menu up. (Drive: a real tap on Back with the menu open; the platform's Back.)
+- [x] A chat is marked read only when its newest message has been in view for one second (Excord's rule), or when the reader leaves the chat or the end from there. A load no longer marks read: not older pages, not a new message while scrolled up, not behind the photo viewer, not while the app is hidden. `markRead` is its own request; `sendsReadReceipts` is unchanged. (Drives: scrolled up, a message from `@test2` stays unread after Back; at the end, an unread chat reads after 1 s, not at 0.5 s; hidden, a new message stays unread and reads when the app shows again.)
+- [x] Swipe to reply: the bubble already followed the finger (the earlier note that it cannot was wrong); it now springs back over about 250 ms after the lift instead of snapping (the sample's `transition`), and one haptic (Exact's, at the threshold) instead of two (finding 28).
+- [x] Gate: `test ios` 3 passed on exact2 `1bc4c36cb7`; after the update to `ed43ad09a0`, `test ios` 3 passed, `verify ios` clean, and drives with `check both` clean on the chat, the long-press menu, a reaction, the reply bar after a real swipe, and the photo viewer. A drive ends a navigation's zoom at once, so the zoom's motion itself was not seen.
+
+**Found on the way (2026-11-02):**
+- A reply's quote can stay empty (a thin grey mark above the bubble): the quoted message's details never load. Seen after a relaunch that keeps the store (a reply in "Multiplexer two-person test", still empty after 4 s; after a fresh sign-in it showed its quote), and after a fresh sign-in on a reply that quotes a photo ("Multiplexer test"). MatrixCore asks for them once per opened chat; they do not arrive. Not fixed here. A likely cause, not checked: `missingQuotes()` passes the quoted message's event id to `fetchDetailsForEvent`, and matrix-rust-sdk describes that call (from memory; the Swift bindings have no doc) as taking the id of the reply itself.
+- Drafts last until the app quits. A saved reply would need the message's event id, not its timeline id. The SDK can store a draft per room (`saveComposerDraft`, `loadComposerDraft`): a later task (B5's Drafts filter needs it).
+- With a real touch, an edge swipe while the menu is open lands on the menu's Close layer: it closes the menu, and the chat stays.
+- While the keyboard rises after a reply starts, one frame draws the reply bar over the bubbles; from 50 ms on the layout is right. A reply started on a bubble low in a chat scrolled up leaves that bubble half hidden at the list's bottom edge once the keyboard is up.
+- The reply arrow: `swipeIndicator` works (an experiment: an arrow child that fades in and grows as the swipe reaches the threshold). Not kept, because it changes the look: a decision for Rami.
+
 **Dependencies:** T2.2, T2.3
 **Scope:** M
 
@@ -660,8 +675,8 @@ Mute, Label, Delete (red).
 **Acceptance criteria:**
 - [ ] The preview shows the chat's last messages. Until Rami answers `preview-read`, it does
   not mark the chat read: the safe choice, because on `@rami` a read receipt also marks the chat
-  read in WhatsApp. It must use a load that does not mark read (today every message load marks
-  read: `Matrix.swift`, a fix is in progress in another conversation).
+  read in WhatsApp. Since 2026-11-02 a message load marks nothing; only the chat screen's
+  `markRead` request does (T2.13, "Fixes"), so a preview that never sends it reads nothing.
 - [ ] Mark as Unread (`setUnreadFlag`); opening the chat clears that flag (the SDK's
   `markAsRead` does not).
 - [ ] Mute and Unmute (`setRoomNotificationMode(.mute)`): a crossed bell after the name, a grey

@@ -28,3 +28,10 @@ A `swipe right` step in drives and tests, or one line in the testing guide on dr
 ## Evidence
 
 Seen on 2026-10-31 at exact2 `1bc4c36cb7` (iOS simulator). Related: `issues/20261022-no-swipeleft.md`.
+
+## Seen again at `1bc4c36cb7` (2026-11-02)
+
+Under `--touch platform`, `tap room-preview-<id>` (the workaround above) missed too: "the
+touch landed on node #25, not on node #32 the aim hit-tested". A tap on the row's picture
+(`tap avatar-<id>`, a `view` in the same `link` row) worked. So which part of a `link` row a
+real touch reaches changes from one run to the next.
