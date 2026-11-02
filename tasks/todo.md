@@ -545,8 +545,16 @@ Each bug was first reproduced in a drive as `@test1` (two test chats), then fixe
 ## Beeper parity
 
 Written 2026-11-02 from Rami's Beeper walkthrough (`research/beeper-walkthrough/report/index.html`,
-local only) and his answers to its questions (`plan.md`, decision log, 2026-11-02). The tasks
-follow the report's proposed order: the inbox first. "Topic N" points to the report.
+local only) and his answers to all its questions (`plan.md`, decision log, 2026-11-02). "Topic N"
+points to the report.
+
+**Order (Rami, 2026-11-02):**
+1. B1, the network of each chat.
+2. Photos and files from the library: B10 (the "+" button), then B11 with T2.12.
+3. The rest of the inbox: B3 to B8 (B2 when Rami OKs the server change).
+4. Push notifications (Phase 3): after the inbox, before the chat details.
+5. B9, then B12 to B21 in their order.
+6. Later (wanted, not now): see "Later" at the end of this section.
 
 Rules for every task here:
 - **Beeper's features, Messages' feel (D9).** Take every feature from Beeper. Keep what Messages
@@ -554,11 +562,11 @@ Rules for every task here:
   the "Replying to" bar, reaction pills.
 - **Dark first.** The app follows the iPhone's light or dark setting. Design and check dark mode
   first, then light mode, then the largest text size.
-- **Waits for** names a question from the report that Rami has not answered. Ask him when the task
-  starts; do not guess.
+- Every question of the report is answered. **Ask Rami** marks a choice that only shows when the
+  task starts (for example a server change); do not guess.
 - Drives send, react and mark read only as `@test1` or `@test2`. A bridged chat exists only on
   `@rami`: there, drives are read only and need Rami's OK.
-- Push notifications (Phase 3) are not in this list. Where they go is open (`push-order`).
+- Push notifications (Phase 3) come after the inbox tasks (Rami, `push-order`).
 
 ### B1 Each chat's network, and its logo on the picture
 
@@ -619,10 +627,9 @@ appears when its feature exists: the capsule's Archive with B8, search with B18.
 **Description:** Topics 03 and 07: "what I care about the most". The up-down button opens a
 sheet from the bottom (Rami: a sheet, as in Beeper), with Beeper's list (Rami: exactly Beeper's
 list). This task builds Inbox and one row per connected network, each with its unread count.
-The other rows come with their tasks: Archive and Low Priority (B8), labels and Create Label
-(B8, waits for `labels-meaning`), Send Later (B13), Reminders (waits for `remind-me`), Requests
-and New Space (look at what Beeper does first), communities (later: Rami, "whatever is
-easiest"), the gear and Edit.
+The other rows come with their tasks: Archive and Low Priority (B8), Send Later (B13),
+Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and communities (all
+"Later"), the gear and Edit.
 
 **Acceptance criteria:**
 - [ ] The sheet opens at half height and pulls up to full (`navigationDetent="medium large"`).
@@ -673,33 +680,32 @@ Beeper's actions: Select chat, Archive, Move to Low Priority, Pin, Remind Me, Ma
 Mute, Label, Delete (red).
 
 **Acceptance criteria:**
-- [ ] The preview shows the chat's last messages. Until Rami answers `preview-read`, it does
-  not mark the chat read: the safe choice, because on `@rami` a read receipt also marks the chat
-  read in WhatsApp. Since 2026-11-02 a message load marks nothing; only the chat screen's
-  `markRead` request does (T2.13, "Fixes"), so a preview that never sends it reads nothing.
+- [ ] The preview shows the chat's last messages, and does not mark the chat read (Rami: only
+  opening the chat marks it read). Since 2026-11-02 a message load marks nothing; only the chat
+  screen's `markRead` request does (T2.13, "Fixes"), so a preview that never sends it reads nothing.
 - [ ] Mark as Unread (`setUnreadFlag`); opening the chat clears that flag (the SDK's
   `markAsRead` does not).
 - [ ] Mute and Unmute (`setRoomNotificationMode(.mute)`): a crossed bell after the name, a grey
   count; an "@" in the count when you are mentioned.
-- [ ] Move to Low Priority, Archive and Label: with B8. Remind Me waits for `remind-me`. Select
-  chat (several chats at once) comes last.
-- [ ] Delete asks first. Before building it, ask Rami what it should do to a bridged chat
-  (leave the room, or only hide it).
+- [ ] Move to Low Priority and Archive: with B8. Label, Remind Me and Select chat (several chats
+  at once): "Later".
+- [ ] Delete asks first, then removes the chat from our app only (Rami): WhatsApp keeps it. Check
+  first what the bridge does when we leave the room and the chat gets a new message; if leaving
+  is not safe, hide the chat with a mark instead.
 
 **Dependencies:** B6 (the menu exists). **Scope:** M
 
-### B8 Archive, Low Priority and labels
+### B8 Archive and Low Priority
 
 **Description:** Topics 03 and 04. Archive and Low Priority are separate lists, reached from
 the bottom bar and the filter sheet. The SDK can set Low Priority but cannot write custom tags,
-so Archive and labels need another way (MatrixCore calls the Matrix tags API itself, or another
-mark). Prove that way first.
+so Archive needs another way (MatrixCore calls the Matrix tags API itself, or another mark).
+Prove that way first. Labels use the same way later.
 
 **Acceptance criteria:**
 - [ ] Move to Low Priority and back (`setIsLowPriority`); a Low Priority row in the filter sheet.
 - [ ] Archive and Unarchive; the Archive button in the bottom bar's capsule.
-- [ ] **Waits for `archive-rule`:** whether a new message brings an archived chat back.
-- [ ] **Waits for `labels-meaning`:** labels, Create Label, and a row per label in the sheet.
+- [ ] A new message brings an archived chat back to the inbox, unless the chat is muted (Rami).
 
 **Dependencies:** B4, B7. **Scope:** M
 
@@ -731,39 +737,55 @@ WhatsApp" (the chat's network), and the voice button on the right while the fiel
 
 **Dependencies:** B1. **Scope:** S
 
-### B11 The + panel, and photos
+### B11 The + panel: photos and files
 
-**Description:** Topic 14: "the two most important [things are] photos and GIFs". "+" turns
-into an X, and a panel takes the keyboard's place: Photos, Camera, Send file, Poll, Send later,
-GIFs. This task builds the panel and Photos (T2.12 is its sending part).
+**Description:** Topic 14: "the two most important [things are] photos and GIFs". Rami: photos
+from the library and files are the top priority of the panel. "+" turns into an X, and a panel
+takes the keyboard's place. This task builds the panel with Photos and Send file (T2.12 is the
+photo sending part); GIFs (B12) and Send later (B13) join it. Camera comes later (a built-in
+camera); no Poll for now.
 
 **Acceptance criteria:**
 - [ ] The panel replaces the keyboard (Exact cannot put a view in the keyboard; hide the keyboard
   and show the panel in its place); X brings the keyboard back.
 - [ ] Photos: the system picker, several photos, a caption, upload progress, then T2.12's checks.
-- [ ] Camera and Send file come after Photos. **Poll waits for `poll`.**
+- [ ] Send file: the Files picker; the file shows with its name and size, and opens on another
+  client (`AttachmentKind.file`).
 
 **Dependencies:** T2.12, B10. **Scope:** M
 
-### B12 GIFs
+### B12 GIFs (KLIPY)
 
-**Description:** Topic 14. Search a GIF service, show a grid of animated GIFs, send one.
+**Description:** Topic 14. Search KLIPY (Rami's choice, D10), show a grid of animated GIFs, send
+one. KLIPY is what Beeper uses. The phone calls KLIPY directly: KLIPY requires it, and D10 makes
+it the one exception to invariant 1.
 
 **Acceptance criteria:**
-- [ ] **Waits for `gif-provider`.** No account, key or cost without Rami's yes.
-- [ ] A GIF sent from the app plays in WhatsApp.
+- [ ] Rami makes the KLIPY account (partner panel); the key stays out of git (Keychain, like the
+  other secrets). The test key allows 100 calls an hour; then ask for a production key (KLIPY's
+  form; it publishes no price: no cost without Rami's yes). Ads off.
+- [ ] KLIPY's required branding shows in the GIF panel.
+- [ ] Search waits for a pause in typing, so one search is one call.
+- [ ] A GIF sent from the app plays in WhatsApp (check how the bridge sends it: GIF or video).
 
 **Dependencies:** B11. **Scope:** M
 
 ### B13 Send Later
 
-**Description:** Topic 14: "the third one". Pick a date and time; the message goes then. The SDK
-has no scheduled sending. Also the unclear quote at 4:35 ("I'd love to [schedule ...]").
+**Description:** Topic 14: "the third one". Rami: hold the Send button, as in Slack, then pick a
+time. The message waits on our server (Rami, D11), so it goes even when the phone is off.
+Synapse's delayed events (MSC4140) can hold it; the SDK's bindings cannot send one, so
+MatrixCore calls the Matrix API itself (to check).
 
 **Acceptance criteria:**
-- [ ] **Waits for `send-later`** (on our server, or on the phone) and for Rami to say what he
-  meant at 4:35.
-- [ ] A list of scheduled messages, as a row in the filter sheet; edit or cancel one.
+- [ ] Holding Send opens the choices: a few set times (for example tomorrow at 9:00) and a
+  custom date and time (the native picker). A tap on Send still sends at once.
+- [ ] **Ask Rami** before turning on delayed events on Synapse (a server setting, through the
+  playbook), with a maximum delay he chooses.
+- [ ] A list of scheduled messages, as a row in the filter sheet: send now, change the time, or
+  cancel one.
+- [ ] A scheduled message reaches WhatsApp at its time with the phone off (checked with the test
+  users, then on `@rami` with his OK).
 
 **Dependencies:** B11. **Scope:** L
 
@@ -782,7 +804,8 @@ emoji, a search and "Frequently used".
   emojis), all emojis by category. Exact has no emoji grid: the app draws one, or uses the iOS
   emoji keyboard.
 - [ ] Long press on a photo too (T2.13: only text bubbles have it).
-- [ ] **Bookmark waits for `bookmarks`.**
+- [ ] Bookmark: saved in the account's own data; shown in each chat's info page (B20) and in one
+  list of all bookmarks (a row in the filter sheet).
 - [ ] Sending an edit, deleting a sent message and recent emojis are proven in a MatrixCore test.
 
 **Dependencies:** T2.13. **Scope:** M
@@ -810,20 +833,21 @@ user setting". Beeper keeps the speed per note; ours keeps one speed for the who
 **Acceptance criteria:**
 - [ ] A voice note plays; the waveform shows progress (the app draws the bars: Exact has no view
   for a received waveform).
-- [ ] Changing the speed on any note changes it on every note, and the app remembers it.
-- [ ] **Waits for `speed-scope`:** whether videos use the same speed.
-- [ ] Transcribe: **waits for `transcribe`.**
+- [ ] Changing the speed on any note changes it on every note, and the app remembers it. Videos
+  keep their own normal speed (Rami).
+- [ ] Transcribe: "Later".
 
 **Dependencies:** T2.13. **Scope:** M
 
-### B17 Record a voice note, with pause
+### B17 Record a voice note
 
-**Description:** Topic 15: "I'd love to have a way to pause the voice note." Record, pause,
-resume, then send or delete. It goes out as a voice message, so WhatsApp shows a voice note.
+**Description:** Topic 15. Rami (2026-11-02): "do the same as most chat apps": tap to start, tap
+to finish, then listen to it and send it. No pause. It goes out as a voice message, so WhatsApp
+shows a voice note.
 
 **Acceptance criteria:**
-- [ ] Record, pause, resume, cancel and send (`@exact/recording`; the microphone permission).
-- [ ] **Waits for `voice-pause`:** whether you can listen to the draft before sending.
+- [ ] Tap the voice button to start, tap to finish (`@exact/recording`; the microphone permission).
+- [ ] Before sending: play the draft, then send it or delete it.
 - [ ] A voice note sent from the app plays as a voice note in WhatsApp.
 
 **Dependencies:** B10, B16. **Scope:** M
@@ -835,8 +859,8 @@ search field at the bottom, with the keyboard up. Before typing: recent chats an
 searches. Above: Images, Videos, Links, Files, Drafts.
 
 **Acceptance criteria:**
-- [ ] **Waits for `search-scope`:** what search must find first.
-- [ ] Chats by name (`.fuzzyMatchRoomName`), and message text through the SDK's local search index.
+- [ ] Results in this order (Rami): chats by name (`.fuzzyMatchRoomName`), then messages (the
+  SDK's local search index), then links.
 - [ ] Check where iOS 26 puts Exact's search field. If not at the bottom, draw our own.
 
 **Dependencies:** B3. **Scope:** L
@@ -864,8 +888,9 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
   Low Priority (or Unpin) and More; Media; Members with Add member.
 - [ ] Edit: Edit Group Info; Customize for Me (a name only you see).
 - [ ] More: Pin, Mark as Read, Mute, Delete. Jump to Date: the SDK has none (jump to a message
-  works). Remind Me waits for `remind-me`.
-- [ ] **Message expiry waits for `expiry`** ("not urgent").
+  works). Remind Me: "Later".
+- [ ] Bookmarks: this chat's saved messages (B14).
+- [ ] Message expiry: last of all (Rami: keep it, "not urgent"); see "Later".
 
 **Dependencies:** B9. **Scope:** L
 
@@ -875,21 +900,32 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
 Settings holds Sign Out (it leaves the chat list's top bar) and the voice note speed.
 
 **Acceptance criteria:**
-- [ ] The menu and a Settings screen with Sign Out.
-- [ ] **Merge Chats waits for `merge-chats`.**
+- [ ] The menu and a Settings screen with Sign Out and the voice note speed.
+- [ ] Merge Chats and Select Chats: "Later".
 
 **Dependencies:** none. **Scope:** S
 
 ### Later
 
-- Communities as filters (Rami: "whatever is easiest"): after B4.
+Rami wants these, after the tasks above (2026-11-02):
+- Labels: a named group of chats, shown as a filter in the sheet, with Create Label (the same
+  tag way as Archive, B8). "Not a requirement."
+- Camera in the + panel: a built-in camera.
+- Remind Me: a reminder to answer a chat later (B7, B20; a Reminders row in the sheet).
+- Merge Chats: one person on two networks as one chat (B21).
+- Select chat: act on several chats at once (B7, B21).
+- Transcribe voice notes (B16): check whether the iPhone can do it on the phone, at no cost.
+- Communities as filters ("whatever is easiest"): after B4.
 - Requests and New Space in the filter sheet: look at what Beeper does first.
-- The open questions not in a task above: none. Each waits in its task.
+- Message expiry (B20): the very last.
+
+Not wanted for now: Poll.
 
 ## Phase 3: push notifications (M3), rough
 
 The biggest gap for daily use (the server conversation's review, 2026-10-27): without
-push, Rami does not know a message came unless the app is open. Detail it before it
+push, Rami does not know a message came unless the app is open. Order (Rami, 2026-11-02):
+after the Beeper inbox tasks (B1 to B8), before the chat details. Detail it before it
 starts; the parts:
 
 - The app (this side): the APNs device token. Exact has `subscribePush()` designed but not
