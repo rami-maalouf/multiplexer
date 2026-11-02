@@ -4,7 +4,7 @@ use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
 use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText from "./attach.contract"
-use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage from "./inbox.contract"
+use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage, listTitle, deleteMessage from "./inbox.contract"
 use NetworkBadge from "./network.contract"
 
 shape Session
@@ -13,7 +13,9 @@ shape Session
 // avatar: the room's picture once it is downloaded (""), else its initials show. network: the
 // chat network its bridge brings it from (whatsapp, instagram, ...), or matrix for none. listed:
 // the list shows it under the filter menu's choice (a pinned chat, or one the filter leaves out,
-// is still here, so an open chat keeps its name).
+// is still here, so an open chat keeps its name). markedUnread: marked unread by hand. muted: its
+// messages do not notify, so its count is grey; mentions: its unread messages that mention you.
+// lowPriority, archived: in those lists, not the inbox.
 shape Room
   id: string
   name: string
@@ -27,6 +29,11 @@ shape Room
   unread: number
   network: string
   listed: bool
+  markedUnread: bool
+  muted: bool
+  mentions: number
+  lowPriority: bool
+  archived: bool
 
 // owner is the account the rooms belong to, so a list never shows under another account; filter
 // the filter menu's choice the list is for. pinned: the pinned chats, in their pin order; they
@@ -142,6 +149,9 @@ routes nav
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
+// an unread chat that is not muted: its name is bolder and its time in the accent.
+fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
+fn countText(n: number): string = n > 99 ? "99+" : n.toString()
 // a chat's composer: the one it keeps, or an empty one.
 fn composerOf(cs: Composer[], room: string): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => Composer(room=room, text="", replyTo="", replyName="", replyBody="", attachments=[]) }
 // cs with c in place of its chat's composer; an empty one is not kept.
@@ -187,6 +197,7 @@ component Multiplexer
   resource roomList = loadRoomsByRecency(session.userId, filter) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   mutation pinned as shape Reply refreshes roomList
+  mutation changedChat as shape Reply queue refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
   mutation sent as shape Reply then toEnd
@@ -216,7 +227,8 @@ component Multiplexer
   // the reactions a long press offers first, as Beeper does.
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
   derive threadShown = thread.room == openRoom
-  derive openUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
+  // a chat marked unread by hand counts one: reading it takes the mark away.
+  derive openUnread = match openRoomInfo { case some(r) => r.unread + (r.markedUnread ? 1 : 0), case none => 0 }
   // the list under the filter menu's choice; the pinned grid shows above it only while no filter is on.
   derive listedRooms = roomList.rooms.filter(r => r.listed)
   derive gridShown = roomList.filter == "all" and roomList.pinned.length > 0
@@ -226,6 +238,11 @@ component Multiplexer
   derive aimedName = match aimedRoom { case some(r) => r.name, case none => "" }
   derive aimedIsDirect = match aimedRoom { case some(r) => r.isDirect, case none => false }
   derive aimedPinned = roomList.pinned.map(p => p.id).includes(aimed)
+  derive aimedUnread = match aimedRoom { case some(r) => r.unread > 0 or r.markedUnread, case none => false }
+  derive aimedMuted = match aimedRoom { case some(r) => r.muted, case none => false }
+  derive aimedLowPriority = match aimedRoom { case some(r) => r.lowPriority, case none => false }
+  derive aimedArchived = match aimedRoom { case some(r) => r.archived, case none => false }
+  derive aimedNetwork = match aimedRoom { case some(r) => r.network, case none => "matrix" }
   resource peek = loadMessages(aimed, aimedIsDirect, aimedName) as shape Thread else empty()
   derive peekShown = peek.room == aimed and aimed != ""
   // the chat is in front, not behind its photo viewer, and the app is too.
@@ -411,6 +428,17 @@ component Multiplexer
     filter = f
   action toTop
     scrollIntoView(gridShown ? "pinned" : (match first(listedRooms) { case some(r) => `room-${r.id}`, case none => "rooms" }), block="start")
+  // the capsule's Inbox and Archive: a press on the list shown goes back to its top.
+  action toInbox
+    if filter == "archive" or filter == "lowPriority"
+      filter = "all"
+    else
+      toTop()
+  action toArchive
+    if filter == "archive"
+      toTop()
+    else
+      filter = "archive"
   action aim(id: string)
     aimed = id
   action openChat(id: string)
@@ -418,6 +446,12 @@ component Multiplexer
   action togglePin
     send pinned = setPinned(aimed, not aimedPinned)
     haptic("success")
+  // the held chat's other actions (app.ts's changeChat); each shows in the list at once.
+  action changeAimed(change: string)
+    send changedChat = changeChat(aimed, change)
+    haptic("success")
+  action askDelete
+    showModal("delete-chat")
 
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content"
@@ -458,7 +492,7 @@ component Multiplexer
           else
             column navigationKey=`${e.id}` navigationScroll="rooms" position="absolute" inset=0 display="flex" flex-direction="column"
               header display="flex" align-items="center"
-                text "Chats" role="heading" aria-level=1 flex=1
+                text listTitle(roomList.filter) role="heading" aria-level=1 flex=1
                 text session.userId
                 button press=askSignOut testId="sign-out"
                   text "Sign Out"
@@ -467,7 +501,8 @@ component Multiplexer
                   if roomList.filter == "all"
                     EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
                   else
-                    EmptyState(symbol="symbol:filter", title=emptyTitle(roomList.filter), message=emptyMessage(roomList.filter))
+                    EmptyState(symbol=(roomList.filter == "archive" ? "symbol:icon.archive" : "symbol:filter"),
+                      title=emptyTitle(roomList.filter), message=emptyMessage(roomList.filter))
                       button press=chooseFilter("all") buttonStyle="bordered" testId="show-all"
                         text "Show All Chats"
                 else
@@ -494,18 +529,31 @@ component Multiplexer
                           column flex=1 min-width=0 gap=2 padding="10px 0"
                             // at large text sizes the time wraps under the name instead of covering it.
                             row flex-wrap="wrap" column-gap=6 align-items="baseline"
-                              text r.name font="-exact-headline" font-weight=(r.unread > 0 ? 700 : 600) flex="1 1 10rem" min-width=0
+                              // a muted chat: a crossed bell after its name, as Beeper shows it.
+                              row gap=5 align-items="baseline" flex="1 1 10rem" min-width=0
+                                text r.name font="-exact-headline" font-weight=(loud(r) ? 700 : 600) min-width=0
+                                if r.muted
+                                  image "symbol:icon.bell-slash" font="-exact-footnote" color="-exact-secondary-label" flex-shrink=0
+                                    aria-label="Muted" testId=`muted-${r.id}`
                               row gap=6 align-items="baseline" flex-shrink=0 margin-left="auto"
                                 if r.lastTime > 0
                                   text formatDay(r.lastTime, shown, time.utcOffset, "list") font="-exact-subheadline"
-                                    color=(r.unread > 0 ? "AccentColor" : "-exact-secondary-label")
+                                    color=(loud(r) ? "AccentColor" : "-exact-secondary-label")
                                 image "symbol:forward-chevron" font="-exact-footnote" color="-exact-tertiary-label"
-                            // an unread chat: a bold name and a count beside the preview.
+                            // an unread chat: a bold name and a count beside the preview; muted, a grey
+                            // count; with a mention, "@" and the accent. Marked unread by hand: a dot.
                             row gap=8 align-items="flex-start"
                               text (r.lastMessage != "" ? preview(r) : "") font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
                                 flex=1 min-width=0 testId=`room-preview-${r.id}`
-                              if r.unread > 0
-                                Badge(label=(r.unread > 99 ? "99+" : r.unread.toString()), tint=some("AccentColor"))
+                              if r.mentions > 0
+                                view flex-shrink=0 testId=`count-${r.id}`
+                                  Badge(label=`@ ${countText(max(r.unread, r.mentions))}`, tint=some("AccentColor"))
+                              else if r.unread > 0
+                                view flex-shrink=0 testId=`count-${r.id}`
+                                  Badge(label=countText(r.unread), tint=(r.muted ? none : some("AccentColor")))
+                              else if r.markedUnread
+                                view width=12 height=12 border-radius=6 margin="4px 4px 0"
+                                  background-color=(r.muted ? "-exact-tertiary-label" : "AccentColor") aria-label="Unread" testId=`marked-${r.id}`
               else
                 if failed(roomList) and not pending(roomList)
                   column flex=1 justify-content="center" align-items="center" gap=12 padding=24
@@ -516,7 +564,7 @@ component Multiplexer
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
               if roomsShown
-                BottomBar(filter=filter, choose=chooseFilter, top=toTop, largeText=viewport.accessibilityTextSize)
+                BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, largeText=viewport.accessibilityTextSize)
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
               // messages (a tap opens the chat), then its actions.
               column id="chat-menu" popover="auto" role="menu"
@@ -548,9 +596,30 @@ component Multiplexer
                   else
                     column flex=1 justify-content="center" align-items="center"
                       progress aria-label="Loading messages"
+                // Beeper's order. Delete takes the chat out of this app only: the alert says so.
+                button press=changeAimed(aimedArchived ? "unarchive" : "archive") popovertarget="chat-menu" popovertargetaction="hide"
+                  testId="menu-archive"
+                  image (aimedArchived ? "symbol:icon.unarchive" : "symbol:icon.archive")
+                  text (aimedArchived ? "Unarchive" : "Archive")
+                button press=changeAimed(aimedLowPriority ? "inbox" : "lowPriority") popovertarget="chat-menu" popovertargetaction="hide"
+                  testId="menu-low-priority"
+                  image (aimedLowPriority ? "symbol:icon.tray" : "symbol:icon.low-priority")
+                  text (aimedLowPriority ? "Move to Inbox" : "Move to Low Priority")
                 button press=togglePin popovertarget="chat-menu" popovertargetaction="hide" testId="menu-pin"
                   image (aimedPinned ? "symbol:icon.pin-slash" : "symbol:pin")
                   text (aimedPinned ? "Unpin" : "Pin")
+                button press=changeAimed(aimedUnread ? "read" : "unread") popovertarget="chat-menu" popovertargetaction="hide"
+                  testId="menu-unread"
+                  image (aimedUnread ? "symbol:messages" : "symbol:icon.mark-unread")
+                  text (aimedUnread ? "Mark as Read" : "Mark as Unread")
+                button press=changeAimed(aimedMuted ? "unmute" : "mute") popovertarget="chat-menu" popovertargetaction="hide"
+                  testId="menu-mute"
+                  image (aimedMuted ? "symbol:notifications" : "symbol:icon.bell-slash")
+                  text (aimedMuted ? "Unmute" : "Mute")
+                hr
+                button press=askDelete destructive=true popovertarget="chat-menu" popovertargetaction="hide" testId="menu-delete"
+                  image "symbol:delete"
+                  text "Delete"
         if e.name == "photo"
           column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`photo-${e.params.message}`
             position="absolute" inset=0 display="flex" flex-direction="column"
@@ -720,6 +789,12 @@ component Multiplexer
         text problem testId="problem"
         button commandfor="sign-in-failed" command="close" testId="sign-in-failed-ok"
           text "OK"
+      dialog id="delete-chat" role="alertdialog" aria-label=`Delete “${aimedName}”?`
+        text deleteMessage(aimedNetwork) testId="delete-chat-message"
+        button press=changeAimed("delete") destructive=true commandfor="delete-chat" command="close" testId="delete-chat-confirm"
+          text "Delete"
+        button commandfor="delete-chat" command="close" testId="delete-chat-cancel"
+          text "Cancel"
       dialog id="sign-out" role="alertdialog" aria-label="Sign Out?"
         text "This iPhone forgets your session. Your chats stay on the server."
         button press=signOut destructive=true commandfor="sign-out" command="close" testId="sign-out-confirm"

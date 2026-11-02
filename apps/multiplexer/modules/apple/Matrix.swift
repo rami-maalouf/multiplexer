@@ -51,12 +51,31 @@ final class Matrix: ExactModule {
                          "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
                          "unread": room.unreadCount, "network": room.network, "markedUnread": room.isMarkedUnread,
                          "oneToOne": room.isOneToOne, "listed": inbox.listed.contains(room.id),
+                         "muted": room.isMuted, "mentions": room.unreadMentions, "lowPriority": room.isLowPriority,
+                         "archived": room.isArchived,
                          "avatar": cached(room.avatarName, then: .rooms) {
                              _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
                     }, "pinned": inbox.pinned.map(\.id)])
                 case "pin", "unpin":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
+                    reply.send(["ok": true])
+                case "chat":
+                    // a chat's long-press actions (MatrixCore's ChatActions.swift).
+                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    switch request["action"] as? String {
+                    case "read": try await account.markRead(roomId: roomId)
+                    case "unread": try await account.setMarkedUnread(roomId: roomId, true)
+                    case "mute": try await account.mute(roomId: roomId)
+                    case "unmute": try await account.unmute(roomId: roomId)
+                    case "lowPriority": try await account.setLowPriority(roomId: roomId, true)
+                    case "inbox": try await account.setLowPriority(roomId: roomId, false)
+                    case "archive": try await account.archive(roomId: roomId)
+                    case "unarchive": try await account.unarchive(roomId: roomId)
+                    case "delete": try await account.hide(roomId: roomId)
+                    default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive and delete")
+                    }
                     reply.send(["ok": true])
                 case "messages":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
@@ -119,7 +138,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, pin, unpin, messages, markRead, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -204,7 +223,8 @@ final class Matrix: ExactModule {
 
     /// Read receipts go out, except in a drive on an account that is not a test user: a drive
     /// on Rami's real account must never mark a chat read (AGENTS.md, the safety rule), and
-    /// with the WhatsApp bridge a receipt also marks the chat read in WhatsApp.
+    /// with the WhatsApp bridge a receipt also marks the chat read in WhatsApp. A chat's
+    /// actions (mute, archive, ...) follow the same rule.
     private func sendsReadReceipts(_ account: MatrixAccount) throws -> Bool {
         if !context.agent { return true }
         return try account.userId.hasPrefix("@test")

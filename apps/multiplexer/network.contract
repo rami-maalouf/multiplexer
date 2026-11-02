@@ -1,15 +1,18 @@
 // a chat's network as a small logo on the bottom right corner of its picture, as Beeper shows
 // it. The logos are assets/networks/<network>.svg (their sources: assets/networks/SOURCES.md).
 
+// a network's name as people write it.
+fn networkName(network: string): string = network == "whatsapp" ? "WhatsApp" : (network == "instagram" ? "Instagram" : (network == "messenger" ? "Messenger"
+  : (network == "telegram" ? "Telegram" : (network == "signal" ? "Signal" : (network == "discord" ? "Discord"
+  : (network == "linkedin" ? "LinkedIn" : network))))))
+
 // the logo sits in a ring of the list's background, so it stands apart from the picture under
 // it. The picture's parent places it: it is outside the picture's clipped box.
 component NetworkBadge
   props
     network: string
     identifier: string
-  derive label = network == "whatsapp" ? "WhatsApp" : (network == "instagram" ? "Instagram" : (network == "messenger" ? "Messenger"
-    : (network == "telegram" ? "Telegram" : (network == "signal" ? "Signal" : (network == "discord" ? "Discord"
-    : (network == "linkedin" ? "LinkedIn" : network))))))
+  derive label = networkName(network)
   view
     view position="absolute" right=-2 bottom=-2 padding=1.5 border-radius=5 background-color="-exact-background" display="flex"
       testId=identifier

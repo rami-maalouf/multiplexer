@@ -11,9 +11,9 @@ export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
 // every chat (listed: the list shows it under the filter), and the pinned chats' ids in pin order.
-// markedUnread: marked unread by hand. oneToOne: a chat with one other person.
+// oneToOne: a chat with one other person.
 type RoomsAnswer = {
-  rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { markedUnread: boolean; oneToOne: boolean })[];
+  rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { oneToOne: boolean })[];
   pinned: string[];
 };
 
@@ -113,7 +113,7 @@ const sources: Sources = {
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     return {
       owner: userId, filter,
-      rooms: answer.rooms.map(({ markedUnread: _, oneToOne: __, ...r }) => ({ ...r, initials: initials(r.name) })),
+      rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
         const r = byId.get(id);
         return r ? [{
@@ -126,6 +126,12 @@ const sources: Sources = {
   // a pin is kept on the server, so the account's other devices show it too.
   setPinned: async ([roomId, pinned], _store, _storage, native): Promise<Result<'setPinned'>> => {
     await native!.later({ op: pinned ? 'pin' : 'unpin', roomId });
+    return { ok: true };
+  },
+  // a chat's long-press actions: read, unread, mute, unmute, lowPriority, inbox (out of Low
+  // Priority), archive, unarchive and delete (from this app only; the chat stays on its network).
+  changeChat: async ([roomId, action], _store, _storage, native): Promise<Result<'changeChat'>> => {
+    await native!.later({ op: 'chat', roomId, action });
     return { ok: true };
   },
   loadMessages: async ([roomId, isDirect, roomName], _store, _storage, native): Promise<Result<'loadMessages'>> => {

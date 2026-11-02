@@ -8,6 +8,7 @@
 #   SENDER=@test2:ramimaalouf.com ROOM="Multiplexer two-person test" (the defaults)
 #   REPLY_TO=<event id> or REPLY_TO=first: the text answers that message, or the room's first
 #   text message (older than what a chat loads when it opens)
+#   MENTION=<user id>: the text mentions that user, as a client's pill does (m.mentions)
 set -euo pipefail
 usage="usage: send-test-message.sh <text> | --image <file> [caption]"
 image=""; caption=""
@@ -59,6 +60,9 @@ else
   fi
   if [ -n "$replyto" ]; then
     body="$(jq --arg id "$replyto" '. + {"m.relates_to":{"m.in_reply_to":{event_id:$id}}}' <<<"$body")"
+  fi
+  if [ -n "${MENTION:-}" ]; then
+    body="$(jq --arg u "$MENTION" '. + {"m.mentions":{user_ids:[$u]}}' <<<"$body")"
   fi
 fi
 curl -sf -X PUT "$base/client/v3/rooms/$room/send/m.room.message/multiplexer-$(uuidgen)" -H "$auth" \

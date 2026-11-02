@@ -1,5 +1,6 @@
 // the inbox's own parts, after Beeper's chat list: the floating bar under the list with its
 // filter menu, and the pinned chats above the list. the platform's glass and menus draw them.
+use networkName from "./network.contract"
 
 // a pinned chat in the grid. shortName: a person's first name, or a group's whole name.
 // unread: unread messages, or marked unread by hand.
@@ -14,20 +15,28 @@ shape PinnedChat
 // the filter menu's choices, in Beeper's order; Drafts waits for drafts that the app keeps.
 fn filterName(f: string): string = f == "unread" ? "Unread" : (f == "unanswered" ? "Unanswered" : (f == "people" ? "DMs" : (f == "groups" ? "Groups" : "All")))
 // what the list says when a filter leaves no chat in it.
-fn emptyTitle(f: string): string = f == "unread" ? "No Unread Chats" : (f == "unanswered" ? "No Unanswered Chats" : (f == "people" ? "No DMs" : "No Groups"))
-fn emptyMessage(f: string): string = f == "unread" ? "You’ve read every chat." : (f == "unanswered" ? "You answered the last message in every chat." : (f == "people" ? "Chats with one other person show here." : "Chats with more than one other person show here."))
+fn emptyTitle(f: string): string = f == "unread" ? "No Unread Chats" : (f == "unanswered" ? "No Unanswered Chats" : (f == "people" ? "No DMs" : (f == "archive" ? "No Archived Chats" : (f == "lowPriority" ? "No Low Priority Chats" : "No Groups"))))
+fn emptyMessage(f: string): string = f == "unread" ? "You’ve read every chat." : (f == "unanswered" ? "You answered the last message in every chat." : (f == "people" ? "Chats with one other person show here." : (f == "archive" ? "Chats you archive show here. A new message brings one back, unless it’s muted." : (f == "lowPriority" ? "Chats you move to Low Priority show here." : "Chats with more than one other person show here."))))
+// the screen's title: the list it shows (Archive and Low Priority are lists of their own).
+fn listTitle(f: string): string = f == "archive" ? "Archive" : (f == "lowPriority" ? "Low Priority" : "Chats")
+// what Delete's alert says: the chat leaves this app only.
+fn deleteMessage(network: string): string = `It leaves Multiplexer on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
 
 // the floating bar over the chat list: a round filter button on the left (filled with the accent
-// while a filter is on), and a capsule in the middle with Inbox, selected. a press on Inbox
-// goes back to the list's top. glass that comes close merges, as the platform's does.
+// while a filter is on), and a capsule in the middle with Inbox and Archive, the list shown
+// selected. a press on the list shown goes back to its top. glass that comes close merges, as the
+// platform's does.
 component BottomBar
   props
     filter: string
     choose: action
     top: action
+    archive: action
     // the reader chose one of the accessibility text sizes.
     largeText: bool
-  derive filtered = filter != "all"
+  derive inArchive = filter == "archive"
+  derive inInbox = filter != "archive" and filter != "lowPriority"
+  derive filtered = inInbox and filter != "all"
   // the symbols grow a little at the accessibility text sizes, and stay inside their glass.
   derive symbolSize = largeText ? 24 : 20
   view
@@ -37,15 +46,19 @@ component BottomBar
         aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
         image "symbol:filter" font-size=symbolSize
       row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
-        button appearance="none" press=top aria-label="Inbox" aria-selected=true testId="inbox"
-          min-width=68 height=44 border-radius=22 background-color="-exact-tertiary-fill"
+        button appearance="none" press=top aria-label="Inbox" aria-selected=inInbox testId="inbox"
+          min-width=68 height=44 border-radius=22 background-color=(inInbox ? "-exact-tertiary-fill" : "transparent")
           display="flex" align-items="center" justify-content="center"
           image "symbol:icon.tray" font-size=symbolSize color="-exact-label"
+        button appearance="none" press=archive aria-label="Archive" aria-selected=inArchive testId="archive"
+          min-width=68 height=44 border-radius=22 background-color=(inArchive ? "-exact-tertiary-fill" : "transparent")
+          display="flex" align-items="center" justify-content="center"
+          image "symbol:icon.archive" font-size=symbolSize color="-exact-label"
       // search comes here with its task; until then the capsule stays in the middle.
       view width=48 height=48 aria-hidden=true
       column id="filter-menu" popover="auto" role="menu" pointer-events="auto"
         for f in ["all", "unread", "unanswered", "people", "groups"] key=f
-          button role="menuitemradio" aria-checked=(filter == f) press=choose(f)
+          button role="menuitemradio" aria-checked=(inInbox and filter == f) press=choose(f)
             popovertarget="filter-menu" popovertargetaction="hide" testId=`filter-${f}`
             text filterName(f)
 
