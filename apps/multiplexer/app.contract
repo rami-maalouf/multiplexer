@@ -3,14 +3,14 @@
 use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
-use BottomBar, emptyTitle, emptyMessage from "./inbox.contract"
+use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage from "./inbox.contract"
 
 shape Session
   userId: string
 
 // avatar: the room's picture once it is downloaded (""), else its initials show. listed: the
-// list shows it under the filter menu's choice (one the filter leaves out is still here, so an
-// open chat keeps its name).
+// list shows it under the filter menu's choice (a pinned chat, or one the filter leaves out, is
+// still here, so an open chat keeps its name).
 shape Room
   id: string
   name: string
@@ -25,11 +25,13 @@ shape Room
   listed: bool
 
 // owner is the account the rooms belong to, so a list never shows under another account; filter
-// the filter menu's choice the list is for.
+// the filter menu's choice the list is for. pinned: the pinned chats, in their pin order; they
+// are not in rooms while filter is "all".
 shape RoomList
   owner: string
   filter: string
   rooms: Room[]
+  pinned: PinnedChat[]
 
 // state: "sending", "sent" or "failed". startsGroup: the time shows above it. endsRun: the
 // sender's next message is not next, so this bubble has the tail and their picture beside it.
@@ -143,12 +145,15 @@ component Multiplexer
   state away = false
   // the filter menu's choice (inbox.contract's filterName), kept across launches.
   state filter = "all" persist
+  // the chat held down in the list: its menu and preview are of it.
+  state aimed = ""
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
   resource roomList = loadRoomsByRecency(session.userId, filter) as shape RoomList else empty()
+  mutation pinned as shape Reply refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
   mutation sent as shape Reply then toEnd
@@ -176,8 +181,17 @@ component Multiplexer
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
   derive threadShown = thread.room == openRoom
   derive openUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
-  // the list under the filter menu's choice.
+  // the list under the filter menu's choice; the pinned grid shows above it only while no filter is on.
   derive listedRooms = roomList.rooms.filter(r => r.listed)
+  derive gridShown = roomList.filter == "all" and roomList.pinned.length > 0
+  // the held chat's last messages, for its menu's preview. loading them reads nothing: only the
+  // chat screen marks a chat read.
+  derive aimedRoom = first(roomList.rooms.filter(r => r.id == aimed))
+  derive aimedName = match aimedRoom { case some(r) => r.name, case none => "" }
+  derive aimedIsDirect = match aimedRoom { case some(r) => r.isDirect, case none => false }
+  derive aimedPinned = roomList.pinned.map(p => p.id).includes(aimed)
+  resource peek = loadMessages(aimed, aimedIsDirect, aimedName) as shape Thread else empty()
+  derive peekShown = peek.room == aimed and aimed != ""
   // the chat is in front, not behind its photo viewer, and the app is too.
   derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
   task tick mount
@@ -295,11 +309,18 @@ component Multiplexer
   action discard(id: string)
     send discarded = discardMessage(openRoom, id)
 
-  // the inbox: the filter menu, and Inbox in the bar.
+  // the inbox: the filter menu, Inbox in the bar, and a chat's long-press menu.
   action chooseFilter(f: string)
     filter = f
   action toTop
-    scrollIntoView(match first(listedRooms) { case some(r) => `room-${r.id}`, case none => "rooms" }, block="start")
+    scrollIntoView(gridShown ? "pinned" : (match first(listedRooms) { case some(r) => `room-${r.id}`, case none => "rooms" }), block="start")
+  action aim(id: string)
+    aimed = id
+  action openChat(id: string)
+    follow(path("room", id))
+  action togglePin
+    send pinned = setPinned(aimed, not aimedPinned)
+    haptic("success")
 
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content"
@@ -345,7 +366,7 @@ component Multiplexer
                 button press=askSignOut testId="sign-out"
                   text "Sign Out"
               if roomsShown
-                if listedRooms.length == 0
+                if listedRooms.length == 0 and not gridShown
                   if roomList.filter == "all"
                     EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
                   else
@@ -355,8 +376,10 @@ component Multiplexer
                 else
                   // the last row scrolls up above the floating bar.
                   list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=64 testId="room-list"
+                    if gridShown
+                      PinnedGrid(rooms=roomList.pinned, open=openChat, aim=aim, menu="chat-menu")
                     for r in listedRooms key=r.id
-                      link href=path("room", r.id) id=`room-${r.id}` testId=`room-${r.id}`
+                      link href=path("room", r.id) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
                         row align-items="center" flex=1 min-width=0
                           // a fixed 44-point picture, as Messages has; initials grow with the text size, to a cap.
                           view width=44 height=44 border-radius=22 overflow="hidden" flex-shrink=0 margin-right=12
@@ -392,6 +415,40 @@ component Multiplexer
                     progress aria-label="Loading chats" testId="rooms-loading"
               if roomsShown
                 BottomBar(filter=filter, choose=chooseFilter, top=toTop)
+              // a chat's long-press menu, from its row or its pinned picture: a preview of its last
+              // messages (a tap opens the chat), then its actions.
+              column id="chat-menu" popover="auto" role="menu"
+                button contextPreview=true press=openChat(aimed) popovertarget="chat-menu" popovertargetaction="hide"
+                  aria-label=`Open ${aimedName}` testId="chat-preview" width=(viewport.width - 32) height=min(440, viewport.height * 0.55)
+                  display="flex" flex-direction="column" justify-content="flex-end" overflow="hidden" padding="12px 0"
+                  background-color="-exact-background" box-sizing="border-box" text-align="start"
+                  if peekShown and peek.messages.length == 0
+                    column flex=1 justify-content="center" align-items="center"
+                      text "No Messages Yet" font="-exact-headline" color="-exact-secondary-label"
+                  else if peekShown
+                    for m in peek.messages key=m.id
+                      column align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
+                        flex-shrink=0
+                        if m.showName
+                          text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding-left=14 margin-bottom=2
+                        if m.isImage
+                          view width=`${m.photoWidth}rem` max-width="80%"
+                            aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
+                            border-radius=18 overflow="hidden" background-color="-exact-secondary-background"
+                            if m.image != ""
+                              image m.image width="100%" height="100%" object-fit="cover" aria-label=(m.body != "" ? m.body : "Photo")
+                        if m.waitingForKey
+                          text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
+                            background-color="-exact-fill" color="-exact-secondary-label"
+                        else if not m.isImage or m.body != ""
+                          view max-width="80%" padding-bottom=(m.endsRun ? 6.65 : 0)
+                            Balloon(body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`peek-${m.id}`)
+                  else
+                    column flex=1 justify-content="center" align-items="center"
+                      progress aria-label="Loading messages"
+                button press=togglePin popovertarget="chat-menu" popovertargetaction="hide" testId="menu-pin"
+                  image (aimedPinned ? "symbol:icon.pin-slash" : "symbol:pin")
+                  text (aimedPinned ? "Unpin" : "Pin")
         if e.name == "photo"
           column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`photo-${e.params.message}`
             position="absolute" inset=0 display="flex" flex-direction="column"

@@ -1,7 +1,7 @@
 @testable import MatrixCore
 import XCTest
 
-/// The inbox's filters, as two test users (`scripts/test-matrix-core.sh` passes them).
+/// The inbox's filters and pins, as two test users (`scripts/test-matrix-core.sh` passes them).
 /// Its rooms are its own, made on the first run, so other tests' messages do not reach them.
 final class InboxTests: XCTestCase {
     private let directName = "Multiplexer inbox test DM"
@@ -16,7 +16,10 @@ final class InboxTests: XCTestCase {
         let sender = try await signIn(homeserver, user2, password2)
         let (direct, group, bridged) = try await inboxRooms(reader, sender, user2: user2)
         let readerSession = try reader.savedSession()
-        for id in [direct, group, bridged] { try await setMarkedUnread(false, roomId: id, session: readerSession) }
+        for id in [direct, group, bridged] {
+            try await setMarkedUnread(false, roomId: id, session: readerSession)
+            try await reader.unpin(roomId: id)
+        }
 
         // a chat marked direct and a bridged chat with one other person are DMs; the rest are groups.
         let people = try await inbox(reader, .people) { ids in ids.contains(direct) && ids.contains(bridged) }
@@ -34,7 +37,7 @@ final class InboxTests: XCTestCase {
         XCTAssertFalse(unread.contains(direct), "a read DM shows under Unread")
         let unanswered = try await inbox(reader, .unanswered) { $0.contains(group) }
         XCTAssertFalse(unanswered.contains(direct), "a chat whose newest message is the reader's shows under Unanswered")
-        // every chat shows under All.
+        // every chat shows under All while none is pinned.
         let all = try await inbox(reader, .all) { ids in [direct, group, bridged].allSatisfy(ids.contains) }
         XCTAssertEqual(all.count, Set(all).count)
 
@@ -47,23 +50,72 @@ final class InboxTests: XCTestCase {
         _ = try await inbox(reader, .unread) { ids in !ids.contains(direct) && !ids.contains(group) }
     }
 
-    /// The rules without a server: what each filter takes.
-    func testFilterRules() {
-        func chat(_ id: String, unread: Int = 0, marked: Bool = false, own: Bool = false, oneToOne: Bool = false) -> RoomSummary {
+    func testAPinShowsOnAnotherDeviceInItsOrder() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let first = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let (direct, group, bridged) = try await inboxRooms(first, sender, user2: user2)
+        for id in [direct, group, bridged] { try await first.unpin(roomId: id) }
+
+        // a pin shows at once on its own device, and leaves the list.
+        try await first.pin(roomId: direct)
+        try await first.pin(roomId: group)
+        let here = try await first.inbox()
+        XCTAssertEqual(here.pinned.map(\.id).filter([direct, group, bridged].contains), [direct, group])
+        XCTAssertFalse(here.rooms.contains { $0.id == direct || $0.id == group }, "a pinned chat is still in the list")
+        XCTAssertTrue(here.rooms.contains { $0.id == bridged })
+
+        // a new device gets the pins from the server, in the same order.
+        let second = try await signIn(homeserver, user, password)
+        let seen = try await pinned(second, among: [direct, group, bridged]) { $0 == [direct, group] }
+        XCTAssertEqual(seen, [direct, group])
+        let orders = try await second.inbox().pinned.filter { [direct, group].contains($0.id) }.map(\.pinOrder)
+        XCTAssertEqual(orders.count, 2)
+        XCTAssertLessThan(orders[0] ?? 1, orders[1] ?? 0, "the orders are not in pin order: \(orders)")
+        // with a filter on, a pinned chat shows in the list.
+        let people = try await second.inbox(filter: .people).rooms.map(\.id)
+        XCTAssertTrue(people.contains(direct), "a pinned DM is missing under DMs")
+
+        // unpinned, it comes back to the list; pinned again, it goes after the pins before it.
+        try await first.unpin(roomId: direct)
+        _ = try await pinned(second, among: [direct, group, bridged]) { $0 == [group] }
+        let back = try await second.inbox().rooms.map(\.id)
+        XCTAssertTrue(back.contains(direct), "an unpinned chat is not back in the list")
+        try await first.pin(roomId: direct)
+        let again = try await pinned(second, among: [direct, group, bridged]) { $0 == [group, direct] }
+        XCTAssertEqual(again, [group, direct])
+
+        for id in [direct, group] { try await first.unpin(roomId: id) }
+        _ = try await pinned(second, among: [direct, group, bridged]) { $0.isEmpty }
+    }
+
+    /// The rules without a server: what each filter takes, the pin order, and a new pin's order.
+    func testFilterAndPinRules() {
+        func chat(_ id: String, unread: Int = 0, marked: Bool = false, own: Bool = false, oneToOne: Bool = false,
+                  pinned: Bool = false, order: Double? = nil) -> RoomSummary {
             var r = RoomSummary(id: id, name: id, isDirect: oneToOne, lastMessage: "Hi", lastSenderName: "A", lastIsOwn: own,
                                 lastTimestamp: 1, unreadCount: unread)
             r.isMarkedUnread = marked
             r.isOneToOne = oneToOne
+            r.isPinned = pinned
+            r.pinOrder = order
             return r
         }
-        let rooms = [chat("a", unread: 2), chat("b", marked: true, own: true), chat("c", own: true, oneToOne: true),
-                     chat("d", oneToOne: true), chat("e")]
+        let rooms = [chat("a", unread: 2), chat("b", marked: true, own: true), chat("c", own: true, oneToOne: true, pinned: true, order: 0.75),
+                     chat("d", oneToOne: true, pinned: true, order: 0.5), chat("e", pinned: true)]
         func ids(_ filter: RoomFilter) -> [String] { rooms.filter { $0.matches(filter) }.map(\.id) }
-        XCTAssertEqual(ids(.all), ["a", "b", "c", "d", "e"])
+        XCTAssertEqual(ids(.all), ["a", "b"])
         XCTAssertEqual(ids(.unread), ["a", "b"])
         XCTAssertEqual(ids(.unanswered), ["a", "d", "e"])
         XCTAssertEqual(ids(.people), ["c", "d"])
         XCTAssertEqual(ids(.groups), ["a", "b", "e"])
+        // by order; a pin with none after, in the list's order.
+        XCTAssertEqual(MatrixAccount.inPinOrder(rooms).map(\.id), ["d", "c", "e"])
+        XCTAssertEqual(Pins.next(after: []), 0.5)
+        XCTAssertEqual(Pins.next(after: MatrixAccount.inPinOrder(rooms)), 0.875)
+        // once the gaps are used up, there is no next order: the pins are spread out first.
+        XCTAssertNil(Pins.next(after: [chat("f", pinned: true, order: 1 - 1e-10)]))
+        XCTAssertNil(Pins.next(after: [chat("g", pinned: true, order: 3)]))
     }
 
     // MARK: helpers
@@ -128,6 +180,18 @@ final class InboxTests: XCTestCase {
         }
         XCTAssertTrue(done(ids), "\(filter): the list did not change as expected")
         return ids
+    }
+
+    /// The pinned chats among `ids`, in pin order, once they match `done`, or the last ones after 15 s.
+    private func pinned(_ account: MatrixAccount, among ids: [String], until done: ([String]) -> Bool) async throws -> [String] {
+        let start = Date()
+        var seen = try await account.inbox().pinned.map(\.id).filter(ids.contains)
+        while !done(seen), Date().timeIntervalSince(start) < 15 {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            seen = try await account.inbox().pinned.map(\.id).filter(ids.contains)
+        }
+        XCTAssertTrue(done(seen), "the pins did not change as expected: \(seen)")
+        return seen
     }
 
     /// Marks a chat unread by hand (`m.marked_unread`), as another client does.

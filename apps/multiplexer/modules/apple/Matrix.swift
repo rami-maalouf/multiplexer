@@ -35,7 +35,8 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    // every chat, each saying whether the list shows it under the filter menu's choice.
+                    // every chat, each saying whether the list shows it under the filter menu's choice,
+                    // and the pinned ones' ids in their pin order.
                     let started = Date(), account = try await signedIn()
                     let inbox = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all)
                     let rooms = inbox.chats
@@ -43,11 +44,15 @@ final class Matrix: ExactModule {
                     reply.send(["rooms": rooms.map { room in
                         ["id": room.id, "name": room.name, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
                          "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
-                         "unread": room.unreadCount,
+                         "unread": room.unreadCount, "markedUnread": room.isMarkedUnread, "oneToOne": room.isOneToOne,
                          "listed": inbox.listed.contains(room.id),
                          "avatar": cached(room.avatarName, then: .rooms) {
                              _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
-                    }])
+                    }, "pinned": inbox.pinned.map(\.id)])
+                case "pin", "unpin":
+                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
+                    reply.send(["ok": true])
                 case "messages":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
@@ -97,7 +102,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, messages, markRead, older, photo, send, react, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, pin, unpin, messages, markRead, older, photo, send, react, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))

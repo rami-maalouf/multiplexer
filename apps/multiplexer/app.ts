@@ -7,13 +7,20 @@ export const grants = '';
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
-// every chat (listed: the list shows it under the filter).
-type RoomsAnswer = { rooms: Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'>[] };
+// every chat (listed: the list shows it under the filter), and the pinned chats' ids in pin order.
+// markedUnread: marked unread by hand. oneToOne: a chat with one other person.
+type RoomsAnswer = {
+  rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { markedUnread: boolean; oneToOne: boolean })[];
+  pinned: string[];
+};
 
 // a chat with no picture shows the first letters of its first two words, as Messages does.
 const initials = (name: string): string =>
   name.split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).slice(0, 2).map((w) => [...w][0].toUpperCase()).join('')
   || [...name.trim()][0] || '';
+// a pinned person shows by their first name, as Messages does; a group by its whole name.
+const shortName = (name: string, oneToOne: boolean): string =>
+  (oneToOne ? name.trim().split(/\s+/)[0] : '') || name;
 type MessagesAnswer = {
   atStart: boolean;
   messages: {
@@ -46,12 +53,29 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  // matrixcore filters the list (filter: all, unread, unanswered, people or groups).
+  // matrixcore filters the list (filter: all, unread, unanswered, people or groups); with all, the
+  // pinned chats are not in it.
   loadRoomsByRecency: async ([userId, filter], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
-    if (userId === '' || !native?.available) return { owner: userId, filter, rooms: [] };
+    if (userId === '' || !native?.available) return { owner: userId, filter, rooms: [], pinned: [] };
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
     const answer = (await native.later({ op: 'rooms', filter })) as RoomsAnswer;
-    return { owner: userId, filter, rooms: answer.rooms.map((r) => ({ ...r, initials: initials(r.name) })) };
+    const byId = new Map(answer.rooms.map((r) => [r.id, r]));
+    return {
+      owner: userId, filter,
+      rooms: answer.rooms.map(({ markedUnread: _, oneToOne: __, ...r }) => ({ ...r, initials: initials(r.name) })),
+      pinned: answer.pinned.flatMap((id) => {
+        const r = byId.get(id);
+        return r ? [{
+          id, name: r.name, shortName: shortName(r.name, r.oneToOne), avatar: r.avatar, initials: initials(r.name),
+          unread: r.unread > 0 || r.markedUnread,
+        }] : [];
+      }),
+    };
+  },
+  // a pin is kept on the server, so the account's other devices show it too.
+  setPinned: async ([roomId, pinned], _store, _storage, native): Promise<Result<'setPinned'>> => {
+    await native!.later({ op: pinned ? 'pin' : 'unpin', roomId });
+    return { ok: true };
   },
   loadMessages: async ([roomId, isDirect, roomName], _store, _storage, native): Promise<Result<'loadMessages'>> => {
     if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, messages: [] };

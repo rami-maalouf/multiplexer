@@ -5,5 +5,6 @@ theme
   bubble.incoming = light-dark(#e9e9eb, #262629)
 
 icons
-  // Beeper's inbox tray, with a drawing for the hosts without SF Symbols.
+  // Beeper's inbox tray, and a pin's Unpin; each has a drawing for the hosts without SF Symbols.
   icon.tray = icon(sf "tray", svg "icons/tray.svg")
+  icon.pin-slash = icon(sf "pin.slash", svg "icons/pin-slash.svg")

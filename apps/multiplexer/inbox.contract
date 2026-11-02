@@ -1,5 +1,15 @@
 // the inbox's own parts, after Beeper's chat list: the floating bar under the list with its
-// filter menu. the platform's glass and menu draw them.
+// filter menu, and the pinned chats above the list. the platform's glass and menus draw them.
+
+// a pinned chat in the grid. shortName: a person's first name, or a group's whole name.
+// unread: unread messages, or marked unread by hand.
+shape PinnedChat
+  id: string
+  name: string
+  shortName: string
+  avatar: string
+  initials: string
+  unread: bool
 
 // the filter menu's choices, in Beeper's order; Drafts waits for drafts that the app keeps.
 fn filterName(f: string): string = f == "unread" ? "Unread" : (f == "unanswered" ? "Unanswered" : (f == "people" ? "DMs" : (f == "groups" ? "Groups" : "All")))
@@ -36,3 +46,29 @@ component BottomBar
             popovertarget="filter-menu" popovertargetaction="hide" testId=`filter-${f}`
             text filterName(f)
 
+// the pinned chats above the list, as Messages draws them: large round pictures, three to a
+// row (a short last row centred), a name under each, and a dot on one with unread messages.
+// a long press opens the chat's menu (`menu`, with its preview).
+component PinnedGrid
+  props
+    rooms: PinnedChat[]
+    open: action
+    aim: action
+    menu: string
+  view
+    row id="pinned" flex-wrap="wrap" justify-content="center" padding="4px 8px 12px" border-bottom="none" testId="pinned"
+      for r in rooms key=r.id
+        button appearance="none" press=open(r.id) contextmenu=aim(r.id) contextPopover=menu width="33.333%"
+          aria-label=(r.unread ? `${r.name}, unread` : r.name) testId=`pinned-${r.id}`
+          display="flex" flex-direction="column" align-items="center" gap=6 padding="8px 4px"
+          view position="relative" width=80 height=80
+            view width=80 height=80 border-radius=40 overflow="hidden" background-color="-exact-tertiary-fill"
+              display="flex" align-items="center" justify-content="center"
+              if r.avatar != ""
+                image r.avatar width="100%" height="100%" object-fit="cover" aria-label=""
+              else
+                text r.initials font-size=30 font-weight=600 color="-exact-secondary-label"
+            if r.unread
+              view position="absolute" left=0 top=2 width=18 height=18 border-radius=9 background-color="AccentColor"
+                border="3px solid -exact-background" box-sizing="border-box" testId=`pinned-unread-${r.id}`
+          text r.shortName font="-exact-subheadline" color="-exact-secondary-label" line-clamp=1 max-width="100%"

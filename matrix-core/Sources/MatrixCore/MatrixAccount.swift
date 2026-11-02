@@ -6,7 +6,9 @@ import MatrixRustSDK
 
 /// One signed-in Matrix account and its local store.
 public final class MatrixAccount: @unchecked Sendable {
-    private let client: Client
+    let client: Client
+    /// The pins this device knows (Pinned.swift).
+    let pins = Pins()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -87,7 +89,7 @@ public final class MatrixAccount: @unchecked Sendable {
         lock.withLock { changeHandler = handler }
     }
 
-    private func notify(_ change: MatrixChange) {
+    func notify(_ change: MatrixChange) {
         lock.withLock { changeHandler }?(change)
     }
 
@@ -111,7 +113,7 @@ public final class MatrixAccount: @unchecked Sendable {
                                       lastMessage: "", lastSenderName: "", lastIsOwn: false, lastTimestamp: 0,
                                       avatarName: room.avatarUrl().map(avatarFileName) ?? "",
                                       unreadCount: Int(info?.numUnreadMessages ?? 0))
-            if let info { summary.fillKind(info) }
+            if let info { summary.fillKind(info, pins: pins) }
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
@@ -122,6 +124,7 @@ public final class MatrixAccount: @unchecked Sendable {
             }
             rooms.append(summary)
         }
+        await fillPinOrders(&rooms)
         return rooms
     }
 
@@ -332,7 +335,7 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.
-    private func room(_ roomId: String, timeout: TimeInterval) async throws -> Room {
+    func room(_ roomId: String, timeout: TimeInterval) async throws -> Room {
         var found: Room?
         try await poll(timeout: timeout, what: "room \(roomId)") {
             found = try client.getRoom(roomId: roomId)

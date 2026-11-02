@@ -51,6 +51,10 @@ public struct RoomSummary: Equatable, Sendable {
     public var isMarkedUnread: Bool = false
     /// A chat with one other person (`RoomFilter.people`); every other chat is a group.
     public var isOneToOne: Bool = false
+    /// Pinned (`MatrixAccount.pin`): it shows above the list, not in it.
+    public var isPinned: Bool = false
+    /// The pin's place among the pinned chats, from 0 to 1; nil when it has none.
+    public var pinOrder: Double? = nil
 }
 
 public struct Message: Equatable, Sendable {
