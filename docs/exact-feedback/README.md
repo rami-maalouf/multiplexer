@@ -64,6 +64,8 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 43 | Parallel sessions on one machine share the default Simulator: an `ios --run` replaced another session's app in the middle of its drive. | About 15 min | P3 | [parallel-sessions-on-one-machine-share](issues/20261102-parallel-sessions-on-one-machine-share.md) |
 | 44 | A virtualized list draws rows past its frame, under the bar that follows it, and refuses `overflow`. | About 25 min | P3 | [a-virtualized-list-draws-rows-past](issues/20261102-a-virtualized-list-draws-rows-past.md) |
 | 45 | No keyboard fact: a chat cannot keep a message in view as the keyboard comes up. | About 15 min | P3 | [no-keyboard-fact-a-chat-cannot](issues/20261102-no-keyboard-fact-a-chat-cannot.md) |
+| 46 | An app checkout at another folder depth cannot build: `EXACT2` does not cover the app's Cargo paths. | About 10 min, four builds | P3 | [an-app-checkout-at-another-depth](issues/20261102-an-app-checkout-at-another-depth.md) |
+| 47 | A real-touch tap at a point does not scroll its target into view, and a tap that opened nothing still says "tapped". | About 8 min, five drives | P3 | [a-real-touch-tap-at-a](issues/20261102-a-real-touch-tap-at-a.md) |
 
 ## What worked well
 
