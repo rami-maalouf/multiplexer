@@ -22,6 +22,7 @@ task: send photos and files from a chat's composer: a "+" button, a panel in the
 - `screenshot <png> over <ms> every <ms> window` filmed an upload's ring filling, frame by frame.
 - `exactViewport().accessibilityTextSize` let a file bubble and a tray tile stack at the accessibility sizes, one prop each; `check` then reported no findings at the largest size.
 - A sample chat app in exact2 with attachments showed the picker pattern in working code.
+- `verify ios` named each literal colour, `sf/` symbol, fixed glyph size and plural slip with its file, line and fix; all 8 were cleared in one pass (theme tokens, icon tokens with an SVG each), and the next run was clean.
 
 ### Needed
 - photo library picker: provided (`input type="file" accept=... multiple`, `showPicker`); rough for HEIC (see Rough)
