@@ -930,23 +930,178 @@ Rami wants these, after the tasks above (2026-11-02):
 
 Not wanted for now: Poll.
 
-## Phase 3: push notifications (M3), rough
+## Phase 3: push notifications (M3)
 
-The biggest gap for daily use (the server conversation's review, 2026-10-27): without
-push, Rami does not know a message came unless the app is open. Order (Rami, 2026-11-02):
-after the Beeper inbox tasks (B1 to B8), before the chat details. Detail it before it
-starts; the parts:
+Detailed 2026-11-02 from a read-only research (Exact at `ed43ad09a0`, the SDK bindings 26.10.27,
+the playbook at `e3929968b8`). Order (Rami): after the inbox tasks B1 to B8, before the chat
+details. M3: a WhatsApp message wakes Rami's locked iPhone with the sender and the text.
 
-- The app (this side): the APNs device token. Exact has `subscribePush()` designed but not
-  built (LLP 1133.004 §9): a native module, or a change to Exact.
-- The app: a pusher on the homeserver (`set_pusher`) that points at Sygnal.
-- The app: a notification service extension that uses MatrixCore's notification client to
-  fetch the event and show the sender and the text. Exact has no extension target; the
-  WidgetKit `.appex` build is a pattern.
-- The server (the server conversation): Sygnal with the APNs key from team `3V2UU7RRK9`.
-  Tell it when the app side and the key are ready.
-- Test memory and the 30-second limit on the real iPhone. Muted WhatsApp chats: the
-  bridge sets push rules for them.
+What the research found:
+- **Exact has no remote push yet** (LLP 1133.004 section 9: "Nothing of it is built here"). The
+  app's module can register for push, but Exact's app delegate has no token callback, so the module
+  adds it at run time (`class_addMethod`; a guess until P3.1 proves it). Permission and the badge
+  are built (`@exact/notifications`: `requestNotificationPermission`, `setAppBadge`).
+- **Exact cannot build our notification extension, and cannot sign the app for push or an App
+  Group** (it adds those entitlements only for its own widgets and Live Activities). A script of
+  ours adds the extension after Exact's device build and signs both. The biggest unknown: P3.1.
+- **The SDK has what we need:** `Client.notificationClient(processSetup: .multipleProcesses)`,
+  `getNotification(roomId:eventId:)`, memory-constrained stores, a cross-process lock, `setPusher`
+  with `PushFormat.eventIdOnly`. The SDK store must move into an App Group so the extension can open it.
+- **The server:** the playbook installs Sygnal (v0.17.0, arm64 image). It needs Rami's APNs key and
+  its own name, `sygnal.ramimaalouf.com` (Synapse accepts only the path `/_matrix/push/v1/notify`).
+- **TestFlight stays blocked** (Exact's archive check refuses `registerForRemoteNotifications`);
+  development builds on Rami's iPhone are not checked, so M3 is not blocked.
+- WhatsApp chats are not encrypted, so M3 needs no decryption; Matrix encrypted rooms need the
+  shared crypto store and the lock.
+
+### P3.0 The Apple setup (Rami)
+
+**Description:** push and an App Group need explicit App IDs and profiles; the team wildcard
+profile grants neither. Rami can do this now, while the inbox tasks run.
+
+**Acceptance criteria:**
+- [ ] App Group `group.com.ramimaalouf.multiplexer` exists.
+- [ ] App ID `com.ramimaalouf.multiplexer` has Push Notifications and App Groups; App ID
+  `com.ramimaalouf.multiplexer.notifications` has App Groups (the same group).
+- [ ] An APNs key (`.p8`) is in the Mac's Keychain as base64 (service `multiplexer-apns`, account
+  `key`), with its Key ID (account `key-id`). Never in chat or git.
+- [ ] A development profile for each App ID, with the iPhone `00008140-0002155C01F3001C`, is
+  installed on the Mac.
+- [ ] Cloudflare: `CNAME sygnal -> matrix.ramimaalouf.com`, DNS only.
+
+**Verification:** `security cms -D -i` on each profile shows `aps-environment development`, the
+group and the phone; `security find-generic-password -s multiplexer-apns` finds the key.
+
+**Dependencies:** none. **Scope:** XS (Rami)
+
+### P3.1 Spike: a notification extension inside the Exact app
+
+**Description:** the biggest unknown. Prove that the app ships a notification service extension,
+signed for push, on Rami's iPhone. No Matrix code yet: the extension only changes the text. The
+push goes from the Mac straight to APNs, so no server is needed.
+
+**Acceptance criteria:**
+- [ ] `scripts/build-ios-device.sh`: Exact's device build with `--no-install` and `EXACT_PROFILE`;
+  compile `apps/multiplexer/extensions/notifications/NotificationService.swift` into
+  `PlugIns/MultiplexerNotifications.appex` (Exact's share extension is the pattern:
+  `host/apple/extensions.mjs`); sign it; sign the app again with `aps-environment development`, the
+  App Group and the Keychain group; install with `devicectl`.
+- [ ] The app asks for permission (`@exact/notifications`, grant `device.notifications`), then
+  registers; the module adds the token callbacks to Exact's app delegate; a development build logs
+  the token.
+- [ ] `scripts/send-test-push.sh` sends a push to APNs sandbox, signed with the `.p8` from the Keychain.
+- [ ] The locked iPhone shows the text the extension wrote (Rami confirms once).
+- [ ] A phone drive after the script still runs the app with the extension, or the gap is written down.
+- [ ] After 3 failed rounds: stop, write down the blocker, and decide whether to wait for Exact.
+
+**Verification:** `codesign -d --entitlements -` on the app and the extension; the extension logs
+one line per push into the App Group.
+
+**Dependencies:** P3.0. **Scope:** M
+
+### P3.2 Spike: MatrixCore in the extension, with the sender and the text
+
+**Description:** the plan's high risk. The extension restores the session from the shared
+Keychain, opens the store in the App Group, fetches one event, and shows the chat, the sender and
+the text. Memory and time are measured on the iPhone.
+
+**Acceptance criteria:**
+- [ ] A public `PushContent` in MatrixCore, plain types only: roomId, chatName, senderName, body,
+  network, isDirect, isNoisy, hasMention, threadId.
+- [ ] The fetch builds a memory-constrained client (`systemIsMemoryConstrained`, `.multiProcess(holderName:
+  "notifications")`, `.one(roomId:)`, `.multipleProcesses`), then `getNotification`. The body uses
+  the chat list's word for each message kind.
+- [ ] The app's store moves once into the App Group (Rami does not sign in again); the app's
+  client takes the lock as `"app"`; `SessionKeychain` uses the access group
+  `3V2UU7RRK9.com.ramimaalouf.multiplexer`; the agent keeps its own folder.
+- [ ] The extension sets `threadIdentifier` to the room id and the badge from `unread_count`.
+- [ ] On an error, a timeout, or before the first unlock after a reboot, it shows "New message";
+  never an empty or raw payload.
+- [ ] `@test1` on the locked phone, `@test2` sends: chat, sender and text within 5 s, in a plain
+  and in an encrypted room. The app open on a chat at the same time keeps working.
+- [ ] Peak memory and the time from push to banner are written in `matrix-core/NOTES.md`.
+
+**Verification:** a MatrixCore test (`testAPushShowsTheSenderAndTheText`): a second client built as
+the extension builds it reads `@test2`'s message in a plain and an encrypted room; then the phone test.
+
+**Dependencies:** P3.1. **Scope:** M (L if the store move is hard)
+
+### P3.3 Server: Sygnal (server conversation)
+
+**Acceptance criteria:**
+- [ ] Rami's OK, and the DNS record from P3.0.
+- [ ] Through the playbook (invariant 6): `matrix_sygnal_enabled: true`; two APNs apps,
+  `com.ramimaalouf.multiplexer.ios.dev` (`platform: sandbox`) and `com.ramimaalouf.multiplexer.ios`
+  (production), both with team `3V2UU7RRK9` and topic `com.ramimaalouf.multiplexer`; the key from
+  the Keychain into the gitignored `vars.yml`, then to the server with mode 0600
+  (`aux_file_definitions`). Keep the default host name; no path prefix.
+- [ ] Sygnal answers from the Mac, and a test POST with the phone's pushkey reaches the phone.
+- [ ] No key in git; `server/README.md` names the Keychain item, never the key.
+
+**Dependencies:** P3.0; the phone's token from P3.1 for the last check. Can run beside P3.1 and P3.2.
+**Scope:** S
+
+### P3.4 The pusher
+
+**Acceptance criteria:**
+- [ ] After sign-in and at each launch (permission given, token known), the app calls `setPusher`:
+  app id `com.ramimaalouf.multiplexer.ios.dev` for a development build, `.ios` later; pushkey the
+  token in base64; URL `https://sygnal.ramimaalouf.com/_matrix/push/v1/notify`; format event id
+  only; a default payload with `mutable-content` and "New message"; `append: false`.
+- [ ] A new token replaces the old one; Sign Out calls `deletePusher` first.
+- [ ] A drive sets a pusher only for `@test` users, never on `@rami`.
+
+**Verification:** `scripts/list-pushers.sh` (like `list-test-devices.sh`) shows one pusher with
+the right values, and none after Sign Out.
+
+**Dependencies:** P3.1, P3.3. **Scope:** S
+
+### P3.5 End to end: a message wakes the locked iPhone (M3)
+
+**Acceptance criteria:**
+- [ ] `@test1` on the iPhone, `@test2` sends: chat, sender and text within 5 s with the app swiped
+  away, in the background, and after a reboot and one unlock; also in an encrypted room.
+- [ ] M3: on Rami's iPhone, signed in as `@rami` for his own use, a WhatsApp message from another
+  person shows its sender and text. Rami confirms. Agents send nothing as `@rami`.
+- [ ] The delay from send to banner over 10 tries goes into `tasks/plan.md`.
+
+**Dependencies:** P3.2, P3.3, P3.4. **Scope:** S
+
+### P3.6 Muted chats, mentions and the badge
+
+**Acceptance criteria:**
+- [ ] A chat muted in our app (B7) gets no push; a mentions-only chat gets only mentions
+  (`@test1`, `@test2`).
+- [ ] **Ask Rami:** WhatsApp mutes copy only when the bridge makes a chat's room
+  (`mute_only_on_create: true`, the playbook's default): keep that, or follow WhatsApp's mute.
+- [ ] **Ask Rami:** the badge counts chats (the server's default) or messages. The extension and
+  the app show the same number.
+- [ ] A chat read on another device lowers the badge with no banner.
+- [ ] Opening a chat removes its delivered notifications.
+
+**Dependencies:** P3.5, B7. **Scope:** S
+
+### P3.7 A tap opens its chat; no banner for the open chat
+
+**Acceptance criteria:**
+- [ ] A tap on a notification opens its chat. Exact drops a tap on a notification it did not post
+  (`Notify.swift` reads only `userInfo["exact"]`); ask the Exact team before relying on that key.
+- [ ] With the app in front on a chat, its messages show no banner (needs Exact's `willPresent`).
+
+**Dependencies:** P3.5, and Exact. **Scope:** S, plus Exact's part
+
+### Later (not in M3)
+
+- Sender pictures in notifications (communication notifications).
+- Reply from a notification.
+- Apple's filtering entitlement, to hide a push the extension cannot show.
+- TestFlight (blocked by Exact's archive check).
+- Ask Rami: turn off Element X's and Beeper's notifications, to avoid double notifications.
+
+Exact feedback to record when P3.1 runs (framework design questions, not doc PRs): no push
+registration or token callback; the archive check refuses `registerForRemoteNotifications`; no way
+to declare `aps-environment`, an App Group or a Keychain group; no app-defined extension; remote
+notifications reach no app code (no `willPresent` / `didReceive` hatch).
 
 ## Phase 4: more networks (M4), rough
 
