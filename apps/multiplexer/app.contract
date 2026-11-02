@@ -91,6 +91,7 @@ shape Time
 shape Viewport
   width: number
   height: number
+  accessibilityTextSize: bool
 
 shape Page
   visibilityState: string
@@ -414,7 +415,7 @@ component Multiplexer
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
               if roomsShown
-                BottomBar(filter=filter, choose=chooseFilter, top=toTop)
+                BottomBar(filter=filter, choose=chooseFilter, top=toTop, largeText=viewport.accessibilityTextSize)
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
               // messages (a tap opens the chat), then its actions.
               column id="chat-menu" popover="auto" role="menu"
