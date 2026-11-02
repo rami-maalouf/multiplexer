@@ -38,3 +38,10 @@ Cost: about 25 minutes.
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0` (iOS Simulator, iOS 26.5). Related: finding 35 (a
 floating bottom bar gets no scroll edge effect).
+
+## A fix (2026-11-02)
+
+Pull request https://github.com/ccheever/exact2/pull/1327 adds this to the lists section of
+`docs/agent-pitfalls.md` (the chat-thread recipe is at its byte cap): give the bar after a
+virtualized list a background or a material. Whether the list should clip at its bottom edge is
+a question for the Exact team.

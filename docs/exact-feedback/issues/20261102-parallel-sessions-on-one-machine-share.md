@@ -36,3 +36,13 @@ Cost: about 15 minutes, and possibly a broken drive in another session.
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`: four worktrees of one app, each with its own agent
 session, on one Mac.
+
+## Cause, and a fix (2026-11-02)
+
+`chooseSimulator` (`host/apple/devices.mjs`) takes, among several booted iPhones, the one with
+the app's bundle id installed; its comment assumes an app's bundle id is its own. Git worktrees
+of one app share it, and a worktree has no `.exact/simulator` until it chooses one, so it takes a
+single simulator that has the app and remembers it. Pull request
+https://github.com/ccheever/exact2/pull/1326 adds this to `docs/agent-pitfalls.md`, with the fix
+(a simulator for each worktree, named with `EXACT_SIM`). A default simulator per worktree would
+need a change to the chooser: a question for the Exact team.

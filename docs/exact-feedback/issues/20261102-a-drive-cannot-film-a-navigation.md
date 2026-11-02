@@ -31,3 +31,13 @@ seen.
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0` (iOS Simulator). Related: exact2's `QUEUE.md`
 entry "Film every presented frame on iOS and find the one-frame flash" (2026-10-25).
+
+## Correction (2026-11-02)
+
+The drive did not end the transition by mistake: an iOS drive freezes UIKit's transition
+timing by default, and `--timing platform` gives UIKit's own timing (`docs/recipes/ios-driving.md`,
+already at `ed43ad09a0`). With it, a Simulator recording shows the zoom: the photo grows from
+its box (101 to 200 points wide in the recording's scale) over about 30 frames, and shrinks back
+on close. What remains: `screenshot … over` refuses under `--timing platform` ("film is the agent
+clock's, and --timing platform leaves UIKit's motion on its own"), so filming a UIKit transition
+still needs a recording outside Exact. That is the `QUEUE.md` entry named above.
