@@ -47,6 +47,9 @@ public struct RoomSummary: Equatable, Sendable {
     public var avatarName: String = ""
     /// Messages after this account's read receipt.
     public var unreadCount: Int = 0
+    /// The chat network a bridge brings the room from: `whatsapp`, `instagram`, `messenger`,
+    /// `telegram`, `signal`, `discord` or `linkedin`; `matrix` when no bridge serves it.
+    public var network: String = "matrix"
 }
 
 public struct Message: Equatable, Sendable {
