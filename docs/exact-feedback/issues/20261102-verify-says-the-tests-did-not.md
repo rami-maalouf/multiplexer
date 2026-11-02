@@ -26,3 +26,9 @@ The tests compiled; only the choice of simulator failed. `scripts/verify.mjs` pr
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `d165f8959f` (`scripts/verify.mjs`, the `tested?.error` branch).
+
+## A fix (2026-11-02)
+
+Pull request https://github.com/ccheever/exact2/pull/1325: the label is `tests: could not run`
+(the tests may have run in part when the app fails to open at a later test), with the cause
+on the lines under it as before, and a test for this case.

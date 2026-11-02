@@ -153,6 +153,24 @@ public struct QuotedMessage: Equatable, Sendable {
     public var isOwn: Bool
 }
 
+/// A chat's unsent text, kept in the account's store (`MatrixAccount.saveDraft`), so it outlives
+/// the app. Signing out removes the store, and the drafts with it.
+public struct Draft: Equatable, Sendable {
+    public var text: String
+    /// The message it answers, with what a reply bar shows of it; nil for none.
+    public var reply: DraftReply?
+}
+
+public struct DraftReply: Equatable, Sendable {
+    /// What `send` takes as `replyTo`: the message's id in the open chat, or its event id ("$…")
+    /// when the chat has not loaded it.
+    public var messageId: String
+    public var senderName: String
+    /// Its text, or what it is ("Photo") when it has none.
+    public var body: String
+    public var isOwn: Bool
+}
+
 public struct MessageReaction: Equatable, Sendable {
     public var key: String
     public var count: Int

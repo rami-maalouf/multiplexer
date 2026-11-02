@@ -183,16 +183,18 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// Puts a text message in the room's send queue and returns at once. The chat shows
-    /// it at once as `sending`, then `sent`, or `failed`. With `replyTo`, a message's id, it
-    /// answers that message; one the server does not have yet cannot be answered.
+    /// it at once as `sending`, then `sent`, or `failed`. With `replyTo`, a message's id (or the
+    /// event id a draft keeps), it answers that message; one the server does not have yet cannot
+    /// be answered. The chat's stored draft goes, so a relaunch does not offer the text again.
     public func send(roomId: String, text: String, replyTo: String? = nil, timeout: TimeInterval = 30) async throws {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         let content = messageEventContentFromMarkdown(md: text)
-        if let replyTo, case .eventId(let eventId)? = live.items.eventOrTransactionId(of: replyTo) {
+        if let eventId = live.items.replyEventId(replyTo) {
             _ = try await live.timeline.sendReply(msg: content, eventId: eventId)
         } else {
             _ = try await live.timeline.send(msg: content)
         }
+        try? await room(roomId, timeout: timeout).clearComposerDraft(threadRoot: nil)
     }
 
     /// Adds this account's reaction `key` (an emoji) to a message, or takes it back when it
@@ -573,6 +575,28 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     func event(of messageId: String) -> EventTimelineItem? {
         lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent() }
     }
+
+    /// The event a reply answers: `replyTo` is a message's id in this chat, or an event id ("$…")
+    /// as a stored draft keeps one. Nil for none, and for a message the server does not have yet.
+    func replyEventId(_ replyTo: String?) -> String? {
+        guard let replyTo, !replyTo.isEmpty else { return nil }
+        if replyTo.hasPrefix("$") { return replyTo }
+        guard case .eventId(let eventId)? = eventOrTransactionId(of: replyTo) else { return nil }
+        return eventId
+    }
+
+    /// What a reply bar shows of the message with this event id, if the chat holds it.
+    func draftReply(eventId: String) -> DraftReply? {
+        lock.withLock {
+            for item in items {
+                guard let event = item.asEvent(), case .eventId(eventId) = event.eventOrTransactionId else { continue }
+                guard let body = preview(event.content) else { return nil }
+                return DraftReply(messageId: item.uniqueId().id, senderName: displayName(event.sender, event.senderProfile),
+                                  body: body, isOwn: event.sender == me)
+            }
+            return nil
+        }
+    }
 }
 
 extension SignInError {
@@ -610,22 +634,37 @@ extension RoomSummary {
 private func preview(_ content: TimelineItemContent) -> String? {
     guard case .msgLike(let like) = content else { return nil }
     switch like.kind {
-    case .message(let message):
-        switch message.msgType {
-        case .image: return "Photo"
-        case .gallery: return "Photos"
-        case .video: return "Video"
-        case .audio: return "Audio"
-        case .file: return "File"
-        case .location: return "Location"
-        default: return message.body
-        }
+    case .message(let message): return preview(message.msgType, body: message.body)
     case .sticker: return "Sticker"
     case .poll(let question, _, _, _, _, _, _): return question
     case .redacted: return "Message deleted"
     case .unableToDecrypt: return "Encrypted message"
     case .liveLocation: return "Live location"
     case .other: return "Message"
+    }
+}
+
+/// One line for a message of this type: what it is ("Photo"), or `body` for text.
+private func preview(_ type: MessageType, body: String) -> String {
+    switch type {
+    case .image: return "Photo"
+    case .gallery: return "Photos"
+    case .video: return "Video"
+    case .audio: return "Audio"
+    case .file: return "File"
+    case .location: return "Location"
+    default: return body
+    }
+}
+
+/// One line for a message fetched by its event id, which comes with no body of its own.
+func preview(_ type: MessageType) -> String {
+    switch type {
+    case .text(let content): return content.body
+    case .notice(let content): return content.body
+    case .emote(let content): return content.body
+    case .other(_, let body): return body
+    default: return preview(type, body: "Message")
     }
 }
 

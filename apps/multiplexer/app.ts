@@ -167,6 +167,18 @@ const sources: Sources = {
     await native!.later({ op: 'markRead', roomId });
     return { ok: true };
   },
+  // a chat's draft from the account's store, so it outlives the app; the composer's photos and
+  // files are not kept.
+  loadDraft: async ([roomId], _store, _storage, native): Promise<Result<'loadDraft'>> => {
+    const none = { room: roomId, text: '', replyTo: '', replyName: '', replyBody: '', attachments: [] };
+    if (roomId === '' || !native?.available) return none;
+    const answer = (await native.later({ op: 'draft', roomId })) as Omit<typeof none, 'attachments'>;
+    return { ...answer, attachments: [] };
+  },
+  saveDraft: async ([roomId, text, replyTo], _store, _storage, native): Promise<Result<'saveDraft'>> => {
+    await native!.later({ op: 'saveDraft', roomId, text, replyTo });
+    return { ok: true };
+  },
   loadOlderMessages: async ([roomId], _store, _storage, native): Promise<Result<'loadOlderMessages'>> => {
     await native!.later({ op: 'older', roomId });
     return { ok: true };
