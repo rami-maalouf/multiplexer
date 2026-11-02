@@ -8,7 +8,7 @@ shape Attachment
   photo: bool
 
 // "12 KB", "3.4 MB": a file's size as Files counts it (1000 bytes a kilobyte).
-fn sizeText(n: number): string = n < 1000 ? `${n} bytes` : (n < 1000000 ? `${round(n / 1000)} KB` : `${round(n / 100000) / 10} MB`)
+fn sizeText(n: number): string = n < 1000 ? `${n} ${n == 1 ? "byte" : "bytes"}` : (n < 1000000 ? `${round(n / 1000)} KB` : `${round(n / 100000) / 10} MB`)
 // a file's kind and size, as Messages names one: "PDF · 2.1 MB".
 fn fileDetail(name: string, size: number): string = match (name.includes(".") ? name.split(".").at(-1) : none) { case some(e) => `${e.toUpperCase()} · ${sizeText(size)}`, case none => sizeText(size) }
 
@@ -24,7 +24,7 @@ component AddButton
   view
     button press=press buttonStyle="glass" retainFocus=true aria-label=(open ? "Close" : "Add") aria-expanded=open testId="add"
       width=44 height=44 flex-shrink=0
-      image (open ? "symbol:close" : "symbol:add") font-size=20
+      image (open ? "symbol:close" : "symbol:add") font-size="min(-exact-title3, 24px)"
 
 // where the keyboard was, as Beeper's: one row for each way to add, an icon and its name.
 component AddPanel
@@ -38,11 +38,11 @@ component AddPanel
       background-color="-exact-secondary-background" animation=(reduced ? "none" : "panelIn 220ms ease-out")
       button appearance="none" press=photos testId="panel-photos" display="flex" flex-direction="row" align-items="center"
         gap=16 min-height=52 padding="0px 24px" text-align="start"
-        image "symbol:sf/photo.on.rectangle" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
+        image "symbol:icon.photos" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
         text "Photos" color="-exact-label"
       button appearance="none" press=files testId="panel-files" display="flex" flex-direction="row" align-items="center"
         gap=16 min-height=52 padding="0px 24px" text-align="start"
-        image "symbol:sf/folder" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
+        image "symbol:icon.folder" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
         text "Send file" color="-exact-label"
 
 // what the next send takes, above the composer's text: a photo as itself, a file as its name and size.
@@ -72,7 +72,7 @@ component Tray
             button appearance="none" press=remove(a.file.path) aria-label=`Remove ${a.file.name}` testId=`untray-${a.file.name}`
               position="absolute" top=-8 right=-8 width=44 height=44 display="flex" align-items="center" justify-content="center"
               view width=22 height=22 border-radius=11 background-color="-exact-secondary-label" display="flex" align-items="center" justify-content="center"
-                image "symbol:close" font-size=11 font-weight=700 color="-exact-background"
+                image "symbol:close" font-size="min(-exact-caption2, 13px)" font-weight=700 color="-exact-background"
 
 // how much of a photo or file on its way is uploaded: a ring that fills clockwise from the top.
 component UploadRing
@@ -109,7 +109,7 @@ component FileBubble
       padding="10px 16px 10px 10px" border-radius=20 background-color=(outgoing ? "AccentColor" : "bubble.incoming")
       opacity=(progress >= 0 ? 0.6 : 1) text-align="start"
       view width=40 height=40 border-radius=20 flex-shrink=0 display="flex" align-items="center" justify-content="center"
-        background-color=(outgoing ? "rgba(255, 255, 255, 0.22)" : "-exact-tertiary-fill")
+        background-color=(outgoing ? "bubble.outgoing-disc" : "-exact-tertiary-fill")
         if progress >= 0
           UploadRing(fraction=progress, size=28, color=ink, track="rgba(255, 255, 255, 0.3)")
         else if opening

@@ -504,7 +504,7 @@ component Multiplexer
                               // a photo on its way: its upload's ring over a dark disc, at its middle.
                               if m.state == "sending"
                                 view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
-                                  view width=44 height=44 border-radius=22 background-color="rgba(0, 0, 0, 0.5)" display="flex"
+                                  view width=44 height=44 border-radius=22 background-color="media.scrim" display="flex"
                                     align-items="center" justify-content="center" testId=`upload-${m.id}`
                                     UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
                           if m.isFile
