@@ -48,8 +48,6 @@ final class Matrix: ExactModule {
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
                     let atStart = try await account.isAtStart(roomId: roomId)
-                    // the chat is open, so what it shows is read.
-                    if try sendsReadReceipts(account) { try? await account.markRead(roomId: roomId) }
                     reply.send(["atStart": atStart, "messages": messages.map {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
@@ -60,6 +58,11 @@ final class Matrix: ExactModule {
                          "reply": $0.reply.map { ["senderName": $0.senderName, "body": $0.body, "isOwn": $0.isOwn] } ?? [:],
                          "reactions": $0.reactions.map { ["key": $0.key, "count": $0.count, "isMine": $0.isMine] }]
                     }])
+                case "markRead":
+                    // the screen asks once the reader has seen the chat's newest message; a load does not.
+                    let account = try await signedIn()
+                    if try sendsReadReceipts(account) { try await account.markRead(roomId: request["roomId"] as? String ?? "") }
+                    reply.send(["ok": true])
                 case "older":
                     let roomId = request["roomId"] as? String ?? ""
                     try await signedIn().loadOlder(roomId: roomId)
@@ -90,7 +93,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, messages, older, photo, send, react, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, messages, markRead, older, photo, send, react, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))

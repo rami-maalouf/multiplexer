@@ -80,6 +80,11 @@ const sources: Sources = {
     });
     return { room: roomId, atStart: answer.atStart, group, messages };
   },
+  // the view asks when the reader has seen the chat's newest message; loading a chat reads nothing.
+  markRead: async ([roomId], _store, _storage, native): Promise<Result<'markRead'>> => {
+    await native!.later({ op: 'markRead', roomId });
+    return { ok: true };
+  },
   loadOlderMessages: async ([roomId], _store, _storage, native): Promise<Result<'loadOlderMessages'>> => {
     await native!.later({ op: 'older', roomId });
     return { ok: true };

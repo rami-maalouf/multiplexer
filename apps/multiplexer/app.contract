@@ -84,6 +84,9 @@ shape Viewport
   width: number
   height: number
 
+shape Page
+  visibilityState: string
+
 shape SignInReply
   ok: bool
   error: string
@@ -130,8 +133,11 @@ component Multiplexer
   state heldY = 0
   state heldHeight = 0
   state heldWidth = 0
+  // the reader scrolled the chat's newest message out of view.
+  state away = false
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
+  resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
   resource roomList = loadRoomsByRecency(session.userId) as shape RoomList else empty()
@@ -142,6 +148,7 @@ component Multiplexer
   mutation discarded as shape Reply
   mutation older as shape Reply
   mutation reacted as shape Reply
+  mutation markedRead as shape Reply
   derive canSignIn = server.trim() != "" and user.trim() != "" and password != "" and not pending(signedIn)
   derive refusal = match signedIn { case some(r) => r.ok ? "" : r.error, case none => "" }
   derive roomsShown = roomList.owner == session.userId
@@ -160,8 +167,15 @@ component Multiplexer
   // the reactions a long press offers first, as Beeper does.
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
   derive threadShown = thread.room == openRoom
+  derive openUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
+  // the chat is in front, not behind its photo viewer, and the app is too.
+  derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
   task tick mount
     every(60000, step)
+  // as Excord does, what the reader sees at the end is read a second after it shows; leaving
+  // the end or the chat from there reads it at once (scrolled, back). Older messages read nothing.
+  task markSeen when reading and not away and openUnread > 0 key=`${openRoom}/${lastId}`
+    after(1000, readNow)
 
   action step
     now = performanceNow()
@@ -169,9 +183,22 @@ component Multiplexer
   action follow(url: string)
     nav = go(nav, url)
     held = ""
+    // a chat opens at its newest message.
+    away = false
   action back
+    if reading and not away and openUnread > 0
+      send markedRead = markRead(openRoom)
     nav = back(nav)
     held = ""
+  action readNow
+    send markedRead = markRead(openRoom)
+  // the newest message is in view while its row's top is above the chat's bottom edge.
+  action scrolled(x: number, y: number, e: ScrollEvent)
+    let isAway = e.scrollHeight - e.scrollTop - e.clientHeight > max(1, frame(`row-${lastId}`).height)
+    if isAway != away
+      if isAway and reading and openUnread > 0
+        send markedRead = markRead(openRoom)
+      away = isAway
 
   action editServer(v: string)
     server = v
@@ -365,9 +392,9 @@ component Multiplexer
                 EmptyState(symbol="symbol:messages", title="No Messages Yet", message="Messages in this chat show here.")
               else
                 list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
-                  reachstart=loadOlder flex=1 min-height=0 testId="transcript"
+                  reachstart=loadOlder scroll=scrolled flex=1 min-height=0 testId="transcript"
                   for m in thread.messages key=m.id
-                    column align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
+                    column id=`row-${m.id}` align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
                       if m.startsGroup
                         text formatDay(m.time, shown, time.utcOffset, "day-time") font="-exact-caption1"
                           color="-exact-secondary-label" align-self="center" padding="12px 0 4px"
