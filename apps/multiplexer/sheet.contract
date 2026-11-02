@@ -1,0 +1,64 @@
+// the filter sheet, after Beeper's: the up-down button in the inbox's bar opens it from the
+// bottom at half height, and it pulls up to full. Its rows choose which chats the list shows:
+// the inbox (every network) or one network's chats. Each row says how many of its chats are
+// unread. The rows that do nothing yet come with their tasks (see InboxSheet).
+use networkName from "./network.contract"
+
+// a network the account has chats on, and how many of them are unread.
+shape NetworkCount
+  network: string
+  unread: number
+
+// one row: a symbol or a network's logo, a name, and the unread chats (none when 0). The row
+// chosen sits on a light pill, as Beeper shows it. choose(value) chooses it.
+component SheetRow
+  props
+    picture: string
+    logo: bool
+    name: string
+    unread: number
+    chosen: bool
+    value: string
+    choose: action
+    // the reader chose one of the accessibility text sizes: the picture grows with the name.
+    largeText: bool
+    identifier: string
+  derive side = largeText ? 36 : 26
+  // a symbol grows as a logo does, and stays inside the same box.
+  derive symbolSize = largeText ? 30 : 22
+  view
+    // 46 points tall: UIKit draws the half-height sheet a little smaller, and a row stays 44 there.
+    button appearance="none" press=choose(value) aria-selected=chosen
+      aria-label=(unread > 0 ? `${name}, ${unread} unread` : name) testId=identifier
+      display="flex" flex-direction="row" align-items="center" gap=12 min-height=46 padding="6px 14px" margin="0 10px"
+      box-sizing="border-box" border-radius=16 background-color=(chosen ? "-exact-tertiary-fill" : "transparent") text-align="start"
+      // the box is a little wider than a logo, so the tray symbol, which is wider than tall, fits too.
+      view width=(side + 6) height=side flex-shrink=0 display="flex" align-items="center" justify-content="center"
+        if logo
+          image picture width=side height=side aria-hidden=true
+        else
+          image picture font-size=symbolSize color="-exact-label" aria-hidden=true
+      text name font="-exact-body" color="-exact-label" flex=1 min-width=0
+      if unread > 0
+        text unread.toString() font="-exact-body" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
+          testId=`${identifier}-unread`
+
+// the sheet's rows, in Beeper's order. chosen: the network the list shows ("" for the inbox).
+component InboxSheet
+  props
+    networks: NetworkCount[]
+    unread: number
+    chosen: string
+    choose: action
+    largeText: bool
+  view
+    scroll id="inboxes" flex=1 min-height=0 testId="inboxes"
+      column padding="14px 0" gap=4
+        SheetRow(picture="symbol:icon.tray", logo=false, name="Inbox", unread=unread, chosen=(chosen == ""), value="",
+          choose=choose, largeText=largeText, identifier="inboxes-inbox")
+        // Beeper's next rows come here with their tasks, in its order: Archive, Create Label and
+        // the labels, Reminders, Send Later, Bookmarks, Requests, then Low Priority.
+        for n in networks key=n.network
+          SheetRow(picture=`assets/networks/${n.network}.svg`, logo=true, name=networkName(n.network), unread=n.unread,
+            chosen=(chosen == n.network), value=n.network, choose=choose, largeText=largeText, identifier=`inboxes-${n.network}`)
+        // the communities come after the networks; the gear, New Space and Edit under the rows.

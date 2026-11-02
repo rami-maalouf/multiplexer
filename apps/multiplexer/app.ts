@@ -10,11 +10,14 @@ export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
-// every chat (listed: the list shows it under the filter), and the pinned chats' ids in pin order.
+// every chat (listed: the list shows it under the filter and the network), the network's pinned
+// chats' ids in pin order, and the filter sheet's networks and unread chats.
 // markedUnread: marked unread by hand. oneToOne: a chat with one other person.
 type RoomsAnswer = {
   rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { markedUnread: boolean; oneToOne: boolean })[];
   pinned: string[];
+  networks: Result<'loadRoomsByRecency'>['networks'];
+  unread: number;
 };
 
 // a chat with no picture shows the first letters of its first two words, as Messages does.
@@ -104,15 +107,15 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  // matrixcore filters the list (filter: all, unread, unanswered, people or groups); with all, the
-  // pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
-    if (userId === '' || !native?.available) return { owner: userId, filter, rooms: [], pinned: [] };
+  // matrixcore filters the list (filter: all, unread, unanswered, people or groups; network: one
+  // network's chats, or "" for every network); with all, the pinned chats are not in it.
+  loadRoomsByRecency: async ([userId, filter, network], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, filter, network, rooms: [], pinned: [], networks: [], unread: 0 };
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
-    const answer = (await native.later({ op: 'rooms', filter })) as RoomsAnswer;
+    const answer = (await native.later({ op: 'rooms', filter, network })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     return {
-      owner: userId, filter,
+      owner: userId, filter, network, networks: answer.networks, unread: answer.unread,
       rooms: answer.rooms.map(({ markedUnread: _, oneToOne: __, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
         const r = byId.get(id);

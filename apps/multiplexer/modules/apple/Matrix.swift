@@ -40,10 +40,13 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    // every chat, each saying whether the list shows it under the filter menu's choice,
-                    // and the pinned ones' ids in their pin order.
+                    // every chat, each saying whether the list shows it under the filter menu's choice and
+                    // the filter sheet's network ("": every network), the pinned ones' ids in their pin
+                    // order, and the sheet's networks with their unread chats.
                     let started = Date(), account = try await signedIn()
-                    let inbox = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all)
+                    let network = request["network"] as? String ?? ""
+                    let inbox = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all,
+                                                        network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { room in
@@ -53,7 +56,8 @@ final class Matrix: ExactModule {
                          "oneToOne": room.isOneToOne, "listed": inbox.listed.contains(room.id),
                          "avatar": cached(room.avatarName, then: .rooms) {
                              _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
-                    }, "pinned": inbox.pinned.map(\.id)])
+                    }, "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
+                       "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
                 case "pin", "unpin":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
