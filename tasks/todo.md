@@ -485,8 +485,11 @@ files (name and size, open), stickers (as a picture), "Edited" and "Message dele
 It shows at once, dimmed while it uploads.
 
 **Acceptance criteria:**
-- [ ] A photo sent from the app reaches another client at its size, with its caption.
-- [ ] A failed upload shows "Not Delivered", with Try Again and Delete.
+- [x] A photo sent from the app reaches another client at its size, with its caption.
+  (2026-11-02, `testAPhotoAndAFileReachTheOtherPersonAndARefusedUploadFails`: a second session
+  reads 600x900 and the caption, and downloads the photo and its thumbnail. Not checked in Element.)
+- [x] A failed upload shows "Not Delivered", with Try Again and Delete (a file 1 byte over the
+  server's limit; a too-large file is refused before it is sent).
 
 **Dependencies:** T2.3, T2.5
 **Scope:** M
@@ -623,11 +626,15 @@ has no native bottom toolbar, so the app draws it (`backgroundMaterial="glass"`,
 appears when its feature exists: the capsule's Archive with B8, search with B18.
 
 **Acceptance criteria:**
-- [ ] The bar floats over the list; the list scrolls under it with the iOS edge effect, and its
-  last row can scroll above the bar.
-- [ ] The capsule holds Inbox (selected) and the up-down button for the filter sheet (B4); the
-  left button opens the filter menu (B5).
-- [ ] Dark, light and the largest text size look right (`check` clean); VoiceOver names each button.
+- [x] The bar floats over the list, the list scrolls under it, and its last row can scroll above
+  the bar. (2026-11-02, `inbox.contract`, `BottomBar`.)
+- [ ] The iOS edge effect under the bar: Exact gives a floating bar over a large-title list none,
+  and a route has no bottom toolbar (Exact finding 35).
+- [x] The capsule holds Inbox (selected; a tap scrolls to the top); the left button opens the
+  filter menu (B5). The up-down button comes with B4.
+- [x] `check both` clean in dark, light and the largest text size; VoiceOver reads "Filter" (or
+  "Filter, Unread") and "Inbox, selected". On Rami's real account (292 chats, read only) `check`
+  flags the bar over the rows as an overlap: that is the floating bar by design.
 
 **Dependencies:** none. **Scope:** M
 
@@ -656,13 +663,16 @@ left button opens a menu with a check on the active choice: All, Unread, Drafts,
 DMs, Groups. It works together with the network filter (B4).
 
 **Acceptance criteria:**
-- [ ] All, Unread, DMs and Groups work (SDK filters `.readReceipts(expect: .messages)`,
-  `.category(.people)`, `.category(.group)`).
-- [ ] Unread also shows a chat marked unread by hand (B7). Check whether the SDK's filter counts
-  that flag; if not, add those chats.
-- [ ] Unanswered: chats whose newest message is not yours. Drafts: waits until the app keeps
-  unsent drafts (not built yet).
-- [ ] With a filter on, the button fills with the accent colour and the pinned grid (B6) hides.
+- [x] All, Unread, DMs and Groups work. MatrixCore computes each filter itself (`RoomFilters.swift`):
+  the SDK's dynamic filter is one shared filter that applies late and has no Unanswered. DMs: marked
+  direct, or a bridged chat with at most 2 people besides the bridge's bot. (2026-11-02,
+  `InboxTests`.) On Rami's real account, bridge bot chats show under DMs.
+- [x] Unread also shows a chat marked unread by hand (`m.marked_unread`): the SDK's filter reads
+  only the count, so MatrixCore adds them.
+- [x] Unanswered: chats whose newest message is not yours. Drafts: waits for drafts that outlive
+  the app (another conversation builds them, 2026-11-02).
+- [x] With a filter on, the button fills with the accent colour and the pinned grid hides; a
+  filter with no chats offers "Show All Chats". The choice persists across launches.
 
 **Dependencies:** B3. **Scope:** S
 
@@ -673,11 +683,15 @@ above the list (3 per row, a short name under each), and leave the list. A chat 
 messages shows a dot on its picture (Rami: a dot, as in Messages).
 
 **Acceptance criteria:**
-- [ ] Pin and Unpin from a row's long-press menu (the first item of B7's menu; this task adds it).
-- [ ] The pin is stored on the server (`Room.setIsFavourite`), so other devices agree; the
-  pinned order is kept (`tagOrder`).
-- [ ] The grid scrolls away with the list (the list's first section).
-- [ ] An unread pinned chat shows a dot.
+- [x] Pin and Unpin from a row's native long-press menu, with a preview of the last messages; a
+  tap on the preview opens the chat. The preview does not mark read (held 5.5 s, still unread).
+- [x] The pin is stored on the server with its order; a second device sees the pins in order
+  (`testAPinShowsOnAnotherDeviceInItsOrder`). The SDK hides a tag's order, so MatrixCore reads it
+  from the server once per pinned chat.
+- [x] The grid is the list's first row and scrolls away with it.
+- [x] An unread pinned chat shows a dot, which clears when the chat is read.
+- [ ] **Ask Rami** before any pin on `@rami`: the bridge may pass a pin to WhatsApp (which allows
+  3). His real account has no pinned chats today.
 
 **Dependencies:** none (B7 adds the rest of the menu). **Scope:** M
 
@@ -740,9 +754,9 @@ WhatsApp" (the chat's network), and the voice button on the right while the fiel
 
 **Acceptance criteria:**
 - [ ] The placeholder names the chat's network ("Reply on WhatsApp"); a plain Matrix chat says
-  "Message".
-- [ ] "+" opens the panel (B11); the voice button starts recording (B17). Until those exist, the
-  buttons are not shown.
+  "Message". (B1 is merged; the composer is being changed for drafts in another conversation, so
+  this waits for that.)
+- [x] "+" opens the panel (B11). (2026-11-02.) The voice button comes with B17.
 
 **Dependencies:** B1. **Scope:** S
 
@@ -755,11 +769,12 @@ photo sending part); GIFs (B12) and Send later (B13) join it. Camera comes later
 camera); no Poll for now.
 
 **Acceptance criteria:**
-- [ ] The panel replaces the keyboard (Exact cannot put a view in the keyboard; hide the keyboard
-  and show the panel in its place); X brings the keyboard back.
-- [ ] Photos: the system picker, several photos, a caption, upload progress, then T2.12's checks.
-- [ ] Send file: the Files picker; the file shows with its name and size, and opens on another
-  client (`AttachmentKind.file`).
+- [x] The panel replaces the keyboard; X brings the keyboard back. (2026-11-02, `attach.contract`.)
+- [x] Photos: the system picker, several photos, a caption, upload rings, then T2.12's checks.
+  The picker leaves HEIC out, so iPhone photos come as JPEG (a picked HEIC over 256 KB shows
+  empty: Exact finding 38).
+- [x] Send file: the Files picker; a file bubble with name, kind and size; a received file opens
+  through the share sheet; the other person gets the same bytes, name and type.
 
 **Dependencies:** T2.12, B10. **Scope:** M
 
