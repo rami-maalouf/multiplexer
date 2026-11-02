@@ -91,6 +91,16 @@ shape SignInReply
 shape Reply
   ok: bool
 
+// what a chat's composer holds: its draft, and the message it answers (replyTo, a message's id,
+// which names a message only in its own chat), with what the bar shows of it. Each chat keeps
+// its own, so a draft or a reply never moves to another chat.
+shape Composer
+  room: string
+  text: string
+  replyTo: string
+  replyName: string
+  replyBody: string
+
 routes nav
   home "/"
     room "/room/:id"
@@ -98,18 +108,19 @@ routes nav
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
+// a chat's composer: the one it keeps, or an empty one.
+fn composerOf(cs: Composer[], room: string): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => Composer(room=room, text="", replyTo="", replyName="", replyBody="") }
+// cs with c in place of its chat's composer; an empty one is not kept.
+fn withComposer(cs: Composer[], c: Composer): Composer[] = cs.filter(x => x.room != c.room).concat(c.text == "" and c.replyTo == "" ? [] : [c])
 
 component Multiplexer
   state server = ""
   state user = ""
   state password = ""
   state problem = ""
-  state draft = ""
   state now = 0
-  // the message the composer answers, with what its bar shows of it.
-  state replyTo = ""
-  state replyName = ""
-  state replyBody = ""
+  // each chat's draft and reply, for this launch (see Composer).
+  state composers: Composer[] = []
   // the message held down: its menu and reactions show over the chat.
   state held = ""
   state heldBody = ""
@@ -144,6 +155,7 @@ component Multiplexer
   derive openName = match openRoomInfo { case some(r) => r.name, case none => "" }
   derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
   resource thread = loadMessages(openRoom, openIsDirect, openName) as shape Thread else empty()
+  derive composer = composerOf(composers, openRoom)
   derive lastId = match thread.messages.at(-1) { case some(m) => m.id, case none => "" }
   // the reactions a long press offers first, as Beeper does.
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
@@ -179,31 +191,30 @@ component Multiplexer
       password = ""
   action askSignOut
     showModal("sign-out")
+  // drafts stay with the account that wrote them.
   action signOut
     send signedOut = signOut()
+    composers = []
   action reloadRooms
     refresh roomList
   action reloadThread
     refresh thread
   action editDraft(v: string)
-    draft = v
+    composers = withComposer(composers, Composer(composer, text=v))
   // as Messages does, Send clears the composer at once and scrolls to the end, even from far up.
   action post
-    if draft.trim() != "" and not pending(sent)
-      send sent = sendMessage(openRoom, draft.trim(), replyTo)
-      draft = ""
-      replyTo = ""
+    if composer.text.trim() != "" and not pending(sent)
+      send sent = sendMessage(openRoom, composer.text.trim(), composer.replyTo)
+      composers = withComposer(composers, Composer(composer, text="", replyTo=""))
     focus("composer")
-  // a swipe right on a bubble, or Reply in its menu: the composer answers it.
+  // a swipe right on a bubble, or Reply in its menu: the open chat's composer answers it.
   action startReply(id: string, name: string, body: string)
-    replyTo = id
-    replyName = name
-    replyBody = body
+    composers = withComposer(composers, Composer(composer, replyTo=id, replyName=name, replyBody=body))
     held = ""
     haptic("selection")
     focus("composer")
   action cancelReply
-    replyTo = ""
+    composers = withComposer(composers, Composer(composer, replyTo=""))
   // a long press lifts the bubble where it is, with reactions above it and actions under it.
   action hold(id: string, body: string, name: string, own: bool, tail: bool)
     heldY = frame(`message-${id}`).y
@@ -423,21 +434,21 @@ component Multiplexer
               else
                 column flex=1 justify-content="center" align-items="center"
                   progress aria-label="Loading messages" testId="thread-loading"
-            if threadShown and replyTo != ""
+            if threadShown and composer.replyTo != ""
               row inert=(held != "") align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="reply-bar"
                 column flex=1 min-width=0
-                  text `Replying to ${replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
-                  text replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
+                  text `Replying to ${composer.replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
+                  text composer.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
                 button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
                   image "symbol:close"
             if threadShown
               // the field's own padding makes it a 44-point target; the row adds none above or below.
               row inert=(held != "") align-items="flex-end" margin="6px 12px" padding="0 4px 0 12px" border-radius=22
                 border="1px solid -exact-separator"
-                textarea id="composer" value=draft input=editDraft rows=1 field-sizing="content" max-height=140
+                textarea id="composer" value=composer.text input=editDraft rows=1 field-sizing="content" max-height=140
                   placeholder="Message" aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
                   border="none" background-color="transparent"
-                button press=post disabled=(draft.trim() == "" or pending(sent)) buttonStyle="filled" margin="4px 0"
+                button press=post disabled=(composer.text.trim() == "" or pending(sent)) buttonStyle="filled" margin="4px 0"
                   retainFocus=true aria-label="Send" testId="send"
                   image "symbol:send"
             // a held message: the chat blurs, the bubble stays where it was, the reactions sit above it
