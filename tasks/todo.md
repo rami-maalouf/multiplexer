@@ -527,6 +527,350 @@ swipe to reply", "Hold a message").
 - [ ] I use it for one week. Then list what is missing, and write Phase 3 in detail.
 - [ ] Rami reviews.
 
+## Beeper parity
+
+Written 2026-11-02 from Rami's Beeper walkthrough (`research/beeper-walkthrough/report/index.html`,
+local only) and his answers to its questions (`plan.md`, decision log, 2026-11-02). The tasks
+follow the report's proposed order: the inbox first. "Topic N" points to the report.
+
+Rules for every task here:
+- **Beeper's features, Messages' feel (D9).** Take every feature from Beeper. Keep what Messages
+  already gives through the recipe (T2.13): bubble tails, sender runs, the long-press overlay,
+  the "Replying to" bar, reaction pills.
+- **Dark first.** The app follows the iPhone's light or dark setting. Design and check dark mode
+  first, then light mode, then the largest text size.
+- **Waits for** names a question from the report that Rami has not answered. Ask him when the task
+  starts; do not guess.
+- Drives send, react and mark read only as `@test1` or `@test2`. A bridged chat exists only on
+  `@rami`: there, drives are read only and need Rami's OK.
+- Push notifications (Phase 3) are not in this list. Where they go is open (`push-order`).
+
+### B1 Each chat's network, and its logo on the picture
+
+**Description:** Topic 05, and the base of the whole inbox. MatrixCore tells which network a chat
+comes from (WhatsApp, Instagram, ..., or Matrix). The chat list draws that network's logo on the
+bottom right corner of the chat's picture, as Beeper does. The biggest unknown of this list: the
+SDK may return nothing for the bridge's `m.bridge` state (its sync does not ask for custom state
+types), so prove that first.
+
+**Acceptance criteria:**
+- [ ] A spike answers how to read a chat's network: `Room.stateEvents` for `m.bridge` (or
+  `uk.half-shot.bridge`), or, if that comes back empty, another sign (for example the ids of the
+  bridge's users). The answer goes into `matrix-core/NOTES.md`.
+- [ ] `RoomSummary` has a `network` (plain string). A room with no bridge is `matrix`.
+- [ ] Each row shows the network's logo (about 18 pt, with a ring in the background colour) on the
+  picture's corner, outside the picture's clipped box. No logo for plain Matrix chats.
+- [ ] Logos for WhatsApp, Instagram, Messenger, Telegram, Signal, Discord and LinkedIn are in the app.
+
+**Verification:**
+- [ ] A MatrixCore test: `@test1` puts an `m.bridge` state event (protocol `whatsapp`) in a test
+  room, and the room's `network` is `whatsapp`. If the test users cannot send it, say why.
+- [ ] A read-only drive on `@rami` (with Rami's OK): WhatsApp chats show the logo. Dark, then
+  light, then the largest text size; signed out at the end.
+
+**Dependencies:** none. **Scope:** M
+
+### B2 Remove "(WA)" from names (server)
+
+**Description:** Topic 05, question `wa-suffix`. Rami: remove it and show the logo instead (B1).
+"(WA)" shows in the list, above sender runs, in quotes and in the "Replying to" bar. It comes
+from the bridge's display name template on the server.
+
+**Acceptance criteria:**
+- [ ] **Rami's OK at that time** before any server change (the plan's rule 7).
+- [ ] The template changes through the playbook (invariant 6), and names update in the app.
+
+**Dependencies:** B1 (so each chat still shows its network). **Scope:** S (server conversation)
+
+### B3 The bottom bar
+
+**Description:** Topic 03. A floating glass bar over the chat list, as in Beeper: a round
+filter button on the left, a capsule in the middle, a round search button on the right. Exact
+has no native bottom toolbar, so the app draws it (`backgroundMaterial="glass"`,
+`buttonStyle="glass"`, `glassGroup`). No dashed chat-plus slot (Rami: not needed). Each button
+appears when its feature exists: the capsule's Archive with B8, search with B18.
+
+**Acceptance criteria:**
+- [ ] The bar floats over the list; the list scrolls under it with the iOS edge effect, and its
+  last row can scroll above the bar.
+- [ ] The capsule holds Inbox (selected) and the up-down button for the filter sheet (B4); the
+  left button opens the filter menu (B5).
+- [ ] Dark, light and the largest text size look right (`check` clean); VoiceOver names each button.
+
+**Dependencies:** none. **Scope:** M
+
+### B4 The filter sheet: filter by network
+
+**Description:** Topics 03 and 07: "what I care about the most". The up-down button opens a
+sheet from the bottom (Rami: a sheet, as in Beeper), with Beeper's list (Rami: exactly Beeper's
+list). This task builds Inbox and one row per connected network, each with its unread count.
+The other rows come with their tasks: Archive and Low Priority (B8), labels and Create Label
+(B8, waits for `labels-meaning`), Send Later (B13), Reminders (waits for `remind-me`), Requests
+and New Space (look at what Beeper does first), communities (later: Rami, "whatever is
+easiest"), the gear and Edit.
+
+**Acceptance criteria:**
+- [ ] The sheet opens at half height and pulls up to full (`navigationDetent="medium large"`).
+- [ ] Choosing WhatsApp shows only WhatsApp chats; Inbox shows all. The capsule shows the choice.
+- [ ] The choice is kept across launches (`persist`).
+- [ ] MatrixCore filters the list itself: today `rooms()` returns every chat and takes only its
+  order from the room list service. The filter uses `.identifiers([...])` for a network.
+
+**Dependencies:** B1, B3. **Scope:** M
+
+### B5 The filter menu: unread, DMs, groups
+
+**Description:** Topic 09: "really useful for me because I have lots of unread messages". The
+left button opens a menu with a check on the active choice: All, Unread, Drafts, Unanswered,
+DMs, Groups. It works together with the network filter (B4).
+
+**Acceptance criteria:**
+- [ ] All, Unread, DMs and Groups work (SDK filters `.readReceipts(expect: .messages)`,
+  `.category(.people)`, `.category(.group)`).
+- [ ] Unread also shows a chat marked unread by hand (B7). Check whether the SDK's filter counts
+  that flag; if not, add those chats.
+- [ ] Unanswered: chats whose newest message is not yours. Drafts: waits until the app keeps
+  unsent drafts (not built yet).
+- [ ] With a filter on, the button fills with the accent colour and the pinned grid (B6) hides.
+
+**Dependencies:** B3. **Scope:** S
+
+### B6 Pinned people
+
+**Description:** Topic 01: "most important people". Pinned chats show as large round pictures
+above the list (3 per row, a short name under each), and leave the list. A chat with unread
+messages shows a dot on its picture (Rami: a dot, as in Messages).
+
+**Acceptance criteria:**
+- [ ] Pin and Unpin from a row's long-press menu (the first item of B7's menu; this task adds it).
+- [ ] The pin is stored on the server (`Room.setIsFavourite`), so other devices agree; the
+  pinned order is kept (`tagOrder`).
+- [ ] The grid scrolls away with the list (the list's first section).
+- [ ] An unread pinned chat shows a dot.
+
+**Dependencies:** none (B7 adds the rest of the menu). **Scope:** M
+
+### B7 Hold a chat: the preview and its actions
+
+**Description:** Topic 04: "All these are features that I'd love to have as well." A long press
+on a row opens the native iOS context menu with a preview of the chat's last messages, and
+Beeper's actions: Select chat, Archive, Move to Low Priority, Pin, Remind Me, Mark as Unread,
+Mute, Label, Delete (red).
+
+**Acceptance criteria:**
+- [ ] The preview shows the chat's last messages. Until Rami answers `preview-read`, it does
+  not mark the chat read: the safe choice, because on `@rami` a read receipt also marks the chat
+  read in WhatsApp. It must use a load that does not mark read (today every message load marks
+  read: `Matrix.swift`, a fix is in progress in another conversation).
+- [ ] Mark as Unread (`setUnreadFlag`); opening the chat clears that flag (the SDK's
+  `markAsRead` does not).
+- [ ] Mute and Unmute (`setRoomNotificationMode(.mute)`): a crossed bell after the name, a grey
+  count; an "@" in the count when you are mentioned.
+- [ ] Move to Low Priority, Archive and Label: with B8. Remind Me waits for `remind-me`. Select
+  chat (several chats at once) comes last.
+- [ ] Delete asks first. Before building it, ask Rami what it should do to a bridged chat
+  (leave the room, or only hide it).
+
+**Dependencies:** B6 (the menu exists). **Scope:** M
+
+### B8 Archive, Low Priority and labels
+
+**Description:** Topics 03 and 04. Archive and Low Priority are separate lists, reached from
+the bottom bar and the filter sheet. The SDK can set Low Priority but cannot write custom tags,
+so Archive and labels need another way (MatrixCore calls the Matrix tags API itself, or another
+mark). Prove that way first.
+
+**Acceptance criteria:**
+- [ ] Move to Low Priority and back (`setIsLowPriority`); a Low Priority row in the filter sheet.
+- [ ] Archive and Unarchive; the Archive button in the bottom bar's capsule.
+- [ ] **Waits for `archive-rule`:** whether a new message brings an archived chat back.
+- [ ] **Waits for `labels-meaning`:** labels, Create Label, and a row per label in the sheet.
+
+**Dependencies:** B4, B7. **Scope:** M
+
+### B9 Beeper's chat top bar
+
+**Description:** From Rami's split (D9): the chat's top bar as in Beeper. Back with the total
+unread count, the chat's picture and name in a glass capsule in the middle (a tap opens the
+chat info page, B20), and "..." on the right.
+
+**Acceptance criteria:**
+- [ ] Back shows the unread count of all other chats, and updates live.
+- [ ] Picture and name in the middle; "..." opens a menu (its items come with B20).
+- [ ] While the long-press overlay is open, the bar does not stay sharp above the blur (today it
+  does: Exact finding 27). Check whether the app's own bar fixes it.
+
+**Dependencies:** none. B20 uses it. **Scope:** M
+
+### B10 The composer like Beeper
+
+**Description:** From D9: "+" on the left, the field with the network's logo and "Reply on
+WhatsApp" (the chat's network), and the voice button on the right while the field is empty
+(Send when there is text).
+
+**Acceptance criteria:**
+- [ ] The placeholder names the chat's network ("Reply on WhatsApp"); a plain Matrix chat says
+  "Message".
+- [ ] "+" opens the panel (B11); the voice button starts recording (B17). Until those exist, the
+  buttons are not shown.
+
+**Dependencies:** B1. **Scope:** S
+
+### B11 The + panel, and photos
+
+**Description:** Topic 14: "the two most important [things are] photos and GIFs". "+" turns
+into an X, and a panel takes the keyboard's place: Photos, Camera, Send file, Poll, Send later,
+GIFs. This task builds the panel and Photos (T2.12 is its sending part).
+
+**Acceptance criteria:**
+- [ ] The panel replaces the keyboard (Exact cannot put a view in the keyboard; hide the keyboard
+  and show the panel in its place); X brings the keyboard back.
+- [ ] Photos: the system picker, several photos, a caption, upload progress, then T2.12's checks.
+- [ ] Camera and Send file come after Photos. **Poll waits for `poll`.**
+
+**Dependencies:** T2.12, B10. **Scope:** M
+
+### B12 GIFs
+
+**Description:** Topic 14. Search a GIF service, show a grid of animated GIFs, send one.
+
+**Acceptance criteria:**
+- [ ] **Waits for `gif-provider`.** No account, key or cost without Rami's yes.
+- [ ] A GIF sent from the app plays in WhatsApp.
+
+**Dependencies:** B11. **Scope:** M
+
+### B13 Send Later
+
+**Description:** Topic 14: "the third one". Pick a date and time; the message goes then. The SDK
+has no scheduled sending. Also the unclear quote at 4:35 ("I'd love to [schedule ...]").
+
+**Acceptance criteria:**
+- [ ] **Waits for `send-later`** (on our server, or on the phone) and for Rami to say what he
+  meant at 4:35.
+- [ ] A list of scheduled messages, as a row in the filter sheet; edit or cancel one.
+
+**Dependencies:** B11. **Scope:** L
+
+### B14 The full message menu, and all emojis
+
+**Description:** Topics 17 and 18, and T2.13's open items. Our long-press overlay (built in
+T2.13, drawn by the app because Exact's native menu has no reactions row) gets Beeper's full
+menu: Reply, Copy, Share, Forward, Mark as Unread, Bookmark, Edit and Delete on your own
+messages. The reaction bar keeps Beeper's six fixed emojis; its "+" opens a sheet with every
+emoji, a search and "Frequently used".
+
+**Acceptance criteria:**
+- [ ] Share (`share(...)`), Forward (copy the content and send it to the chosen chat: the SDK has
+  no forward), Mark as Unread (the chat, from this message), Edit and Delete on your own.
+- [ ] The "+" sheet: half height, pulls up to full, search, "Frequently used" (the SDK's recent
+  emojis), all emojis by category. Exact has no emoji grid: the app draws one, or uses the iOS
+  emoji keyboard.
+- [ ] Long press on a photo too (T2.13: only text bubbles have it).
+- [ ] **Bookmark waits for `bookmarks`.**
+- [ ] Sending an edit, deleting a sent message and recent emojis are proven in a MatrixCore test.
+
+**Dependencies:** T2.13. **Scope:** M
+
+### B15 The chat's details as in Beeper
+
+**Description:** From D9: what Beeper shows inside a chat and ours does not yet.
+
+**Acceptance criteria:**
+- [ ] A "New" line above the first unread message.
+- [ ] A jump-to-latest button with the number of unread messages below.
+- [ ] "Seen by A, B" under the newest message in a group, "Seen" in a DM (proven in a MatrixCore test).
+- [ ] Day labels between days.
+- [ ] Emoji-only messages large, with no bubble; stickers as pictures (T2.11).
+- [ ] Links you can tap (T2.11).
+
+**Dependencies:** T2.13. **Scope:** M
+
+### B16 Play voice notes, one speed everywhere
+
+**Description:** Topic 16 (and the voice part of T2.11). A voice note shows play, a waveform,
+the length and a speed chip (1x, 1.5x, 2x). Rami: "it should be consistent everywhere ... a
+user setting". Beeper keeps the speed per note; ours keeps one speed for the whole app.
+
+**Acceptance criteria:**
+- [ ] A voice note plays; the waveform shows progress (the app draws the bars: Exact has no view
+  for a received waveform).
+- [ ] Changing the speed on any note changes it on every note, and the app remembers it.
+- [ ] **Waits for `speed-scope`:** whether videos use the same speed.
+- [ ] Transcribe: **waits for `transcribe`.**
+
+**Dependencies:** T2.13. **Scope:** M
+
+### B17 Record a voice note, with pause
+
+**Description:** Topic 15: "I'd love to have a way to pause the voice note." Record, pause,
+resume, then send or delete. It goes out as a voice message, so WhatsApp shows a voice note.
+
+**Acceptance criteria:**
+- [ ] Record, pause, resume, cancel and send (`@exact/recording`; the microphone permission).
+- [ ] **Waits for `voice-pause`:** whether you can listen to the draft before sending.
+- [ ] A voice note sent from the app plays as a voice note in WhatsApp.
+
+**Dependencies:** B10, B16. **Scope:** M
+
+### B18 Search all chats
+
+**Description:** Topic 08: "also very powerful". The bottom bar's search button turns into a
+search field at the bottom, with the keyboard up. Before typing: recent chats and recent
+searches. Above: Images, Videos, Links, Files, Drafts.
+
+**Acceptance criteria:**
+- [ ] **Waits for `search-scope`:** what search must find first.
+- [ ] Chats by name (`.fuzzyMatchRoomName`), and message text through the SDK's local search index.
+- [ ] Check where iOS 26 puts Exact's search field. If not at the bottom, draw our own.
+
+**Dependencies:** B3. **Scope:** L
+
+### B19 Search in one chat
+
+**Description:** Topic 12. From the chat info page: a search for this chat only, with Images,
+Videos, Links, Files, Audio and Bookmarks.
+
+**Acceptance criteria:**
+- [ ] Text search in one chat (the SDK has none per chat: filter B18's results by chat).
+- [ ] Pages per kind (a timeline filtered by message type; links found in the text).
+
+**Dependencies:** B18, B20. **Scope:** M
+
+### B20 The chat info page
+
+**Description:** Topic 11: "I love the animation of it opening and I love all the things that
+you can see in here". Opened from the top bar's picture and name (B9) with the zoom transition
+(`navigationSource`).
+
+**Acceptance criteria:**
+- [ ] It zooms out of the top bar's capsule and shrinks back on close.
+- [ ] Picture, name, "WhatsApp Group - 7 members" (or the network for a DM); Search, Archive,
+  Low Priority (or Unpin) and More; Media; Members with Add member.
+- [ ] Edit: Edit Group Info; Customize for Me (a name only you see).
+- [ ] More: Pin, Mark as Read, Mute, Delete. Jump to Date: the SDK has none (jump to a message
+  works). Remind Me waits for `remind-me`.
+- [ ] **Message expiry waits for `expiry`** ("not urgent").
+
+**Dependencies:** B9. **Scope:** L
+
+### B21 The "Inbox" title menu, and Settings
+
+**Description:** Topic 02. The title "Inbox" opens a menu: Select Chats, Merge Chats, Settings.
+Settings holds Sign Out (it leaves the chat list's top bar) and the voice note speed.
+
+**Acceptance criteria:**
+- [ ] The menu and a Settings screen with Sign Out.
+- [ ] **Merge Chats waits for `merge-chats`.**
+
+**Dependencies:** none. **Scope:** S
+
+### Later
+
+- Communities as filters (Rami: "whatever is easiest"): after B4.
+- Requests and New Space in the filter sheet: look at what Beeper does first.
+- The open questions not in a task above: none. Each waits in its task.
+
 ## Phase 3: push notifications (M3), rough
 
 The biggest gap for daily use (the server conversation's review, 2026-10-27): without
