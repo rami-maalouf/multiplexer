@@ -20,7 +20,7 @@ extension MatrixAccount {
         _ = try await room(roomId, timeout: timeout)
         let me = try client.userId()
         try await expecting(.muted, roomId, true) {
-            let settings = await self.client.getNotificationSettings()
+            let settings = await self.notificationSettings()
             // the mute first: setting it removes the room's other rules, and a mention rule alone
             // would already read as muted.
             try await settings.setRoomNotificationMode(roomId: roomId, mode: .mute)
@@ -46,7 +46,7 @@ extension MatrixAccount {
             try await changeMarks { $0.archived[roomId] = newest }
         }
         try await expecting(.muted, roomId, false) {
-            let settings = await self.client.getNotificationSettings()
+            let settings = await self.notificationSettings()
             let usual = await settings.getDefaultRoomNotificationMode(
                 isEncrypted: info.encryptionState != .notEncrypted, isOneToOne: info.activeMembersCount == 2)
             if usual == .mute {
@@ -100,10 +100,40 @@ extension MatrixAccount {
         return chats.marks(stored: stored)
     }
 
-    /// Whether each chat is archived or deleted now: a mark holds only until a newer message.
-    func fillMarks(_ rooms: inout [RoomSummary]) async {
+    /// Whether each chat is muted, then whether it is archived or deleted now: a mark holds only
+    /// until a newer message, unless the chat is muted.
+    func fillChatStates(_ rooms: inout [RoomSummary]) async {
+        let quiet = await quietRooms()
         let marks = await chatMarks()
-        for i in rooms.indices { rooms[i].fillMarks(marks) }
+        for i in rooms.indices {
+            rooms[i].isMuted = chats.value(.muted, of: rooms[i].id, onServer: quiet.contains(rooms[i].id))
+            rooms[i].fillMarks(marks)
+        }
+    }
+
+    /// The chats whose messages do not notify: muted, or left to mentions only (a bridge mutes
+    /// that way). The sdk's `RoomInfo.cachedUserDefinedNotificationMode` is not kept across
+    /// launches, so this reads the push rules themselves.
+    private func quietRooms() async -> Set<String> {
+        let settings = await notificationSettings()
+        var quiet = Set<String>()
+        for roomId in await settings.getRoomsWithUserDefinedRules(enabled: true) {
+            switch try? await settings.getUserDefinedRoomNotificationMode(roomId: roomId) {
+            case .mute?, .mentionsAndKeywordsOnly?: quiet.insert(roomId)
+            default: break
+            }
+        }
+        return quiet
+    }
+
+    /// The account's push rules: read once from the store, then kept current by the sync and by
+    /// this device's own changes. A change from another device tells the list.
+    func notificationSettings() async -> NotificationSettings {
+        await chats.settings {
+            let settings = await self.client.getNotificationSettings()
+            settings.setDelegate(delegate: SettingsChanged { [weak self] in self?.notify(.rooms) })
+            return settings
+        }
     }
 
     /// The push rule that keeps a muted chat's mentions; the room's own rules, so unmuting removes it.
@@ -157,8 +187,6 @@ extension RoomSummary {
     /// What the room list service knows of the chat's actions, with this device's own changes
     /// shown before the server confirms them.
     mutating func fillActions(_ info: RoomInfo, chats: ChatStates) {
-        let mode = info.cachedUserDefinedNotificationMode
-        isMuted = chats.value(.muted, of: id, onServer: mode == .mute || mode == .mentionsAndKeywordsOnly)
         unreadMentions = Int(info.numUnreadMentions)
         isLowPriority = chats.value(.lowPriority, of: id, onServer: info.isLowPriority)
         isMarkedUnread = chats.value(.markedUnread, of: id, onServer: info.isMarkedUnread)
@@ -233,6 +261,8 @@ final class ChatStates: @unchecked Sendable {
     private var written: (marks: ChatMarks, since: Date)?
     /// The change of marks under way: the next one waits for it.
     private var changing: Task<Void, Error>?
+    /// The account's push rules (`MatrixAccount.notificationSettings`), made once.
+    private var notificationSettings: Task<NotificationSettings, Never>?
 
     /// The value to show: as asked here, until the server says the same.
     func value(_ field: Field, of roomId: String, onServer: Bool) -> Bool {
@@ -266,6 +296,16 @@ final class ChatStates: @unchecked Sendable {
         lock.withLock { written = marks.map { ($0, Date()) } }
     }
 
+    func settings(_ make: @escaping @Sendable () async -> NotificationSettings) async -> NotificationSettings {
+        let task: Task<NotificationSettings, Never> = lock.withLock {
+            if let made = notificationSettings { return made }
+            let making = Task { await make() }
+            notificationSettings = making
+            return making
+        }
+        return await task.value
+    }
+
     func serially(_ work: @escaping @Sendable () async throws -> Void) async throws {
         let task: Task<Void, Error> = lock.withLock {
             let before = changing
@@ -278,4 +318,13 @@ final class ChatStates: @unchecked Sendable {
         }
         try await task.value
     }
+}
+
+/// Tells the list when the account's push rules change.
+private final class SettingsChanged: NotificationSettingsDelegate, @unchecked Sendable {
+    private let changed: @Sendable () -> Void
+
+    init(_ changed: @escaping @Sendable () -> Void) { self.changed = changed }
+
+    func settingsDidChange() { changed() }
 }

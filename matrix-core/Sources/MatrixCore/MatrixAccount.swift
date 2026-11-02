@@ -134,7 +134,7 @@ public final class MatrixAccount: @unchecked Sendable {
             rooms.append(summary)
         }
         await fillPinOrders(&rooms)
-        await fillMarks(&rooms)
+        await fillChatStates(&rooms)
         return rooms
     }
 

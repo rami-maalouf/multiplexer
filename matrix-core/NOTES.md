@@ -187,11 +187,15 @@ bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a Wha
 | Archive, Delete | our own global account data, `com.ramimaalouf.multiplexer.chats` | no |
 
 - **Muted.** `RoomSummary.isMuted` is the sdk's user-defined mode `mute` or
-  `mentionsAndKeywordsOnly` (`RoomInfo.cachedUserDefinedNotificationMode`, which the sliding sync
-  refreshes for every room when `m.push_rules` changes). A bridge mutes a chat muted on its
-  network with a room rule with no actions (bridgev2 `ASIntent.MuteRoom`), which the sdk calls
-  mentions only. Unmute removes the room's own rules (`restoreDefaultRoomNotificationMode`), or
-  sets all messages when the account's default is mute.
+  `mentionsAndKeywordsOnly`, read from one `NotificationSettings` per account (its push rules come
+  from the store, the sync and its own writes keep them current, and its delegate tells the list of
+  another device's change). Not `RoomInfo.cachedUserDefinedNotificationMode`: the sliding sync sets
+  it only when `m.push_rules` comes in a response, and it is not kept across launches, so after a
+  relaunch every chat read as not muted (seen 2026-11-02 in a drive; a new device, as the tests
+  had, does not show it). A bridge mutes a chat muted on its network with a room rule with no
+  actions (bridgev2 `ASIntent.MuteRoom`), which the sdk calls mentions only. Unmute removes the
+  room's own rules (`restoreDefaultRoomNotificationMode`), or sets all messages when the account's
+  default is mute.
 - **The "@" of a muted chat.** A muted room's override rule matches every event before the
   server's mention rules, so a mention there counts nothing. Mute adds an override rule
   `com.ramimaalouf.multiplexer.mention.<room id>` (`event_property_contains`
