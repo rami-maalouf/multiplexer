@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` and 29 at `ed43ad09a0`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` and 29 at `ed43ad09a0`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 were seen at `ed43ad09a0`, and 17 was seen again.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -48,6 +48,9 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 27 | A long-press menu has no row of reactions, so a chat app draws its message menu by hand. | About 40 lines | P3 | [a-long-press-menu-has-no](issues/20261031-a-long-press-menu-has-no.md) |
 | 28 | Swipe to reply has no recipe: the `transition` gives the spring back (agent-pitfalls says it gives the follow), and `swipeIndicator` and the host's threshold haptic are undocumented. | A wrong conclusion in one session, about 40 min in the next | P3 | [swipe-to-reply-has-no-recipe](issues/20261102-swipe-to-reply-has-no-recipe.md) |
 | 29 | A drive cannot film a navigation's zoom: `screenshot over` starts after the transition ends (known in exact2's `QUEUE.md`; this adds evidence). | About 10 min | P3 | [a-drive-cannot-film-a-navigation](issues/20261102-a-drive-cannot-film-a-navigation.md) |
+| 30 | A `target/` folder built at another path (copied from another checkout) fails the build with `no matching rustc unit dep-info`, and the message does not say to delete it. | About 10 min, then a full build | P3 | [a-target-folder-built-at-another](issues/20261102-a-target-folder-built-at-another.md) |
+| 31 | A plain list's separator starts at the initials inside a row's round picture, so the lines jump from row to row (known in exact2's `QUEUE.md`; this adds evidence). | About 15 min | P3 | [a-list-row-s-separator-starts](issues/20261102-a-list-row-s-separator-starts.md) |
+| 32 | A labelled image inside a `link` row is left out of the row's VoiceOver label, unlike the web. | About 10 min | P3 | [a-labelled-image-inside-a-link](issues/20261102-a-labelled-image-inside-a-link.md) |
 
 ## What worked well
 
