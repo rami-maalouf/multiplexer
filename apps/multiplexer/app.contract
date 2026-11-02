@@ -138,6 +138,9 @@ component Multiplexer
   state heldWidth = 0
   // the reader scrolled the chat's newest message out of view.
   state away = false
+  // the message a new reply answers, kept in view once the keyboard and the reply bar are up:
+  // a swipe can start a reply low on the screen, where the keyboard would cover it.
+  state revealing = ""
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
   resource page = exactPage() as shape Page
@@ -179,6 +182,8 @@ component Multiplexer
   // the end or the chat from there reads it at once (scrolled, back). Older messages read nothing.
   task markSeen when reading and not away and openUnread > 0 key=`${openRoom}/${lastId}`
     after(1000, readNow)
+  task reveal when revealing != "" key=revealing
+    after(300, revealNow, wait=idle, max=1000)
 
   action step
     now = performanceNow()
@@ -245,6 +250,7 @@ component Multiplexer
   action startReply(id: string, name: string, body: string)
     composers = withComposer(composers, Composer(composer, replyTo=id, replyName=name, replyBody=body))
     held = ""
+    revealing = id
     focus("composer")
   action cancelReply
     composers = withComposer(composers, Composer(composer, replyTo=""))
@@ -278,6 +284,9 @@ component Multiplexer
     letGo()
   action toEnd
     scrollIntoView("transcript", lastId, block="end")
+  action revealNow
+    scrollIntoView("transcript", revealing, block="nearest", behavior="smooth")
+    revealing = ""
   action showPhoto(id: string)
     nav = push(nav, path("photo", openRoom, id))
   action retry(id: string)
