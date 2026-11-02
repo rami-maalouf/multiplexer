@@ -6,6 +6,8 @@
 #   send-test-message.sh "<text>"
 #   send-test-message.sh --image <photo.jpg> ["<caption>"]
 #   SENDER=@test2:ramimaalouf.com ROOM="Multiplexer two-person test" (the defaults)
+#   REPLY_TO=<event id> or REPLY_TO=first: the text answers that message, or the room's first
+#   text message (older than what a chat loads when it opens)
 set -euo pipefail
 usage="usage: send-test-message.sh <text> | --image <file> [caption]"
 image=""; caption=""
@@ -49,6 +51,15 @@ if [ -n "$image" ]; then
      + (if $caption == "" then {} else {filename:$file} end)')"
 else
   body="$(jq -n --arg t "$text" '{msgtype:"m.text",body:$t}')"
+  replyto="${REPLY_TO:-}"
+  if [ "$replyto" = "first" ]; then
+    replyto="$(curl -sf "$base/client/v3/rooms/$room/messages?dir=f&limit=100" -H "$auth" \
+      | jq -r '[.chunk[] | select(.type == "m.room.message" and .content.msgtype == "m.text")][0].event_id // empty')"
+    [ -n "$replyto" ] || { echo "no text message at the start of $roomname" >&2; exit 1; }
+  fi
+  if [ -n "$replyto" ]; then
+    body="$(jq --arg id "$replyto" '. + {"m.relates_to":{"m.in_reply_to":{event_id:$id}}}' <<<"$body")"
+  fi
 fi
 curl -sf -X PUT "$base/client/v3/rooms/$room/send/m.room.message/multiplexer-$(uuidgen)" -H "$auth" \
   -H 'Content-Type: application/json' --data-binary @- <<<"$body" | jq -r '"sent " + .event_id'

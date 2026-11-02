@@ -9,7 +9,12 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 # the test users on our own server; never @rami (AGENTS.md, the safety rule).
 user="${MATRIX_TEST_USER:-@test1:ramimaalouf.com}"
 homeserver="${MATRIX_TEST_HOMESERVER:-${user#*:}}"
+# SIMULATOR is a name or a udid; a udid picks one device when several conversations test at once.
 simulator="${SIMULATOR:-iPhone 17 Pro}"
+case "$simulator" in
+  ????????-????-????-????-????????????) destination="platform=iOS Simulator,id=$simulator" ;;
+  *) destination="platform=iOS Simulator,name=$simulator" ;;
+esac
 
 password="$(security find-generic-password -s multiplexer-test-account -a "$user" -w)"
 # a second person, for the tests that need one (unread counts): @test2 beside @test1.
@@ -25,5 +30,5 @@ TEST_RUNNER_MATRIX_TEST_HOMESERVER="$homeserver" \
 TEST_RUNNER_MATRIX_TEST_USER2="$user2" \
 TEST_RUNNER_MATRIX_TEST_PASSWORD2="$password2" \
 TEST_RUNNER_MATRIX_TEST_FILL="${MATRIX_TEST_FILL:-}" \
-  xcodebuild test -scheme MatrixCore -destination "platform=iOS Simulator,name=$simulator" \
+  xcodebuild test -scheme MatrixCore -destination "$destination" \
   -collect-test-diagnostics never "$@"
