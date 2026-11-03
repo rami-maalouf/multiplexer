@@ -1,0 +1,177 @@
+// the chat screen's state and actions for voice messages (voice.contract): one player for the open
+// chat, so a voice message that starts stops another, at one speed kept across launches; and a voice
+// message recorded from the composer: tap to start, tap to stop, listen, then send or delete it.
+use VoiceFile, VoiceDraft, VoiceSent, nextSpeed from "./voice.contract"
+use getUserMedia, stopTrack, microphoneStatus, MediaStream, MediaStreamTrack, MicrophoneStatus from "@exact/media-capture"
+use startMediaRecorder, stopMediaRecorder, mediaRecorderState, MediaRecorderInfo, RecordedMedia from "@exact/recording"
+
+members Multiplexer
+  // one speed for every voice message (a video keeps its own), kept across launches.
+  state voiceSpeed = 1 persist
+  // the voice message in the player: a message's id, "draft" for a recording before it goes, or ""
+  // for none; voiceRoom is the chat it is in, voiceTime the seconds played.
+  state voicePlaying = ""
+  state voiceRoom = ""
+  state voicePaused = true
+  state voiceTime = 0
+  // a voice message on its way in: "idle", "starting" (the microphone opens), "recording",
+  // "stopping", or "draft" (recorded, not sent yet), in recordingRoom.
+  state recording = "idle"
+  state recordingRoom = ""
+  // the microphone's track and the recorder while it records; takes names each recording's file.
+  state recordTrack = ""
+  state recorder = ""
+  state takes = 0
+  // the draft's recording, and its length in milliseconds.
+  state draftRecording = ""
+  state draftMilliseconds = 0
+  resource voiceFile = loadAudio(voiceRoom, voicePlaying == "draft" ? "" : voicePlaying) as shape VoiceFile else empty()
+  resource microphone = microphoneStatus() as shape MicrophoneStatus else empty()
+  resource recorderState = mediaRecorderState(recorder=recorder, interval=250) as shape MediaRecorderInfo else empty()
+  mutation micOpened as shape MediaStream then micReady
+  mutation recordStarted as shape MediaRecorderInfo then recordBegun
+  mutation recordSaved as shape RecordedMedia then recordStopped
+  mutation recordDropped as shape RecordedMedia
+  mutation micClosed as shape MediaStreamTrack
+  mutation voicePrepared as shape VoiceDraft
+  mutation sentVoice as shape VoiceSent then toEnd
+  // what the player plays: a message's sound once it is downloaded, or the draft's recording.
+  derive voiceSrc = voicePlaying == "draft" ? draftRecording : (voiceFile.message == voicePlaying and voiceRoom == openRoom ? voiceFile.path : "")
+  // the draft once it is ready to go: its file, length and waveform.
+  derive draftReady = match voicePrepared { case some(d) => d.recording == draftRecording and draftRecording != "", case none => false }
+  derive draftBars = match voicePrepared { case some(d) => d.recording == draftRecording ? d.bars : [], case none => [] }
+  derive draftSeconds = draftMilliseconds > 0 ? max(1, round(draftMilliseconds / 1000)) : 0
+  // the voice button shows while the field is empty and nothing is picked; Send shows otherwise.
+  derive voiceOffered = editing == "" and composer.text.trim() == "" and composer.attachments.length == 0
+  // leaving the chat stops its voice message, and throws away a recording made there.
+  task stopVoice when voicePlaying != "" and voiceRoom != openRoom
+    after(1, stopVoiceNow)
+  task dropRecording when recording != "idle" and recordingRoom != openRoom
+    after(1, cancelVoice)
+
+  // a tap on a voice message plays it from its start, or pauses or resumes it when it is the one in the player.
+  action playVoice(id: string)
+    if voicePlaying == id and voiceRoom == openRoom
+      voicePaused = not voicePaused
+    else
+      voicePlaying = id
+      voiceRoom = openRoom
+      voiceTime = 0
+      voicePaused = false
+  action voiceTimed(t: number)
+    voiceTime = t
+  // the player paused or played by itself (a call, another app's sound): the button follows it.
+  action voiceStopped
+    voicePaused = true
+  action voiceStarted
+    voicePaused = false
+  // at its end it is a voice message at rest again, as Beeper shows one.
+  action voiceEnded
+    stopVoiceNow()
+  action stopVoiceNow
+    voicePlaying = ""
+    voicePaused = true
+    voiceTime = 0
+  // the speed chip: 1x, 1.5x, 2x, for every voice message.
+  action speedUp
+    voiceSpeed = nextSpeed(voiceSpeed)
+
+  // the voice button: the system asks for the microphone the first time; once refused, an alert
+  // says where to allow it.
+  action startVoice
+    if microphone.state == "denied"
+      showModal("microphone-off")
+    else if recording == "idle"
+      recording = "starting"
+      recordingRoom = openRoom
+      panel = false
+      blur("composer")
+      stopVoiceNow()
+      send micOpened = getUserMedia(audio=true)
+  action micReady
+    match micOpened
+      case some(s)
+        let track = match s.tracks.at(0) { case some(t) => t.id, case none => "" }
+        if recording == "starting"
+          recordTrack = track
+          let take = takes + 1
+          takes = take
+          send recordStarted = startMediaRecorder(stream=s.id, path=`app:/tmp/voice/take-${take}`)
+        else if track != ""
+          // dropped while the microphone opened.
+          send micClosed = stopTrack(track=track)
+      case none
+        recording = "idle"
+        recordingRoom = ""
+        match failure(micOpened)
+          case some(f)
+            if f.code == "NotAllowedError"
+              showModal("microphone-off")
+          case none
+            recording = "idle"
+  action recordBegun
+    match recordStarted
+      case some(r)
+        if recording == "starting"
+          recorder = r.id
+          recording = "recording"
+          haptic("impact-light")
+        else
+          send recordDropped = stopMediaRecorder(recorder=r.id)
+          closeMicrophone()
+      case none
+        recording = "idle"
+        recordingRoom = ""
+        closeMicrophone()
+  // stop keeps the recording as a draft, and makes it ready to go while it is listened to.
+  action stopVoice
+    if recording == "recording"
+      recording = "stopping"
+      send recordSaved = stopMediaRecorder(recorder=recorder)
+  action recordStopped
+    match recordSaved
+      case some(m)
+        if recording == "stopping"
+          draftRecording = m.path
+          draftMilliseconds = m.duration
+          recording = "draft"
+          send voicePrepared = prepareVoice(m.path)
+      case none
+        if recording == "stopping"
+          recording = "idle"
+          recordingRoom = ""
+    recorder = ""
+    closeMicrophone()
+  action closeMicrophone
+    if recordTrack != ""
+      send micClosed = stopTrack(track=recordTrack)
+      recordTrack = ""
+  // X while it records, Delete on the draft, or leaving the chat: the recording is thrown away.
+  action cancelVoice
+    if recording == "recording"
+      send recordDropped = stopMediaRecorder(recorder=recorder)
+    if voicePlaying == "draft"
+      stopVoiceNow()
+    closeMicrophone()
+    recorder = ""
+    recording = "idle"
+    recordingRoom = ""
+    draftRecording = ""
+    draftMilliseconds = 0
+  // Send: the voice message goes as the chat's reply, if it has one, and shows in the chat at once.
+  action sendVoiceDraft
+    match voicePrepared
+      case some(d)
+        if draftReady and not pending(sentVoice)
+          send sentVoice = sendVoice(openRoom, d.path, d.duration, d.size, d.waveform, composer.replyTo)
+          cancelReply()
+          if voicePlaying == "draft"
+            stopVoiceNow()
+          recording = "idle"
+          recordingRoom = ""
+          draftRecording = ""
+          draftMilliseconds = 0
+      case none
+        recording = recording
+  action openSettings
+    openURL("app-settings:")

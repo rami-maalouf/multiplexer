@@ -103,6 +103,7 @@ final class Matrix: ExactModule {
                          "progress": $0.uploadProgress ?? -1, "isSticker": $0.isSticker,
                          "video": $0.video.map { ["width": $0.width, "height": $0.height, "duration": $0.duration] } ?? [:],
                          "poster": poster(account, roomId: roomId, message: $0),
+                         "audio": $0.audio.map { ["isVoice": $0.isVoice, "duration": $0.duration, "waveform": $0.waveform] } ?? [:],
                          "readers": $0.readBy.map { ["name": $0.name, "time": Double($0.timestamp ?? 0)] }]
                     }])
                 case "markRead":
@@ -137,6 +138,14 @@ final class Matrix: ExactModule {
                     let file = try await signedIn().videoFile(roomId: request["roomId"] as? String ?? "",
                                                               messageId: request["messageId"] as? String ?? "", directory: media)
                     reply.send(["path": "app:/cache/matrix-media/\(file.lastPathComponent)"])
+                case "audio":
+                    // a voice message's sound, downloaded once to play.
+                    let file = try await signedIn().audioFile(roomId: request["roomId"] as? String ?? "",
+                                                              messageId: request["messageId"] as? String ?? "", directory: media)
+                    reply.send(["path": "app:/cache/matrix-media/\(file.lastPathComponent)"])
+                case "prepareVoice", "sendVoice":
+                    // a recording made ready (Ogg Opus, its length and waveform), then sent as a voice message.
+                    reply.send(try await voice(request))
                 case "send":
                     // the message shows in the chat at once; its state says how the sending goes.
                     let replyTo = request["replyTo"] as? String ?? ""
@@ -182,7 +191,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -332,6 +341,28 @@ final class Matrix: ExactModule {
             changed(.room(roomId))
         }
         return true
+    }
+
+    /// A recording (`app:/tmp/voice/…`) as the voice message that goes (`prepareVoice`): the Ogg Opus
+    /// file's `app:/tmp` path, its length in milliseconds, its size and waveform; or that message put
+    /// in the room's send queue (`sendVoice`). A drive sends one only as a test user, as it reacts.
+    @MainActor private func voice(_ request: [String: Any]) async throws -> [String: Any] {
+        guard let file = appFile(request["path"] as? String ?? "") else { throw ExactNativeRefusal("\(request["op"] ?? "") takes an app:/tmp path") }
+        if request["op"] as? String == "prepareVoice" {
+            let notes = context.temporary.appendingPathComponent("voice-notes", isDirectory: true)
+            let note = try await VoiceNote.prepare(recording: file, directory: notes)
+            let folder = note.file.deletingLastPathComponent().lastPathComponent
+            return ["path": "app:/tmp/voice-notes/\(folder)/\(note.file.lastPathComponent)", "duration": note.duration,
+                    "size": note.size, "waveform": note.waveform]
+        }
+        let account = try await signedIn()
+        guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive sends a voice message only as a test user") }
+        let note = VoiceNote(file: file, duration: (request["duration"] as? NSNumber)?.intValue ?? 0,
+                             size: (request["size"] as? NSNumber)?.intValue ?? 0,
+                             waveform: (request["waveform"] as? [NSNumber])?.map(\.doubleValue) ?? [])
+        let replyTo = request["replyTo"] as? String ?? ""
+        try await account.sendVoice(roomId: request["roomId"] as? String ?? "", note: note, replyTo: replyTo.isEmpty ? nil : replyTo)
+        return ["ok": true]
     }
 
     /// The file an `app:/tmp/…`, `app:/cache/…` or `app:/data/…` path names in this module's folders.

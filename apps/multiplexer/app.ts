@@ -4,9 +4,10 @@ import { emojiRows } from './emoji-rows.ts';
 // app.json’s app.id: change the two together.
 export const appId = 'com.ramimaalouf.multiplexer';
 // picked photos and files are read from the picker's copies; a photo is made smaller beside them
-// before it goes; a file message's file is shared from where the module downloaded it.
+// before it goes; a file message's file is shared from where the module downloaded it. A voice
+// message is recorded from the microphone into app:/tmp/voice.
 export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
-  'fs.read app:/cache/matrix-files'].join('\n');
+  'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice'].join('\n');
 
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
@@ -52,6 +53,8 @@ type MessagesAnswer = {
     video: { width?: number; height?: number; duration?: number };
     // a video's poster once it is downloaded, else "".
     poster: string;
+    // empty when the message is no voice message or audio file; duration in milliseconds, waveform from 0 to 1.
+    audio: { isVoice?: boolean; duration?: number; waveform?: number[] };
     // who has read the chat up to it, besides its sender and you; name "" until it is known, time 0 when unknown.
     readers: { name: string; time: number }[];
   }[];
@@ -70,6 +73,17 @@ const GROUP_GAP_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 // a sticker fits a box this many rem wide and tall, as Beeper shows one.
 const STICKER_SIDE = 9.5;
+// a voice message's waveform shows as this many bars.
+const VOICE_BARS = 32;
+/** A waveform (each part from 0 to 1) as the bars a voice message shows, each its loudest part; a
+ * flat line when it has none. */
+const barsOf = (levels: number[]): number[] => Array.from({ length: VOICE_BARS }, (_, i) => {
+  if (levels.length === 0) return 0;
+  const from = Math.floor((i * levels.length) / VOICE_BARS);
+  return Math.max(...levels.slice(from, Math.max(from + 1, Math.floor(((i + 1) * levels.length) / VOICE_BARS))));
+});
+// a length in whole seconds, at least one for a sound of any length.
+const secondsOf = (ms: number): number => (ms > 0 ? Math.max(1, Math.round(ms / 1000)) : 0);
 
 // one to three emoji and nothing else (spaces aside): a flag, a keycap, or a pictograph drawn as
 // an emoji (on its own, or asked for with U+FE0F, so "©" stays text) with its skin tone and joined parts.
@@ -237,18 +251,20 @@ const sources: Sources = {
       // a group chat names the sender above the first message of each run.
       const showName = group && !m.isOwn && (startsGroup || before.sender !== m.sender);
       const isVideo = m.video.duration !== undefined;
+      const isAudio = m.audio.duration !== undefined;
       // a video and a sticker show their picture where a photo shows its own.
       const [width, height] = isVideo ? [m.video.width ?? 0, m.video.height ?? 0] : [m.imageWidth, m.imageHeight];
       const side = m.isSticker ? STICKER_SIDE : PHOTO_MAX_WIDTH;
       const tall = m.isSticker ? STICKER_SIDE : PHOTO_MAX_HEIGHT;
-      const media = m.isImage || m.file.name !== undefined || isVideo || m.isSticker;
+      const media = m.isImage || m.file.name !== undefined || isVideo || m.isSticker || isAudio;
       const bigEmoji = !media && !m.waitingForKey && isBigEmoji(m.body);
       const status = i === answer.messages.length - 1 ? statusOf(m, group) : { status: '', statusTime: 0 };
       return {
         id: m.id, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
-        isVideo, seconds: Math.round((m.video.duration ?? 0) / 1000), isSticker: m.isSticker, bigEmoji,
+        isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),
+        isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [],
         balloon: !m.waitingForKey && !m.isDeleted && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
         isDeleted: m.isDeleted, isEditable: m.isEditable,
@@ -289,6 +305,24 @@ const sources: Sources = {
     if (messageId === '' || !native?.available) return { message: messageId, path: '' };
     const answer = (await native.later({ op: 'video', roomId, messageId })) as { path: string };
     return { message: messageId, path: answer.path };
+  },
+  // a voice message's sound, downloaded once into the cache to play.
+  loadAudio: async ([roomId, messageId], _store, _storage, native): Promise<Result<'loadAudio'>> => {
+    if (roomId === '' || messageId === '' || !native?.available) return { message: messageId, path: '' };
+    const answer = (await native.later({ op: 'audio', roomId, messageId })) as { path: string };
+    return { message: messageId, path: answer.path };
+  },
+  // a recording made ready to go as a voice message: Ogg Opus, its length, and its waveform (for
+  // the others) and bars (for the draft).
+  prepareVoice: async ([recording], _store, _storage, native): Promise<Result<'prepareVoice'>> => {
+    const answer = (await native!.later({ op: 'prepareVoice', path: recording })) as
+      { path: string; duration: number; size: number; waveform: number[] };
+    return { recording, ...answer, seconds: secondsOf(answer.duration), bars: barsOf(answer.waveform) };
+  },
+  // the voice message shows in the chat at once, as a photo does; a failure shows on it.
+  sendVoice: async ([roomId, path, duration, size, waveform, replyTo], _store, _storage, native): Promise<Result<'sendVoice'>> => {
+    await native!.later({ op: 'sendVoice', roomId, path, duration, size, waveform, replyTo });
+    return { ok: true };
   },
   loadPhoto: async ([roomId, messageId], _store, _storage, native): Promise<Result<'loadPhoto'>> => {
     if (messageId === '' || !native?.available) return { message: messageId, path: '' };

@@ -11,6 +11,7 @@ use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, seenText from "./details.contract"
+use VoiceBubble, VoiceButton, RecordingBar, DraftBar, restingBars from "./voice.contract"
 
 shape Session
   userId: string
@@ -75,7 +76,8 @@ shape RoomList
 // text, with its links apart. status: under the chat's newest message, "Delivered", "Seen" or
 // "Seen by Ana, Ben" ("" for none); statusTime: when a direct chat's other person saw it, or 0.
 // isDeleted: deleted for everyone, so it has no text, picture or file (no balloon). isEditable:
-// your own text message, which an edit can change.
+// your own text message, which an edit can change. A voice message or an audio file (isAudio) has its
+// length in seconds and its waveform's bars, each from 0 to 1.
 shape Message
   id: string
   senderName: string
@@ -113,6 +115,8 @@ shape Message
   runs: Run[]
   status: string
   statusTime: number
+  isAudio: bool
+  bars: number[]
 
 // isMine: this account reacted with it, so a tap takes it back.
 shape Reaction
@@ -199,7 +203,7 @@ fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
 fn inboxUnread(r: Room): bool = not r.archived and not r.lowPriority and (loud(r) or r.mentions > 0)
 fn countText(n: number): string = n > 99 ? "99+" : n.toString()
 // a message in one line, for a reply bar or the forward sheet: its text, else "Photo" or its file's name.
-fn messageLine(m: Message): string = m.body != "" ? m.body : (m.isImage ? "Photo" : (m.isVideo ? "Video" : (m.isSticker ? "Sticker" : (m.isFile ? m.fileName : ""))))
+fn messageLine(m: Message): string = m.body != "" ? m.body : (m.isImage ? "Photo" : (m.isVideo ? "Video" : (m.isSticker ? "Sticker" : (m.isFile ? m.fileName : (m.isAudio ? "Voice message" : "")))))
 // a chat's composer: the one touched in this launch, else the draft kept in the account's store
 // (saved, once it is this chat's), else an empty one.
 fn composerOf(cs: Composer[], room: string, saved: Composer): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => saved.room == room ? saved : Composer(room=room, text="", replyTo="", replyName="", replyBody="", attachments=[]) }
@@ -379,6 +383,7 @@ component Multiplexer
   task keepDraftHidden when unsaved != "" and page.visibilityState == "hidden"
     after(1, keepDraftNow)
   members "./details-members.contract"
+  members "./voice-members.contract"
 
   action step
     now = performanceNow()
@@ -1022,6 +1027,20 @@ component Multiplexer
                             FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
                               opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize, open=openFile(m.id),
                               hold=holdMedia(m.id, "file", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), identifier=`file-${m.id}`)
+                          // a voice message plays here; a swipe right answers it and a long press holds it, as a text's bubble.
+                          if m.isAudio
+                            box position="relative" max-width="100%" user-select="none" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
+                              opacity=(held == m.id ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m))
+                              contextmenu=holdMedia(m.id, "voice", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)) testId=`voice-swipe-${m.id}`
+                              view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
+                                display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
+                                transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
+                                image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
+                              VoiceBubble(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=(voicePlaying == m.id and voiceRoom == openRoom),
+                                playing=(voicePlaying == m.id and voiceRoom == openRoom and not voicePaused),
+                                loading=(voicePlaying == m.id and voiceSrc == "" and not failed(voiceFile)), time=voiceTime, speed=voiceSpeed,
+                                dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, still=false, play=playVoice(m.id), speedUp=speedUp,
+                                identifier=`voice-${m.id}`)
                           // a message on its way is dimmed; one that failed says so, with a way to send it again.
                           if m.waitingForKey
                             text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
@@ -1117,38 +1136,57 @@ component Multiplexer
                       image "symbol:close"
                 // "+" on the left, as Beeper and Messages have it; the photos and files picked sit above the text.
                 row align-items="flex-end" gap=8 margin="6px 12px"
-                  AddButton(open=panel, press=togglePanel, disabled=(editing != ""))
+                  AddButton(open=panel, press=togglePanel, disabled=(editing != "" or recording != "idle"))
                   // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
                   input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp" multiple=true display="none"
                     change=photosPicked testId="pick-photos"
                   input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
-                  column flex=1 min-width=0 border-radius=22 border="1px solid -exact-separator"
-                    if composer.attachments.length > 0 and editing == ""
-                      Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
-                    if tooLarge != ""
-                      text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
-                        font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
-                    // the field's own padding makes it a 44-point target; the row adds none above or below.
-                    // a bridged chat's network logo at the field's start says where the message goes, as
-                    // the placeholder does ("Reply on WhatsApp").
-                    row align-items="flex-end" padding="0 4px 0 12px"
-                      if openNetwork != "matrix" and not viewport.accessibilityTextSize
-                        ComposerNetwork(network=openNetwork)
-                      textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
-                        placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
-                        aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="12px 0"
-                        border="none" background-color="transparent"
-                      // while editing, a checkmark saves the edit.
-                      button press=post buttonStyle="filled" margin="4px 0" retainFocus=true testId="send"
-                        disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
-                        aria-label=(editing != "" ? "Save Edit" : "Send")
-                        image (editing != "" ? "symbol:checkmark" : "symbol:send")
+                  // a voice message takes the field's place while it records, then as a draft until it goes.
+                  if recording == "draft"
+                    view flex=1 min-width=0
+                      DraftBar(bars=restingBars(draftBars), seconds=draftSeconds, current=(voicePlaying == "draft"),
+                        playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, preparing=(not draftReady),
+                        remove=cancelVoice, play=playVoice("draft"), send=sendVoiceDraft)
+                  else if recording != "idle"
+                    view flex=1 min-width=0
+                      RecordingBar(track=recordTrack, milliseconds=recorderState.duration, starting=(recording != "recording"),
+                        cancel=cancelVoice, stop=stopVoice)
+                  else
+                    column flex=1 min-width=0 border-radius=22 border="1px solid -exact-separator"
+                      if composer.attachments.length > 0 and editing == ""
+                        Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
+                      if tooLarge != ""
+                        text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
+                          font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
+                      // the field's own padding makes it a 44-point target; the row adds none above or below.
+                      // a bridged chat's network logo at the field's start says where the message goes, as
+                      // the placeholder does ("Reply on WhatsApp").
+                      row align-items="flex-end" padding="0 4px 0 12px"
+                        if openNetwork != "matrix" and not viewport.accessibilityTextSize
+                          ComposerNetwork(network=openNetwork)
+                        textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
+                          placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
+                          aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="12px 0"
+                          border="none" background-color="transparent"
+                        // the voice button while the field is empty and nothing is picked; Send once there is
+                        // something to send. While editing, a checkmark saves the edit.
+                        if voiceOffered
+                          VoiceButton(press=startVoice, disabled=pending(sentVoice))
+                        else
+                          button press=post buttonStyle="filled" margin="4px 0" retainFocus=true testId="send"
+                            disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
+                            aria-label=(editing != "" ? "Save Edit" : "Send")
+                            image (editing != "" ? "symbol:checkmark" : "symbol:send")
             if threadShown and panel
               AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
             ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
               initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork,
               unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, muted=openMuted, mute=toggleMuteOpen,
               markUnread=markUnreadOpen, covered=(held != ""), largeText=viewport.accessibilityTextSize)
+            // the chat's one player of voice messages: no box of its own; each bubble is its button.
+            if voiceSrc != ""
+              audio voiceSrc id="voice-player" paused=voicePaused playbackRate=voiceSpeed preservesPitch=true timeupdate=voiceTimed
+                ended=voiceEnded pause=voiceStopped play=voiceStarted testId="voice-player"
             // a held message: the chat blurs, the bubble stays where it was, the reactions sit above it
             // and its actions under it, as Beeper and Messages show them.
             if held != ""
@@ -1197,6 +1235,15 @@ component Multiplexer
                             stacked=viewport.accessibilityTextSize, open=letGo, hold=letGo, identifier="held-file-bubble")
                         case none
                           view
+                  else if heldKind == "voice"
+                    column contextTarget=`voice-${held}` contextMagnify=true width=heldWidth max-width="100%" margin-bottom=6 testId="held-voice"
+                      match heldMessage
+                        case some(m)
+                          VoiceBubble(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=false, playing=false, loading=false, time=0,
+                            speed=voiceSpeed, dimmed=false, stacked=viewport.accessibilityTextSize, still=true, play=letGo, speedUp=letGo,
+                            identifier="held-voice-bubble")
+                        case none
+                          view
                   else if heldBig
                     column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" testId="held-emoji"
                       BigEmoji(body=heldBody, dimmed=false, identifier="held-big-emoji")
@@ -1226,6 +1273,13 @@ component Multiplexer
         button press=deleteNow destructive=true commandfor="delete-message" command="close" testId="delete-message-confirm"
           text "Delete for Everyone"
         button commandfor="delete-message" command="close" testId="delete-message-cancel"
+          text "Cancel"
+      // the microphone was refused once: the system asks no more, so the alert says where to allow it.
+      dialog id="microphone-off" role="alertdialog" aria-label="Microphone Access Is Off"
+        text "To record a voice message, turn on the microphone for Multiplexer in Settings." testId="microphone-off-text"
+        button press=openSettings commandfor="microphone-off" command="close" testId="microphone-settings"
+          text "Open Settings"
+        button commandfor="microphone-off" command="close" testId="microphone-cancel"
           text "Cancel"
       dialog id="sign-out" role="alertdialog" aria-label="Sign Out?"
         text "This iPhone forgets your session. Your chats stay on the server."

@@ -1,0 +1,204 @@
+// voice messages in a chat, as Beeper shows them: a bubble with play, the waveform with its
+// progress, the length and one speed for every voice message; and the composer's voice button, the
+// bar while a voice message records, and its draft before it goes. Their state and actions are the
+// chat screen's (voice-members.contract).
+use lengthText from "./details.contract"
+
+// a voice message's sound, downloaded to play; message names it.
+shape VoiceFile
+  message: string
+  path: string
+
+// a recording made ready to go: recording is the recorder's file (it plays in the draft), path the
+// Ogg Opus file that goes, duration in milliseconds (seconds, whole), waveform the loudness of each
+// part for the others, bars the draft's.
+shape VoiceDraft
+  recording: string
+  path: string
+  duration: number
+  size: number
+  waveform: number[]
+  seconds: number
+  bars: number[]
+
+shape VoiceSent
+  ok: bool
+
+// "1x", "1.5x", "2x".
+fn speedText(speed: number): string = `${speed}x`
+// the speed after this one: 1x, 1.5x, 2x, then 1x again.
+fn nextSpeed(speed: number): number = speed == 1 ? 1.5 : (speed == 1.5 ? 2 : 1)
+// a draft's bars, flat while its waveform is being measured.
+fn restingBars(bars: number[]): number[] = bars.length > 0 ? bars : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+// a voice message's waveform: one bar for each part, from its start to its end, as tall as that
+// part is loud. While it plays, the bars played are in full ink and the rest faint.
+component VoiceBars
+  props
+    bars: number[]
+    // how much has played, from 0 to 1; -1 when it is not the one playing (every bar in full ink).
+    played: number
+    ink: string
+  view
+    row flex=1 min-width=0 height=26 align-items="center" justify-content="space-between" gap=1 aria-hidden=true
+      for b, i in bars key=i
+        view width=2 flex-shrink=0 height=(3 + b * 23) border-radius=1 background-color=ink
+          opacity=(played < 0 or i < played * bars.length ? 1 : 0.4)
+
+// the round play or pause mark: the ink's disc with the bubble's colour cut out, as Beeper draws it;
+// a spinner while the sound downloads.
+component VoicePlayMark
+  props
+    playing: bool
+    loading: bool
+    ink: string
+    fill: string
+    size: number
+  view
+    view width=size height=size border-radius=(size / 2) background-color=ink display="flex" align-items="center" justify-content="center"
+      flex-shrink=0
+      if loading
+        progress aria-label="Loading"
+      else
+        image (playing ? "symbol:pause-fill" : "symbol:play-fill") font-size=(size * 0.42) color=fill margin-left=(playing ? 0 : 2)
+          aria-hidden=true
+
+// a voice message: play, its waveform, its length (the time left once it has played some) and the
+// speed chip, which changes the speed of every voice message. Yours in the accent, others' grey, with
+// no tail, as Beeper's. At the accessibility text sizes (stacked) the length and the chip go under
+// the waveform. A still one (a held message's copy, a chat's preview) has no buttons.
+component VoiceBubble
+  props
+    bars: number[]
+    // its length in seconds (0 when the sender did not say: the player's is used once it plays).
+    seconds: number
+    outgoing: bool
+    // it is the one in the player (playing or paused), so its progress shows.
+    current: bool
+    playing: bool
+    loading: bool
+    // seconds played, while it is current.
+    time: number
+    speed: number
+    dimmed: bool
+    stacked: bool
+    still: bool
+    play: action
+    speedUp: action
+    identifier: string
+  derive ink = outgoing ? "AccentColorText" : "-exact-label"
+  derive fill = outgoing ? "AccentColor" : "bubble.incoming"
+  derive played = current and seconds > 0 ? min(1, time / seconds) : -1
+  derive shown = current and time > 0 ? max(0, ceil(seconds - time)) : seconds
+  view
+    column id=identifier testId=identifier role="group" aria-label=`Voice message, ${lengthText(seconds)}` gap=4
+      width="16.5rem" max-width="100%" box-sizing="border-box" padding=(stacked ? "6px 12px 6px 4px" : "1px 6px 1px 4px")
+      border-radius=20 background-color=fill opacity=(dimmed ? 0.6 : 1)
+      row align-items="center" gap=8 min-width=0
+        if still
+          view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
+            VoicePlayMark(playing=false, loading=false, ink=ink, fill=fill, size=32)
+        else
+          // the length in its name, so VoiceOver tells one voice message's button from another's.
+          button appearance="none" press=play aria-label=`${playing ? "Pause" : "Play"}, ${lengthText(seconds)}` testId=`${identifier}-play`
+            min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
+            VoicePlayMark(playing=playing, loading=loading, ink=ink, fill=fill, size=32)
+        VoiceBars(bars=bars, played=played, ink=ink)
+        if not stacked
+          text lengthText(shown) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" flex-shrink=0
+            testId=`${identifier}-time`
+          VoiceSpeed(speed=speed, outgoing=outgoing, still=still, press=speedUp, identifier=`${identifier}-speed`)
+      if stacked
+        row align-items="center" justify-content="space-between" gap=8 padding-left=6
+          text lengthText(shown) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" testId=`${identifier}-time`
+          VoiceSpeed(speed=speed, outgoing=outgoing, still=still, press=speedUp, identifier=`${identifier}-speed`)
+
+// the speed chip: "1x" on a faint fill, in a 44-point target.
+component VoiceSpeed
+  props
+    speed: number
+    outgoing: bool
+    still: bool
+    press: action
+    identifier: string
+  view
+    if still
+      view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
+        VoiceSpeedText(speed=speed, outgoing=outgoing)
+    else
+      button appearance="none" press=press aria-label=`Playback Speed ${speedText(speed)}` testId=identifier min-width=44 min-height=44
+        display="flex" align-items="center" justify-content="center" flex-shrink=0 -exact-press-haptic="selection"
+        VoiceSpeedText(speed=speed, outgoing=outgoing)
+
+component VoiceSpeedText
+  props
+    speed: number
+    outgoing: bool
+  view
+    text speedText(speed) font="-exact-caption1" font-size="min(-exact-caption1, 22px)" font-weight=600 font-variant-numeric="tabular-nums"
+      color=(outgoing ? "AccentColorText" : "-exact-label") padding="3px 7px" border-radius=10 min-width=34 text-align="center" box-sizing="border-box"
+      background-color=(outgoing ? "bubble.outgoing-disc" : "-exact-tertiary-fill")
+
+// in the composer's field while it is empty and nothing is picked, where Send is once there is text.
+component VoiceButton
+  props
+    press: action
+    disabled: bool
+  view
+    button press=press disabled=disabled margin="4px 0" retainFocus=true aria-label="Record Voice Message" testId="voice-record"
+      image "symbol:waveform" font-size="min(-exact-title3, 24px)"
+
+// the field while a voice message records: X stops it and throws it away; the red dot, the time and
+// the microphone's live level; the stop button keeps it as a draft.
+component RecordingBar
+  props
+    track: string
+    milliseconds: number
+    starting: bool
+    cancel: action
+    stop: action
+  view
+    row align-items="center" gap=8 min-height=44 padding="0 4px" border-radius=22 border="1px solid -exact-system-red"
+      background-color="voice.recording" testId="recording-bar"
+      button press=cancel aria-label="Cancel Recording" testId="voice-cancel"
+        image "symbol:close" color="-exact-secondary-label"
+      view width=10 height=10 border-radius=5 background-color="-exact-system-red" flex-shrink=0 aria-hidden=true
+      text lengthText(floor(milliseconds / 1000)) font="-exact-body" color="-exact-system-red" font-variant-numeric="tabular-nums"
+        flex-shrink=0 testId="voice-elapsed" aria-label=`Recording, ${lengthText(floor(milliseconds / 1000))}`
+      if starting
+        view flex=1
+      else
+        audio-waveform track=track tint="#ff3b30" flex=1 min-width=0 height=28 testId="voice-level"
+      button appearance="none" press=stop disabled=starting aria-label="Stop Recording" testId="voice-stop" width=44 height=44
+        display="flex" align-items="center" justify-content="center" flex-shrink=0
+        view width=34 height=34 border-radius=17 background-color="-exact-system-red" display="flex" align-items="center" justify-content="center"
+          image "symbol:stop-fill" font-size=14 color="voice.on-red" aria-hidden=true
+
+// the recording before it goes: Delete, play with its waveform and length, and Send.
+component DraftBar
+  props
+    bars: number[]
+    seconds: number
+    // the draft is the one in the player (playing or paused).
+    current: bool
+    playing: bool
+    time: number
+    // its file is still being made ready: Send waits.
+    preparing: bool
+    remove: action
+    play: action
+    send: action
+  derive played = current and seconds > 0 ? min(1, time / seconds) : -1
+  derive shown = current and time > 0 ? max(0, ceil(seconds - time)) : seconds
+  view
+    row align-items="center" gap=6 min-height=44 padding="0 4px 0 2px" border-radius=22 border="1px solid -exact-separator" testId="voice-draft"
+      button press=remove aria-label="Delete Recording" testId="voice-delete" destructive=true
+        image "symbol:delete"
+      button appearance="none" press=play aria-label=(playing ? "Pause" : "Play") testId="voice-draft-play" min-width=36 min-height=44
+        display="flex" align-items="center" justify-content="center" flex-shrink=0
+        VoicePlayMark(playing=playing, loading=false, ink="AccentColor", fill="-exact-background", size=28)
+      VoiceBars(bars=bars, played=played, ink="AccentColor")
+      text lengthText(shown) font="-exact-footnote" color="-exact-secondary-label" font-variant-numeric="tabular-nums" flex-shrink=0
+        testId="voice-draft-time"
+      button press=send disabled=preparing buttonStyle="filled" margin="4px 0" aria-label="Send Voice Message" testId="voice-send"
+        image "symbol:send"

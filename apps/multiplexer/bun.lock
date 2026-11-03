@@ -6,10 +6,16 @@
       "name": "multiplexer",
       "dependencies": {
         "@exact/in-app-browser": "file:../../../exact/exact2/packages/in-app-browser",
+        "@exact/media-capture": "file:../../../exact/exact2/packages/media-capture",
+        "@exact/recording": "file:../../../exact/exact2/packages/recording",
       },
     },
   },
   "packages": {
     "@exact/in-app-browser": ["@exact/in-app-browser@file:../../../exact/exact2/packages/in-app-browser", {}],
+
+    "@exact/media-capture": ["@exact/media-capture@file:../../../exact/exact2/packages/media-capture", {}],
+
+    "@exact/recording": ["@exact/recording@file:../../../exact/exact2/packages/recording", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
   }
 }

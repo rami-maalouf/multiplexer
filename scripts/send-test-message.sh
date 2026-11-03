@@ -7,19 +7,23 @@
 #   send-test-message.sh --image <photo.jpg> ["<caption>"]
 #   send-test-message.sh --video <clip.mp4> ["<caption>"]: with its size, length and a poster (ffmpeg)
 #   send-test-message.sh --sticker <picture.png>: an m.sticker event
+#   send-test-message.sh --voice <sound file>: a voice note as the whatsapp bridge brings one (ffmpeg):
+#   ogg opus, its length, a waveform of 64 values from 0 to 100, and the voice mark
 #   SENDER=@test2:ramimaalouf.com ROOM="Multiplexer two-person test" (the defaults)
 #   REPLY_TO=<event id> or REPLY_TO=first: the text answers that message, or the room's first
 #   text message (older than what a chat loads when it opens)
 #   MENTION=<user id>: the text mentions that user, as a client's pill does (m.mentions)
 set -euo pipefail
-usage="usage: send-test-message.sh <text> | --image <file> [caption] | --video <file> [caption] | --sticker <file>"
-image=""; video=""; sticker=""; caption=""
+usage="usage: send-test-message.sh <text> | --image <file> [caption] | --video <file> [caption] | --sticker <file> | --voice <file>"
+image=""; video=""; sticker=""; voice=""; caption=""
 if [ "${1:-}" = "--image" ]; then
   image="${2:?$usage}"; caption="${3:-}"
 elif [ "${1:-}" = "--video" ]; then
   video="${2:?$usage}"; caption="${3:-}"
 elif [ "${1:-}" = "--sticker" ]; then
   sticker="${2:?$usage}"
+elif [ "${1:-}" = "--voice" ]; then
+  voice="${2:?$usage}"
 else
   text="${1:?$usage}"
 fi
@@ -78,6 +82,26 @@ elif [ -n "$sticker" ]; then
     --data-binary @"$sticker" | jq -r .content_uri)"
   body="$(jq -n --arg uri "$uri" --argjson w "$w" --argjson h "$h" --argjson size "$size" \
     '{body:"Sticker",url:$uri,info:{w:$w,h:$h,mimetype:"image/png",size:$size}}')"
+elif [ -n "$voice" ]; then
+  ogg="$(mktemp -t voice).ogg"
+  ffmpeg -loglevel error -y -i "$voice" -ac 1 -ar 48000 -c:a libopus -b:a 32k "$ogg"
+  ms="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$ogg" | awk '{printf "%d", $1 * 1000}')"
+  size="$(stat -f %z "$ogg")"
+  # the loudness of each of 64 parts, the loudest 100, as whatsapp's own waveform.
+  waveform="$(ffmpeg -loglevel error -i "$voice" -ac 1 -ar 8000 -f s16le - | python3 -I -c '
+import math, struct, sys
+data = sys.stdin.buffer.read()
+s = struct.unpack("<%dh" % (len(data) // 2), data[: len(data) // 2 * 2]) or (0,)
+parts = [s[i * len(s) // 64:(i + 1) * len(s) // 64] or (0,) for i in range(64)]
+rms = [math.sqrt(sum(x * x for x in p) / len(p)) for p in parts]
+print("[" + ",".join(str(round(r / (max(rms) or 1) * 100)) for r in rms) + "]")')"
+  uri="$(curl -sf -X POST "$base/media/v3/upload?filename=Voice%20message.ogg" -H "$auth" -H "Content-Type: audio/ogg" \
+    --data-binary @"$ogg" | jq -r .content_uri)"
+  rm -f "$ogg"
+  body="$(jq -n --arg uri "$uri" --argjson ms "$ms" --argjson size "$size" --argjson waveform "$waveform" \
+    '{msgtype:"m.audio",body:"Voice message.ogg",filename:"Voice message.ogg",url:$uri,
+      info:{mimetype:"audio/ogg; codecs=opus",size:$size,duration:$ms},
+      "org.matrix.msc1767.audio":{duration:$ms,waveform:$waveform},"org.matrix.msc3245.voice":{}}')"
 elif [ -n "$image" ]; then
   file="$(basename "$image")"
   mime="image/jpeg"; case "$file" in *.png) mime="image/png";; esac
