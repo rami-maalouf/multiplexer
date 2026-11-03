@@ -31,3 +31,12 @@ ask for it.
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0` on the iOS 26.5 Simulator, in drives with
 `screenshot … window`: the inline title after Sign Out, and the large one on a fresh launch.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1410 (fixes the in-place case): when the bar comes back for
+a level-1 title over a scroller at its start, the host opens the title, as it already does for a
+title that turns large again in place. Reproduced at exact2 `574720f370` in a minimal app (a route
+with no bar that turns into a form under a large title): "Welcome" 73.67 x 20.67 before, 147 x
+40.67 after, both for the change in place and for a pop followed by the change (a sign-out whose
+reply arrives after the pop). Not fixed: a pop in the same batch as the change.

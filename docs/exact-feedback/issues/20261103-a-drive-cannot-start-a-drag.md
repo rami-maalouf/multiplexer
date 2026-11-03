@@ -32,3 +32,13 @@ an `edge-swipe` step that drags from the leading edge.
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0` (iOS Simulator, iOS 26.5). Related: finding "A drive
 cannot fire swiperight, and a real touch misses a link row".
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1406: the drive can already do it. `tap <target> drag <dx>
+<dy> from <x> <y>` starts at a point measured from the target's top left, and under `--touch
+platform` it is a real touch: `tap <root> drag 320 0 from 2 100 over 400` on a pushed screen with
+no bar gave "willShow 0 (animated, by the edge swipe)" (exact2 `574720f370`, iOS 26.5). The pull
+request makes the refusal of `tap <target> at <x> <y> drag …` name that form. A drag that starts on
+a node with its own `pan` handler goes to that handler, not to the edge swipe; a `swiperight` node
+waits for the edge swipe.
