@@ -59,7 +59,11 @@ members Multiplexer
 
   // a tap on a voice message plays it from its start, or pauses or resumes it when it is the one in the player.
   action playVoice(id: string)
-    if voicePlaying == id and voiceRoom == openRoom
+    if voicePlaying == id and voiceRoom == openRoom and voiceSrc == "" and failed(voiceFile)
+      // its sound did not download: a tap tries again.
+      voicePaused = false
+      refresh voiceFile
+    else if voicePlaying == id and voiceRoom == openRoom
       voicePaused = not voicePaused
     else
       voicePlaying = id

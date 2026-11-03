@@ -21,10 +21,12 @@ final class VoiceTests: XCTestCase {
         _ = try await owner.messages(roomId: roomId, limit: 20)
         _ = try await other.messages(roomId: roomId, limit: 20)
 
-        // both of the recorder's formats become the same kind of file.
+        // both of the recorder's formats become the same kind of file. Each run's length is its own, so
+        // the other person finds this run's message, not an earlier run's.
+        let length = 3000 + 10 * Int.random(in: 1...49)
         let wav = try await VoiceNote.prepare(recording: try recording(seconds: 2.5, aac: false), directory: freshDirectory())
-        let note = try await VoiceNote.prepare(recording: try recording(seconds: 3.2, aac: true), directory: freshDirectory())
-        for (prepared, length) in [(wav, 2500), (note, 3200)] {
+        let note = try await VoiceNote.prepare(recording: try recording(seconds: Double(length) / 1000, aac: true), directory: freshDirectory())
+        for (prepared, length) in [(wav, 2500), (note, length)] {
             XCTAssertEqual(try Data(contentsOf: prepared.file).prefix(4), Data("OggS".utf8), "an ogg file")
             XCTAssertEqual(prepared.file.lastPathComponent, "Voice message.ogg")
             XCTAssertEqual(Double(prepared.duration), Double(length), accuracy: 30, "the recording's length")
@@ -57,7 +59,7 @@ final class VoiceTests: XCTestCase {
         XCTAssertEqual(content["body"] as? String, "Voice message.ogg")
 
         // the other person: a voice message with its length and waveform, and the list's line.
-        let received = try await message(other, roomId, within: 30) { $0.audio?.size == note.size && $0.sender == user }
+        let received = try await message(other, roomId, within: 30) { $0.audio?.duration == note.duration && $0.audio?.size == note.size && $0.sender == user }
         let audio = try XCTUnwrap(received.audio)
         XCTAssertTrue(audio.isVoice)
         XCTAssertEqual(audio.duration, note.duration)
@@ -67,8 +69,7 @@ final class VoiceTests: XCTestCase {
         for (got, want) in zip(audio.waveform, note.waveform) { XCTAssertEqual(got, want, accuracy: 0.01, "the waveform comes through") }
         XCTAssertEqual(received.body, "", "no caption")
         XCTAssertNil(received.file)
-        let listed = try await other.rooms().first { $0.id == roomId }
-        XCTAssertEqual(listed?.lastMessage, "Voice message")
+        try await lastMessage(other, roomId, is: "Voice message")
 
         // its sound downloads once as the sender's bytes, and this device plays it.
         let directory = freshDirectory()
@@ -94,18 +95,19 @@ final class VoiceTests: XCTestCase {
         let note = try await VoiceNote.prepare(recording: try recording(seconds: 1.5, aac: false), directory: freshDirectory())
         let uri = try await upload(try Data(contentsOf: note.file), type: "audio/ogg", session: session)
         let waveform = [0, 25, 50, 100, 75, 10]
+        // each run's length is its own, so this run's message is the one found.
+        let ms = 1500 + Int.random(in: 1...999)
         _ = try await api("PUT", ["rooms", roomId, "send", "m.room.message", UUID().uuidString], [
             "msgtype": "m.audio", "body": "Voice message.ogg", "filename": "Voice message.ogg", "url": uri,
-            "info": ["mimetype": "audio/ogg; codecs=opus", "size": note.size, "duration": 1500],
-            "org.matrix.msc1767.audio": ["duration": 1500, "waveform": waveform], "org.matrix.msc3245.voice": [String: Any](),
+            "info": ["mimetype": "audio/ogg; codecs=opus", "size": note.size, "duration": ms],
+            "org.matrix.msc1767.audio": ["duration": ms, "waveform": waveform], "org.matrix.msc3245.voice": [String: Any](),
         ], session: session)
-        let voice = try await message(owner, roomId, within: 20) { $0.audio?.isVoice == true && $0.sender == user2 && $0.audio?.size == note.size }
+        let voice = try await message(owner, roomId, within: 20) { $0.audio?.isVoice == true && $0.sender == user2 && $0.audio?.duration == ms }
         let audio = try XCTUnwrap(voice.audio)
-        XCTAssertEqual(audio.duration, 1500)
+        XCTAssertEqual(audio.size, note.size)
         XCTAssertEqual(audio.waveform, [0, 0.25, 0.5, 1, 0.75, 0.1], "the loudest part is the top")
         XCTAssertEqual((audio.fileName as NSString).pathExtension, "ogg")
-        let voiceListed = try await owner.rooms().first { $0.id == roomId }
-        XCTAssertEqual(voiceListed?.lastMessage, "Voice message")
+        try await lastMessage(owner, roomId, is: "Voice message")
         let file = try await owner.audioFile(roomId: roomId, messageId: voice.id, directory: freshDirectory())
         XCTAssertEqual(try Data(contentsOf: file), try Data(contentsOf: note.file))
 
@@ -113,16 +115,15 @@ final class VoiceTests: XCTestCase {
         let song = try await VoiceNote.prepare(recording: try recording(seconds: 1, aac: false), directory: freshDirectory())
         let songUri = try await upload(try Data(contentsOf: song.file), type: "audio/mpeg", session: session)
         let title = "Song \(UUID().uuidString).mp3"
+        let songMs = 1000 + Int.random(in: 1...999)
         _ = try await api("PUT", ["rooms", roomId, "send", "m.room.message", UUID().uuidString], [
-            "msgtype": "m.audio", "body": title, "url": songUri, "info": ["mimetype": "audio/mpeg", "size": song.size, "duration": 1000],
+            "msgtype": "m.audio", "body": title, "url": songUri, "info": ["mimetype": "audio/mpeg", "size": song.size, "duration": songMs],
         ], session: session)
-        let shared = try await message(owner, roomId, within: 20) { $0.audio != nil && $0.audio?.size == song.size && $0.sender == user2 }
+        let shared = try await message(owner, roomId, within: 20) { $0.audio?.duration == songMs && $0.sender == user2 }
         XCTAssertEqual(shared.audio?.isVoice, false)
         XCTAssertEqual(shared.audio?.waveform, [])
-        XCTAssertEqual(shared.audio?.duration, 1000)
         XCTAssertEqual(shared.audio.map { ($0.fileName as NSString).pathExtension }, "mp3")
-        let audioListed = try await owner.rooms().first { $0.id == roomId }
-        XCTAssertEqual(audioListed?.lastMessage, "Audio")
+        try await lastMessage(owner, roomId, is: "Audio")
     }
 
     // MARK: helpers
@@ -230,6 +231,18 @@ final class VoiceTests: XCTestCase {
             }
             try await Task.sleep(nanoseconds: 300_000_000)
         }
+    }
+
+    /// The chat list's line for the room once it is `text`, within 15 s: the list follows the timeline a moment later.
+    private func lastMessage(_ account: MatrixAccount, _ roomId: String, is text: String) async throws {
+        let start = Date()
+        var shown = ""
+        while Date().timeIntervalSince(start) < 15 {
+            shown = try await account.rooms().first { $0.id == roomId }?.lastMessage ?? ""
+            if shown == text { return }
+            try await Task.sleep(nanoseconds: 300_000_000)
+        }
+        XCTAssertEqual(shown, text, "the chat list's line")
     }
 
     private func upload(_ data: Data, type: String, session: SavedSession) async throws -> String {

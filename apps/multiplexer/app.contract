@@ -1042,7 +1042,7 @@ component Multiplexer
                                 transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
                                 image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
                               VoiceBubble(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=(voicePlaying == m.id and voiceRoom == openRoom),
-                                playing=(voicePlaying == m.id and voiceRoom == openRoom and not voicePaused),
+                                playing=(voicePlaying == m.id and voiceRoom == openRoom and not voicePaused and voiceSrc != ""),
                                 loading=(voicePlaying == m.id and voiceSrc == "" and not failed(voiceFile)), time=voiceTime, speed=voiceSpeed,
                                 dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, still=false, play=playVoice(m.id), speedUp=speedUp,
                                 identifier=`voice-${m.id}`)

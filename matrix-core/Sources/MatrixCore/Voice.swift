@@ -59,8 +59,10 @@ extension MatrixAccount {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         let params = UploadParameters(source: .file(filename: note.file.path), caption: nil, formattedCaption: nil, mentions: nil,
                                       inReplyTo: live.items.replyEventId(replyTo))
-        // the bridge needs audio/ogg, and the voice mark, to send a voice note.
-        let info = AudioInfo(duration: Double(note.duration) / 1000, size: UInt64(note.size), mimetype: "audio/ogg")
+        // the bridge needs audio/ogg, and the voice mark, to send a voice note. The sdk cuts the seconds
+        // down to whole milliseconds (3.15 s, a binary 3.1499..., went out as 3149): half a
+        // millisecond more makes it the note's own.
+        let info = AudioInfo(duration: (Double(note.duration) + 0.5) / 1000, size: UInt64(note.size), mimetype: "audio/ogg")
         let before = Set(live.items.messages().map(\.id))
         try await live.timeline.sendAttachment(params: params, attachment: .voice(audioInfo: info, waveform: note.waveform.map(Float.init))).join()
         // its local echo reaches the timeline on the sdk's own task, a moment after.
