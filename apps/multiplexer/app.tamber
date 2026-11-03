@@ -51,6 +51,8 @@ icons
   icon.waveform = icon(sf "waveform", svg "icons/waveform.svg")
   // the + panel's Search KLIPY, as Beeper draws it.
   icon.number = icon(sf "number", svg "icons/number.svg")
+  // a voice message's Transcribe, as lines of text.
+  icon.transcribe = icon(sf "text.alignleft", svg "icons/transcribe.svg")
   // the camera's flash (on, off) and its switch between the back and front cameras, as the phone's camera draws them.
   icon.bolt = icon(sf "bolt.fill", svg "icons/bolt.svg")
   icon.bolt-slash = icon(sf "bolt.slash.fill", svg "icons/bolt-slash.svg")
