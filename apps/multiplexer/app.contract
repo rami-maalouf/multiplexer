@@ -10,6 +10,7 @@ use InboxSheet, NetworkCount from "./sheet.contract"
 use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
+use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, seenText from "./details.contract"
 
 shape Session
   userId: string
@@ -57,7 +58,8 @@ shape RoomList
   archiveUnread: number
   lowPriorityUnread: number
 
-// state: "sending", "sent" or "failed". startsGroup: the time shows above it. endsRun: the
+// state: "sending", "sent" or "failed". startsGroup: the day and time show above it (a new day, or
+// an hour after the message before). endsRun: the
 // sender's next message is not next, so this bubble has the tail and their picture beside it.
 // showName: the sender's name shows above it. A photo (isImage) has its size in pixels
 // (0 when unknown), its width in the chat in rem, and its thumbnail's path once it is
@@ -66,8 +68,14 @@ shape RoomList
 // hasReply: it answers a message, whose sender (replyName, "You" for yours) and text show above it.
 // A file message (isFile) has its name and size in bytes; its body is the caption, or "".
 // progress: how much of a photo or file on its way is uploaded, from 0 to 1; -1 when none uploads.
-// isDeleted: deleted for everyone, so it has no text, picture or file. isEditable: your own text
-// message, which an edit can change.
+// A video (isVideo) and a sticker (isSticker) show their picture as a photo does: image is a
+// video's poster ("" for none), seconds its length (0 when unknown). bigEmoji: one to three emoji
+// and nothing else, large with no bubble. balloon: a bubble shows its text (not for a photo, file,
+// video or sticker without a caption, a big emoji, or a message waiting for its key). runs: its
+// text, with its links apart. status: under the chat's newest message, "Delivered", "Seen" or
+// "Seen by Ana, Ben" ("" for none); statusTime: when a direct chat's other person saw it, or 0.
+// isDeleted: deleted for everyone, so it has no text, picture or file (no balloon). isEditable:
+// your own text message, which an edit can change.
 shape Message
   id: string
   senderName: string
@@ -97,6 +105,14 @@ shape Message
   fileName: string
   fileSize: number
   progress: number
+  isVideo: bool
+  seconds: number
+  isSticker: bool
+  bigEmoji: bool
+  balloon: bool
+  runs: Run[]
+  status: string
+  statusTime: number
 
 // isMine: this account reacted with it, so a tap takes it back.
 shape Reaction
@@ -111,11 +127,13 @@ shape Photo
 
 // room is the chat the messages belong to, so a chat never shows another's. atStart:
 // the chat shows the room's first message, so there is nothing older to load. group: others'
-// messages show their sender's name and picture.
+// messages show their sender's name and picture. firstUnread: the first message after this
+// account's read receipt ("" for none), where the "New" line goes.
 shape Thread
   room: string
   atStart: bool
   group: bool
+  firstUnread: string
   messages: Message[]
 
 shape Time
@@ -167,6 +185,7 @@ routes nav
   home "/"
     room "/room/:id"
       photo "/room/:id/photo/:message"
+      video "/room/:id/video/:message"
       reactions "/room/:id/reactions/:message"
       forward "/room/:id/forward/:message"
     inboxes "/inboxes"
@@ -180,7 +199,7 @@ fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
 fn inboxUnread(r: Room): bool = not r.archived and not r.lowPriority and (loud(r) or r.mentions > 0)
 fn countText(n: number): string = n > 99 ? "99+" : n.toString()
 // a message in one line, for a reply bar or the forward sheet: its text, else "Photo" or its file's name.
-fn messageLine(m: Message): string = m.body != "" ? m.body : (m.isImage ? "Photo" : (m.isFile ? m.fileName : ""))
+fn messageLine(m: Message): string = m.body != "" ? m.body : (m.isImage ? "Photo" : (m.isVideo ? "Video" : (m.isSticker ? "Sticker" : (m.isFile ? m.fileName : ""))))
 // a chat's composer: the one touched in this launch, else the draft kept in the account's store
 // (saved, once it is this chat's), else an empty one.
 fn composerOf(cs: Composer[], room: string, saved: Composer): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => saved.room == room ? saved : Composer(room=room, text="", replyTo="", replyName="", replyBody="", attachments=[]) }
@@ -207,7 +226,8 @@ component Multiplexer
   state heldY = 0
   state heldHeight = 0
   state heldWidth = 0
-  // what was held: "text" (a bubble), "photo" or "file"; the overlay lifts a copy of it.
+  // what was held: "text" (a bubble or a large emoji), "photo", "video", "sticker" or "file"; the
+  // overlay lifts a copy of it.
   state heldKind = "text"
   // your own message being edited in the open chat ("" for none): the composer holds its new
   // text, editOld what it said, and the chat's draft waits until the edit ends.
@@ -289,7 +309,8 @@ component Multiplexer
   derive openMuted = match openRoomInfo { case some(r) => r.muted, case none => false }
   // Back's count: the inbox's unread chats on every network (the filter sheet's Inbox row), but this one.
   derive otherUnread = max(0, roomList.unread - (match openRoomInfo { case some(r) => inboxUnread(r) ? 1 : 0, case none => 0 }))
-  resource thread = loadMessages(openRoom, openIsDirect, openName) as shape Thread else empty()
+  // the day a message is on is the reader's, so the zone's offset groups them.
+  resource thread = loadMessages(openRoom, openIsDirect, openName, time.utcOffset) as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
   resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
   derive composer = composerOf(composers, openRoom, savedDraft)
@@ -301,9 +322,11 @@ component Multiplexer
   // a caption, Edit and Delete on your own.
   derive heldMessage = first(thread.messages.filter(m => m.id == held))
   derive heldText = match heldMessage { case some(m) => m.body, case none => "" }
-  derive heldCanForward = match heldMessage { case some(m) => m.state == "sent", case none => false }
+  derive heldCanForward = match heldMessage { case some(m) => m.state == "sent" and not m.isSticker, case none => false }
+  derive heldCanShare = heldKind != "sticker"
+  derive heldBig = match heldMessage { case some(m) => m.bigEmoji, case none => false }
   derive heldCanEdit = match heldMessage { case some(m) => m.isEditable, case none => false }
-  derive heldRows = 3 + (heldCanForward ? 1 : 0) + (heldText != "" ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldOwn ? 1 : 0)
+  derive heldRows = 2 + (heldCanShare ? 1 : 0) + (heldCanForward ? 1 : 0) + (heldText != "" ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldOwn ? 1 : 0)
   // the menu's height, so a message low on the screen moves up and the menu fits under it.
   derive heldMenuHeight = heldRows * (viewport.accessibilityTextSize ? 64 : 44) + 12 + (heldOwn ? 13 : 0)
   // at the largest text sizes the lifted copy is shorter (a photo shrinks to fit), so the menu
@@ -337,7 +360,7 @@ component Multiplexer
   derive aimedLowPriority = match aimedRoom { case some(r) => r.lowPriority, case none => false }
   derive aimedArchived = match aimedRoom { case some(r) => r.archived, case none => false }
   derive aimedNetwork = match aimedRoom { case some(r) => r.network, case none => "matrix" }
-  resource peek = loadMessages(aimed, aimedIsDirect, aimedName) as shape Thread else empty()
+  resource peek = loadMessages(aimed, aimedIsDirect, aimedName, time.utcOffset) as shape Thread else empty()
   derive peekShown = peek.room == aimed and aimed != ""
   // the chat is in front, not behind its photo viewer, and the app is too.
   derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
@@ -355,6 +378,7 @@ component Multiplexer
     after(600, keepDraftNow)
   task keepDraftHidden when unsaved != "" and page.visibilityState == "hidden"
     after(1, keepDraftNow)
+  members "./details-members.contract"
 
   action step
     now = performanceNow()
@@ -390,7 +414,7 @@ component Multiplexer
   action scrolled(x: number, y: number, e: ScrollEvent)
     let isAway = e.scrollHeight - e.scrollTop - e.clientHeight > max(1, frame(`row-${lastId}`).height)
     if isAway != away
-      if isAway and reading and openUnread > 0
+      if isAway and reading and openUnread > 0 and not placing
         send markedRead = markRead(openRoom)
       away = isAway
 
@@ -856,16 +880,18 @@ component Multiplexer
                         flex-shrink=0
                         if m.showName
                           text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding-left=14 margin-bottom=2
-                        if m.isImage
+                        // a video shows its poster here, a sticker its picture.
+                        if m.isImage or m.isVideo or m.isSticker
                           view width=`${m.photoWidth}rem` max-width="80%"
                             aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
-                            border-radius=18 overflow="hidden" background-color="-exact-secondary-background"
+                            border-radius=(m.isSticker ? 0 : 18) overflow="hidden"
+                            background-color=(m.isSticker ? "transparent" : "-exact-secondary-background")
                             if m.image != ""
-                              image m.image width="100%" height="100%" object-fit="cover" aria-label=(m.body != "" ? m.body : "Photo")
+                              image m.image width="100%" height="100%" object-fit=(m.isSticker ? "contain" : "cover") aria-label=(m.body != "" ? m.body : "Photo")
                         if m.waitingForKey
                           text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
                             background-color="-exact-fill" color="-exact-secondary-label"
-                        else if not m.isImage or m.body != ""
+                        else if m.balloon or m.bigEmoji
                           view max-width="80%" padding-bottom=(m.endsRun ? 6.65 : 0)
                             Balloon(body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`peek-${m.id}`)
                   else
@@ -925,6 +951,20 @@ component Multiplexer
                   object-fit="contain" aria-label=(m.body != "" ? m.body : "Photo") testId="photo-full"
               case none
                 column flex=1
+        // a video, full screen: the system's player, zoomed out of its poster.
+        if e.name == "video"
+          column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`video-${e.params.message}`
+            position="absolute" inset=0 display="flex" flex-direction="column"
+            header display="flex" align-items="center"
+              button id="back" press=back aria-label="Close" testId="close-video"
+                image "symbol:close"
+              text (match shownVideoMessage { case some(m) => m.isOwn ? "You" : m.senderName, case none => "Video" }) role="heading" aria-level=2
+              text (match shownVideoMessage { case some(m) => formatDay(m.time, shown, time.utcOffset, "day-time"), case none => "" })
+            match shownVideoMessage
+              case some(m)
+                VideoPlayer(path=(video.message == m.id ? video.path : ""), poster=m.image, label=(m.body != "" ? m.body : "Video"))
+              case none
+                column flex=1
         if e.name == "room"
           // the chat draws its own bar (chat.contract), so a held message's blur covers it.
           column navigationKey=`${e.id}` navigationBar="none" navigationScroll="transcript" position="absolute" inset=0
@@ -943,16 +983,17 @@ component Multiplexer
                   for m in thread.messages key=m.id
                     column id=`row-${m.id}` align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
                       if m.startsGroup
-                        text formatDay(m.time, shown, time.utcOffset, "day-time") font="-exact-caption1"
-                          color="-exact-secondary-label" align-self="center" padding="12px 0 4px"
+                        DayHeader(time=m.time, now=shown, offset=time.utcOffset, identifier=`day-${m.id}`)
+                      if m.id == newLine and newLineRoom == openRoom
+                        NewLine()
                       if m.showName
                         text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding-left=(thread.group ? 50 : 14)
                           margin-bottom=2
                       // in a group, the sender's picture sits beside the last bubble of their run.
                       row position="relative" max-width="80%" min-width=0 padding-left=(thread.group and not m.isOwn ? 36 : 0)
-                        padding-bottom=(m.endsRun and not m.waitingForKey and not m.isDeleted and (not (m.isImage or m.isFile) or m.body != "") ? 6.65 : 0)
+                        padding-bottom=(m.endsRun and m.balloon ? 6.65 : 0)
                         if thread.group and not m.isOwn and m.endsRun
-                          view position="absolute" left=0 bottom=(not m.waitingForKey and not m.isDeleted and (not (m.isImage or m.isFile) or m.body != "") ? 6.65 : 0)
+                          view position="absolute" left=0 bottom=(m.balloon ? 6.65 : 0)
                             Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
                         column align-items=(m.isOwn ? "flex-end" : "flex-start") gap=2 min-width=0
                           // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box.
@@ -970,6 +1011,13 @@ component Multiplexer
                                   view width=44 height=44 border-radius=22 background-color="media.scrim" display="flex"
                                     align-items="center" justify-content="center" testId=`upload-${m.id}`
                                     UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
+                          if m.isVideo
+                            VideoPoster(poster=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "16 / 9"),
+                              seconds=m.seconds, dimmed=(m.state == "sending"), open=showVideo(m.id),
+                              hold=holdMedia(m.id, "video", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), identifier=`video-${m.id}`)
+                          if m.isSticker
+                            Sticker(picture=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "1 / 1"),
+                              hold=holdMedia(m.id, "sticker", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), identifier=`sticker-${m.id}`)
                           if m.isFile
                             FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
                               opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize, open=openFile(m.id),
@@ -981,11 +1029,14 @@ component Multiplexer
                           else if m.isDeleted
                             text "Message deleted" padding="8px 14px 9px" border-radius=20 font-style="italic"
                               background-color="-exact-fill" color="-exact-secondary-label" testId=`deleted-${m.id}`
-                          else if not (m.isImage or m.isFile) or m.body != ""
+                          else if m.balloon or m.bigEmoji
                             if m.hasReply
                               column padding="2px 0 2px 10px" margin="0 6px 2px" border-left="2px solid -exact-separator" max-width="100%"
                                 testId=`quote-${m.id}`
-                                text m.replyName font="-exact-caption1" font-weight=600 color="-exact-secondary-label" line-clamp=1
+                                // the name comes a moment after the quote when its sender's profile is not loaded yet.
+                                if m.replyName != ""
+                                  text m.replyName font="-exact-caption1" font-weight=600 color="-exact-secondary-label" line-clamp=1
+                                    testId=`quote-name-${m.id}`
                                 text m.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
                             // a swipe right answers it; a long press opens its reactions and actions. The bubble
                             // follows the finger and, with the transition, springs back when it lets go.
@@ -1001,7 +1052,11 @@ component Multiplexer
                                 display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
                                 transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
                                 image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
-                              Balloon(body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
+                              if m.bigEmoji
+                                BigEmoji(body=m.body, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
+                              else
+                                RichBalloon(runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
+                                  open=openLink)
                           if m.isEdited
                             text "Edited" font="-exact-caption2" color="-exact-secondary-label" padding="0 8px" testId=`edited-${m.id}`
                           if m.reactions.length > 0
@@ -1025,6 +1080,9 @@ component Multiplexer
                             text "Try Again"
                           button press=discard(m.id) destructive=true disabled=pending(discarded) testId=`discard-${m.id}`
                             text "Delete"
+                      if m.status != ""
+                        StatusLine(label=seenText(m.status, m.statusTime, shown, time.utcOffset), own=m.isOwn,
+                          indent=(thread.group and not m.isOwn ? 36 : 0))
             else
               if failed(thread) and not pending(thread)
                 column flex=1 justify-content="center" align-items="center" gap=12 padding=24
@@ -1037,7 +1095,11 @@ component Multiplexer
             // the reply bar and the composer share one bar in the page's colour: the chat's rows scroll
             // on past the list's frame, and without it they show through the reply and the field.
             if threadShown
-              column inert=(held != "") flex-shrink=0 background-color="-exact-background" testId="composer-bar"
+              column inert=(held != "") flex-shrink=0 background-color="-exact-background" position="relative" testId="composer-bar"
+                // above the bar, at the right, while the newest message is out of view.
+                if away and thread.messages.length > 0
+                  view position="absolute" bottom="calc(100% + 8px)" right=12
+                    JumpButton(count=belowUnread, press=jumpToEnd)
                 // an edit's bar takes the reply bar's place, in its look; the reply waits with the draft.
                 if editing != ""
                   row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="edit-bar"
@@ -1106,17 +1168,27 @@ component Multiplexer
                     button appearance="none" press=openReactions min-width=44 min-height=44 border-radius=22 aria-label="More Reactions"
                       testId="react-more" display="flex" align-items="center" justify-content="center" background-color="-exact-tertiary-fill"
                       image "symbol:add" font-size="min(-exact-title3, 22px)" color="-exact-label"
-                  // a copy of what was held, where it was: a bubble, a photo or a file.
-                  if heldKind == "photo"
-                    // the margin keeps the menu clear of the photo, which the host enlarges.
-                    view contextTarget=`photo-${held}` contextMagnify=true width=(heldWidth * heldScale) height=(heldHeight * heldScale) max-width="100%" border-radius=18
-                      overflow="hidden" background-color="-exact-secondary-background" margin-bottom=14 testId="held-photo"
+                  // a copy of what was held, where it was: a bubble, a large emoji, a picture (a photo, a
+                  // video's poster, a sticker) or a file.
+                  if heldKind == "photo" or heldKind == "video" or heldKind == "sticker"
+                    // the margin keeps the menu clear of the picture, which the host enlarges.
+                    view contextTarget=`${heldKind}-${held}` contextMagnify=true width=(heldWidth * heldScale) height=(heldHeight * heldScale)
+                      max-width="100%" border-radius=(heldKind == "sticker" ? 0 : 18) overflow="hidden" position="relative"
+                      background-color=(heldKind == "sticker" ? "transparent" : (heldKind == "video" ? "media.backdrop" : "-exact-secondary-background"))
+                      margin-bottom=14 testId="held-photo"
                       match heldMessage
                         case some(m)
                           if m.image != ""
-                            image m.image width="100%" height="100%" object-fit="cover" aria-label=(m.body != "" ? m.body : "Photo")
+                            image m.image width="100%" height="100%" object-fit=(heldKind == "sticker" ? "contain" : "cover")
+                              aria-label=(m.body != "" ? m.body : messageLine(m))
                         case none
                           view
+                      // a video keeps its play mark.
+                      if heldKind == "video"
+                        view position="absolute" inset=0 display="flex" align-items="center" justify-content="center" aria-hidden=true
+                          view width=52 height=52 border-radius=26 background-color="media.scrim" display="flex" align-items="center"
+                            justify-content="center"
+                            image "symbol:play-fill" font-size="min(-exact-title2, 24px)" color="media.ink" margin-left=3
                   else if heldKind == "file"
                     column contextTarget=`file-${held}` contextMagnify=true width=heldWidth max-width="100%" margin-bottom=6 testId="held-file"
                       match heldMessage
@@ -1125,6 +1197,9 @@ component Multiplexer
                             stacked=viewport.accessibilityTextSize, open=letGo, hold=letGo, identifier="held-file-bubble")
                         case none
                           view
+                  else if heldBig
+                    column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" testId="held-emoji"
+                      BigEmoji(body=heldBody, dimmed=false, identifier="held-big-emoji")
                   else
                     // a bubble cut at the cap keeps round corners where it is cut.
                     column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" max-height=heldCap overflow="hidden"
@@ -1133,7 +1208,7 @@ component Multiplexer
                       Balloon(body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
                   // the emoji sheet hides the actions, as Beeper's does: they would show through it.
                   if top(nav).name != "reactions"
-                    MessageActions(maxHeight=heldMenuRoom, canForward=heldCanForward, canCopy=(heldText != ""), canEdit=heldCanEdit, canDelete=heldOwn,
+                    MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=(heldText != ""), canEdit=heldCanEdit, canDelete=heldOwn,
                       reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
                       markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
       dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"

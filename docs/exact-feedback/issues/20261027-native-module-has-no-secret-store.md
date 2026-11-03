@@ -43,3 +43,12 @@ which every module that keeps a secret outside Exact's store would have to repea
 Seen on 2026-10-27. At `cee509ac82`, `ExactModuleContext`
 (`host/apple/modules/ExactNativeModule.swift`) has no secret API, and Exact's only
 Keychain code is its own (`host/apple/Sources/ExactKit/Presence.swift`).
+
+## Seen again on 2026-11-03
+
+At `ed43ad09a0`: `verify ios` between two drives ran its tests in a fresh store, so the module
+found the drives' Keychain session without its data folder, moved it to the sign-out slot and
+signed it out (as designed above). The next drive waited 30 s for a chat that never loaded
+("thread.room was \"\" after 30001 ms") before `state session` showed it signed out. About 3
+minutes, and one more sign-in on a server that limits sign-ins. With a secret kept in Exact's
+store, a fresh store would start signed out with nothing left behind.

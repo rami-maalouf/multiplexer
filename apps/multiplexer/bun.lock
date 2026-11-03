@@ -1,0 +1,15 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "multiplexer",
+      "dependencies": {
+        "@exact/in-app-browser": "file:../../../exact/exact2/packages/in-app-browser",
+      },
+    },
+  },
+  "packages": {
+    "@exact/in-app-browser": ["@exact/in-app-browser@file:../../../exact/exact2/packages/in-app-browser", {}],
+  }
+}

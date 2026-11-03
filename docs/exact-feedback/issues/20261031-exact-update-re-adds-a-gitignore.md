@@ -38,3 +38,7 @@ lines say what it wants), or `update` saying that it changed `.gitignore` and wh
 ## Evidence
 
 Seen on 2026-10-31, updating an app from exact2 `cee509ac82` to `1bc4c36cb7`.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1344 (fixes it): `exact update` takes `/.exact/*` as the diary rule and no longer appends `/.exact/`.

@@ -41,8 +41,8 @@ extension MatrixAccount {
         _ = try await target.timeline.send(msg: content)
     }
 
-    /// A photo's or a file's original in `directory`, under the name its sender gave it, to share.
-    /// Downloaded once; later calls return the same file.
+    /// A photo's, a video's or a file's original in `directory` (a photo and a file under the name
+    /// their sender gave), to share. Downloaded once; later calls return the same file.
     public func mediaFile(roomId: String, messageId: String, directory: URL, timeout: TimeInterval = 30) async throws -> URL {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         guard let event = live.items.event(of: messageId), case .msgLike(let like) = event.content,
@@ -58,6 +58,10 @@ extension MatrixAccount {
             return file
         case .file:
             return try await fileContent(roomId: roomId, messageId: messageId, directory: directory, timeout: timeout)
+        case .video(let content):
+            // a folder of its own, as a file's, so the share sheet reads it from its own place.
+            let folder = directory.appendingPathComponent(mediaKey(content.source.url()), isDirectory: true)
+            return try await videoFile(roomId: roomId, messageId: messageId, directory: folder, timeout: timeout)
         default:
             throw MatrixCoreError.noFile(messageId)
         }

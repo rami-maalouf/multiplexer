@@ -7,6 +7,10 @@ theme
   bubble.outgoing-disc = rgba(255, 255, 255, 0.22)
   // the disc behind an upload's ring on a photo: it sits on the photo, so it is dark in both schemes.
   media.scrim = rgba(0, 0, 0, 0.5)
+  // a video's box before its poster is here: dark in both schemes, as a player is.
+  media.backdrop = #1c1c1e scheme=fixed
+  // the play mark and the length on a video's poster, over the scrim: white in both schemes.
+  media.ink = #ffffff scheme=fixed
 
 icons
   // the "+" panel's rows, as Beeper draws them; the svg is for hosts without SF Symbols.
@@ -27,3 +31,5 @@ icons
   icon.arrowshape-turn-up-left = icon(sf "arrowshape.turn.up.left", svg "icons/arrowshape-turn-up-left.svg")
   // a held message's Forward, as Beeper draws it; the svg is the reply arrow's, mirrored.
   icon.arrowshape-turn-up-right = icon(sf "arrowshape.turn.up.right", svg "icons/arrowshape-turn-up-right.svg")
+  // the chat's jump to its newest message, beside the count of unread messages below, as Beeper draws it.
+  icon.arrow-down = icon(sf "arrow.down", svg "icons/arrow-down.svg")

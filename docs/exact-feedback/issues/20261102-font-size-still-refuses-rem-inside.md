@@ -31,3 +31,14 @@ Cost: about 3 minutes and two test builds. The app uses `min(<role>, <cap>)`.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, `contract build` and `verify ios`.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1349 (fixes part of it): the refusal names the forms `font-size` takes, among them `min(<text style>, <px cap>)`. A `rem` cap inside `min()` would need a new kernel unit: a design question.
+
+## Seen again on 2026-11-03
+
+A chat's large emoji (one to three emoji with no bubble) were to grow with the reader's text size
+to a cap: `font-size="min(2.75rem, 60px)"` was refused ("is not a valid `font-size`: expected
+number"), while `font-size="min(-exact-headline, 20px)"` in the same app compiles. The app uses a
+plain `font-size="2.75rem"`, with no cap. About 2 minutes. At exact2 `ed43ad09a0`.

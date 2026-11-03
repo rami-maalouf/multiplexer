@@ -29,3 +29,7 @@ was accepted and answered "thread.messages has no field \"19\" (it is [])".
 Seen again on 2026-11-02 at exact2 `ed43ad09a0`, on iOS: `"clock until state roomList.rooms.0 .kind == \"x\" within 30000"`
 was refused with the grammar alone (`clock until state <path> == <literal> within <ms> (the literal is JSON: …), not …`),
 though the app's own agent notes warn about it. Cost: one wasted drive, about 1 minute.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1339 (fixes it): `clock until state` takes the path with a space before a dot, as `expect state` does, and start-here shows the form without a space.

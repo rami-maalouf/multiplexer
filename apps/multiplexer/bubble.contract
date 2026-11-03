@@ -20,13 +20,25 @@ component Balloon
     tail: bool
     dimmed: bool
     identifier: string
+  view
+    BalloonBox(outgoing=outgoing, tail=tail, dimmed=dimmed, identifier=identifier)
+      text body position="relative" color=(outgoing ? "AccentColorText" : "-exact-label") white-space="pre-wrap" overflow-wrap="break-word" min-width=0
+
+// a bubble's fill and tail around what it holds: a text (Balloon), or a text with links (details.contract's RichBalloon).
+component BalloonBox
+  props
+    outgoing: bool
+    tail: bool
+    dimmed: bool
+    identifier: string
+  slot
   derive fill = outgoing ? "AccentColor" : "bubble.incoming"
   view
     box id=identifier testId=identifier position="relative" min-width=44 max-width="100%" box-sizing="border-box"
       padding="8px 14px 9px" border-radius=20 background-color=fill opacity=(dimmed ? 0.6 : 1)
       if tail
         Tail(outgoing=outgoing, fill=fill)
-      text body position="relative" color=(outgoing ? "AccentColorText" : "-exact-label") white-space="pre-wrap" overflow-wrap="break-word" min-width=0
+      children
 
 // a sender's picture, or their initials while there is none.
 component Face

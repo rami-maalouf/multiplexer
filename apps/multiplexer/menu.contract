@@ -32,11 +32,13 @@ component MenuRow
       image symbol color=(destructive ? "-exact-system-red" : "-exact-label") aria-hidden=true
 
 // Beeper's order: Reply, Share, Forward, Copy, Mark as Unread; then Edit and Delete on your own
-// messages, apart. Forward needs a message the server has; Copy, a text or a caption.
+// messages, apart. Forward needs a message the server has; Copy, a text or a caption; a sticker
+// has neither Share nor Forward.
 component MessageActions
   props
     // the room under the held message: past it, the actions scroll (the largest text sizes).
     maxHeight: number
+    canShare: bool
     canForward: bool
     canCopy: bool
     canEdit: bool
@@ -52,7 +54,8 @@ component MessageActions
     scroll width="14.5rem" max-width="100%" max-height=maxHeight padding="6px 0" border-radius=22 backgroundMaterial="material" role="menu"
       testId="message-actions"
       MenuRow(label="Reply", symbol="symbol:icon.arrowshape-turn-up-left", press=reply, destructive=false, identifier="menu-reply")
-      MenuRow(label="Share", symbol="symbol:share", press=share, destructive=false, identifier="menu-share")
+      if canShare
+        MenuRow(label="Share", symbol="symbol:share", press=share, destructive=false, identifier="menu-share")
       if canForward
         MenuRow(label="Forward", symbol="symbol:icon.arrowshape-turn-up-right", press=forward, destructive=false, identifier="menu-forward")
       if canCopy

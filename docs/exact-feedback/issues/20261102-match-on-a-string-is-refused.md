@@ -25,3 +25,7 @@ The refusal saying "`match` takes an option (`some`, `none`); to choose by a val
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0` (`bun exact.mjs contract build app.contract
 --json --errors-only`).
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1349 (fixes it): the refusal says that `match` takes an option, and names `if x == "a"` or `x == "a" ? a : b`.
