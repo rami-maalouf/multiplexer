@@ -90,7 +90,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 69 | A list of plain numbers warns `lower-key-position` for its only key. | About 12 min | P3 | [a-list-of-plain-numbers-warns](issues/20261103-a-list-of-plain-numbers-warns.md) |
 | 70 | `audio-waveform`'s `tint` takes only a hex colour. | About 3 min | P3 | [audio-waveform-s-tint-takes-only](issues/20261103-audio-waveform-s-tint-takes-only.md) |
 | 71 | `@exact/recording` cannot write Ogg Opus, the voice note format of chat networks. | About 45 min | P3 | [exact-recording-cannot-write-ogg-opus](issues/20261103-exact-recording-cannot-write-ogg-opus.md) |
-| 72 | The permissions recipe does not say that a refused request runs no `then`. | About 10 min | P3 | [the-permissions-recipe-does-not-say](issues/20261103-the-permissions-recipe-does-not-say.md) |
+| 72 | The permissions recipe does not say that a refused request runs no `then`. Fixed in PR #1363 (open). | About 10 min | P3 | [the-permissions-recipe-does-not-say](issues/20261103-the-permissions-recipe-does-not-say.md) |
 
 ## What worked well
 
@@ -189,3 +189,4 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1359](https://github.com/ccheever/exact2/pull/1359): `contract vocab` names a tag's attributes, the list styles, and an image's sources | 9, 10 | Open |
 | 2026-11-03 | [#1361](https://github.com/ccheever/exact2/pull/1361): the edit-sheet recipe's header is its sheet's bar on iOS | 66 | Open |
 | 2026-11-03 | [#1362](https://github.com/ccheever/exact2/pull/1362): the theme recipe's icon token has the `svg` source the web needs | 67 | Open |
+| 2026-11-03 | [#1363](https://github.com/ccheever/exact2/pull/1363): the permissions recipe says a refused request runs no `then` | 72 | Open |

@@ -38,3 +38,7 @@ says. The recorder sample's `case none` could say the same.
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0` (iOS simulator, `@exact/media-capture`'s
 `getUserMedia` under the agent, the permission denied by its ticket).
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1363 (fixes it): the recipe's "Recover" step says that a refused request fails and runs no `then`, and names `failed(...)`. The recorder sample is not changed.
