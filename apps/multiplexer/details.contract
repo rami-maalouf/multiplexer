@@ -52,7 +52,7 @@ component NewLine
       text "New" font="-exact-footnote" color="AccentColor" aria-hidden=true
       view flex=1 height=1 background-color="AccentColor"
 
-// under the newest message: "Delivered", "Seen 4:42 PM" or "Seen by Ana, Ben", on its sender's side.
+// under the newest message: "Sent", "Seen 4:42 PM" or "Seen by Ana, Ben", on its sender's side.
 component StatusLine
   props
     label: string

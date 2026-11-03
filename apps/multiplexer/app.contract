@@ -77,7 +77,7 @@ shape RoomList
 // video's poster ("" for none), seconds its length (0 when unknown). bigEmoji: one to three emoji
 // and nothing else, large with no bubble. balloon: a bubble shows its text (not for a photo, file,
 // video or sticker without a caption, a big emoji, or a message waiting for its key). runs: its
-// text, with its links apart. status: under the chat's newest message, "Delivered", "Seen" or
+// text, with its links apart. status: under the chat's newest message, "Sent", "Seen" or
 // "Seen by Ana, Ben" ("" for none); statusTime: when a direct chat's other person saw it, or 0.
 // isDeleted: deleted for everyone, so it has no text, picture or file (no balloon). isEditable:
 // your own text message, which an edit can change. A voice message or an audio file (isAudio) has its

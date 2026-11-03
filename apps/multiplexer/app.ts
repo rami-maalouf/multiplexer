@@ -132,15 +132,16 @@ const namesText = (names: string[]): string =>
   names.length <= 1 ? (names[0] ?? '')
     : names.length <= 3 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
       : `${names.slice(0, 2).join(', ')} and ${names.length - 2} others`;
-/** What shows under the chat's newest message: yours says "Delivered" until someone reads it; then
- * a direct chat says "Seen" (with the time the view writes) and a group "Seen by" who. Under
- * another person's, a group says who else has seen it. */
+/** What shows under the chat's newest message: yours says "Sent" (our server has it; its
+ * network's delivery is not known) until someone reads it; then a direct chat says "Seen" (with
+ * the time the view writes) and a group "Seen by" who. Under another person's, a group says who
+ * else has seen it. */
 const statusOf = (m: MessagesAnswer['messages'][number], group: boolean): { status: string; statusTime: number } => {
   const none = { status: '', statusTime: 0 };
   const named = m.readers.map((r) => r.name).filter((n) => n !== '');
   if (m.isOwn) {
     if (m.state !== 'sent') return none;
-    if (m.readers.length === 0) return { status: 'Delivered', statusTime: 0 };
+    if (m.readers.length === 0) return { status: 'Sent', statusTime: 0 };
     if (!group) return { status: 'Seen', statusTime: Math.max(...m.readers.map((r) => r.time)) };
   }
   if (!group || m.readers.length === 0) return none;
