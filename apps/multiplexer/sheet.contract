@@ -88,6 +88,9 @@ component InboxSheet
     chosen: string
     choose: action
     chooseList: action
+    // the chats this account is invited to, and the list of them (Requests).
+    requests: number
+    openRequests: action
     // messages waiting on the server, and the list of them (Send Later).
     scheduled: number
     openScheduled: action
@@ -100,9 +103,11 @@ component InboxSheet
         SheetRow(rounded=false, picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, noun="unread", chosen=(list == "archive"),
           value="archive", choose=chooseList, largeText=largeText, identifier="inboxes-archive")
         // Beeper's next rows come here with their tasks, in its order: Create Label and the
-        // labels, Reminders, then Send Later; Bookmarks and Requests after it.
+        // labels, Reminders, then Send Later; Bookmarks after it, then Requests.
         SheetRow(rounded=false, picture="symbol:icon.clock", logo=false, name="Send Later", unread=scheduled, noun="scheduled", chosen=false,
           value="scheduled", choose=openScheduled, largeText=largeText, identifier="inboxes-send-later")
+        SheetRow(rounded=false, picture="symbol:icon.person-badge-plus", logo=false, name="Requests", unread=requests, noun="waiting",
+          chosen=false, value="requests", choose=openRequests, largeText=largeText, identifier="inboxes-requests")
         SheetRow(rounded=false, picture="symbol:icon.arrow-down-circle", logo=false, name="Low Priority", unread=lowPriorityUnread, noun="unread",
           chosen=(list == "lowPriority"), value="lowPriority", choose=chooseList, largeText=largeText, identifier="inboxes-low-priority")
         for n in networks key=n.network

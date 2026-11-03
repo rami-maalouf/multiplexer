@@ -81,6 +81,19 @@ final class Matrix: ExactModule {
                     default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive and delete")
                     }
                     reply.send(["ok": true])
+                case "requests":
+                    // the chats this account is invited to (MatrixCore's Requests.swift), newest first.
+                    let account = try await signedIn()
+                    let requests = try await account.requests()
+                    reply.send(["requests": requests.map { r in
+                        ["id": r.id, "name": r.name, "isDirect": r.isDirect, "inviterId": r.inviterId, "inviterName": r.inviterName,
+                         "avatar": cached(r.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: r.id, directory: self.media) }] }])
+                case "answerRequest":
+                    // Accept joins the chat; Decline refuses the invite. A drive answers only a test user's.
+                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    if request["accept"] as? Bool == true { try await account.accept(request: roomId) } else { try await account.decline(request: roomId) }
+                    reply.send(["ok": true])
                 case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":
                     // Send Later (MatrixCore's ScheduledMessages.swift): messages that wait on the server.
                     reply.send(try await sendLater(request["op"] as? String ?? "", request))

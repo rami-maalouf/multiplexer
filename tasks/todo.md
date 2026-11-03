@@ -1239,7 +1239,8 @@ Rami wants these, after the tasks above (2026-11-02):
 - Select chat: act on several chats at once (B7, B21).
 - Transcribe voice notes (B16): check whether the iPhone can do it on the phone, at no cost.
 - Communities as filters ("whatever is easiest"): after B4. Done 2026-11-03 ("L2" below).
-- Requests and New Space in the filter sheet: look at what Beeper does first.
+- Requests and New Space in the filter sheet: look at what Beeper does first. Requests built
+  2026-11-03 ("L3" below); New Space waits for Rami's choice.
 - Message expiry (B20): the very last.
 
 Not wanted for now: Poll.
@@ -1317,6 +1318,60 @@ Seen on the way (not this task): a WhatsApp group's last sender without a name s
 (`@whatsapp_lid-…:ramimaalouf.com`) in the list's preview, on `@rami`.
 
 **Dependencies:** B4. **Scope:** S
+
+### L3 Requests and New Space in the filter sheet
+
+**What Beeper shows (report, topic 03 and the "small things" list):** the sheet's rows are Inbox,
+Archive, Create Label, Reminders, Send Later, **Requests** ("message requests"), Low Priority,
+the networks and the communities; under them a gear, **"+ New Space"** and Edit. The video opens
+neither, so what they do inside Beeper is not seen.
+
+**What our server has (read only, 2026-11-03):** `@rami` has no invites (331 rooms joined, 4
+left). The three bridges keep a `message_request` flag on each portal (WhatsApp 279 portals,
+Instagram 34, LinkedIn 21): none is set today. Each portal's `com.beeper.room_features` says a
+message request is accepted "with a button" (`accept_with_button`).
+
+**Design:**
+- **Requests** is two things. (1) A Matrix invite: someone asked this account into a chat. The
+  sync has it (`Membership.invited`); Accept joins, Decline leaves. Built now. (2) A network's
+  message request (Instagram, WhatsApp): the bridge makes the portal and flags it. Not built:
+  none exists to look at, and how the bridge shows the flag to a client (and takes the accept)
+  needs a spike when Rami gets one. Until then such a chat shows in the inbox as now.
+- **New Space** needs Rami's choice (below). L2 already lists every joined space as a
+  community, so a space made here would show in the sheet with no more work there.
+
+**Built (Requests, 2026-11-03):**
+- [x] The sheet's Requests row (after Send Later, as Beeper orders it) counts the invites and
+  opens the Requests screen: each invite's chat, who invited, Decline and Accept; "No Requests"
+  when there are none. Accept joins (the chat shows in the list at once), Decline refuses.
+- [x] MatrixCore `requests()`, `accept(request:)`, `decline(request:)` (`Requests.swift`). The
+  room list's filter takes invites too, so an invite that arrives or goes tells the app.
+- [x] Fixed on the way: two MatrixCore sources asked at once at launch (the list and another)
+  each started the sync, and the sdk's room list crashed (`EXC_BAD_ACCESS` in
+  `entries_with_dynamic_adapters`; 3 crash reports from another build at 13:53, and 3 in 5
+  launches of this one with Requests). `startSync` is now one start every caller waits on: 6
+  launches, no crash.
+- [x] `scripts/invite-test-user.sh`: `@test2` invites `@test1` to "Multiplexer request drive"
+  (taking `@test1` out first if an earlier drive accepted), from a short-lived device.
+
+**Verification (2026-11-03):**
+- [ ] MatrixCore: `RequestsTests` (`@test2` invites `@test1`: a request with its inviter, not in
+  the list; declined; invited again and accepted: in the list), and three sources asked at once
+  on a new device. The whole suite.
+- [x] Drive as `@test1`: the row counts 1; the screen; Decline empties it; a new invite, Accept:
+  the chat is first in the list. `check` clean in dark, light and the largest text size (there
+  the half-height sheet scrolls to the buttons).
+- [x] `verify ios` clean.
+
+**Ask Rami (New Space):** Beeper's "+ New Space" groups chats you choose. Which do you want?
+1. A Matrix space on our server (recommended): a name, a picture, and the chats you add. It shows
+   as a row in the sheet at once (L2), and in Element too. Adding a WhatsApp chat to it changes
+   nothing in WhatsApp.
+2. The same as Labels (in "Later"): a private name on chats, kept in your account's data, not a
+   room. Then New Space and Create Label are one feature.
+3. Not needed: leave the button out.
+
+**Dependencies:** B4, L2. **Scope:** S (Requests); New Space: M, after the answer.
 
 ## Phase 3: push notifications (M3)
 

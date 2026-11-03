@@ -281,6 +281,20 @@ const sources: Sources = {
   },
   // the messages waiting on the server, the soonest first; read again each minute (minute), as
   // they go at their time, and when one is made, moved, sent or cancelled.
+  // the chats this account is invited to (Requests); the list's watch says when one comes or goes.
+  loadRequests: async ([userId], _store, _storage, native): Promise<Result<'loadRequests'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, requests: [] };
+    native.watch('rooms');
+    const answer = (await native.later({ op: 'requests' })) as {
+      requests: { id: string; name: string; isDirect: boolean; inviterId: string; inviterName: string; avatar: string }[];
+    };
+    return { owner: userId, requests: answer.requests.map((r) => ({ ...r, initials: initials(r.name) })) };
+  },
+  // accept: join the chat; else decline the invite.
+  answerRequest: async ([roomId, accept], _store, _storage, native): Promise<Result<'answerRequest'>> => {
+    await native!.later({ op: 'answerRequest', roomId, accept });
+    return { ok: true };
+  },
   loadScheduled: async ([userId, _minute], _store, _storage, native): Promise<Result<'loadScheduled'>> => {
     if (userId === '' || !native?.available) return { owner: userId, messages: [] };
     native.watch('scheduled');

@@ -22,6 +22,10 @@ public final class MatrixAccount: @unchecked Sendable {
     let latest: LatestMessages
     let accountDataWatch = AccountDataWatch()
     private var syncService: SyncService?
+    /// The one start of the sync, which every caller waits on: two callers at once (the list and
+    /// another source at launch) must not each make a sync service and a room list (that crashed
+    /// in the sdk's room list, 2026-11-03).
+    private var syncStart: Task<Void, Error>?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
     /// The room list's listener, kept so that it keeps listening, and the rooms in its order.
@@ -377,6 +381,7 @@ public final class MatrixAccount: @unchecked Sendable {
             roomOrder = nil
             timelines = [:]
             readyTimelines = [:]
+            syncStart = nil
         }
         search.stop()
         accountDataWatch.stop()
@@ -385,7 +390,23 @@ public final class MatrixAccount: @unchecked Sendable {
         try await client.logout()
     }
 
-    private func startSync(timeout: TimeInterval) async throws {
+    func startSync(timeout: TimeInterval) async throws {
+        let start: Task<Void, Error> = lock.withLock {
+            if let started = syncStart { return started }
+            let task = Task { try await self.runSync(timeout: timeout) }
+            syncStart = task
+            return task
+        }
+        do {
+            try await start.value
+        } catch {
+            // the next caller tries again (as before, a sync service made stays made).
+            lock.withLock { if syncStart == start { syncStart = nil } }
+            throw error
+        }
+    }
+
+    private func runSync(timeout: TimeInterval) async throws {
         guard syncService == nil else { return }
         let service = try await client.syncService().finish()
         syncService = service
@@ -396,7 +417,8 @@ public final class MatrixAccount: @unchecked Sendable {
         try await poll(timeout: timeout, what: "the first sync") { state.current == .running }
         let order = RoomEntries { [weak self] in self?.notify(.rooms) }
         let entries = try await service.roomListService().allRooms().entriesWithDynamicAdapters(pageSize: 1000, listener: order)
-        _ = entries.controller().setFilter(kind: .all(filters: [.joined, .nonSpace]))
+        // the invites too, so a request that arrives or goes tells the list (Requests.swift).
+        _ = entries.controller().setFilter(kind: .all(filters: [.nonSpace, .any(filters: [.joined, .invite])]))
         lock.withLock {
             roomEntries = entries
             roomOrder = order
@@ -405,6 +427,9 @@ public final class MatrixAccount: @unchecked Sendable {
         // another device's archive, delete or name changes no room: the list hears of it here.
         accountDataWatch.start(client) { [weak self] in self?.notify(.rooms) }
     }
+
+    /// The room list service's order of the rooms (the most recent activity first), once synced.
+    func rankedRoomIds() -> [String] { lock.withLock { roomOrder }?.ids() ?? [] }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.
     func room(_ roomId: String, timeout: TimeInterval) async throws -> Room {

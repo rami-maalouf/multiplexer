@@ -19,6 +19,7 @@ use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contr
 use ScheduledBar, ScheduledScreen, LaterSheet, laterProblem, weekdayOf from "./send-later.contract"
 use GifSheet from "./gif.contract"
 use CameraScreen from "./camera.contract"
+use RequestsScreen from "./requests.contract"
 
 shape Session
   userId: string
@@ -217,6 +218,7 @@ routes nav
     inboxes "/inboxes"
     settings "/settings"
     scheduled "/scheduled"
+    requests "/requests"
       laterChange "/scheduled/:delay/time"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
@@ -433,6 +435,7 @@ component Multiplexer
   members "./send-later-members.contract"
   members "./gif-members.contract"
   members "./camera-members.contract"
+  members "./requests-members.contract"
 
   action step
     now = performanceNow()
@@ -1034,6 +1037,10 @@ component Multiplexer
           ScheduledScreen(route=`${e.id}`, messages=scheduledShown, loaded=(scheduledList.owner == session.userId),
             busy=pending(scheduledChanged), refused=laterRefused, now=shown, offset=time.utcOffset, close=back,
             sendNow=sendScheduledNow, change=changeLaterTime, cancel=cancelScheduled)
+        if e.name == "requests"
+          RequestsScreen(route=`${e.id}`, requests=requestsShown, loaded=(requestList.owner == session.userId),
+            answering=answeringRequest, refused=requestRefused, close=back, accept=acceptRequest, decline=declineRequest,
+            largeText=viewport.accessibilityTextSize)
         if e.name == "later"
           LaterSheet(route=`${e.id}`, title="Send Later", body=composer.text.trim(), picked=laterWhen, saving=laterSaving,
             refused=laterRefused, pick=pickLater, close=closeLater, save=saveLater)
@@ -1049,7 +1056,7 @@ component Multiplexer
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
             InboxSheet(networks=roomList.networks, communities=roomList.communities, community=community, chooseCommunity=chooseCommunity,
-              unread=roomList.unread, archiveUnread=roomList.archiveUnread,
+              requests=requestsShown.length, openRequests=openRequests, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
               chooseList=chooseList, scheduled=scheduledShown.length, openScheduled=chooseSendLater, largeText=viewport.accessibilityTextSize)
         // a held message's sheets: every emoji, half height and pulled up to full; the chats to forward to.
