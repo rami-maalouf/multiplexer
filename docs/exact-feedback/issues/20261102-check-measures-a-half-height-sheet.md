@@ -37,3 +37,7 @@ Cost: about 3 minutes, with a `layout` call to find the cause.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, iOS Simulator (iOS 26.5), light and dark.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1368 (fixes the message): an iOS `check` with a target finding adds a note for each sheet drawn scaled, with the authored size drawn at 44 ("authored at 46 pt is drawn at 44"). What `check` should measure in a scaled sheet stays a design question.
