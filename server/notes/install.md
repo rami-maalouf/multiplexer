@@ -309,8 +309,12 @@ M0's recheck, B2 and P3.3 (`tasks/todo.md`).
   WhatsApp (a Meta address, port 443) is open.
 - **Names.** `!wa sync contacts` from a short-lived `@rami` session (logged out after) in the
   WhatsApp bot chat at 22:47:28 UTC. The bot does not answer, but it renames: ghosts in the
-  bridge's database with " (WA)" went from 14,529 to 13,865 in 2 minutes. Instagram and
-  LinkedIn names change on each contact's next update.
+  bridge's database with " (WA)" went from 14,529 to 2,250 by 23:03 UTC (about 900 a
+  minute), then stopped. The 2,250 left are people the bridge has no contact info for
+  (`contact_info_set` false; 26 of them have a DM room, of 279). They change when they change
+  their WhatsApp name, or when they send a message and their info is more than 7 days old.
+  Instagram and LinkedIn names change on each contact's next update. A WhatsApp message
+  arrived at 23:03:51 UTC, after the restart.
 - **Deletions** (Rami's yes). By hand, because the playbook's tools reach further: its
   `run-docker-prune` runs `docker system prune -a -f`, and its `cleanup` role removes all
   stopped containers. Both would delete the stopped containers and images of other projects
