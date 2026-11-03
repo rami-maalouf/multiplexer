@@ -150,7 +150,7 @@ Run it after 48 hours of use.
 - [x] `bun exact.mjs feedback status` has run, and the diary follows its answer. (Answer: `ask`. The diary is in `apps/multiplexer/.exact/diary/`. Nothing is sent without Rami's yes.)
 
 **Verification:**
-- [ ] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app.
+- [x] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app. (2026-11-03: the sign-in screen, 402×874.)
 
 **Dependencies:** None (Q2 answered)
 **Files:** `apps/multiplexer/` (generated)
@@ -186,12 +186,14 @@ call it. No network and no UI design. Try A first, then B.
 
 **Acceptance criteria:**
 - [x] An XCTest in the iOS Simulator signs in to the practice account on matrix.org (D8) and lists its rooms. (2026-10-27: `scripts/test-matrix-core.sh`, 1 passed in 8.7 s. One device sends; a second device with an empty store sees the room and reads the message from the server. Both devices sign out.)
-- [ ] After T0.6: the same test against our server lists the WhatsApp chat.
+- [x] After T0.6: the same test against our server lists the WhatsApp chat. (2026-11-03: `scripts/test-matrix-core.sh` runs
+  against our server as `@test1`/`@test2` by default; a read-only drive as `@rami` listed his 185 rooms, WhatsApp ones
+  with the network `whatsapp`, and a GIF reached WhatsApp through the bridge.)
 - [x] It returns the last 20 messages of a room, in order, with sender, text and time. (The test checks the newest message and that it is our own.)
 - [x] No matrix-rust-sdk type is in MatrixCore's public API. (Public types: `MatrixAccount`, `SavedSession`, `RoomSummary`, `Message`, `MatrixCoreError`. The same files compile in the Exact app.)
 
 **Verification:**
-- [ ] `xcodebuild test` on an iOS Simulator destination passes.
+- [x] `xcodebuild test` on an iOS Simulator destination passes. (2026-11-03: the whole suite, 52 tests, 1 skipped.)
 
 **Dependencies:** T1.2, the practice account (D8). The WhatsApp check needs T0.6.
 **Files:** `matrix-core/Package.swift`, `matrix-core/Sources/MatrixCore/*.swift`, `matrix-core/Tests/*`
@@ -338,8 +340,10 @@ marks it read on the server, so Element and my other devices agree.
 - [x] Never sent from a test on `@rami`: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp. (In a drive, the module sends receipts only for a user whose id starts with `@test`.)
 
 **Verification:**
-- [ ] A MatrixCore test with `@test1` and `@test2` on our server.
-- [ ] A drive with a send from another person, before and after opening the chat.
+- [x] A MatrixCore test with `@test1` and `@test2` on our server. (`testUnreadMessagesCountUntilRead`,
+  `testMarkedUnreadClearsOnReadAndAMutedChatStillCountsMentions`, `testANewLineFurtherBackThanTheChatLoads`.)
+- [x] A drive with a send from another person, before and after opening the chat. (2026-11-03, B15: 30 messages
+  from `@test2`; the count at open, while scrolling, and 0 once the newest message is in view.)
 
 **Dependencies:** T2.2, the test users (done in T0.5)
 **Scope:** S
@@ -472,12 +476,17 @@ sends (read only, on `@rami`), then build them in this order: voice notes (play)
 files (name and size, open), stickers (as a picture), "Edited" and "Message deleted".
 
 **Acceptance criteria:**
-- [ ] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size.
-- [ ] A voice note plays and shows its length (B16).
+- [x] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size. (2026-11-03: two
+  test chats holding text, links, a reply, reactions, photos, an animated GIF, a video, a sticker, a large emoji, a
+  file and a voice message, in light, dark and the largest size; `check` finds only text scrolled under the glass
+  bar. Fixed on the way: at the largest size a file's long name ran past the screen; it wraps now.)
+- [x] A voice note plays and shows its length (B16).
 - [x] A video shows its poster at its ratio with a play mark and its length, and plays full screen
   in the system player (2026-11-03, B15; `testAVideoReachesTheOtherWithItsSizeLengthAndPoster`).
   Sound with the ring switch on silent (`audio_session: "playback"`) waits for a check on the iPhone.
-- [ ] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API).
+- [x] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API). (Text,
+  photo and file, video, sticker, voice note and audio file, reply and reactions, edit and delete, forward: see
+  `MatrixCoreTests`, `ChatDetailsTests`, `VoiceTests`, `MessageActionsTests`.)
 
 **Dependencies:** T2.10 (to see real examples)
 **Scope:** L (one commit per kind)
@@ -513,8 +522,8 @@ swipe to reply", "Hold a message").
 - [x] Long press: the chat blurs, the bubble lifts in place, Beeper's six quick reactions above it, Reply and Copy under it.
 - [x] Reactions as pills under the bubble, with a count; yours outlined in the accent; a tap adds or takes back yours.
 - [x] "Edited" under an edited message. (Not seen: no edited message in the test rooms.)
-- [ ] The rest of Beeper's long-press menu: Forward, Share, Mark as Unread, Bookmark, Edit and Delete on your own, and the + for all emojis.
-- [ ] Long press on a photo (only text bubbles have it now).
+- [x] The rest of Beeper's long-press menu: Forward, Share, Mark as Unread, Bookmark, Edit and Delete on your own, and the + for all emojis. (B14; Bookmark is built in the Bookmarks thread.)
+- [x] Long press on a photo (only text bubbles have it now). (B11 and B14: photos, videos, stickers, files and voice messages.)
 
 **Verification:**
 - [x] MatrixCore test `testAReplyQuotesItsMessageAndReactionsCount` (`@test1` and `@test2`): both see the quote; a reaction counts and is marked as yours; a second tap takes it back. The whole suite passes (12, 1 skipped).

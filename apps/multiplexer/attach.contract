@@ -120,6 +120,7 @@ component FileBubble
           progress aria-label="Opening"
         else
           image "symbol:document" font-size="min(-exact-title3, 22px)" color=ink aria-hidden=true
-      column min-width=0 gap=1
+      // stacked, the name's box takes the bubble's width, so a long name wraps inside it.
+      column min-width=0 max-width="100%" align-self=(stacked ? "stretch" : "auto") gap=1
         text name color=ink font-weight=600 overflow-wrap="break-word"
         text fileDetail(name, size) font="-exact-footnote" color=ink
