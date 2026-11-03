@@ -36,7 +36,8 @@ Seen at exact2 `65577096ed`. The vocab code in `contract/cli/src/main.rs` is unc
 ## Pull request (2026-11-03)
 
 https://github.com/ccheever/exact2/pull/1359 (fixes part of it): `contract vocab <tag>` prints the tag's attributes and events, and `listStyle` lists its values. Values for every property are a design question.
-## Seen again at `ed43ad09a0` (2026-11-03)
+
+## Seen again at `ed43ad09a0` (2026-11-03), before that pull request
 
 A custom voice-message player (a hidden `audio` and the app's own play button, progress and
 speed): `contract vocab audio` answered only "tag, Video (html); sets semanticTag=audio;
