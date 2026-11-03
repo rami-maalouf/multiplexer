@@ -51,18 +51,20 @@ component ChatBar
             image "symbol:back" font-size=labelSize
             if unread > 0
               text unreadText(unread) font-size=labelSize
-        // it takes a tap, as a system bar's title does, so a tap there reaches no message under it.
-        column align-items="center" flex="0 1 auto" min-width=0 margin="0 8px" pointer-events="auto" testId="chat-title"
-          // the picture is opaque over the transcript, and sits on the name's capsule.
-          view position="relative" z-index=1 flex-shrink=0 border-radius=22 background-color="-exact-background"
-            Face(picture=picture, initials=initials, size=44)
-            if network != "matrix"
-              NetworkBadge(network=network, identifier="chat-network")
-          view backgroundMaterial="glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
-            // it grows with the text size to a cap, as a system bar's title stays put.
-            text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
-              line-clamp=2
-              testId="chat-name"
+        // nothing in the middle until the chat's name is known (the list still loads).
+        if name != ""
+          // it takes a tap, as a system bar's title does, so a tap there reaches no message under it.
+          column align-items="center" flex="0 1 auto" min-width=0 margin="0 8px" pointer-events="auto" testId="chat-title"
+            // the picture is opaque over the transcript, and sits on the name's capsule.
+            view position="relative" z-index=1 flex-shrink=0 border-radius=22 background-color="-exact-background"
+              Face(picture=picture, initials=initials, size=44)
+              if network != "matrix"
+                NetworkBadge(network=network, identifier="chat-network")
+            view backgroundMaterial="glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
+              // it grows with the text size to a cap, as a system bar's title stays put.
+              text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
+                line-clamp=2
+                testId="chat-name"
         view flex="1 1 0" display="flex" justify-content="flex-end"
           button popovertarget="chat-actions" buttonStyle="glass" width=44 height=44 flex-shrink=0 pointer-events="auto"
             aria-label="More" testId="chat-more"
