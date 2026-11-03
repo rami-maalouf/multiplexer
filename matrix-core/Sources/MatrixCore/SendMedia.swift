@@ -37,7 +37,9 @@ extension MatrixAccount {
                                                size: UInt64(attachment.size),
                                                thumbnailInfo: small.map { ThumbnailInfo(height: UInt64($0.height), width: UInt64($0.width),
                                                                                          mimetype: $0.mimetype, size: UInt64($0.size)) },
-                                               thumbnailSource: nil, blurhash: nil, isAnimated: nil),
+                                               thumbnailSource: nil, blurhash: nil,
+                                               // an animated GIF says so (MSC4230), so other apps play it.
+                                               isAnimated: attachment.mimetype == "image/gif" ? true : nil),
                           thumbnailSource: small.map { .file(filename: $0.file.path) })
         case .file:
             kind = .file(fileInfo: FileInfo(mimetype: attachment.mimetype, size: UInt64(attachment.size), thumbnailInfo: nil, thumbnailSource: nil))

@@ -286,8 +286,9 @@ public final class MatrixAccount: @unchecked Sendable {
         if FileManager.default.fileExists(atPath: file.path) { return file }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let data: Data
-        if full || image.isSticker {
-            // a sticker is small, and a server's thumbnail of it would lose its transparency.
+        if full || image.isSticker || image.isAnimated {
+            // a sticker is small, and a server's thumbnail of it would lose its transparency; a
+            // server's thumbnail of an animated GIF is one still frame.
             data = try await client.getMediaContent(mediaSource: source)
         } else if let thumbnail = thumbnailSource, let small = try? await client.getMediaContent(mediaSource: thumbnail) {
             // the sender's own thumbnail: a photo this device sends has it in the send queue's cache.
@@ -885,7 +886,10 @@ extension MessageImage {
         case "image/heic"?: ext = "heic"
         default: ext = "jpg"
         }
+        let animated = content.info?.mimetype == "image/gif" || content.info?.isAnimated == true
+        // an animated one shows its whole file in the chat too, downloaded once under one name.
         self.init(width: Int(content.info?.width ?? 0), height: Int(content.info?.height ?? 0),
-                  thumbnailName: "\(key)-thumbnail.\(ext)", fullName: "\(key).\(ext)")
+                  thumbnailName: animated ? "\(key).\(ext)" : "\(key)-thumbnail.\(ext)", fullName: "\(key).\(ext)",
+                  isAnimated: animated)
     }
 }

@@ -52,6 +52,14 @@ Exact refuses symlinks inside the app folder, so the script copies the files (AP
 clones). The copies are gitignored. **If you edit `matrix-core/`, run the script again,
 or the app builds the old copy.**
 
+GIFs (B12) need KLIPY's app key at build. Once per checkout, and after the key changes:
+
+```sh
+./scripts/setup-klipy-key.sh   # Keychain -> apps/multiplexer/.env.local (gitignored)
+```
+
+Without it the app builds, and the GIF sheet says it could not load GIFs.
+
 Test MatrixCore (about 10 s after the first build):
 
 ```sh

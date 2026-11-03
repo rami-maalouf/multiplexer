@@ -48,4 +48,10 @@ More evidence on 2026-11-03 at `ed43ad09a0`: a members file (a chat app's Send L
 empty the composer, which the root keeps with its `Composer` shape and `withComposer` function.
 Naming them gave the same "would make a cycle" refusal, so the root got an action
 (`clearComposer`) only for the members file to call. About 2 minutes.
+## Seen again (2026-11-03, a GIF picker task, `ed43ad09a0`)
+
+A members file could not name the root's `Reply` shape, nor `Composer` and `withComposer`
+("naming it here would make a cycle; move it to a file both can use"). The workaround again:
+a one-field shape of the feature's own, and a call to a root action in place of the root's
+function. About 2 minutes.
 
