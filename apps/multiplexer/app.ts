@@ -10,7 +10,7 @@ export const appId = 'com.ramimaalouf.multiplexer';
 // picked photos and files are read from the picker's copies; a photo is made smaller beside them
 // before it goes; a file message's file is shared from where the module downloaded it. A voice
 // message is recorded from the microphone into app:/tmp/voice.
-export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
+export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/camera', 'device.camera purpose.camera', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
   'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
   'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs'].join('\n');
@@ -175,12 +175,13 @@ const PHOTO_BYTES = 4_000_000;
 const THUMBNAIL_SIDE = 800;
 const THUMBNAIL_BYTES = 120_000;
 
-type Picked = { path: string; name: string; type: string; size: number; width: number | null; height: number | null };
+// a photo or file chosen to send (attach.contract's Chosen): its size in pixels is 0 where it is not known.
+type Chosen = { path: string; name: string; type: string; size: number; width: number; height: number };
 // each photo gets its own folder, so it keeps its name ("IMG_0001.jpg") for the others.
 let uploads = 0;
 // each picked photo's preparation, started when it is picked, so Send finds it done.
 const preparing = new Map<string, ReturnType<typeof prepare>>();
-const prepared = (f: Picked, photo: boolean, storage: Storage) => {
+const prepared = (f: Chosen, photo: boolean, storage: Storage) => {
   const key = `${photo}:${f.size}:${f.path}`;
   if (!preparing.has(key)) preparing.set(key, prepare(f, photo, storage));
   const ready = preparing.get(key)!;
@@ -191,10 +192,10 @@ const prepared = (f: Picked, photo: boolean, storage: Storage) => {
 
 /** What the module sends for a picked photo or file. A photo becomes an upright JPEG with its
  * thumbnail; an animated GIF goes as it is, and so does a file. */
-async function prepare(f: Picked, photo: boolean, storage: Storage) {
+async function prepare(f: Chosen, photo: boolean, storage: Storage) {
   // the picker's copy has a name of its own ("1-3.pdf"): the others see the one picked.
   if (!photo) return { path: f.path, name: f.name, mimetype: f.type || 'application/octet-stream', size: f.size, photo: false, width: 0, height: 0 };
-  const asIs = { path: f.path, name: f.name, mimetype: f.type, size: f.size, photo: true, width: f.width ?? 0, height: f.height ?? 0 };
+  const asIs = { path: f.path, name: f.name, mimetype: f.type, size: f.size, photo: true, width: f.width, height: f.height };
   if (f.type === 'image/gif') return asIs;
   const folder = `app:/tmp/upload/${++uploads}`;
   await storage.fs.mkdir(folder).catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });

@@ -32,3 +32,13 @@ Seen on 2026-11-02 at exact2 `ed43ad09a0`.
 ## Pull request (2026-11-02)
 
 https://github.com/ccheever/exact2/pull/1346 (fixes part of it): the patch check compares paths through symlinks. A checkout at another depth still needs its own Cargo paths: a design question.
+
+## More evidence (2026-11-03)
+
+Seen again in a new worktree of the app: `exact.mjs` stopped at "no exact2 at …", and with
+`EXACT2` set the build stopped on the workspace's patches, then on `apple/Cargo.toml`. A symlink at
+the expected place passed the patch check but failed later: "compiler input has no captured source
+identity: <symlinked path>/packages/child-process/exact.json". The app's `package.json` names the
+framework's packages by the same relative path, so `bun install` cannot install them there either.
+Absolute paths in the three `Cargo.toml` files, kept out of git, worked. About 10 minutes and
+three builds. Seen at exact2 `ed43ad09a0`.

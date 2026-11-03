@@ -4,7 +4,7 @@ use ClipboardItem from "@exact/clipboard"
 use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
-use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
+use Attachment, chosenOf, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage from "./inbox.contract"
 use NetworkBadge, networkName from "./network.contract"
 use InboxSheet, NetworkCount from "./sheet.contract"
@@ -18,6 +18,7 @@ use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
 use ScheduledBar, ScheduledScreen, LaterSheet, laterProblem, weekdayOf from "./send-later.contract"
 use GifSheet from "./gif.contract"
+use CameraScreen from "./camera.contract"
 
 shape Session
   userId: string
@@ -203,6 +204,7 @@ routes nav
       video "/room/:id/video/:message"
       reactions "/room/:id/reactions/:message"
       gifs "/room/:id/gifs"
+      camera "/room/:id/camera"
       forward "/room/:id/forward/:message"
       later "/room/:id/later"
       info "/room/:id/info"
@@ -419,6 +421,7 @@ component Multiplexer
   members "./chat-search-members.contract"
   members "./send-later-members.contract"
   members "./gif-members.contract"
+  members "./camera-members.contract"
 
   action step
     now = performanceNow()
@@ -541,7 +544,9 @@ component Multiplexer
   // what was picked joins the open chat's composer, and the keyboard comes back for a caption.
   // A photo is made ready (smaller, upright, without its location) while the caption is typed.
   action photosPicked(files: Picked[])
-    let picked = files.map(f => Attachment(file=f, photo=true))
+    attachPhotos(files.map(f => Attachment(file=chosenOf(f), photo=true)))
+  // a camera photo comes here too (camera-members.contract).
+  action attachPhotos(picked: Attachment[])
     composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(picked)))
     send staged = stageMedia(picked)
     panel = false
@@ -550,7 +555,7 @@ component Multiplexer
   // a file over the server's limit would only fail: it stays out, and a line says why.
   action filesPicked(files: Picked[])
     let fit = files.filter(f => uploadLimit.bytes == 0 or f.size <= uploadLimit.bytes)
-    composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(fit.map(f => Attachment(file=f, photo=false)))))
+    composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(fit.map(f => Attachment(file=chosenOf(f), photo=false)))))
     tooLarge = files.filter(f => uploadLimit.bytes > 0 and f.size > uploadLimit.bytes).map(f => f.name).join(", ")
     panel = false
     focus("composer")
@@ -1031,6 +1036,11 @@ component Multiplexer
         if e.name == "gifs"
           GifSheet(route=`${e.id}`, gifs=gifs, query=gifQuery, shown=gifsShown, loading=pending(gifs), search=typeGif, pick=pickGif,
             close=back, largeText=viewport.accessibilityTextSize)
+        // the + panel's Camera (camera.contract), full screen over the chat.
+        if e.name == "camera"
+          CameraScreen(route=`${e.id}`, track=cameraTrack, refused=cameraRefused, problem=cameraProblem, taking=pending(cameraShot),
+            canFlip=canFlipCamera, hasFlash=cameraHasFlash, flash=cameraFlash, close=closeCamera, shutter=shootPhoto, flip=flipCamera,
+            toggleFlash=toggleCameraFlash, openSettings=openCameraSettings, largeText=viewport.accessibilityTextSize)
         if e.name == "forward"
           ForwardSheet(route=`${e.id}`, chats=forwardChats, query=forwardQuery, chosen=forwardTo, what=forwardWhat, search=searchForward,
             toggle=toggleForward, send=sendForward, cancel=back, largeText=viewport.accessibilityTextSize)
@@ -1323,7 +1333,8 @@ component Multiplexer
                 image "symbol:calendar"
                 text "Custom Time…"
             if threadShown and panel
-              AddPanel(photos=choosePhotos, files=chooseFiles, gifs=openGifs, reduced=viewport.prefersReducedMotion)
+              AddPanel(photos=choosePhotos, camera=openCamera, cameraOffered=cameraOffered, files=chooseFiles, gifs=openGifs,
+                reduced=viewport.prefersReducedMotion)
             if jumpMissed != "" and jumpMissed == openRoom
               JumpNote(largeText=viewport.accessibilityTextSize)
             ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),

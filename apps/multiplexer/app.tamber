@@ -15,6 +15,12 @@ theme
   voice.recording = light-dark(rgba(255, 59, 48, 0.1), rgba(255, 69, 58, 0.18))
   // the stop mark on the red stop button: white in both schemes.
   voice.on-red = #ffffff scheme=fixed
+  // the camera is dark in both schemes, as the phone's camera: black, white ink, the shutter white.
+  camera.backdrop = #000000 scheme=fixed
+  camera.ink = #ffffff scheme=fixed
+  camera.ink-soft = rgba(255, 255, 255, 0.7) scheme=fixed
+  camera.ink-faint = rgba(255, 255, 255, 0.6) scheme=fixed
+  camera.problem = #ff6961 scheme=fixed
 
 icons
   // the "+" panel's rows, as Beeper draws them; the svg is for hosts without SF Symbols.
@@ -45,6 +51,10 @@ icons
   icon.waveform = icon(sf "waveform", svg "icons/waveform.svg")
   // the + panel's Search KLIPY, as Beeper draws it.
   icon.number = icon(sf "number", svg "icons/number.svg")
+  // the camera's flash (on, off) and its switch between the back and front cameras, as the phone's camera draws them.
+  icon.bolt = icon(sf "bolt.fill", svg "icons/bolt.svg")
+  icon.bolt-slash = icon(sf "bolt.slash.fill", svg "icons/bolt-slash.svg")
+  icon.camera-flip = icon(sf "arrow.triangle.2.circlepath.camera", svg "icons/camera-flip.svg")
   // the inbox title menu's Merge Chats.
   icon.merge = icon(sf "arrow.triangle.merge", svg "icons/merge.svg")
   icon.chevron-down = icon(sf "chevron.down", svg "icons/chevron-down.svg")

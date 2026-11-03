@@ -1233,7 +1233,7 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
 Rami wants these, after the tasks above (2026-11-02):
 - Labels: a named group of chats, shown as a filter in the sheet, with Create Label (the same
   tag way as Archive, B8). "Not a requirement."
-- Camera in the + panel: a built-in camera.
+- Camera in the + panel: a built-in camera. Done 2026-11-03 for photos ("L1" below).
 - Remind Me: a reminder to answer a chat later (B7, B20; a Reminders row in the sheet).
 - Merge Chats: one person on two networks as one chat (B21).
 - Select chat: act on several chats at once (B7, B21).
@@ -1243,6 +1243,42 @@ Rami wants these, after the tasks above (2026-11-02):
 - Message expiry (B20): the very last.
 
 Not wanted for now: Poll.
+
+### L1 Camera in the + panel
+
+**Description:** Beeper's + panel has "Camera" (report, topic 14). The panel's second row opens
+the camera full screen over the chat (`camera.contract`, `camera-members.contract`), with
+`@exact/camera`'s viewfinder over `@exact/media-capture`'s track. The shutter's photo joins the
+composer's tray as a photo from the library does (the same `attachPhotos` path: made smaller and
+upright while the caption is typed, sent with Send). Photos only: Exact's camera takes stills,
+and `@exact/recording` records sound only, so a video needs a native module of our own (not
+built; ask Rami if wanted).
+
+**Acceptance criteria:**
+- [x] The panel shows Camera where the device has a camera (`cameraStatus().available`).
+- [x] The camera opens on the back camera; Switch Camera (where there is a front one) and Flash
+  (where the camera has a torch; hidden on the front camera); a tap focuses, a pinch zooms.
+- [x] The shutter adds "Photo N.jpg" to the tray, stops the camera, and brings the keyboard back;
+  Close stops it too. The camera screen is dark in both appearances, as the phone's.
+- [x] Camera refused in Settings: "Camera Access Is Off" with Open Settings, and no request.
+- [x] The app's own shape `Chosen` holds a picked file or a camera photo (a `Picked` cannot be
+  built in Contract; Exact finding 103).
+
+**Verification (2026-11-03, Simulator "MX media", the agent's camera, `@test1`):**
+- [x] A drive in "Multiplexer two-person test": + panel, Camera, flip, shutter, a caption, Send:
+  the message is a photo (1280×960) with its caption, state "sent".
+- [x] Dark, light, and the largest text size: `check` clean on the panel and the camera screens
+  (the chat's own overlap findings under the floating bars are known); the refused screen
+  scrolls at the largest size.
+- [x] `verify ios` clean. No MatrixCore change (sending uses B11's `sendMedia`).
+- [ ] **On Rami's iPhone** (the Simulator has no camera; the agent's camera is a still card): the
+  permission dialog shows "Takes the photos you send."; the back camera's preview is upright in
+  portrait and fills the space between the bars; the front camera is mirrored in the preview and
+  not in the photo; the flash fires; tap to focus and pinch to zoom work; the shutter sound
+  plays; the green dot goes out after Close and after the shutter; a photo from the camera sends
+  to WhatsApp as a photo.
+
+**Dependencies:** B10, B11. **Scope:** S
 
 ## Phase 3: push notifications (M3)
 

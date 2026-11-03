@@ -1,0 +1,77 @@
+// the + panel's Camera (Beeper's "Camera"): the camera full screen over the chat, as the phone's
+// own camera shows it. The shutter takes a photo; it joins the composer as a photo picked from the
+// library does (attach.contract's tray), and the keyboard comes back for a caption. Photos only:
+// the framework's camera takes stills, and no video (camera-members.contract has the state).
+
+component CameraScreen
+  props
+    // the screen's route (its stack entry's id).
+    route: string
+    // the camera's video track, "" while it opens.
+    track: string
+    // the camera is off for the app (refused in Settings, or refused just now).
+    refused: bool
+    // what went wrong opening the camera or taking the photo, "" for nothing.
+    problem: string
+    taking: bool
+    canFlip: bool
+    hasFlash: bool
+    flash: bool
+    close: action
+    shutter: action
+    flip: action
+    toggleFlash: action
+    openSettings: action
+    largeText: bool
+  view
+    // dark in both appearances, as the phone's camera; its own white ink on black.
+    column navigationKey=route navigationPresentation="fullscreen" position="absolute" inset=0 display="flex"
+      flex-direction="column" background-color="camera.backdrop" color="camera.ink" color-scheme="dark" testId="camera"
+      // a row of the app's own, not the system's bar: the bar draws its title in the scheme's ink,
+      // black on the camera's black in light mode.
+      row flex-shrink=0 align-items="center" gap=12 padding="calc(8px + env(safe-area-inset-top)) 16px 8px"
+        button id="back" press=close buttonStyle="glass" aria-label="Close" testId="camera-close" width=44 height=44
+          image "symbol:close" font-size="min(-exact-title3, 24px)"
+        // the bar's title, as a system bar's: it grows with the text size only so far.
+        text "Camera" role="heading" aria-level=2 font-size="min(-exact-headline, 24px)" font-weight=600 flex=1 min-width=0
+          text-align="center"
+        // the flash where the camera has one; else a space as wide as it, so the title stays centred.
+        if hasFlash and not refused
+          button press=toggleFlash buttonStyle="glass" aria-label="Flash" aria-pressed=flash testId="camera-flash" width=44 height=44
+            image (flash ? "symbol:icon.bolt" : "symbol:icon.bolt-slash") font-size="min(-exact-title3, 22px)"
+        else
+          view width=44 height=44 flex-shrink=0 aria-hidden=true
+      // at the largest text sizes the words are taller than the screen: they scroll.
+      if refused
+        scroll flex=1 min-height=0 testId="camera-refused"
+          column min-height="100%" align-items="center" justify-content="center" gap=16 padding=32 box-sizing="border-box"
+            image "symbol:camera" font="-exact-large-title" color="camera.ink-faint" aria-hidden=true
+            text "Camera Access Is Off" font="-exact-title3" font-weight=600 text-align="center"
+            text "Turn on the camera for Multiplexer in Settings to take a photo here." text-align="center"
+              color="camera.ink-soft"
+            button press=openSettings buttonStyle="filled" testId="camera-settings"
+              text "Open Settings"
+      else
+        // the viewfinder shows the whole photo between the bars, as the phone's camera; a tap focuses, a pinch zooms.
+        view flex=1 min-height=0 position="relative" testId="camera-view"
+          if track != ""
+            exact-camera srcObject=track tapToFocus=true pinchToZoom=true object-fit="contain" position="absolute" inset=0
+              aria-label="Viewfinder" testId="viewfinder"
+          else
+            column position="absolute" inset=0 align-items="center" justify-content="center"
+              progress aria-label="Opening the camera" testId="camera-opening"
+        if problem != ""
+          text problem text-align="center" font="-exact-footnote" color="camera.problem" padding="8px 16px 0" testId="camera-problem"
+        // the shutter in the middle, as the phone's: a white disc in a white ring; the flip on its right.
+        row flex-shrink=0 align-items="center" justify-content="center" padding="20px 24px"
+          padding-bottom="calc(20px + env(safe-area-inset-bottom))"
+          view flex=1
+          button appearance="none" press=shutter disabled=(track == "" or taking) aria-label="Take Photo" testId="shutter"
+            width=76 height=76 border-radius=38 border="4px solid camera.ink" display="flex" align-items="center"
+            justify-content="center" box-sizing="border-box" opacity=(track == "" ? 0.5 : 1)
+            view width=60 height=60 border-radius=30 background-color=(taking ? "camera.ink-faint" : "camera.ink")
+          row flex=1 justify-content="flex-end"
+            if canFlip
+              button press=flip buttonStyle="glass" aria-label="Switch Camera" testId="camera-flip" width=52 height=52
+                disabled=(track == "")
+                image "symbol:icon.camera-flip" font-size="min(-exact-title3, 24px)"
