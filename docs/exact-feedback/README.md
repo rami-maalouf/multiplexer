@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26. 73 to 78 on 2026-11-03, with new evidence for 13 and 26.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -91,6 +91,12 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 70 | `audio-waveform`'s `tint` takes only a hex colour. | About 3 min | P3 | [audio-waveform-s-tint-takes-only](issues/20261103-audio-waveform-s-tint-takes-only.md) |
 | 71 | `@exact/recording` cannot write Ogg Opus, the voice note format of chat networks. | About 45 min | P3 | [exact-recording-cannot-write-ogg-opus](issues/20261103-exact-recording-cannot-write-ogg-opus.md) |
 | 72 | The permissions recipe does not say that a refused request runs no `then`. | About 10 min | P3 | [the-permissions-recipe-does-not-say](issues/20261103-the-permissions-recipe-does-not-say.md) |
+| 73 | A comment line before an if block's first line ends the block. | About 2 min | P3 | [a-comment-line-ends-an-if-block](issues/20261103-a-comment-line-ends-an-if-block.md) |
+| 74 | A header search field has no close event, and a drive cannot press it or its close button. | About 20 min | P3 | [a-header-search-field-has-no-close-event](issues/20261103-a-header-search-field-has-no-close-event.md) |
+| 75 | A list cell's row brings a gap and padding from its tag, which the list docs do not say. | About 5 min | P3 | [a-list-cells-row-brings-gap-and-padding](issues/20261103-a-list-cells-row-brings-gap-and-padding.md) |
+| 76 | A data module answer refused for its 100 ms turn shows as a stale page; only logs name it. | About 10 min | P3 | [a-refused-data-module-answer-shows-stale](issues/20261103-a-refused-data-module-answer-shows-stale.md) |
+| 77 | A search field in content gets the web address keyboard. | About 2 min | P3 | [a-search-field-gets-the-web-address-keyboard](issues/20261103-a-search-field-gets-the-web-address-keyboard.md) |
+| 78 | `display` on a list turns its cells into a flex row, with no warning. | About 5 min | P3 | [display-on-a-list-turns-its-cells](issues/20261103-display-on-a-list-turns-its-cells.md) |
 
 ## What worked well
 

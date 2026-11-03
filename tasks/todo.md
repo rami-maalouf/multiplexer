@@ -931,9 +931,12 @@ search field at the bottom, with the keyboard up. Before typing: recent chats an
 searches. Above: Images, Videos, Links, Files, Drafts.
 
 **Acceptance criteria:**
-- [ ] Results in this order (Rami): chats by name (`.fuzzyMatchRoomName`), then messages (the
-  SDK's local search index), then links.
-- [ ] Check where iOS 26 puts Exact's search field. If not at the bottom, draw our own.
+- [x] Results in this order (Rami): chats by name (`.fuzzyMatchRoomName`), then messages (the
+  SDK's local search index), then links. (2026-11-03, `SearchTests` and `search.contract`
+  sections.)
+- [x] Check where iOS 26 puts Exact's search field. If not at the bottom, draw our own.
+  (2026-11-03: UIKit puts a route header field at the bottom but with no close event; the app
+  draws `SearchBar` in a glass bar at the bottom.)
 
 **Dependencies:** B3. **Scope:** L
 
