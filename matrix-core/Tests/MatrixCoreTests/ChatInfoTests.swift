@@ -18,6 +18,8 @@ final class ChatInfoTests: XCTestCase {
         let owner = try await signIn(homeserver, user, password)
         let other = try await signIn(homeserver, user2, password2)
         let roomId = try await testRooms(owner, other, user2: user2)[infoName]!
+        // a name only you see, left by an earlier run, is not this test's.
+        try await owner.setCustomName(roomId: roomId, name: "")
         let otherName = try await displayName(user2, session: try owner.savedSession())
 
         let info = try await owner.chatInfo(roomId: roomId)
@@ -83,6 +85,8 @@ final class ChatInfoTests: XCTestCase {
 
         let mine = "Only mine \(UUID().uuidString.prefix(8))"
         try await owner.setCustomName(roomId: roomId, name: "  \(mine) ")
+        // a run that fails leaves no name of its own on the room for the next test.
+        addTeardownBlock { try? await owner.setCustomName(roomId: roomId, name: "") }
         let shown = try await owner.rooms().first { $0.id == roomId }
         XCTAssertEqual(shown?.name, mine, "this device shows it at once, trimmed")
         XCTAssertEqual(shown?.roomName, infoName)
