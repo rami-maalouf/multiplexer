@@ -231,7 +231,7 @@ component InfoPage
             for m in members key=m.id
               row gap=12 align-items="center" testId=`info-member-${m.id}`
                 Face(picture=m.picture, initials=m.initials, size=32)
-                text m.name flex=1 min-width=0 overflow-wrap="anywhere"
+                text m.name flex=1 min-width=0
                 if m.isOwn
                   text "You" color="-exact-secondary-label"
             if total > members.length
