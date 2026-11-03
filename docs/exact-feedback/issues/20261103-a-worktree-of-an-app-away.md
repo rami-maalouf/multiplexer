@@ -30,3 +30,7 @@ Cost: about 5 minutes.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`.
+
+Seen again on 2026-11-03 at `ed43ad09a0`, in another agent tool's worktree: `bun install` failed
+with the same "Could not find folder" for six framework packages. The same fix (a worktree next
+to the main checkout). About 3 minutes.
