@@ -17,6 +17,8 @@ public final class MatrixAccount: @unchecked Sendable {
     let search = SearchState()
     /// The chats' media timelines and own names (ChatInfo.swift).
     let infoStates = ChatInfoStates()
+    /// The bookmarks this device wrote and the server has not confirmed (Bookmarks.swift).
+    let bookmarkStates = BookmarkStates()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
