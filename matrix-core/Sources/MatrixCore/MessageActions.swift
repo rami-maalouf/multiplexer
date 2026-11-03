@@ -41,8 +41,8 @@ extension MatrixAccount {
         _ = try await target.timeline.send(msg: content)
     }
 
-    /// A photo's, a video's or a file's original in `directory` (a photo and a file under the name
-    /// their sender gave), to share. Downloaded once; later calls return the same file.
+    /// A photo's, a video's or a file's original in `directory`, under the name its sender gave it,
+    /// to share. Downloaded once; later calls return the same file.
     public func mediaFile(roomId: String, messageId: String, directory: URL, timeout: TimeInterval = 30) async throws -> URL {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         guard let event = live.items.event(of: messageId), case .msgLike(let like) = event.content,
@@ -59,9 +59,15 @@ extension MatrixAccount {
         case .file:
             return try await fileContent(roomId: roomId, messageId: messageId, directory: directory, timeout: timeout)
         case .video(let content):
-            // a folder of its own, as a file's, so the share sheet reads it from its own place.
+            // a folder of its own, as a file's; the video downloads under the cache's name, and the
+            // share sheet gets it under its sender's (a link to the same bytes).
             let folder = directory.appendingPathComponent(mediaKey(content.source.url()), isDirectory: true)
-            return try await videoFile(roomId: roomId, messageId: messageId, directory: folder, timeout: timeout)
+            let named = folder.appendingPathComponent(shareName(content.filename, fallback: "Video.mp4"))
+            if FileManager.default.fileExists(atPath: named.path) { return named }
+            let downloaded = try await videoFile(roomId: roomId, messageId: messageId, directory: folder, timeout: timeout)
+            if downloaded.lastPathComponent == named.lastPathComponent { return downloaded }
+            do { try FileManager.default.linkItem(at: downloaded, to: named) } catch { try FileManager.default.copyItem(at: downloaded, to: named) }
+            return named
         default:
             throw MatrixCoreError.noFile(messageId)
         }
