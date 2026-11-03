@@ -529,13 +529,13 @@ component Multiplexer
                           column flex=1 min-width=0 gap=2 padding="10px 0"
                             // at large text sizes the time wraps under the name instead of covering it.
                             row flex-wrap="wrap" column-gap=6 align-items="baseline"
-                              // a muted chat: a crossed bell after its name, as Beeper shows it; under it
-                              // when the name needs the whole width.
-                              row flex-wrap="wrap" column-gap=5 align-items="baseline" flex="1 1 10rem" min-width=0
-                                text r.name font="-exact-headline" font-weight=(loud(r) ? 700 : 600) min-width=0
+                              // a muted chat: a crossed bell after its name's last word, as Beeper shows it.
+                              text font="-exact-headline" font-weight=(loud(r) ? 700 : 600) flex="1 1 10rem" min-width=0
+                                text r.name
                                 if r.muted
-                                  image "symbol:icon.bell-slash" font="-exact-footnote" color="-exact-secondary-label" flex-shrink=0
-                                    aria-label="Muted" testId=`muted-${r.id}`
+                                  text " "
+                                  image "symbol:icon.bell-slash" width="0.8em" height="0.8em" vertical-align="baseline"
+                                    color="-exact-secondary-label" aria-label="Muted" testId=`muted-${r.id}`
                               row gap=6 align-items="baseline" flex-shrink=0 margin-left="auto"
                                 if r.lastTime > 0
                                   text formatDay(r.lastTime, shown, time.utcOffset, "list") font="-exact-subheadline"
