@@ -48,6 +48,45 @@ final class MessageActionsTests: XCTestCase {
         _ = try await summary(sender, roomId) { $0.lastMessage == "Message deleted" }
     }
 
+    /// The list says "Message deleted" when the newest message is deleted, with the chat never
+    /// opened (the sdk's latest event leaves deleted messages out), and still after a relaunch.
+    func testTheListSaysMessageDeletedWithTheChatNotOpened() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let sender = try await signIn(homeserver, user, password)
+        let reader = try await signIn(homeserver, user2, password2)
+        let roomId = try await testRooms(sender, reader, user2: user2)[menuName]!
+        _ = try await sender.messages(roomId: roomId, limit: 20)
+
+        let before = "Before \(UUID().uuidString)", text = "Delete me \(UUID().uuidString)"
+        try await sender.sendAndWait(roomId: roomId, text: before)
+        try await sender.sendAndWait(roomId: roomId, text: text)
+        let shown = try await summary(reader, roomId) { $0.lastMessage == text }
+        let mine = try await message(sender, roomId) { $0.body == text && $0.sendState == .sent }
+        try await sender.delete(roomId: roomId, messageId: mine.id)
+
+        let deleted = try await summary(reader, roomId) { $0.lastMessage != text }
+        XCTAssertEqual(deleted.lastMessage, "Message deleted", "the list shows the message before the deleted one")
+        XCTAssertEqual(deleted.lastSenderName, shown.lastSenderName)
+        XCTAssertFalse(deleted.lastIsOwn)
+        XCTAssertNil(reader.readyTimeline(roomId), "the reader opened the chat")
+
+        // a relaunch reads what the list showed from the store folder.
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("latest-\(UUID().uuidString).json")
+        let kept = LatestMessages(file: file)
+        var first = shown
+        kept.fill(&first)
+        kept.save()
+        var after = deleted
+        after.lastMessage = before
+        LatestMessages(file: file).fill(&after)
+        XCTAssertEqual(after.lastMessage, "Message deleted", "a relaunch forgets the deleted message")
+
+        // a newer message shows again.
+        let next = "After \(UUID().uuidString)"
+        try await sender.sendAndWait(roomId: roomId, text: next)
+        _ = try await summary(reader, roomId) { $0.lastMessage == next }
+    }
+
     func testAForwardedTextPhotoAndFileArriveInAnotherChat() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
         let sender = try await signIn(homeserver, user, password)
