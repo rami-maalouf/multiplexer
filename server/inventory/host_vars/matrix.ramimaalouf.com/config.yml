@@ -58,11 +58,6 @@ matrix_bridge_mautrix_meta_instagram_enabled: true
 # has both, by deleting this line.
 matrix_bridge_mautrix_meta_instagram_version: "4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d"
 
-# debug logs for the main account's login (2026-10-31): they show each meta login screen,
-# and the login responses with names and values hidden. after a login, debug also logs
-# chat data, so set it back to warn (the default) by deleting this line.
-matrix_bridge_mautrix_meta_instagram_logging_min_level: debug
-
 # the linkedin bridge (mautrix-linkedin). a user connects by sending `login password`
 # (email or phone, password, then a code or an app approval) or `login cookies` (a cURL
 # from chrome) to @linkedinbot:ramimaalouf.com. bridged rooms are not end-to-end
@@ -100,7 +95,7 @@ matrix_synapse_max_event_delay_duration: 365d
 # network as a logo on its picture (b1), so the bridges' " (WA)", " (IG)" and " (LinkedIn)"
 # only repeat it. the fields are the playbook's defaults at the pinned commit, without the
 # suffix. names change on the bridge's next update of each contact, not at once: see
-# tasks/todo.md, b2. waits for rami's ok (plan rule 7): not on main until then.
+# tasks/todo.md, b2. rami's ok: 2026-11-03.
 matrix_bridge_mautrix_whatsapp_network_displayname_template: '{% raw %}{{or .BusinessName .PushName .Phone}}{% endraw %}'
 matrix_bridge_mautrix_meta_instagram_bridge_displayname_suffix: ''
 matrix_bridge_mautrix_linkedin_network_displayname_template: "{% raw %}{{ with .Organization }}{{ . }}{{ else }}{{ .FirstName }} {{ .LastName }}{{ end }}{% endraw %}"
