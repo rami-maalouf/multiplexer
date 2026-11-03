@@ -88,10 +88,11 @@ final class Matrix: ExactModule {
                     reply.send(["id": id ?? ""])
                 case "messages":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    // where the "New" line goes: the first message after this account's read receipt.
+                    // first, as it may page the chat back to it: the messages then hold it.
+                    let firstUnread = (try? await account.firstUnread(roomId: roomId)) ?? nil
                     let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
                     let atStart = try await account.isAtStart(roomId: roomId)
-                    // where the "New" line goes: the first message after this account's read receipt.
-                    let firstUnread = (try? await account.firstUnread(roomId: roomId)) ?? nil
                     reply.send(["atStart": atStart, "firstUnread": firstUnread ?? "", "messages": messages.map {
                         ["id": $0.id, "event": $0.eventId, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,

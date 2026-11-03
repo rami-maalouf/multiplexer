@@ -56,6 +56,43 @@ final class ChatDetailsTests: XCTestCase {
         XCTAssertNil(none)
     }
 
+    /// More unread messages than a chat loads at first (20): a device that opens the chat after
+    /// them still finds the first one, as the chat pages back to the read receipt, and shows it.
+    func testANewLineFurtherBackThanTheChatLoads() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let other = try await signIn(homeserver, user2, password2)
+        let roomId = try await testRooms(owner, other, user2: user2)[seenName]!
+
+        // read up to here, then 25 messages from the other person.
+        let read = "Read \(UUID().uuidString)"
+        try await say(read, in: roomId, as: other)
+        _ = try await message(owner, roomId, within: 15) { $0.body == read }
+        try await owner.markRead(roomId: roomId)
+        _ = try await unread(owner, roomId) { $0 == 0 }
+        let run = UUID().uuidString.prefix(8)
+        for n in 1...25 { try await say("Many \(run) \(n)", in: roomId, as: other) }
+        _ = try await unread(owner, roomId) { $0 >= 25 }
+
+        // another device of the reader opens the chat with its 20 newest: the first unread is older.
+        let later = try await signIn(homeserver, user, password)
+        _ = try await later.rooms()
+        _ = try await unread(later, roomId) { $0 >= 25 }
+        let opened = try await later.messages(roomId: roomId, limit: 20)
+        XCTAssertFalse(opened.contains { $0.body == "Many \(run) 1" }, "the chat opens with the first unread message: the test needs it further back")
+        let found = try await later.firstUnread(roomId: roomId)
+        let marked = try XCTUnwrap(found, "no first unread message")
+        let shown = try await later.messages(roomId: roomId, limit: 20)
+        let first = try XCTUnwrap(shown.first { $0.id == marked })
+        XCTAssertEqual(first.body, "Many \(run) 1", "the line goes above the first of the 25")
+        XCTAssertTrue(shown.contains { $0.body == read }, "the chat shows the read message before the line")
+        // asked again, it finds the same message without paging again.
+        let again = try await later.firstUnread(roomId: roomId)
+        XCTAssertEqual(again, marked)
+        try await later.markRead(roomId: roomId)
+        _ = try await unread(owner, roomId) { $0 == 0 }
+    }
+
     /// A video message reaches the other person with its size, length and caption; its poster and
     /// its video download as the sender's bytes.
     func testAVideoReachesTheOtherWithItsSizeLengthAndPoster() async throws {
