@@ -80,7 +80,7 @@ component EmojiSheet
                     color="-exact-secondary-label" flex=1 min-width=0
                   if r.key == "frequent"
                     button press=reset testId="emoji-reset"
-                      text "Reset" font-size="min(-exact-body, 22px)"
+                      text "Reset" font-size="min(-exact-body, 22px)" color="AccentColor"
               else
                 row padding="0 8px"
                   for e in r.emojis key=e.emoji
@@ -88,7 +88,7 @@ component EmojiSheet
                     button appearance="none" press=pick(e.emoji) aria-label=e.name testId=`emoji-${e.emoji}`
                       width=`${100 / columns}%` min-height=56 display="flex" align-items="center" justify-content="center"
                       // a box wider than the glyph, so a newer emoji's is not cut at a measured width.
-                      text e.emoji font-size=34 min-width=48 text-align="center"
+                      text e.emoji font-size="min(-exact-large-title, 40px)" min-width=48 text-align="center"
       // the groups' tabs, under the grid as Beeper has them; a search hides them. Their background
       // reaches 40 points past the route, over the strip the sheet keeps under it, where the grid
       // draws rows past its own frame.
