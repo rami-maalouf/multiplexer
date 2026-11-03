@@ -114,6 +114,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 93 | `contract vocab` does not know an input's `type` values, so `datetime-local` (the date and time picker) reads as missing. | About 4 min | P3 | [contract-vocab-does-not-know-an](issues/20261103-contract-vocab-does-not-know-an.md) |
 | 94 | A drive without real touches draws a menu as bare rows, without the system's menu, even in a window screenshot. | About 12 min | P3 | [a-drive-without-real-touches-draws](issues/20261103-a-drive-without-real-touches-draws.md) |
 | 95 | A popover menu inside a list section draws as the section's cells, with no warning. | About 5 min | P3 | [a-popover-menu-inside-a-list](issues/20261103-a-popover-menu-inside-a-list.md) |
+| 96 | A drive cannot wait on a list item found by its key: `clock until state` takes one path and `==`, so waits by index or count mislead when the list changes. | About 15 min and four drives | P3 | [a-drive-cannot-wait-on-a](issues/20261103-a-drive-cannot-wait-on-a.md) |
 
 ## What worked well
 
