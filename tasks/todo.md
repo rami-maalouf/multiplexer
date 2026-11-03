@@ -868,7 +868,11 @@ emoji, a search and "Frequently used".
 - [x] The reaction bar's "+" opens a sheet: half height to full, search, "Frequently used" from the
   account (`io.element.recent_emoji`, with Reset), all 1,906 emoji by group with 9 tabs.
 - [x] Long press on photos, files, videos, stickers and large emoji too.
-- [ ] Swipe to reply on photos, files, videos and stickers; Copy for a photo (Exact copies text only).
+- [x] Swipe to reply on photos, files, videos and stickers; Copy for a photo. (2026-11-03: `details.contract`'s
+  `SwipeReply` holds the tap, the long press and the swipe on one node, as Exact's iOS host keeps a touch for
+  a press inside a swipe; the media components only draw. Copy writes the original photo as a PNG with
+  `@exact/clipboard` (Exact's image clipboard, from data code; no native code). Drives with real touches:
+  each kind swipes to a reply with its quote, and still opens and holds.)
 - [ ] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
   messages out of a room's latest event).
 - [x] Rami (2026-11-03) ok to all; to build: hide Edit and Delete after the limits. Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
@@ -900,7 +904,8 @@ emoji, a search and "Frequently used".
 - [x] Fixed: a reply's quote showed its sender's raw id (`testAReplysQuoteNamesItsSender`).
 - [ ] The jump count is the chat's whole unread count, not exactly the messages below the view;
   no "New" line when the first unread message is older than the 20 loaded.
-- [ ] Stickers and large emoji have no swipe to reply or long press (B14's area).
+- [x] Stickers and large emoji have no swipe to reply or long press (B14's area). (2026-11-03: a sticker
+  swipes and holds through `SwipeReply`; a large emoji already did, in the text bubble's box.)
 - [x] Rami (2026-11-03): keep the "New" line, in-app Safari, one header per gap, typing later; to build: "Sent" instead of "Delivered". Was: open at the "New" line (built) or at the newest; "Delivered" means our server
   has it, not WhatsApp ("Sent" instead?); links in Safari's in-app view or the Safari app; one
   header per gap; the typing indicator now or later.

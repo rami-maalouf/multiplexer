@@ -1,4 +1,5 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
+import { ClipboardItem, write } from '@exact/clipboard';
 import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
@@ -10,7 +11,8 @@ export const appId = 'com.ramimaalouf.multiplexer';
 // before it goes; a file message's file is shared from where the module downloaded it. A voice
 // message is recorded from the microphone into app:/tmp/voice.
 export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
-  'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice'].join('\n');
+  'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
+  'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy'].join('\n');
 
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
@@ -410,6 +412,15 @@ const sources: Sources = {
   },
   forwardMessage: async ([roomId, messageId, to], _store, _storage, native): Promise<Result<'forwardMessage'>> => {
     await native!.later({ op: 'forward', roomId, messageId, to });
+    return { ok: true };
+  },
+  // a held photo's Copy: its original (downloaded once), as a PNG on the clipboard, which takes
+  // PNG only; a large photo is made smaller to fit the clipboard's 2 MB.
+  copyPhoto: async ([roomId, messageId], _store, storage, native): Promise<Result<'copyPhoto'>> => {
+    const photo = (await native!.later({ op: 'photo', roomId, messageId })) as { path: string };
+    await storage.fs.mkdir('app:/tmp/copy').catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });
+    const png = await storage.fs.compressImage(photo.path, 'app:/tmp/copy/photo.png', { maxDimension: 2048, maxBytes: 2_000_000, type: 'image/png' });
+    await write([new ClipboardItem({ 'image/png': png.path })]);
     return { ok: true };
   },
   // a photo's or file's original, downloaded once into the cache under its own name, to share.

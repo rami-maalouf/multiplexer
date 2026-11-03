@@ -49,3 +49,11 @@ named `--touch platform` (good); with it, the drive's first step, `tap room-<id>
 list's `link` row, failed: "the touch landed on node #16, not on node #14 the aim hit-tested".
 `tap "<the chat's name>"` (the row's text) worked this time, and the drag then fired
 `swiperight`. About 3 minutes.
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+Under `--touch platform`, `tap room-<id>` on a chat list's `link` row answered "the touch
+landed on node #542, not on node #45 the aim hit-tested", so a drive that swipes in a chat
+could not open the chat from the list. It opened the chat through a search result's `button`
+instead. About 3 minutes.
+
