@@ -5,6 +5,7 @@
   "id": "com.ramimaalouf.multiplexer",
   "start_url": "/",
   "display": "standalone",
+  "audio_session": "playback",
   "app": {
     "id": "com.ramimaalouf.multiplexer",
     "name": "Multiplexer"

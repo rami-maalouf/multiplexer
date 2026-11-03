@@ -1,0 +1,52 @@
+// the chat screen's state and actions for its details (details.contract): the "New" line kept
+// while the chat is open, the jump to the newest message, the video viewer, and links.
+use VideoFile from "./details.contract"
+use openBrowser, inAppBrowserStatus, InAppBrowserStatus, BrowserResult from "@exact/in-app-browser"
+
+members Multiplexer
+  // the first message that was unread when the chat opened: its "New" line stays while the chat
+  // is open, though reading the chat moves the read receipt past it. newLineRoom: the chat it is of.
+  state newLine = ""
+  state newLineRoom = ""
+  // the chat moves to its "New" line as it opens; that move is not the reader leaving the newest
+  // message, which would read the chat (app.contract's scrolled).
+  state placing = false
+  derive shownVideo = top(nav).name == "video" ? top(nav).params.message : ""
+  derive shownVideoMessage = first(thread.messages.filter(m => m.id == shownVideo))
+  resource video = loadVideo(openRoom, shownVideo) as shape VideoFile else empty()
+  // the unread messages the jump to the newest passes: the chat's unread count, as the chat is
+  // read only once its newest message has been in view.
+  derive belowUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
+  // a link's page opens over the chat on iOS (Safari's view, Done comes back), else in the browser.
+  resource browser = inAppBrowserStatus() as shape InAppBrowserStatus else empty(available=false, overApp=false)
+  mutation browsed as shape BrowserResult
+  task keepNew when threadShown and newLineRoom != openRoom key=openRoom
+    after(1, keepNewLine)
+  task forgetNew when openRoom == "" and newLineRoom != ""
+    after(1, forgetNewLine)
+  task placed when placing
+    after(800, donePlacing)
+
+  // as Beeper does, a chat with unread messages opens at its "New" line, with the read ones above
+  // it; when they all fit, the chat stays at its newest message.
+  action keepNewLine
+    newLine = thread.firstUnread
+    newLineRoom = openRoom
+    if thread.firstUnread != ""
+      placing = true
+      scrollIntoView("transcript", thread.firstUnread, block="center")
+  action forgetNewLine
+    newLine = ""
+    newLineRoom = ""
+  action donePlacing
+    placing = false
+  action jumpToEnd
+    scrollIntoView("transcript", lastId, block="end", behavior="smooth")
+  // a tap on a video's poster plays it full screen, zooming out of the poster.
+  action showVideo(id: string)
+    nav = push(nav, path("video", openRoom, id))
+  action openLink(url: string)
+    if browser.overApp
+      send browsed = openBrowser(url=url)
+    else
+      openURL(url)

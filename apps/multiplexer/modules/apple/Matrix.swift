@@ -87,7 +87,9 @@ final class Matrix: ExactModule {
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
                     let atStart = try await account.isAtStart(roomId: roomId)
-                    reply.send(["atStart": atStart, "messages": messages.map {
+                    // where the "New" line goes: the first message after this account's read receipt.
+                    let firstUnread = (try? await account.firstUnread(roomId: roomId)) ?? nil
+                    reply.send(["atStart": atStart, "firstUnread": firstUnread ?? "", "messages": messages.map {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
                          "waitingForKey": $0.waitingForKey, "isEdited": $0.isEdited,
@@ -97,7 +99,10 @@ final class Matrix: ExactModule {
                          "reply": $0.reply.map { ["senderName": $0.senderName, "body": $0.body, "isOwn": $0.isOwn] } ?? [:],
                          "reactions": $0.reactions.map { ["key": $0.key, "count": $0.count, "isMine": $0.isMine] },
                          "file": $0.file.map { ["name": $0.name, "size": $0.size, "mimetype": $0.mimetype] } ?? [:],
-                         "progress": $0.uploadProgress ?? -1]
+                         "progress": $0.uploadProgress ?? -1, "isSticker": $0.isSticker,
+                         "video": $0.video.map { ["width": $0.width, "height": $0.height, "duration": $0.duration] } ?? [:],
+                         "poster": poster(account, roomId: roomId, message: $0),
+                         "readers": $0.readBy.map { ["name": $0.name, "time": Double($0.timestamp ?? 0)] }]
                     }])
                 case "markRead":
                     // the screen asks once the reader has seen the chat's newest message; a load does not.
@@ -125,6 +130,11 @@ final class Matrix: ExactModule {
                 case "photo":
                     let file = try await signedIn().imageFile(roomId: request["roomId"] as? String ?? "",
                                                               messageId: request["messageId"] as? String ?? "", full: true, directory: media)
+                    reply.send(["path": "app:/cache/matrix-media/\(file.lastPathComponent)"])
+                case "video":
+                    // a video message's video, downloaded once to play.
+                    let file = try await signedIn().videoFile(roomId: request["roomId"] as? String ?? "",
+                                                              messageId: request["messageId"] as? String ?? "", directory: media)
                     reply.send(["path": "app:/cache/matrix-media/\(file.lastPathComponent)"])
                 case "send":
                     // the message shows in the chat at once; its state says how the sending goes.
@@ -156,7 +166,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -258,6 +268,14 @@ final class Matrix: ExactModule {
         if path.isEmpty { return message.image == nil ? "" : shownThumbnails[key] ?? "" }
         shownThumbnails[key] = path
         return path
+    }
+
+    /// A video message's poster as an `app:/` path once it is here (see `cached`); "" for none.
+    @MainActor private func poster(_ account: MatrixAccount, roomId: String, message: Message) -> String {
+        guard let video = message.video else { return "" }
+        return cached(video.posterName, then: .room(roomId)) {
+            _ = try await account.videoPoster(roomId: roomId, messageId: message.id, directory: self.media)
+        }
     }
 
     /// Puts a picked photo or file, which app.ts prepared under `app:/tmp`, in the room's send queue.

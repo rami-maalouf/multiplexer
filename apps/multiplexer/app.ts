@@ -31,6 +31,8 @@ const shortName = (name: string, oneToOne: boolean): string =>
   (oneToOne ? name.trim().split(/\s+/)[0] : '') || name;
 type MessagesAnswer = {
   atStart: boolean;
+  // the first message after this account's read receipt, or "".
+  firstUnread: string;
   messages: {
     id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
     isImage: boolean; image: string; imageWidth: number; imageHeight: number; waitingForKey: boolean;
@@ -42,6 +44,13 @@ type MessagesAnswer = {
     // -1 when nothing uploads.
     progress: number;
     reactions: { key: string; count: number; isMine: boolean }[];
+    isSticker: boolean;
+    // empty when the message is no video; duration in milliseconds.
+    video: { width?: number; height?: number; duration?: number };
+    // a video's poster once it is downloaded, else "".
+    poster: string;
+    // who has read the chat up to it, besides its sender and you; name "" until it is known, time 0 when unknown.
+    readers: { name: string; time: number }[];
   }[];
 };
 
@@ -52,8 +61,72 @@ const problems: Record<string, (server: string) => string> = {
   'rate-limited': () => 'The server got too many sign-in attempts. Wait a minute, then try again.',
 };
 
-// a chat shows the time above a message that comes more than an hour after the one before it.
+// a chat shows the day and time above a message that comes more than an hour after the one
+// before it, or on another day.
 const GROUP_GAP_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// a sticker fits a box this many rem wide and tall, as Beeper shows one.
+const STICKER_SIDE = 9.5;
+
+// one to three emoji and nothing else (spaces aside): a flag, a keycap, or a pictograph drawn as
+// an emoji (on its own, or asked for with U+FE0F, so "©" stays text) with its skin tone and joined parts.
+const EMOJI = /\p{Regional_Indicator}\p{Regional_Indicator}|[#*0-9]\uFE0F?\u20E3|(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F)\p{Emoji_Modifier}?(?:\u200D\p{Extended_Pictographic}\uFE0F?\p{Emoji_Modifier}?)*/gu;
+const isBigEmoji = (body: string): boolean => {
+  const text = body.replace(/\s+/g, '');
+  if (text === '' || text.length > 48) return false;
+  const found = text.match(EMOJI) ?? [];
+  return found.length >= 1 && found.length <= 3 && found.join('') === text;
+};
+
+// a link starts with http:// or https:// or www.; punctuation at its end closes the sentence, and
+// a bracket at its end closes one the link did not open.
+const LINK = /\b(?:https?:\/\/|www\.)[^\s<>"]+/giu;
+const count = (text: string, c: string): number => text.split(c).length - 1;
+const linkEnd = (url: string): string => {
+  let end = url;
+  for (;;) {
+    if (/[.,;:!?'"’”]$/u.test(end)) end = end.slice(0, -1);
+    else if (end.endsWith(')') && count(end, ')') > count(end, '(')) end = end.slice(0, -1);
+    else if (end.endsWith(']') && count(end, ']') > count(end, '[')) end = end.slice(0, -1);
+    else return end;
+  }
+};
+/** A message's text as runs: plain text, and links with the page each opens. */
+const runsOf = (body: string): { id: string; text: string; href: string }[] => {
+  const runs: { id: string; text: string; href: string }[] = [];
+  let at = 0;
+  for (const found of body.matchAll(LINK)) {
+    const start = found.index ?? 0;
+    if (start < at) continue;
+    const url = linkEnd(found[0]);
+    if (url.length < 5) continue;
+    if (start > at) runs.push({ id: String(runs.length), text: body.slice(at, start), href: '' });
+    runs.push({ id: String(runs.length), text: url, href: /^https?:/iu.test(url) ? url : `https://${url}` });
+    at = start + url.length;
+  }
+  if (at < body.length || runs.length === 0) runs.push({ id: String(runs.length), text: body.slice(at), href: '' });
+  return runs;
+};
+
+// "Ana", "Ana and Ben", "Ana, Ben and Cleo", "Ana, Ben and 3 others".
+const namesText = (names: string[]): string =>
+  names.length <= 1 ? (names[0] ?? '')
+    : names.length <= 3 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+      : `${names.slice(0, 2).join(', ')} and ${names.length - 2} others`;
+/** What shows under the chat's newest message: yours says "Delivered" until someone reads it; then
+ * a direct chat says "Seen" (with the time the view writes) and a group "Seen by" who. Under
+ * another person's, a group says who else has seen it. */
+const statusOf = (m: MessagesAnswer['messages'][number], group: boolean): { status: string; statusTime: number } => {
+  const none = { status: '', statusTime: 0 };
+  const named = m.readers.map((r) => r.name).filter((n) => n !== '');
+  if (m.isOwn) {
+    if (m.state !== 'sent') return none;
+    if (m.readers.length === 0) return { status: 'Delivered', statusTime: 0 };
+    if (!group) return { status: 'Seen', statusTime: Math.max(...m.readers.map((r) => r.time)) };
+  }
+  if (!group || m.readers.length === 0) return none;
+  return { status: named.length > 0 ? `Seen by ${namesText(named)}` : 'Seen', statusTime: 0 };
+};
 const MESSAGE_COUNT = 20;
 // a photo in the chat fits a box this many rem wide and tall, as Messages keeps a tall one short.
 const PHOTO_MAX_WIDTH = 15;
@@ -143,24 +216,37 @@ const sources: Sources = {
     await native!.later({ op: 'chat', roomId, action });
     return { ok: true };
   },
-  loadMessages: async ([roomId, isDirect, roomName], _store, _storage, native): Promise<Result<'loadMessages'>> => {
-    if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, messages: [] };
+  // the messages of a day go together in the reader's zone (utcOffset, in minutes).
+  loadMessages: async ([roomId, isDirect, roomName, utcOffset], _store, _storage, native): Promise<Result<'loadMessages'>> => {
+    if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, firstUnread: '', messages: [] };
     native.watch(`thread:${roomId}`);
     const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
     // a bridged one-to-one chat is often not marked direct, but it is named after the other person.
     const group = !isDirect && answer.messages.some((m) => !m.isOwn && m.senderName !== roomName);
+    const day = (t: number) => Math.floor((t + utcOffset * 60000) / DAY_MS);
     const messages = answer.messages.map((m, i) => {
       const before = answer.messages[i - 1];
       const after = answer.messages[i + 1];
-      const startsGroup = before === undefined || m.time - before.time > GROUP_GAP_MS;
+      const startsGroup = before === undefined || m.time - before.time > GROUP_GAP_MS || day(m.time) !== day(before.time);
       // a run is one sender's messages in a row; its last bubble has the tail and the sender's picture.
-      const endsRun = after === undefined || after.sender !== m.sender || after.time - m.time > GROUP_GAP_MS;
+      const endsRun = after === undefined || after.sender !== m.sender || after.time - m.time > GROUP_GAP_MS
+        || day(after.time) !== day(m.time);
       // a group chat names the sender above the first message of each run.
       const showName = group && !m.isOwn && (startsGroup || before.sender !== m.sender);
+      const isVideo = m.video.duration !== undefined;
+      // a video and a sticker show their picture where a photo shows its own.
+      const [width, height] = isVideo ? [m.video.width ?? 0, m.video.height ?? 0] : [m.imageWidth, m.imageHeight];
+      const side = m.isSticker ? STICKER_SIDE : PHOTO_MAX_WIDTH;
+      const tall = m.isSticker ? STICKER_SIDE : PHOTO_MAX_HEIGHT;
+      const media = m.isImage || m.file.name !== undefined || isVideo || m.isSticker;
+      const bigEmoji = !media && !m.waitingForKey && isBigEmoji(m.body);
+      const status = i === answer.messages.length - 1 ? statusOf(m, group) : { status: '', statusTime: 0 };
       return {
         id: m.id, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
-        isImage: m.isImage, image: m.image, imageWidth: m.imageWidth, imageHeight: m.imageHeight,
+        isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
+        isVideo, seconds: Math.round((m.video.duration ?? 0) / 1000), isSticker: m.isSticker, bigEmoji,
+        balloon: !m.waitingForKey && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
         // a reply shows who wrote what it answers once that message is loaded; until then, or if
         // it cannot load, no quote shows rather than an empty one.
@@ -168,11 +254,10 @@ const sources: Sources = {
         replyName: m.reply.isOwn ? 'You' : (m.reply.senderName ?? ''),
         replyBody: m.reply.body ?? '',
         isFile: m.file.name !== undefined, fileName: m.file.name ?? '', fileSize: m.file.size ?? 0, progress: m.progress,
-        photoWidth: m.imageWidth > 0 && m.imageHeight > 0
-          ? Math.min(PHOTO_MAX_WIDTH, (PHOTO_MAX_HEIGHT * m.imageWidth) / m.imageHeight) : PHOTO_MAX_WIDTH,
+        photoWidth: width > 0 && height > 0 ? Math.min(side, (tall * width) / height) : side,
       };
     });
-    return { room: roomId, atStart: answer.atStart, group, messages };
+    return { room: roomId, atStart: answer.atStart, group, firstUnread: answer.firstUnread, messages };
   },
   // the view asks when the reader has seen the chat's newest message; loading a chat reads nothing.
   markRead: async ([roomId], _store, _storage, native): Promise<Result<'markRead'>> => {
@@ -194,6 +279,12 @@ const sources: Sources = {
   loadOlderMessages: async ([roomId], _store, _storage, native): Promise<Result<'loadOlderMessages'>> => {
     await native!.later({ op: 'older', roomId });
     return { ok: true };
+  },
+  // a video message's video, downloaded once into the cache to play.
+  loadVideo: async ([roomId, messageId], _store, _storage, native): Promise<Result<'loadVideo'>> => {
+    if (messageId === '' || !native?.available) return { message: messageId, path: '' };
+    const answer = (await native.later({ op: 'video', roomId, messageId })) as { path: string };
+    return { message: messageId, path: answer.path };
   },
   loadPhoto: async ([roomId, messageId], _store, _storage, native): Promise<Result<'loadPhoto'>> => {
     if (messageId === '' || !native?.available) return { message: messageId, path: '' };

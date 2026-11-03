@@ -1,0 +1,170 @@
+// a chat's details beside its bubbles, as Beeper shows them: the day and time between messages,
+// the "New" line, who has seen the newest message, the jump to it, large emoji, stickers, links
+// and videos. Their state and actions are the chat screen's (details-members.contract).
+use BalloonBox from "./bubble.contract"
+
+// a piece of a message's text: a link (href, the page it opens) or plain text (href "").
+shape Run
+  id: string
+  text: string
+  href: string
+
+// a video message's video, downloaded to play; message names it.
+shape VideoFile
+  message: string
+  path: string
+
+// a day's number in the reader's time zone (offset in minutes), to tell days apart.
+fn dayNumber(t: number, offset: number): number = floor((t + offset * 60000) / 86400000)
+// a day as Beeper and Messages name it: "Today", "Yesterday", the weekday within the last week,
+// then the date ("Oct 29, 2026").
+fn dayName(t: number, now: number, offset: number): string = dayNumber(now, offset) - dayNumber(t, offset) < 2 ? formatDay(t, now, offset, "day") : (dayNumber(now, offset) - dayNumber(t, offset) < 7 ? formatDay(t, now, offset, "list") : formatDate(t, offset, "medium"))
+// when a direct chat's other person saw the newest message: "4:42 PM" today, "yesterday", the
+// weekday, then the date.
+fn seenWhen(t: number, now: number, offset: number): string = dayNumber(now, offset) - dayNumber(t, offset) < 1 ? formatTime(t, offset, "short") : (dayNumber(now, offset) - dayNumber(t, offset) == 1 ? "yesterday" : dayName(t, now, offset))
+// "Seen 4:42 PM" in a direct chat once the time is known; else the status as it is.
+fn seenText(status: string, t: number, now: number, offset: number): string = status == "Seen" and t > 0 ? `Seen ${seenWhen(t, now, offset)}` : status
+fn twoDigits(n: number): string = n < 10 ? `0${n}` : `${n}`
+// a video's length as a player shows it: "0:42", "1:05:03".
+fn lengthText(s: number): string = s >= 3600 ? `${floor(s / 3600)}:${twoDigits(floor(s / 60) % 60)}:${twoDigits(s % 60)}` : `${floor(s / 60)}:${twoDigits(s % 60)}`
+fn unreadCount(n: number): string = n > 99 ? "99+" : n.toString()
+
+// the day and the time above the first message of a day, and above a message that comes more
+// than an hour after the one before it: "Today 4:42 PM", the day a little bolder, as Messages
+// shows it. One header, never a day label over a time label.
+component DayHeader
+  props
+    time: number
+    now: number
+    offset: number
+    identifier: string
+  view
+    text align-self="center" text-align="center" padding="12px 0 4px" testId=identifier
+      text dayName(time, now, offset) font="-exact-caption1" font-weight=600 color="-exact-secondary-label"
+      text ` ${formatTime(time, offset, "short")}` font="-exact-caption1" color="-exact-secondary-label"
+
+// above the first message that was unread when the chat opened, as Beeper draws it.
+component NewLine
+  view
+    row align-self="stretch" align-items="center" gap=10 padding="10px 0 8px" role="separator" aria-label="New messages"
+      testId="new-line"
+      view flex=1 height=1 background-color="AccentColor"
+      text "New" font="-exact-footnote" color="AccentColor" aria-hidden=true
+      view flex=1 height=1 background-color="AccentColor"
+
+// under the newest message: "Delivered", "Seen 4:42 PM" or "Seen by Ana, Ben", on its sender's side.
+component StatusLine
+  props
+    label: string
+    own: bool
+    indent: number
+  view
+    text label font="-exact-caption1" color="-exact-secondary-label" align-self=(own ? "flex-end" : "flex-start")
+      text-align=(own ? "end" : "start") padding=(own ? "3px 6px 0 0" : `3px 0 0 ${indent + 6}px`) max-width="80%" testId="status"
+
+// the jump to the newest message, bottom right over the chat while it is out of view, with how
+// many messages are unread ("23" and an arrow, as Beeper has it); the arrow alone when none are.
+component JumpButton
+  props
+    count: number
+    press: action
+  view
+    button appearance="none" press=press backgroundMaterial="glass" border-radius=22 min-width=44 height=44 testId="jump"
+      display="flex" flex-direction="row" align-items="center" justify-content="center" gap=6
+      padding=(count > 0 ? "0 12px 0 8px" : "0") box-sizing="border-box"
+      aria-label=(count > 0 ? `Newest message, ${count} unread` : "Newest message")
+      if count > 0
+        view min-width=24 height=24 padding="0 7px" border-radius=12 box-sizing="border-box" background-color="AccentColor"
+          display="flex" align-items="center" justify-content="center"
+          text unreadCount(count) font="-exact-footnote" font-weight=600 color="AccentColorText" font-variant-numeric="tabular-nums"
+      image "symbol:icon.arrow-down" font-size="min(-exact-body, 20px)" color="-exact-label" aria-hidden=true
+
+// a message of one to three emoji and nothing else: large, with no bubble, as Messages shows it.
+component BigEmoji
+  props
+    body: string
+    dimmed: bool
+    identifier: string
+  view
+    text body id=identifier testId=identifier font-size="2.75rem" line-height=1.15 padding="0 2px"
+      opacity=(dimmed ? 0.6 : 1)
+
+// a text with links in a bubble: a tap on a link opens its page. Yours are in the bubble's white,
+// others' in the accent, both underlined. Each run says its own colour: a run's style does not
+// come from the text around it. A word too long for its line breaks with no hyphen (iOS would add
+// one, and a link's address with a hyphen added reads as another address); hyphens is the
+// paragraph's, not a run's.
+component RichBalloon
+  props
+    runs: Run[]
+    outgoing: bool
+    tail: bool
+    dimmed: bool
+    identifier: string
+    open: action
+  derive ink = outgoing ? "AccentColorText" : "-exact-label"
+  view
+    BalloonBox(outgoing=outgoing, tail=tail, dimmed=dimmed, identifier=identifier)
+      text position="relative" white-space="pre-wrap" overflow-wrap="break-word" hyphens="none" min-width=0
+        for r in runs key=r.id
+          if r.href != ""
+            text r.text color=(outgoing ? "AccentColorText" : "AccentColor") text-decoration-line="underline" press=open(r.href)
+              testId=`link-${identifier}-${r.id}`
+          else
+            text r.text color=ink
+
+// a sticker: its picture at its ratio, with no bubble.
+component Sticker
+  props
+    picture: string
+    width: number
+    ratio: string
+    identifier: string
+  view
+    view width=`${width}rem` max-width="100%" aspect-ratio=ratio role="img" aria-label="Sticker" testId=identifier
+      if picture != ""
+        image picture width="100%" height="100%" object-fit="contain" aria-label="Sticker"
+
+// a video message: its poster at its ratio, a play mark in the middle and its length in a corner,
+// as Messages shows one; a tap plays it. Without a poster, a dark box.
+component VideoPoster
+  props
+    poster: string
+    width: number
+    ratio: string
+    seconds: number
+    dimmed: bool
+    open: action
+    identifier: string
+  view
+    button appearance="none" press=open id=identifier testId=identifier width=`${width}rem` max-width="100%" aspect-ratio=ratio
+      border-radius=18 overflow="hidden" background-color="media.backdrop" position="relative" opacity=(dimmed ? 0.6 : 1)
+      aria-label=(seconds > 0 ? `Video, ${lengthText(seconds)}` : "Video")
+      if poster != ""
+        image poster width="100%" height="100%" object-fit="cover" aria-label=""
+      view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+        view width=52 height=52 border-radius=26 background-color="media.scrim" display="flex" align-items="center" justify-content="center"
+          image "symbol:play-fill" font-size="min(-exact-title2, 24px)" color="media.ink" margin-left=3 aria-hidden=true
+      if seconds > 0
+        text lengthText(seconds) position="absolute" left=8 bottom=8 padding="2px 7px" border-radius=10
+          background-color="media.scrim" color="media.ink" font="-exact-caption1" font-size="min(-exact-caption1, 16px)" font-weight=600
+          font-variant-numeric="tabular-nums"
+          aria-hidden=true
+
+// the video full screen: the system's player with its controls, playing at once, with sound;
+// its poster and a spinner while it downloads.
+component VideoPlayer
+  props
+    path: string
+    poster: string
+    label: string
+  view
+    if path != ""
+      video path id="player" poster=poster controls=true autoplay=true playsinline=true object-fit="contain"
+        flex=1 min-height=0 width="100%" aria-label=label testId="video-player"
+    else
+      column flex=1 min-height=0 position="relative" testId="video-loading"
+        if poster != ""
+          image poster flex=1 min-height=0 width="100%" object-fit="contain" aria-label=label
+        view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+          progress aria-label="Loading the video"
