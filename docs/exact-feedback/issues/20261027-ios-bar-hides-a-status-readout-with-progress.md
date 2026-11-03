@@ -37,3 +37,7 @@ Either the readout drawn in the bar, as the vocab says, or a compile warning
 
 Seen at exact2 `65577096ed`. No commit to the navigation bar's code since then, up to
 `cee509ac82`.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1358 (fixes it): the compiler warns (`lower-header-unplaced`) about a readout in a `header` that holds no text, symbol or sized dot, also inside an `if`, `match` or `for`.

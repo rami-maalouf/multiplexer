@@ -27,3 +27,7 @@ Cost: about 3 minutes.
 ## Evidence
 
 Seen on 2026-10-27 at exact2 `cee509ac82`, with an iPhone 16 Pro over Wi-Fi.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1356 fixes it: `ios --device` checks the iPhone Rust target before it builds, as `--tvos` does, and names `rustup target add aarch64-apple-ios`.
