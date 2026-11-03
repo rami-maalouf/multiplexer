@@ -695,10 +695,23 @@ from the bridge's display name template on the server.
 **Acceptance criteria:**
 - [x] **Rami's OK at that time** before any server change (the plan's rule 7). (2026-11-03:
   "do whatever you think is best"; all three suffixes, so no network repeats its logo.)
-- [ ] The template changes through the playbook (invariant 6), and names update in the app.
-  (2026-11-03: applied through the playbook, all three; `!wa sync contacts` sent. On the
-  server the WhatsApp names lose " (WA)": see the result below. Open: a read-only drive on
-  `@rami` to see the names in the app.)
+- [x] The template changes through the playbook (invariant 6), and names update in the app.
+  (2026-11-03: applied through the playbook, all three; `!wa sync contacts` sent. Read-only
+  drive on `@rami`, new device, signed out after: of 189 chats loaded, 0 names show " (WA)";
+  2 direct chats and 1 group show their names in the bar without a suffix. Instagram senders
+  still show " (IG)" (7 in previews; 705 of 708 Instagram ghosts on the server) until each
+  contact's next update.)
+
+**Found in that drive (app, not B2's server change; for the app lane):**
+- **A group opens empty.** A WhatsApp group with messages (its inbox row shows the last one)
+  opened as "No Messages Yet", still after 20 s, on a new device. On the server, 182 of the
+  room's newest 200 events are member events (167 from the rename at 22:50 UTC: each name
+  change is one). So the first page holds only hidden events, and the chat does not page back
+  to a message. 54 of 279 WhatsApp rooms have no message in their newest 20 events (43 none in
+  50). Fix in the app: page back until a shown message or the room's start.
+- **A raw ID as sender.** 4 inbox previews show the sender as `@whatsapp_lid-…:ramimaalouf.com`
+  on a new device, while the server has that person's name (profile and member event). The
+  preview falls back to the user ID when the sender's member event is not loaded.
 
 **Prepared (2026-11-03, branch `server/b2-names`, not merged, not applied).** `config.yml` adds
 three lines, the playbook's defaults at the pinned commit without the suffix:
