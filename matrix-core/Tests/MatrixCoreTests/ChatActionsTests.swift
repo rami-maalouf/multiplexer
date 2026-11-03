@@ -193,6 +193,48 @@ final class ChatActionsTests: XCTestCase {
         try await owner.markRead(roomId: deleted)
     }
 
+    func testYourOwnMessageBringsAnArchivedChatBack() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let archived = try await testRooms(owner, sender, user2: user2)[choicesArchiveName]!
+        try await reset(owner, archived)
+        let other = try await signIn(homeserver, user, password)
+
+        // sent from this app: back at once, and on the other device.
+        try await owner.archive(roomId: archived)
+        try await assertListed(owner, archived, in: .archive)
+        try await owner.send(roomId: archived, text: "Mine \(UUID().uuidString)")
+        try await listed(owner, archived, in: .inbox)
+        try await listed(other, archived, in: .inbox)
+
+        // sent from another device of the account.
+        try await owner.archive(roomId: archived)
+        try await assertListed(owner, archived, in: .archive)
+        try await say("Elsewhere \(UUID().uuidString)", in: archived, as: other)
+        try await listed(owner, archived, in: .inbox)
+        try await assertListed(owner, archived, in: .inbox)
+
+        // a muted one: the other person's message leaves it archived, our own brings it back, and
+        // it stays back when they answer.
+        try await owner.archive(roomId: archived)
+        try await owner.mute(roomId: archived)
+        let quiet = "Quiet \(UUID().uuidString)"
+        try await say(quiet, in: archived, as: sender)
+        let stayed = try await summary(owner, archived) { $0.lastMessage == quiet }
+        XCTAssertTrue(stayed.isArchived, "a muted archived chat came back with someone else's message")
+        try await owner.send(roomId: archived, text: "Mine too \(UUID().uuidString)")
+        try await listed(owner, archived, in: .inbox)
+        let answer = "Answer \(UUID().uuidString)"
+        try await say(answer, in: archived, as: sender)
+        let answered = try await summary(owner, archived) { $0.lastMessage == answer }
+        XCTAssertFalse(answered.isArchived, "the answer archived the chat again")
+        try await assertListed(owner, archived, in: .inbox)
+
+        try await reset(owner, archived)
+        try await owner.markRead(roomId: archived)
+    }
+
     /// The rules without a server: which list each chat is in, when a mark holds, and the
     /// marks' content.
     func testListAndMarkRules() {
@@ -242,6 +284,18 @@ final class ChatActionsTests: XCTestCase {
         XCTAssertEqual(read, ChatMarks(archived: ["a": 10], cleared: ["g": 5]))
         XCTAssertEqual(read.json(), #"{"archived":{"a":{"ts":10}},"cleared":{"g":{"ts":5}},"hidden":{},"labels":{"x":["a"]}}"#)
 
+        // our own newer message brings a muted chat back, and drops its mark; someone else's does not.
+        var own = chat("o", last: 20, muted: true)
+        own.lastIsOwn = true
+        own.fillMarks(ChatMarks(archived: ["o": 10]))
+        XCTAssertFalse(own.isArchived)
+        var olderOwn = chat("o", last: 5, muted: true)
+        olderOwn.lastIsOwn = true
+        olderOwn.fillMarks(ChatMarks(archived: ["o": 10]))
+        XCTAssertTrue(olderOwn.isArchived)
+        var dropped = ChatMarks(archived: ["o": 10, "m": 5])
+        dropped.dropReturned([own, rooms.first { $0.id == "m" }!])
+        XCTAssertEqual(dropped, ChatMarks(archived: ["m": 5]))
         XCTAssertEqual(ChatMarks(json: nil), ChatMarks())
         XCTAssertEqual(ChatMarks(json: "not json"), ChatMarks())
     }

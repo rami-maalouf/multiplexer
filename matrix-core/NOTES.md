@@ -211,10 +211,13 @@ bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a Wha
   (`Client.accountData`), which the sync fills. Its content: `{"archived": {"<room id>": {"ts":
   <ms>}}, "hidden": {...}, "cleared": {...}}`, `ts` being the time of the chat's newest message
   when it was marked. Other keys (a later version's labels) are kept as they are.
-- **A new message brings a chat back** (Rami: an archived chat comes back unless it is muted;
-  a deleted one comes back too). Nothing is written then: a chat is archived while it is muted or
-  its newest message (`RoomSummary.lastTimestamp`: a message, a call, a poll, a sticker or our own
-  join, never someone else's join or a reaction) is not newer than its mark. Unmuting an archived
+- **A new message brings a chat back** (Rami: an archived chat comes back unless it is muted,
+  and our own message brings it back even then (2026-11-03); a deleted one comes back too).
+  Nothing is written then: a chat is archived while its newest message (`RoomSummary.lastTimestamp`: a message, a call, a poll, a sticker or our own
+  join, never someone else's join or a reaction) is not newer than its mark, or while it is muted
+  and that message is someone else's. When our own message brings a muted chat back, the list
+  drops its mark at once (`fillChatStates`), so the answer that follows does not archive it
+  again. Unmuting an archived
   chat moves its mark to its newest message, so the messages that came while it was muted do not
   bring it back. A change of the marks drops the marks of chats that came back.
 - **Delete does not leave the room.** bridgev2 drops our own leave unless `bridge_matrix_leave`

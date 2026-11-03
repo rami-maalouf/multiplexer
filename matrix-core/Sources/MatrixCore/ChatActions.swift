@@ -106,13 +106,23 @@ extension MatrixAccount {
     }
 
     /// Whether each chat is muted, then whether it is archived or deleted now: a mark holds only
-    /// until a newer message, unless the chat is muted.
+    /// until a newer message, unless the chat is muted and that message is not our own.
     func fillChatStates(_ rooms: inout [RoomSummary]) async {
         let quiet = await quietRooms()
         let marks = await chatMarks()
+        var returned = false
         for i in rooms.indices {
             rooms[i].isMuted = chats.value(.muted, of: rooms[i].id, onServer: quiet.contains(rooms[i].id))
             rooms[i].fillMarks(marks)
+            if rooms[i].isMuted, let ts = marks.archived[rooms[i].id], !rooms[i].isArchived, rooms[i].lastTimestamp > ts { returned = true }
+        }
+        // our own message brought a muted chat back: its mark goes, so the next message from
+        // someone else does not archive it again.
+        if returned, chats.startDropping() {
+            Task {
+                try? await self.changeMarks { _ in }
+                self.chats.doneDropping()
+            }
         }
     }
 
@@ -199,7 +209,7 @@ extension RoomSummary {
 
     /// Archived until a newer message (a muted chat stays), deleted until a newer message.
     mutating func fillMarks(_ marks: ChatMarks) {
-        isArchived = marks.archived[id].map { isMuted || lastTimestamp <= $0 } ?? false
+        isArchived = marks.archived[id].map { lastTimestamp <= $0 || (isMuted && !lastIsOwn) } ?? false
         isHidden = marks.hidden[id].map { lastTimestamp <= $0 } ?? false
     }
 }
@@ -250,11 +260,11 @@ struct ChatMarks: Equatable, Sendable {
         return String(decoding: data, as: UTF8.self)
     }
 
-    /// Drops the marks of chats a newer message brought back; a chat not in `rooms` keeps its mark.
-    /// A delete's cut stays.
+    /// Drops the marks of chats a newer message brought back (a muted chat's only by our own); a
+    /// chat not in `rooms` keeps its mark. A delete's cut stays.
     mutating func dropReturned(_ rooms: [RoomSummary]) {
         for room in rooms {
-            if let ts = archived[room.id], !room.isMuted, room.lastTimestamp > ts { archived[room.id] = nil }
+            if let ts = archived[room.id], !room.isMuted || room.lastIsOwn, room.lastTimestamp > ts { archived[room.id] = nil }
             if let ts = hidden[room.id], room.lastTimestamp > ts { hidden[room.id] = nil }
         }
     }
@@ -274,6 +284,8 @@ final class ChatStates: @unchecked Sendable {
     private var written: (marks: ChatMarks, since: Date)?
     /// The change of marks under way: the next one waits for it.
     private var changing: Task<Void, Error>?
+    /// A change that drops the marks of chats that came back is under way.
+    private var dropping = false
     /// The account's push rules (`MatrixAccount.notificationSettings`), made once.
     private var notificationSettings: Task<NotificationSettings, Never>?
 
@@ -304,6 +316,17 @@ final class ChatStates: @unchecked Sendable {
             return written.marks
         }
     }
+
+    /// True when no drop is under way, which the caller then starts.
+    func startDropping() -> Bool {
+        lock.withLock {
+            if dropping { return false }
+            dropping = true
+            return true
+        }
+    }
+
+    func doneDropping() { lock.withLock { dropping = false } }
 
     func wrote(_ marks: ChatMarks?) {
         lock.withLock { written = marks.map { ($0, Date()) } }
