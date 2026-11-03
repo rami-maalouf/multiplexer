@@ -38,3 +38,7 @@ root (as the warning says), or the rule accepting both shapes.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1361 (fixes it): the recipe's sheet component takes the entry's id and its root is the route, so its `header` is the route's first child. A run of the old recipe confirmed that its sheet's route had no bar: the rule gives a `for` on the way the benefit.

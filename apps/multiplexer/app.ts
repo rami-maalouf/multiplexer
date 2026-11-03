@@ -426,6 +426,13 @@ const sources: Sources = {
     await native!.later({ op: 'discard', roomId, messageId });
     return { ok: true };
   },
+  // Settings' account: its name and picture (the picture once it is downloaded, "" until then).
+  loadProfile: async ([userId], _store, _storage, native): Promise<Result<'loadProfile'>> => {
+    if (userId === '' || !native?.available) return { userId, name: '', avatar: '', initials: '', version: '' };
+    native.watch('profile');
+    const p = (await native.later({ op: 'profile' })) as { userId: string; name: string; avatar: string; version: string };
+    return { userId: p.userId, name: p.name, avatar: p.avatar, initials: initials(p.name), version: p.version };
+  },
   signOut: async (_args, _store, _storage, native): Promise<Result<'signOut'>> => {
     await native!.later({ op: 'signOut' });
     return { ok: true };

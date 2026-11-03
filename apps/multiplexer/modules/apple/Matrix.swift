@@ -187,11 +187,19 @@ final class Matrix: ExactModule {
                 case "retry":
                     try await signedIn().retry(roomId: request["roomId"] as? String ?? "", messageId: request["messageId"] as? String ?? "")
                     reply.send(["ok": true])
+                case "profile":
+                    // the account's name and picture for Settings, and the app's version.
+                    let account = try await signedIn(), profile = try await account.ownProfile()
+                    reply.send(["userId": profile.userId, "name": profile.displayName,
+                                "avatar": cached(profile.avatarName, then: .profile) {
+                                    _ = try await account.pictureFile(url: profile.avatarUrl, directory: self.media)
+                                },
+                                "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""])
                 case "signOut":
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -498,6 +506,7 @@ final class Matrix: ExactModule {
         switch change {
         case .rooms: return "rooms"
         case .room(let roomId): return "thread:\(roomId)"
+        case .profile: return "profile"
         }
     }
 

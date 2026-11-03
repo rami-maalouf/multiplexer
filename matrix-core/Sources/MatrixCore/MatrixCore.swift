@@ -20,6 +20,8 @@ public enum MatrixChange: Hashable, Sendable {
     case rooms
     /// The messages of an open chat changed.
     case room(String)
+    /// The account's own picture arrived.
+    case profile
 }
 
 /// What the app keeps (in the Keychain) to sign in again without a password.

@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26. 73 to 78 on 2026-11-03, with new evidence for 13 and 26.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26; 73 to 76 on 2026-11-03, with new evidence for 2 and 60. 77 to 82 on 2026-11-03 (B18 search), with new evidence for 13 and 26.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -77,26 +77,30 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 56 | A drive cannot start a drag at a point, so it cannot make an edge swipe. | About 3 min | P3 | [a-drive-cannot-start-a-drag](issues/20261103-a-drive-cannot-start-a-drag.md) |
 | 57 | The host tests refuse to run without the Metal toolchain, which a build does without. | About 10 min | P3 | [the-host-tests-refuse-to-run](issues/20261103-the-host-tests-refuse-to-run.md) |
 | 58 | The host tests cannot run one test class: `--test` runs all 318 classes. | About 15 min | P3 | [the-host-tests-cannot-run-one](issues/20261103-the-host-tests-cannot-run-one.md) |
-| 59 | `caps` counts one more line than `wc -l`. | About 3 min | P3 | [caps-counts-one-more-line-than](issues/20261103-caps-counts-one-more-line-than.md) |
+| 59 | `caps` counts one more line than `wc -l`. Fixed in PR #1365 (open). | About 3 min | P3 | [caps-counts-one-more-line-than](issues/20261103-caps-counts-one-more-line-than.md) |
 | 60 | iOS adds a hyphen inside a link's address under `break-word`, and an inline run's `hyphens` is dropped. | About 15 min | P3 | [ios-hyphenates-a-link-inside-a](issues/20261103-ios-hyphenates-a-link-inside-a.md) |
-| 61 | A members file's rules do not say whether it may also hold components, and `contract vocab` does not know `members`. | About 5 min | P3 | [a-members-file-s-rules-leave](issues/20261103-a-members-file-s-rules-leave.md) |
-| 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
+| 61 | A members file's rules do not say whether it may also hold components, and `contract vocab` does not know `members`. Fixed in PR #1364 (open). | About 5 min | P3 | [a-members-file-s-rules-leave](issues/20261103-a-members-file-s-rules-leave.md) |
+| 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. Fixed in PR #1366 (open). | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
 | 63 | `formatDay` has no style for a chat's day label. | About 5 min | P3 | [formatday-has-no-style-for](issues/20261103-formatday-has-no-style-for.md) |
 | 64 | A search field in a sheet's content draws its magnifier over its text at the accessibility sizes. | About 15 min | P3 | [a-search-field-in-a-sheet](issues/20261103-a-search-field-in-a-sheet.md) |
-| 65 | A sheet's bar search field hides the bar and its Send while searching, and the search card does not say so. | About 10 min | P3 | [a-sheet-s-bar-search-field](issues/20261103-a-sheet-s-bar-search-field.md) |
-| 66 | The edit-sheet recipe nests a sheet's header as `lower-header-nested` warns against. | About 5 min | P3 | [the-edit-sheet-recipe-nests-a](issues/20261103-the-edit-sheet-recipe-nests-a.md) |
-| 67 | The theme recipe shows an SF-only icon token, which the build refuses. | About 2 min | P3 | [the-theme-recipe-shows-an-sf](issues/20261103-the-theme-recipe-shows-an-sf.md) |
+| 65 | A sheet's bar search field hides the bar and its Send while searching, and the search card does not say so. Fixed in PR #1367 (open). | About 10 min | P3 | [a-sheet-s-bar-search-field](issues/20261103-a-sheet-s-bar-search-field.md) |
+| 66 | The edit-sheet recipe nests a sheet's header as `lower-header-nested` warns against. Fixed in PR #1361 (open). | About 5 min | P3 | [the-edit-sheet-recipe-nests-a](issues/20261103-the-edit-sheet-recipe-nests-a.md) |
+| 67 | The theme recipe shows an SF-only icon token, which the build refuses. Fixed in PR #1362 (open). | About 2 min | P3 | [the-theme-recipe-shows-an-sf](issues/20261103-the-theme-recipe-shows-an-sf.md) |
 | 68 | A drag on a virtualized list in a half-height sheet aims under the row after the list. | About 6 min | P3 | [a-drag-on-a-virtualized-list](issues/20261103-a-drag-on-a-virtualized-list.md) |
 | 69 | A list of plain numbers warns `lower-key-position` for its only key. | About 12 min | P3 | [a-list-of-plain-numbers-warns](issues/20261103-a-list-of-plain-numbers-warns.md) |
 | 70 | `audio-waveform`'s `tint` takes only a hex colour. | About 3 min | P3 | [audio-waveform-s-tint-takes-only](issues/20261103-audio-waveform-s-tint-takes-only.md) |
 | 71 | `@exact/recording` cannot write Ogg Opus, the voice note format of chat networks. | About 45 min | P3 | [exact-recording-cannot-write-ogg-opus](issues/20261103-exact-recording-cannot-write-ogg-opus.md) |
-| 72 | The permissions recipe does not say that a refused request runs no `then`. | About 10 min | P3 | [the-permissions-recipe-does-not-say](issues/20261103-the-permissions-recipe-does-not-say.md) |
-| 73 | A comment line before an if block's first line ends the block. | About 2 min | P3 | [a-comment-line-ends-an-if-block](issues/20261103-a-comment-line-ends-an-if-block.md) |
-| 74 | A header search field has no close event, and a drive cannot press it or its close button. | About 20 min | P3 | [a-header-search-field-has-no-close-event](issues/20261103-a-header-search-field-has-no-close-event.md) |
-| 75 | A list cell's row brings a gap and padding from its tag, which the list docs do not say. | About 5 min | P3 | [a-list-cells-row-brings-gap-and-padding](issues/20261103-a-list-cells-row-brings-gap-and-padding.md) |
-| 76 | A data module answer refused for its 100 ms turn shows as a stale page; only logs name it. | About 10 min | P3 | [a-refused-data-module-answer-shows-stale](issues/20261103-a-refused-data-module-answer-shows-stale.md) |
-| 77 | A search field in content gets the web address keyboard. | About 2 min | P3 | [a-search-field-gets-the-web-address-keyboard](issues/20261103-a-search-field-gets-the-web-address-keyboard.md) |
-| 78 | `display` on a list turns its cells into a flex row, with no warning. | About 5 min | P3 | [display-on-a-list-turns-its-cells](issues/20261103-display-on-a-list-turns-its-cells.md) |
+| 72 | The permissions recipe does not say that a refused request runs no `then`. Fixed in PR #1363 (open). | About 10 min | P3 | [the-permissions-recipe-does-not-say](issues/20261103-the-permissions-recipe-does-not-say.md) |
+| 73 | On iOS a route's title cannot open a menu, and the ways that look like they should fail quietly. | About 30 min | P2 | [a-large-title-cannot-open-a-menu](issues/20261103-a-large-title-cannot-open-a-menu.md) |
+| 74 | A disabled menu row with no press is dropped from the iOS menu. | About 5 min | P3 | [a-disabled-menu-row-without-a-press](issues/20261103-a-disabled-menu-row-without-a-press.md) |
+| 75 | A test's `reload` on iOS comes back at the first screen, not where `at` opened it. | About 3 min | P3 | [a-test-s-reload-forgets-its](issues/20261103-a-test-s-reload-forgets-its.md) |
+| 76 | A large title comes back inline when a route with no bar turns into one with a large title. | About 8 min | P3 | [a-large-title-comes-back-inline](issues/20261103-a-large-title-comes-back-inline.md) |
+| 77 | A comment line before an if block's first line ends the block. | About 2 min | P3 | [a-comment-line-ends-an-if-block](issues/20261103-a-comment-line-ends-an-if-block.md) |
+| 78 | A header search field has no close event, and a drive cannot press it or its close button. | About 20 min | P3 | [a-header-search-field-has-no-close-event](issues/20261103-a-header-search-field-has-no-close-event.md) |
+| 79 | A list cell's row brings a gap and padding from its tag, which the list docs do not say. | About 5 min | P3 | [a-list-cells-row-brings-gap-and-padding](issues/20261103-a-list-cells-row-brings-gap-and-padding.md) |
+| 80 | A data module answer refused for its 100 ms turn shows as a stale page; only logs name it. | About 10 min | P3 | [a-refused-data-module-answer-shows-stale](issues/20261103-a-refused-data-module-answer-shows-stale.md) |
+| 81 | A search field in content gets the web address keyboard. | About 2 min | P3 | [a-search-field-gets-the-web-address-keyboard](issues/20261103-a-search-field-gets-the-web-address-keyboard.md) |
+| 82 | `display` on a list turns its cells into a flex row, with no warning. | About 5 min | P3 | [display-on-a-list-turns-its-cells](issues/20261103-display-on-a-list-turns-its-cells.md) |
 
 ## What worked well
 
@@ -193,3 +197,10 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1356](https://github.com/ccheever/exact2/pull/1356): `ios --device` checks the iPhone Rust target before it builds | 22 | Open |
 | 2026-11-03 | [#1358](https://github.com/ccheever/exact2/pull/1358): warn when a header readout holds nothing the iOS bar draws | 7 | Open |
 | 2026-11-03 | [#1359](https://github.com/ccheever/exact2/pull/1359): `contract vocab` names a tag's attributes, the list styles, and an image's sources | 9, 10 | Open |
+| 2026-11-03 | [#1361](https://github.com/ccheever/exact2/pull/1361): the edit-sheet recipe's header is its sheet's bar on iOS | 66 | Open |
+| 2026-11-03 | [#1362](https://github.com/ccheever/exact2/pull/1362): the theme recipe's icon token has the `svg` source the web needs | 67 | Open |
+| 2026-11-03 | [#1363](https://github.com/ccheever/exact2/pull/1363): the permissions recipe says a refused request runs no `then` | 72 | Open |
+| 2026-11-03 | [#1364](https://github.com/ccheever/exact2/pull/1364): `contract vocab` answers `members`, and the grammar says what a members file may declare | 61 | Open |
+| 2026-11-03 | [#1365](https://github.com/ccheever/exact2/pull/1365): `caps` counts a file's lines as `wc -l` does | 59 | Open |
+| 2026-11-03 | [#1366](https://github.com/ccheever/exact2/pull/1366): the agent's help and the guide name `state media` and what a drive cannot show of a video | 62 | Open |
+| 2026-11-03 | [#1367](https://github.com/ccheever/exact2/pull/1367): the search card says the bar hides while the person searches | 65 | Open |

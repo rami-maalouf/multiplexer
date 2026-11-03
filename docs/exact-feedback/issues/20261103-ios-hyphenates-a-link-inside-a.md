@@ -46,3 +46,16 @@ Cost: about 15 minutes (two drives, then reading the host's source to find the r
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0` on the iOS 26.5 Simulator, in drives with
 `screenshot` (default text size, and `accessibility-extra-extra-extra-large`).
+
+New evidence (2026-11-03, `ed43ad09a0`, another screen of the same app): a user id with no
+spaces (`@name:server.example`) in a settings row, at the largest text size, broke with a hyphen
+inside the server's name ("ra mi-" / "maalouf.co" / "m"), with no `overflow-wrap` written.
+`hyphens="none"` took the hyphen away but not the break inside the word.
+`overflow-wrap="anywhere"` broke it cleanly, but `verify ios` flags that ("breaks inside words
+(Octo/ber); wrap between words (the default) or give the row room"), and with neither, `check`
+flags the row running 140 pt past the screen. For a word longer than any line, the two checks'
+remedies do not fit. What worked: a zero-width space after the colon and each dot
+(`userId.replaceAll(":", ":\u200B").replaceAll(".", ".\u200B")`), so the id breaks between its
+parts. About 10 minutes. What would help as well: the `verify` finding naming what to do for an
+identifier, an address or a URL (a `wbr`, or break opportunities after punctuation, as Safari
+gives a URL).

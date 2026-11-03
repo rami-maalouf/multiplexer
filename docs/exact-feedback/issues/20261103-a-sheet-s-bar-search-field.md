@@ -32,3 +32,7 @@ Cost: about 10 minutes and three drives.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS Simulator (iOS 26.5).
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1367 (fixes the card): the search card says that iOS hides the bar and its buttons while the person searches, and to put the field in a sheet's content to keep a Send. A prop for `hidesNavigationBarDuringPresentation` is not proposed.
