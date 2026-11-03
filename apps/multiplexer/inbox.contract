@@ -17,21 +17,36 @@ fn filterName(f: string): string = f == "unread" ? "Unread" : (f == "unanswered"
 // what the list says when a filter leaves no chat in it.
 fn emptyTitle(f: string): string = f == "unread" ? "No Unread Chats" : (f == "unanswered" ? "No Unanswered Chats" : (f == "people" ? "No DMs" : "No Groups"))
 fn emptyMessage(f: string): string = f == "unread" ? "You’ve read every chat." : (f == "unanswered" ? "You answered the last message in every chat." : (f == "people" ? "Chats with one other person show here." : "Chats with more than one other person show here."))
+// the lists besides the inbox: the filter sheet's rows and the screen's title.
+fn listName(l: string): string = l == "archive" ? "Archive" : (l == "lowPriority" ? "Low Priority" : "Inbox")
+// the screen's title: the list, and the filter sheet's network ("": every network).
+fn listTitle(l: string, network: string): string = l == "inbox" ? (network == "" ? "Chats" : networkName(network)) : (network == "" ? listName(l) : `${networkName(network)} ${listName(l)}`)
+// what an empty Archive or Low Priority says.
+fn listEmptyTitle(l: string): string = l == "archive" ? "No Archived Chats" : "No Low Priority Chats"
+fn listEmptyMessage(l: string, network: string): string = `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${network == "" ? "" : ` from ${networkName(network)}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
+// what Delete's alert says: the chat leaves this app only.
+fn deleteMessage(network: string): string = `It leaves Multiplexer on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
 
 // the floating bar over the chat list: a round filter button on the left (filled with the accent
-// while a filter is on), and a capsule in the middle with Inbox, selected, then the up-down
-// button that opens the filter sheet. With a network chosen there, Inbox shows its logo. a press
-// on Inbox goes back to the list's top. glass that comes close merges, as the platform's does.
+// while a filter is on), and a capsule in the middle: Inbox (the chosen network's logo when the
+// filter sheet chose one), Archive, the list shown selected, then the up-down button that opens
+// the filter sheet. a press on the list shown goes back to its top. glass that comes close
+// merges, as the platform's does.
 component BottomBar
   props
     filter: string
     choose: action
     top: action
-    // the filter sheet's network ("": every network), and what opens the sheet.
+    archive: action
+    // the list shown (inbox, archive or lowPriority), the filter sheet's network ("": every
+    // network), and what opens the sheet.
+    list: string
     network: string
     sheet: action
     // the reader chose one of the accessibility text sizes.
     largeText: bool
+  derive inArchive = list == "archive"
+  derive inInbox = list == "inbox"
   derive filtered = filter != "all"
   // the symbols grow a little at the accessibility text sizes, and stay inside their glass.
   derive symbolSize = largeText ? 24 : 20
@@ -42,13 +57,17 @@ component BottomBar
         aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
         image "symbol:filter" font-size=symbolSize
       row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
-        button appearance="none" press=top aria-label=(network == "" ? "Inbox" : networkName(network)) aria-selected=true testId="inbox"
-          min-width=68 height=44 border-radius=22 background-color="-exact-tertiary-fill"
+        button appearance="none" press=top aria-label=(network == "" ? "Inbox" : networkName(network)) aria-selected=inInbox
+          testId="inbox" min-width=68 height=44 border-radius=22 background-color=(inInbox ? "-exact-tertiary-fill" : "transparent")
           display="flex" align-items="center" justify-content="center"
           if network == ""
             image "symbol:icon.tray" font-size=symbolSize color="-exact-label"
           else
             image `assets/networks/${network}.svg` width=(symbolSize + 4) height=(symbolSize + 4) aria-hidden=true
+        button appearance="none" press=archive aria-label="Archive" aria-selected=inArchive testId="archive"
+          min-width=68 height=44 border-radius=22 background-color=(inArchive ? "-exact-tertiary-fill" : "transparent")
+          display="flex" align-items="center" justify-content="center"
+          image "symbol:icon.archive" font-size=symbolSize color="-exact-label"
         button appearance="none" press=sheet aria-label="Inboxes" testId="inboxes-button"
           width=44 height=44 border-radius=22 display="flex" align-items="center" justify-content="center"
           image "symbol:chooser" font-size=symbolSize color="-exact-label"

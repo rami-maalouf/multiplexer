@@ -4,7 +4,7 @@ use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
 use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText from "./attach.contract"
-use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage from "./inbox.contract"
+use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage from "./inbox.contract"
 use NetworkBadge, networkName from "./network.contract"
 use InboxSheet, NetworkCount from "./sheet.contract"
 use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
@@ -15,7 +15,9 @@ shape Session
 // avatar: the room's picture once it is downloaded (""), else its initials show. network: the
 // chat network its bridge brings it from (whatsapp, instagram, ...), or matrix for none. listed:
 // the list shows it under the filter menu's choice (a pinned chat, or one the filter leaves out,
-// is still here, so an open chat keeps its name). markedUnread: marked unread by hand.
+// is still here, so an open chat keeps its name). markedUnread: marked unread by hand. muted: its
+// messages do not notify, so its count is grey; mentions: its unread messages that mention you.
+// lowPriority, archived: in those lists, not the inbox.
 shape Room
   id: string
   name: string
@@ -30,20 +32,28 @@ shape Room
   network: string
   listed: bool
   markedUnread: bool
+  muted: bool
+  mentions: number
+  lowPriority: bool
+  archived: bool
 
 // owner is the account the rooms belong to, so a list never shows under another account; filter
-// the filter menu's choice the list is for, network the filter sheet's ("": every network).
-// pinned: the network's pinned chats, in their pin order; they are not in rooms while filter is
-// "all". networks: the filter sheet's rows, each network the account has chats on; unread: the
-// unread chats on every network.
+// the filter menu's choice the list is for, network the filter sheet's ("": every network), list
+// the list shown (inbox, archive or lowPriority). pinned: the network's pinned chats in the inbox,
+// in their pin order; they are not in rooms in the inbox under "all". networks: the filter
+// sheet's rows, each network the account has chats on; unread, archiveUnread,
+// lowPriorityUnread: each list's unread chats on every network.
 shape RoomList
   owner: string
   filter: string
   network: string
+  list: string
   rooms: Room[]
   pinned: PinnedChat[]
   networks: NetworkCount[]
   unread: number
+  archiveUnread: number
+  lowPriorityUnread: number
 
 // state: "sending", "sent" or "failed". startsGroup: the time shows above it. endsRun: the
 // sender's next message is not next, so this bubble has the tail and their picture beside it.
@@ -151,6 +161,12 @@ routes nav
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
+// an unread chat that is not muted: its name is bolder and its time in the accent.
+fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
+// the inbox's unread count counts it (matrixcore's isInInbox and isLoudlyUnread): in the inbox,
+// unread and not muted, or with a mention.
+fn inboxUnread(r: Room): bool = not r.archived and not r.lowPriority and (loud(r) or r.mentions > 0)
+fn countText(n: number): string = n > 99 ? "99+" : n.toString()
 // a chat's composer: the one touched in this launch, else the draft kept in the account's store
 // (saved, once it is this chat's), else an empty one.
 fn composerOf(cs: Composer[], room: string, saved: Composer): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => saved.room == room ? saved : Composer(room=room, text="", replyTo="", replyName="", replyBody="", attachments=[]) }
@@ -190,6 +206,9 @@ component Multiplexer
   // the filter sheet's choice: the network whose chats the list shows ("": every network), kept
   // across launches. It works with the filter menu's: unread WhatsApp chats.
   state network = "" persist
+  // the list shown: the inbox, the Archive or Low Priority (inbox.contract's listName), kept
+  // across launches. The filter menu and the network narrow any of them.
+  state chatList = "inbox" persist
   // the chat held down in the list: its menu and preview are of it.
   state aimed = ""
   // the message a new reply answers, kept in view once the keyboard and the reply bar are up:
@@ -200,9 +219,10 @@ component Multiplexer
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
-  resource roomList = loadRoomsByRecency(session.userId, filter, network) as shape RoomList else empty()
+  resource roomList = loadRoomsByRecency(session.userId, filter, network, chatList) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   mutation pinned as shape Reply refreshes roomList
+  mutation changedChat as shape Reply queue refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
   mutation sent as shape Reply then toEnd
@@ -229,8 +249,9 @@ component Multiplexer
   derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
   derive openNetwork = match openRoomInfo { case some(r) => r.network, case none => "matrix" }
   derive openPinned = roomList.pinned.map(p => p.id).includes(openRoom)
-  // Back's count: the other chats with unread messages, or marked unread by hand, on every network.
-  derive otherUnread = roomList.rooms.filter(r => r.id != openRoom and (r.unread > 0 or r.markedUnread)).length
+  derive openMuted = match openRoomInfo { case some(r) => r.muted, case none => false }
+  // Back's count: the inbox's unread chats on every network (the filter sheet's Inbox row), but this one.
+  derive otherUnread = max(0, roomList.unread - (match openRoomInfo { case some(r) => inboxUnread(r) ? 1 : 0, case none => 0 }))
   resource thread = loadMessages(openRoom, openIsDirect, openName) as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
   resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
@@ -240,16 +261,22 @@ component Multiplexer
   // the reactions a long press offers first, as Beeper does.
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
   derive threadShown = thread.room == openRoom
-  derive openUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
+  // a chat marked unread by hand counts one: reading it takes the mark away.
+  derive openUnread = match openRoomInfo { case some(r) => r.unread + (r.markedUnread ? 1 : 0), case none => 0 }
   // the list under the filter menu's choice; the pinned grid shows above it only while no filter is on.
   derive listedRooms = roomList.rooms.filter(r => r.listed)
-  derive gridShown = roomList.filter == "all" and roomList.pinned.length > 0
+  derive gridShown = roomList.filter == "all" and roomList.list == "inbox" and roomList.pinned.length > 0
   // the held chat's last messages, for its menu's preview. loading them reads nothing: only the
   // chat screen marks a chat read.
   derive aimedRoom = first(roomList.rooms.filter(r => r.id == aimed))
   derive aimedName = match aimedRoom { case some(r) => r.name, case none => "" }
   derive aimedIsDirect = match aimedRoom { case some(r) => r.isDirect, case none => false }
   derive aimedPinned = roomList.pinned.map(p => p.id).includes(aimed)
+  derive aimedUnread = match aimedRoom { case some(r) => r.unread > 0 or r.markedUnread, case none => false }
+  derive aimedMuted = match aimedRoom { case some(r) => r.muted, case none => false }
+  derive aimedLowPriority = match aimedRoom { case some(r) => r.lowPriority, case none => false }
+  derive aimedArchived = match aimedRoom { case some(r) => r.archived, case none => false }
+  derive aimedNetwork = match aimedRoom { case some(r) => r.network, case none => "matrix" }
   resource peek = loadMessages(aimed, aimedIsDirect, aimedName) as shape Thread else empty()
   derive peekShown = peek.room == aimed and aimed != ""
   // the chat is in front, not behind its photo viewer, and the app is too.
@@ -324,6 +351,7 @@ component Multiplexer
     else
       password = ""
       network = ""
+      chatList = "inbox"
   action askSignOut
     showModal("sign-out")
   // drafts stay with the account that wrote them.
@@ -468,6 +496,23 @@ component Multiplexer
     haptic("selection")
   action toTop
     scrollIntoView(gridShown ? "pinned" : (match first(listedRooms) { case some(r) => `room-${r.id}`, case none => "rooms" }), block="start")
+  // the capsule's Inbox and Archive keep the network; a press on the list shown goes back to its top.
+  action toInbox
+    if chatList != "inbox"
+      chatList = "inbox"
+    toTop()
+  action toArchive
+    if chatList != "archive"
+      chatList = "archive"
+    toTop()
+  // the filter sheet's Inbox, Archive and Low Priority rows: that list on every network.
+  action chooseList(l: string)
+    chatList = l
+    network = ""
+    if top(nav).name == "inboxes"
+      nav = back(nav)
+    toTop()
+    haptic("selection")
   action aim(id: string)
     aimed = id
   action openChat(id: string)
@@ -475,9 +520,28 @@ component Multiplexer
   action togglePin
     send pinned = setPinned(aimed, not aimedPinned)
     haptic("success")
-  // the chat bar's "..." pins the open chat.
+  // the held chat's other actions (app.ts's changeChat); each shows in the list at once.
+  action changeAimed(change: string)
+    send changedChat = changeChat(aimed, change)
+    haptic("success")
+  action askDelete
+    showModal("delete-chat")
+  // the chat bar's "..." pins, mutes or marks unread the open chat.
   action togglePinOpen
     send pinned = setPinned(openRoom, not openPinned)
+    haptic("success")
+  action toggleMuteOpen
+    send changedChat = changeChat(openRoom, openMuted ? "unmute" : "mute")
+    haptic("success")
+  // the chat is marked unread and left: staying, it would read itself again a second later. Unlike
+  // back, leaving does not mark it read.
+  action markUnreadOpen
+    send changedChat = changeChat(openRoom, "unread")
+    keepDraftNow()
+    nav = back(nav)
+    held = ""
+    panel = false
+    tooLarge = ""
     haptic("success")
 
   view
@@ -520,22 +584,29 @@ component Multiplexer
             column navigationKey=`${e.id}` navigationScroll="rooms" position="absolute" inset=0 display="flex" flex-direction="column"
               // the title names the network the filter sheet chose.
               header display="flex" align-items="center"
-                text (network == "" ? "Chats" : networkName(network)) role="heading" aria-level=1 flex=1 testId="title"
+                text listTitle(chatList, network) role="heading" aria-level=1 flex=1 testId="title"
                 text session.userId
                 button press=askSignOut testId="sign-out"
                   text "Sign Out"
               if roomsShown
                 if listedRooms.length == 0 and not gridShown
-                  if roomList.filter == "all" and roomList.network == ""
+                  if roomList.filter != "all"
+                    EmptyState(symbol="symbol:filter", title=emptyTitle(roomList.filter), message=emptyMessage(roomList.filter))
+                      button press=chooseFilter("all") buttonStyle="bordered" testId="show-all"
+                        text "Show All Chats"
+                  else if roomList.list != "inbox"
+                    // an empty Archive or Low Priority: the capsule's Inbox is the way back.
+                    EmptyState(symbol=(roomList.list == "archive" ? "symbol:icon.archive" : "symbol:icon.arrow-down-circle"),
+                      title=listEmptyTitle(roomList.list), message=listEmptyMessage(roomList.list, roomList.network))
+                      if roomList.network != ""
+                        button press=chooseNetwork("") buttonStyle="bordered" testId="show-every-network"
+                          text "Show Every Network"
+                  else if roomList.network == ""
                     EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
-                  else if roomList.filter == "all"
+                  else
                     EmptyState(symbol="symbol:messages", title=`No ${networkName(roomList.network)} Chats`,
                       message=`Chats from ${networkName(roomList.network)} show here.`)
                       button press=chooseNetwork("") buttonStyle="bordered" testId="show-every-network"
-                        text "Show All Chats"
-                  else
-                    EmptyState(symbol="symbol:filter", title=emptyTitle(roomList.filter), message=emptyMessage(roomList.filter))
-                      button press=chooseFilter("all") buttonStyle="bordered" testId="show-all"
                         text "Show All Chats"
                 else
                   // the last row scrolls up above the floating bar.
@@ -561,18 +632,32 @@ component Multiplexer
                           column flex=1 min-width=0 gap=2 padding="10px 0"
                             // at large text sizes the time wraps under the name instead of covering it.
                             row flex-wrap="wrap" column-gap=6 align-items="baseline"
-                              text r.name font="-exact-headline" font-weight=(r.unread > 0 ? 700 : 600) flex="1 1 10rem" min-width=0
+                              // a muted chat: a crossed bell after its name's last word, as Beeper shows it.
+                              text font="-exact-headline" font-weight=(loud(r) ? 700 : 600) flex="1 1 10rem" min-width=0
+                                text r.name
+                                if r.muted
+                                  text " "
+                                  image "symbol:icon.bell-slash" width="0.8em" height="0.8em" vertical-align="baseline"
+                                    color="-exact-secondary-label" aria-label="Muted" testId=`muted-${r.id}`
                               row gap=6 align-items="baseline" flex-shrink=0 margin-left="auto"
                                 if r.lastTime > 0
                                   text formatDay(r.lastTime, shown, time.utcOffset, "list") font="-exact-subheadline"
-                                    color=(r.unread > 0 ? "AccentColor" : "-exact-secondary-label")
+                                    color=(loud(r) ? "AccentColor" : "-exact-secondary-label")
                                 image "symbol:forward-chevron" font="-exact-footnote" color="-exact-tertiary-label"
-                            // an unread chat: a bold name and a count beside the preview.
+                            // an unread chat: a bold name and a count beside the preview; muted, a grey
+                            // count; with a mention, "@" and the accent. Marked unread by hand: a dot.
                             row gap=8 align-items="flex-start"
                               text (r.lastMessage != "" ? preview(r) : "") font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
                                 flex=1 min-width=0 testId=`room-preview-${r.id}`
-                              if r.unread > 0
-                                Badge(label=(r.unread > 99 ? "99+" : r.unread.toString()), tint=some("AccentColor"))
+                              if r.mentions > 0
+                                view flex-shrink=0 testId=`count-${r.id}`
+                                  Badge(label=`@ ${countText(max(r.unread, r.mentions))}`, tint=some("AccentColor"))
+                              else if r.unread > 0
+                                view flex-shrink=0 testId=`count-${r.id}`
+                                  Badge(label=countText(r.unread), tint=(r.muted ? none : some("AccentColor")))
+                              else if r.markedUnread
+                                view width=12 height=12 border-radius=6 margin="4px 4px 0"
+                                  background-color=(r.muted ? "-exact-tertiary-label" : "AccentColor") aria-label="Unread" testId=`marked-${r.id}`
               else
                 if failed(roomList) and not pending(roomList)
                   column flex=1 justify-content="center" align-items="center" gap=12 padding=24
@@ -583,8 +668,8 @@ component Multiplexer
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
               if roomsShown
-                BottomBar(filter=filter, choose=chooseFilter, top=toTop, network=network, sheet=openInboxes,
-                  largeText=viewport.accessibilityTextSize)
+                BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=chatList, network=network,
+                  sheet=openInboxes, largeText=viewport.accessibilityTextSize)
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
               // messages (a tap opens the chat), then its actions.
               column id="chat-menu" popover="auto" role="menu"
@@ -616,15 +701,37 @@ component Multiplexer
                   else
                     column flex=1 justify-content="center" align-items="center"
                       progress aria-label="Loading messages"
+                // Beeper's order. Delete takes the chat out of this app only: the alert says so.
+                button press=changeAimed(aimedArchived ? "unarchive" : "archive") popovertarget="chat-menu" popovertargetaction="hide"
+                  testId="menu-archive"
+                  image (aimedArchived ? "symbol:icon.unarchive" : "symbol:icon.archive")
+                  text (aimedArchived ? "Unarchive" : "Archive")
+                button press=changeAimed(aimedLowPriority ? "inbox" : "lowPriority") popovertarget="chat-menu" popovertargetaction="hide"
+                  testId="menu-low-priority"
+                  image (aimedLowPriority ? "symbol:icon.tray" : "symbol:icon.low-priority")
+                  text (aimedLowPriority ? "Move to Inbox" : "Move to Low Priority")
                 button press=togglePin popovertarget="chat-menu" popovertargetaction="hide" testId="menu-pin"
                   image (aimedPinned ? "symbol:icon.pin-slash" : "symbol:pin")
                   text (aimedPinned ? "Unpin" : "Pin")
+                button press=changeAimed(aimedUnread ? "read" : "unread") popovertarget="chat-menu" popovertargetaction="hide"
+                  testId="menu-unread"
+                  image (aimedUnread ? "symbol:messages" : "symbol:icon.mark-unread")
+                  text (aimedUnread ? "Mark as Read" : "Mark as Unread")
+                button press=changeAimed(aimedMuted ? "unmute" : "mute") popovertarget="chat-menu" popovertargetaction="hide"
+                  testId="menu-mute"
+                  image (aimedMuted ? "symbol:notifications" : "symbol:icon.bell-slash")
+                  text (aimedMuted ? "Unmute" : "Mute")
+                hr
+                button press=askDelete destructive=true popovertarget="chat-menu" popovertargetaction="hide" testId="menu-delete"
+                  image "symbol:delete"
+                  text "Delete"
         // the filter sheet, from the bottom: half height, pulled up to full; UIKit's glass below full.
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
-            InboxSheet(networks=roomList.networks, unread=roomList.unread, chosen=network, choose=chooseNetwork,
-              largeText=viewport.accessibilityTextSize)
+            InboxSheet(networks=roomList.networks, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
+              lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
+              chooseList=chooseList, largeText=viewport.accessibilityTextSize)
         if e.name == "photo"
           column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`photo-${e.params.message}`
             position="absolute" inset=0 display="flex" flex-direction="column"
@@ -785,8 +892,8 @@ component Multiplexer
               AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
             ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
               initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork,
-              unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, covered=(held != ""),
-              largeText=viewport.accessibilityTextSize)
+              unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, muted=openMuted, mute=toggleMuteOpen,
+              markUnread=markUnreadOpen, covered=(held != ""), largeText=viewport.accessibilityTextSize)
             // a held message: the chat blurs, the bubble stays where it was, the reactions sit above it
             // and its actions under it, as Beeper and Messages show them.
             if held != ""
@@ -817,6 +924,12 @@ component Multiplexer
         text problem testId="problem"
         button commandfor="sign-in-failed" command="close" testId="sign-in-failed-ok"
           text "OK"
+      dialog id="delete-chat" role="alertdialog" aria-label=`Delete “${aimedName}”?`
+        text deleteMessage(aimedNetwork) testId="delete-chat-message"
+        button press=changeAimed("delete") destructive=true commandfor="delete-chat" command="close" testId="delete-chat-confirm"
+          text "Delete"
+        button commandfor="delete-chat" command="close" testId="delete-chat-cancel"
+          text "Cancel"
       dialog id="sign-out" role="alertdialog" aria-label="Sign Out?"
         text "This iPhone forgets your session. Your chats stay on the server."
         button press=signOut destructive=true commandfor="sign-out" command="close" testId="sign-out-confirm"

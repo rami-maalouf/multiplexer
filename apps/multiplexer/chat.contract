@@ -29,6 +29,10 @@ component ChatBar
     back: action
     pinned: bool
     pin: action
+    muted: bool
+    mute: action
+    // marks the chat unread and leaves it.
+    markUnread: action
     // a held message's menu covers the bar.
     covered: bool
     // the reader chose one of the accessibility text sizes.
@@ -69,11 +73,17 @@ component ChatBar
           button popovertarget="chat-actions" buttonStyle="glass" width=44 height=44 flex-shrink=0 pointer-events="auto"
             aria-label="More" testId="chat-more"
             image "symbol:more"
-        // what exists so far; muting, marking unread and the chat's info page join it with their tasks.
+        // the inbox's actions that suit an open chat, in Beeper's order; the chat's info page adds the rest.
         column id="chat-actions" popover="auto" role="menu" pointer-events="auto"
           button press=pin popovertarget="chat-actions" popovertargetaction="hide" testId="chat-pin"
             image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
             text (pinned ? "Unpin" : "Pin")
+          button press=markUnread popovertarget="chat-actions" popovertargetaction="hide" testId="chat-unread"
+            image "symbol:icon.mark-unread"
+            text "Mark as Unread"
+          button press=mute popovertarget="chat-actions" popovertargetaction="hide" testId="chat-mute"
+            image (muted ? "symbol:notifications" : "symbol:icon.bell-slash")
+            text (muted ? "Unmute" : "Mute")
 
 // a bridged chat's network logo at the start of the composer's field. It sits in a box one line of
 // the field's text tall, so it stays on the field's last line as the text grows.

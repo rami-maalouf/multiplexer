@@ -58,6 +58,17 @@ public struct RoomSummary: Equatable, Sendable {
     public var isPinned: Bool = false
     /// The pin's place among the pinned chats, from 0 to 1; nil when it has none.
     public var pinOrder: Double? = nil
+    /// Muted (`MatrixAccount.mute`), or left to mentions only, as a bridge mutes a chat muted on
+    /// its network: its messages do not notify.
+    public var isMuted: Bool = false
+    /// Unread messages that mention this account; a muted chat counts them too.
+    public var unreadMentions: Int = 0
+    /// In Low Priority (`m.lowpriority`), not in the inbox.
+    public var isLowPriority: Bool = false
+    /// Archived, and no newer message since (a muted chat stays): in the Archive list, not the inbox.
+    public var isArchived: Bool = false
+    /// Deleted from this app (`MatrixAccount.hide`), and no newer message since: shown nowhere.
+    public var isHidden: Bool = false
 }
 
 public struct Message: Equatable, Sendable {

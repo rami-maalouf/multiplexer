@@ -9,6 +9,8 @@ public final class MatrixAccount: @unchecked Sendable {
     let client: Client
     /// The pins this device knows (Pinned.swift).
     let pins = Pins()
+    /// The chat actions this device asked for and the server has not confirmed (ChatActions.swift).
+    let chats = ChatStates()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -117,7 +119,10 @@ public final class MatrixAccount: @unchecked Sendable {
                                       avatarName: room.avatarUrl().map(avatarFileName) ?? "",
                                       unreadCount: Int(info?.numUnreadMessages ?? 0),
                                       network: info.map { RoomNetwork.of($0, ownUserId: me) } ?? RoomNetwork.matrix)
-            if let info { summary.fillKind(info, pins: pins) }
+            if let info {
+                summary.fillKind(info, pins: pins)
+                summary.fillActions(info, chats: chats)
+            }
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
@@ -129,6 +134,7 @@ public final class MatrixAccount: @unchecked Sendable {
             rooms.append(summary)
         }
         await fillPinOrders(&rooms)
+        await fillChatStates(&rooms)
         return rooms
     }
 
@@ -282,9 +288,11 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// Sends a read receipt for the room's newest message. Others see it as read; a bridge
-    /// with double puppeting passes it on (on WhatsApp, the chat turns read too).
+    /// with double puppeting passes it on (on WhatsApp, the chat turns read too). A chat marked
+    /// unread by hand loses its mark: the sdk's receipt leaves it.
     public func markRead(roomId: String, timeout: TimeInterval = 30) async throws {
         try await room(roomId, timeout: timeout).markAsRead(receiptType: .read)
+        try await setMarkedUnread(roomId: roomId, false, timeout: timeout)
     }
 
     /// Removes a message that the server does not have (it failed, or still waits in the

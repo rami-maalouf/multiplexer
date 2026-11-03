@@ -46,3 +46,13 @@ single simulator that has the app and remembers it. Pull request
 https://github.com/ccheever/exact2/pull/1326 adds this to `docs/agent-pitfalls.md`, with the fix
 (a simulator for each worktree, named with `EXACT_SIM`). A default simulator per worktree would
 need a change to the chooser: a question for the Exact team.
+
+## A code fix (2026-11-02)
+
+`exact.mjs ios` installed and launched without the lock a drive holds on its app from launch to
+close (`exclusiveIOS` in `scripts/agent-launch.mjs`), so it replaced the app under a running drive.
+Reproduced at `ed43ad09a0` (the same code as `origin/main` 880d4f8652): with a drive's lock held
+from 00:22:07 to 00:22:47, `ios --run` installed and launched at 00:22:17. Pull request
+https://github.com/ccheever/exact2/pull/1329 makes the install and launch wait for the drive (and
+refuse after 60 s, naming `--sim`); with it, an install started during a real drive waited and ran
+after the drive ended.

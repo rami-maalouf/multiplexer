@@ -11,13 +11,15 @@ export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
 // every chat (listed: the list shows it under the filter and the network), the network's pinned
-// chats' ids in pin order, and the filter sheet's networks and unread chats.
-// markedUnread: marked unread by hand. oneToOne: a chat with one other person.
+// chats' ids in pin order, and the filter sheet's networks and each list's unread chats.
+// oneToOne: a chat with one other person.
 type RoomsAnswer = {
-  rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { markedUnread: boolean; oneToOne: boolean })[];
+  rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { oneToOne: boolean })[];
   pinned: string[];
   networks: Result<'loadRoomsByRecency'>['networks'];
   unread: number;
+  archiveUnread: number;
+  lowPriorityUnread: number;
 };
 
 // a chat with no picture shows the first letters of its first two words, as Messages does.
@@ -107,15 +109,19 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  // matrixcore filters the list (filter: all, unread, unanswered, people or groups; network: one
-  // network's chats, or "" for every network); with all, the pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter, network], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
-    if (userId === '' || !native?.available) return { owner: userId, filter, network, rooms: [], pinned: [], networks: [], unread: 0 };
+  // matrixcore filters the list (list: inbox, archive or lowPriority; filter: all, unread,
+  // unanswered, people or groups; network: one network's chats, or "" for every network); in the
+  // inbox under all, the pinned chats are not in it.
+  loadRoomsByRecency: async ([userId, filter, network, list], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+    if (userId === '' || !native?.available) {
+      return { owner: userId, filter, network, list, rooms: [], pinned: [], networks: [], unread: 0, archiveUnread: 0, lowPriorityUnread: 0 };
+    }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
-    const answer = (await native.later({ op: 'rooms', filter, network })) as RoomsAnswer;
+    const answer = (await native.later({ op: 'rooms', filter, network, list })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     return {
-      owner: userId, filter, network, networks: answer.networks, unread: answer.unread,
+      owner: userId, filter, network, list, networks: answer.networks, unread: answer.unread,
+      archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
         const r = byId.get(id);
@@ -129,6 +135,12 @@ const sources: Sources = {
   // a pin is kept on the server, so the account's other devices show it too.
   setPinned: async ([roomId, pinned], _store, _storage, native): Promise<Result<'setPinned'>> => {
     await native!.later({ op: pinned ? 'pin' : 'unpin', roomId });
+    return { ok: true };
+  },
+  // a chat's long-press actions: read, unread, mute, unmute, lowPriority, inbox (out of Low
+  // Priority), archive, unarchive and delete (from this app only; the chat stays on its network).
+  changeChat: async ([roomId, action], _store, _storage, native): Promise<Result<'changeChat'>> => {
+    await native!.later({ op: 'chat', roomId, action });
     return { ok: true };
   },
   loadMessages: async ([roomId, isDirect, roomName], _store, _storage, native): Promise<Result<'loadMessages'>> => {

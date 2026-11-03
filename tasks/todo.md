@@ -711,18 +711,26 @@ Beeper's actions: Select chat, Archive, Move to Low Priority, Pin, Remind Me, Ma
 Mute, Label, Delete (red).
 
 **Acceptance criteria:**
-- [ ] The preview shows the chat's last messages, and does not mark the chat read (Rami: only
-  opening the chat marks it read). Since 2026-11-02 a message load marks nothing; only the chat
-  screen's `markRead` request does (T2.13, "Fixes"), so a preview that never sends it reads nothing.
-- [ ] Mark as Unread (`setUnreadFlag`); opening the chat clears that flag (the SDK's
-  `markAsRead` does not).
-- [ ] Mute and Unmute (`setRoomNotificationMode(.mute)`): a crossed bell after the name, a grey
-  count; an "@" in the count when you are mentioned.
-- [ ] Move to Low Priority and Archive: with B8. Label, Remind Me and Select chat (several chats
-  at once): "Later".
-- [ ] Delete asks first, then removes the chat from our app only (Rami): WhatsApp keeps it. Check
-  first what the bridge does when we leave the room and the chat gets a new message; if leaving
-  is not safe, hide the chat with a mark instead.
+- [x] The preview shows the chat's last messages and marks nothing read (held with an unread
+  "@ 2": the count stayed). (2026-11-03.)
+- [x] The menu, UIKit's own, in Beeper's order: Archive, Move to Low Priority, Pin, Mark as Unread,
+  Mute, then a red Delete; each row turns into its opposite when it applies.
+- [x] Mark as Unread (`setUnreadFlag`); opening the chat clears it (`markRead` now also clears the
+  flag).
+- [x] Mute and Unmute: a crossed bell after the name's last word, a grey count, an accent "@ N"
+  for a mention. Mute is read from the push rules (the SDK's cached mode is lost at relaunch). A
+  mute adds a rule that highlights a mention without a push.
+- [x] Delete asks first, then hides the chat on every device of the account until a newer
+  message. It never leaves the room: mautrix drops our leave while `bridge_matrix_leave` is off
+  (the playbook's setting), and with it on, mautrix-whatsapp leaves the WhatsApp group.
+- [x] Nothing of this reaches WhatsApp: Synapse sends a bridge no account data. Only Mark as Read
+  (a read receipt) does.
+- [ ] Label, Remind Me, Select chat: "Later".
+- [ ] **Ask Rami:** a deleted chat that comes back shows its whole history (or only new messages);
+  your own message brings an archived chat back; a mention in a muted chat gives "@" but no push
+  (WhatsApp pushes it; P3.6); WhatsApp mutes show the bell (the bridge copies them as
+  mentions-only).
+- [ ] Another device's archive or delete shows only at the next list change.
 
 **Dependencies:** B6 (the menu exists). **Scope:** M
 
@@ -734,9 +742,15 @@ so Archive needs another way (MatrixCore calls the Matrix tags API itself, or an
 Prove that way first. Labels use the same way later.
 
 **Acceptance criteria:**
-- [ ] Move to Low Priority and back (`setIsLowPriority`); a Low Priority row in the filter sheet.
-- [ ] Archive and Unarchive; the Archive button in the bottom bar's capsule.
-- [ ] A new message brings an archived chat back to the inbox, unless the chat is muted (Rami).
+- [x] Move to Low Priority and back (`setIsLowPriority`); a Low Priority row in the filter sheet.
+  (2026-11-03.)
+- [x] Archive and Unarchive; the Archive button in the bottom bar's capsule, and an Archive row in
+  the sheet. Stored in one account data event (`com.ramimaalouf.multiplexer.chats`), not in tags:
+  the SDK cannot read a custom tag's current value.
+- [x] A new message brings an archived chat back to the inbox, unless the chat is muted.
+- [x] Three separate choices, each kept across launches: the filter menu, the network, and the
+  list (Inbox, Archive, Low Priority); they combine ("WhatsApp Archive"). Counts leave out muted
+  chats without a mention.
 
 **Dependencies:** B4, B7. **Scope:** M
 
