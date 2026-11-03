@@ -268,3 +268,23 @@ included), and `dock.mau.dev` has that tag, so the server pulls it and builds no
 Instagram each still hold 1 login, with no `WRN` or `ERR` after the restart. Memory 4 of
 23 GiB, disk 61 of 96 GB. The bridge's first sync makes rooms for the 10 most recent
 chats only (`network.sync.create_limit: 10`, the playbook's default).
+
+## 2026-11-02: Rami's LinkedIn login (cookies)
+
+- `login password` failed at 23:52:46 UTC: `WRN LinkedIn native login did not complete
+  kind=bad_response stage=completion status=200`. LinkedIn answered, but the bridge did not
+  know the answer. A wrong password has its own message, so the password was likely fine.
+  The bot then offered "Continue in browser", which is the cookie step.
+- The cookie step requires a cURL with the `Cookie` header (`JSESSIONID`) and the headers
+  `X-LI-Track` and `X-LI-Page-Instance`. LinkedIn's current website sends neither header
+  (a Chrome search of all requests found none). The bridge only checks that they are
+  present: when `mpName` in `X-LI-Track` is not `voyager-web`, it uses its own default
+  values (`pkg/linkedingo/client.go`, lines 73-97), as the password login does.
+- So the working step: in a Chrome private window, log in and open the feed; copy a
+  `www.linkedin.com` request from after the login as cURL (`-b` with `li_at` and
+  `JSESSIONID`); close the window without a logout; paste it in the bot chat with
+  `-H 'x-li-track: {"clientVersion":""}' -H 'x-li-page-instance: urn:li:page:x'` at the
+  end. The bot redacts the message.
+- Result (00:27 UTC on 11-03): 1 login, 20 chats known, 10 with rooms (`create_limit`),
+  61 messages. Logs since 23:50: only the 2 `native login did not complete` warnings and 2
+  `mpName is not voyager-web, using default xLiTrack`; no `ERR`.
