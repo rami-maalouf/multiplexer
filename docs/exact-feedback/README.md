@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -69,15 +69,19 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 48 | `check` measures a half-height sheet's rows at their drawn size (x0.96) and does not say why. | About 3 min | P3 | [check-measures-a-half-height-sheet](issues/20261102-check-measures-a-half-height-sheet.md) |
 | 49 | A plain list's first row has a top separator that the app cannot hide. | About 6 min | P3 | [a-plain-list-s-first-row](issues/20261102-a-plain-list-s-first-row.md) |
 | 50 | `scrollIntoView` cannot open a collapsed large title again. | About 10 min | P3 | [scrollintoview-cannot-open-a-collapsed-large](issues/20261102-scrollintoview-cannot-open-a-collapsed-large.md) |
-| 51 | The host tests refuse to run without the Metal toolchain, which a build does without. | About 10 min | P3 | [the-host-tests-refuse-to-run](issues/20261103-the-host-tests-refuse-to-run.md) |
-| 52 | The host tests cannot run one test class: `--test` runs all 318 classes. | About 15 min | P3 | [the-host-tests-cannot-run-one](issues/20261103-the-host-tests-cannot-run-one.md) |
-| 53 | `caps` counts one more line than `wc -l`. | About 3 min | P3 | [caps-counts-one-more-line-than](issues/20261103-caps-counts-one-more-line-than.md) |
 | 51 | A symbol inside a text with no width or height draws nothing, with no warning. | About 20 min | P3 | [a-symbol-inside-a-text-with](issues/20261103-a-symbol-inside-a-text-with.md) |
 | 52 | A drive cannot reach a long-press menu row below the fold at the largest text size. | About 6 min | P3 | [a-drive-cannot-reach-a-long](issues/20261103-a-drive-cannot-reach-a-long.md) |
 | 53 | A screen with its own top bar has no documented way to clear the status bar (a zero-height box works). | About 10 min | P3 | [a-screen-with-its-own-top](issues/20261103-a-screen-with-its-own-top.md) |
 | 54 | `check` calls a view covered when the bar over it only lets touches through (`pointer-events: none`). | About 5 min | P3 | [check-calls-a-view-covered-when](issues/20261103-check-calls-a-view-covered-when.md) |
 | 55 | `check` flags rows that scroll under an app-drawn floating bar as overlaps. | About 5 min each time | P3 | [check-flags-rows-that-scroll-under](issues/20261103-check-flags-rows-that-scroll-under.md) |
 | 56 | A drive cannot start a drag at a point, so it cannot make an edge swipe. | About 3 min | P3 | [a-drive-cannot-start-a-drag](issues/20261103-a-drive-cannot-start-a-drag.md) |
+| 57 | The host tests refuse to run without the Metal toolchain, which a build does without. | About 10 min | P3 | [the-host-tests-refuse-to-run](issues/20261103-the-host-tests-refuse-to-run.md) |
+| 58 | The host tests cannot run one test class: `--test` runs all 318 classes. | About 15 min | P3 | [the-host-tests-cannot-run-one](issues/20261103-the-host-tests-cannot-run-one.md) |
+| 59 | `caps` counts one more line than `wc -l`. | About 3 min | P3 | [caps-counts-one-more-line-than](issues/20261103-caps-counts-one-more-line-than.md) |
+| 60 | iOS adds a hyphen inside a link's address under `break-word`, and an inline run's `hyphens` is dropped. | About 15 min | P3 | [ios-hyphenates-a-link-inside-a](issues/20261103-ios-hyphenates-a-link-inside-a.md) |
+| 61 | A members file's rules do not say whether it may also hold components, and `contract vocab` does not know `members`. | About 5 min | P3 | [a-members-file-s-rules-leave](issues/20261103-a-members-file-s-rules-leave.md) |
+| 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
+| 63 | `formatDay` has no style for a chat's day label. | About 5 min | P3 | [formatday-has-no-style-for](issues/20261103-formatday-has-no-style-for.md) |
 
 ## What worked well
 

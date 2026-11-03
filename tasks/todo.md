@@ -473,7 +473,10 @@ files (name and size, open), stickers (as a picture), "Edited" and "Message dele
 
 **Acceptance criteria:**
 - [ ] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size.
-- [ ] A voice note plays and shows its length; a video plays.
+- [ ] A voice note plays and shows its length (B16).
+- [x] A video shows its poster at its ratio with a play mark and its length, and plays full screen
+  in the system player (2026-11-03, B15; `testAVideoReachesTheOtherWithItsSizeLengthAndPoster`).
+  Sound with the ring switch on silent (`audio_session: "playback"`) waits for a check on the iPhone.
 - [ ] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API).
 
 **Dependencies:** T2.10 (to see real examples)
@@ -865,12 +868,23 @@ emoji, a search and "Frequently used".
 **Description:** From D9: what Beeper shows inside a chat and ours does not yet.
 
 **Acceptance criteria:**
-- [ ] A "New" line above the first unread message.
-- [ ] A jump-to-latest button with the number of unread messages below.
-- [ ] "Seen by A, B" under the newest message in a group, "Seen" in a DM (proven in a MatrixCore test).
-- [ ] Day labels between days.
-- [ ] Emoji-only messages large, with no bubble; stickers as pictures (T2.11).
-- [ ] Links you can tap (T2.11).
+- [x] A "New" line above the first unread message; a chat with more unread messages than fit
+  opens at it, as Beeper does, without marking read. (2026-11-03, `details.contract`.)
+- [x] A jump-to-latest button with the unread count ("11 ↓"), the arrow alone at 0.
+- [x] "Seen by A, B" under the newest message in a group, "Seen 12:09 AM" in a DM, "Delivered"
+  under your own until it is read (`testSeenByAfterTheOtherReadsAndTheFirstUnreadMessage`).
+- [x] Day labels: one header per day or gap of an hour, "Today 9:41 AM", the weekday in the last
+  week, then the date.
+- [x] Emoji-only messages (1 to 3) large, with no bubble; stickers as pictures
+  (`testAStickerIsShownNotDropped`).
+- [x] Links you can tap, in Safari's in-app view.
+- [x] Fixed: a reply's quote showed its sender's raw id (`testAReplysQuoteNamesItsSender`).
+- [ ] The jump count is the chat's whole unread count, not exactly the messages below the view;
+  no "New" line when the first unread message is older than the 20 loaded.
+- [ ] Stickers and large emoji have no swipe to reply or long press (B14's area).
+- [ ] **Ask Rami:** open at the "New" line (built) or at the newest; "Delivered" means our server
+  has it, not WhatsApp ("Sent" instead?); links in Safari's in-app view or the Safari app; one
+  header per gap; the typing indicator now or later.
 
 **Dependencies:** T2.13. **Scope:** M
 
