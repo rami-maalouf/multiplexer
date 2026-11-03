@@ -43,3 +43,55 @@ matrix_bridge_mautrix_whatsapp_enabled: true
 # double puppeting: what rami sends from whatsapp on his phone shows in matrix as sent by
 # @rami:ramimaalouf.com, not by a stand-in user of the bridge.
 matrix_appservice_double_puppet_enabled: true
+
+# the instagram bridge (mautrix-meta's instagram bridge). a user connects by sending
+# `login instagram` (cookies from a browser) or `login android` (user name and password)
+# to @instagrambot:ramimaalouf.com. the image is prebuilt for arm64. instagram dms have
+# no end-to-end encryption since 2026-05-08, and the bridged rooms stay unencrypted, as
+# for whatsapp. the bridge's api: https://matrix.ramimaalouf.com/bridges/meta-instagram.
+matrix_bridge_mautrix_meta_instagram_enabled: true
+
+# upstream mautrix/meta main (4a7ebd9, 2026-10-30), not a release: no release has the fix
+# for the android login's password key request yet (mautrix/meta#483, which replaced our
+# fork's fix), nor the login code step fixes (#484). the image is prebuilt for arm64
+# (dock.mau.dev/mautrix/meta:ig-<commit>-arm64). go back to the playbook's release when one
+# has both, by deleting this line.
+matrix_bridge_mautrix_meta_instagram_version: "4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d"
+
+# debug logs for the main account's login (2026-10-31): they show each meta login screen,
+# and the login responses with names and values hidden. after a login, debug also logs
+# chat data, so set it back to warn (the default) by deleting this line.
+matrix_bridge_mautrix_meta_instagram_logging_min_level: debug
+
+# the linkedin bridge (mautrix-linkedin). a user connects by sending `login password`
+# (email or phone, password, then a code or an app approval) or `login cookies` (a cURL
+# from chrome) to @linkedinbot:ramimaalouf.com. bridged rooms are not end-to-end
+# encrypted, as for whatsapp.
+matrix_bridge_mautrix_linkedin_enabled: true
+
+# upstream mautrix/linkedin main (6cc6a89, 2026-11-02), not a release: the password login
+# (158ab42) and its 2fa (#72) came after the last release (v0.2609.0, 2026-09-16). the
+# image is prebuilt for arm64 (dock.mau.dev/mautrix/linkedin:<commit>-arm64). go back to
+# the playbook's release when one has the password login, by deleting this line.
+matrix_bridge_mautrix_linkedin_version: "6cc6a8981941b0ac1d50e4c65cfb210668f8fe7e-arm64"
+
+# a small daily backup of the databases (synapse and the bridges), on the server itself, in
+# /matrix/postgres-backup. it keeps 7 daily dumps and 2 weekly ones, no monthly: the weekly
+# file is a hard link to a daily one, so it takes space only after that daily one is gone.
+# it protects against a broken database or a mistake, not against losing the server, and it
+# does not hold media (photos). a dump also runs when the container starts (after an install
+# or a reboot); it replaces that day's file, so it does not add copies.
+postgres_backup_enabled: true
+postgres_backup_keep_days: 7
+postgres_backup_keep_weeks: 2
+postgres_backup_keep_months: 0
+postgres_backup_environment_variables_additional_variables: |
+  BACKUP_ON_START=TRUE
+
+# delayed events (msc4140), for the app's send later (b13): a message waits on this server
+# and goes at its time with the phone off. rami chose a 1-year maximum (2026-11-03). a waiting
+# message is one database row; synapse keeps one timer for the next one due, so a longer
+# maximum adds no load. clients are rate limited by rc_message (create) and the playbook's
+# rc_delayed_event_mgmt (restart, cancel, list).
+matrix_synapse_delayed_events_enabled: true
+matrix_synapse_max_event_delay_duration: 365d

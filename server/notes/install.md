@@ -97,3 +97,194 @@ group messages without their sender key), and 4 errors in 30 minutes, none for n
 old link-preview pictures that WhatsApp no longer serves (HTTP 403), and old reactions with
 no emoji that Synapse refuses ("Missing aggregation key"). The bridge log holds phone numbers
 and chat IDs: read only counts, or hide the numbers, when you look at it.
+
+## 2026-10-28: a small database backup (M0)
+
+`config.yml` turns on the playbook's `postgres-backup` (7 daily and 2 weekly dumps, no monthly,
+`BACKUP_ON_START=TRUE`). Install: `ok=236 changed=6 failed=0`. The first dump ran at the
+container's start (01:23 UTC): Synapse 40.5 MB and the WhatsApp bridge 3.1 MB, gzip; `gzip -t`
+passes, and the Synapse dump has 174 tables and ends cleanly. The daily, weekly, monthly and
+last files are hard links to one dump: 42 MB on disk. Disk: 33 of 96 GB used.
+
+## 2026-10-28: the Instagram bridge, for the spike (T4.1)
+
+With Rami's yes ("please proceed with the setup and let's give it a test"), relayed by the
+connectors conversation (proposal: `docs/connectors/instagram.md` on branch
+`connectors/instagram`, sections 2 and 4). `config.yml` turns on
+`matrix_bridge_mautrix_meta_instagram_enabled`; all other settings stay at the playbook's
+defaults (encryption off, backfill, the " (IG)" name suffix, no proxy).
+
+- Install `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`:
+  `ok=248 changed=13 failed=0`. It restarted Synapse and the WhatsApp bridge; WhatsApp came
+  back with its 1 login, no errors and no logout in its log.
+- Self-check: `ok=36 failed=0`, all 6 checks working.
+
+| Container | Image | Arch |
+|---|---|---|
+| `matrix-mautrix-meta-instagram` | `dock.mau.dev/mautrix/meta:ig-v0.2610.0` | arm64, pulled |
+
+Nothing was built on the server (no `localhost/` images).
+
+**Checked from the Mac:**
+- Synapse loads the bridge's registration; the bot `@instagrambot:ramimaalouf.com` exists
+  ("Instagram bridge bot").
+- `https://matrix.ramimaalouf.com/.well-known/matrix/mautrix` lists
+  `https://matrix.ramimaalouf.com/bridges/meta-instagram` and `.../bridges/whatsapp`.
+- `.../bridges/meta-instagram/_matrix/provision/v3/login/flows` without a token: HTTP 401,
+  `M_MISSING_TOKEN`.
+- The bridge logged no `ERR` or `FTL` line after its start. Nobody has logged in to Instagram.
+
+**Memory:** before, 4.0 GiB of 23 GiB used (Synapse 1.8 GiB after a day of caching, Postgres
+670 MiB, the WhatsApp bridge 95 MiB). After, 2.3 GiB: the restart emptied Synapse's caches
+(138 MiB) and the WhatsApp bridge's (13 MiB). The Instagram bridge itself uses 9 MiB idle.
+Load 0.39.
+
+**Backup:** the daily backup takes its list from the playbook's managed databases, so it
+includes `matrix_mautrix_meta_instagram` with no new setting. The dump at the backup
+container's restart (488 bytes) came before the bridge filled its database; the next daily
+dump holds it. After a login, that database holds an Instagram session, so the backup is a
+secret, like the WhatsApp bridge's (which holds the WhatsApp link). `/matrix/postgres-backup`
+and its `data` folder are `drwx------ matrix:matrix`: only the `matrix` user and root can
+read the dumps.
+
+## 2026-10-28: our own copy of the Instagram bridge (T4.1)
+
+Rami's decision ("let's also own our own copy"), relayed by the connectors conversation: the
+published bridge's `login android` fails, because Instagram answers its first request
+(`POST i.instagram.com/api/v1/qe/sync/`) with HTTP 500. The fix is one commit on Rami's
+public fork (proposal: `docs/connectors/instagram.md` on branch `connectors/instagram`).
+
+**Checked before the build (read only):** `rami-maalouf/meta@bce18b56` has upstream
+`mautrix/meta@0371efa` (2026-10-28) as its only parent and changes one file,
+`pkg/instameow/login_mobile.go` (+14 −31). Its hunks equal
+`docs/connectors/patches/mautrix-meta-ig-qe-sync-get.patch`. It asks Instagram for the
+password key with a GET instead of a POST, to the same address, and adds no new destination.
+The build uses upstream's `Dockerfile.ig` (`golang:1-alpine3.24`, then `alpine:3.24`).
+
+**Waited for the dead login:** the bridge held one login of `@rami` from the morning.
+The build waited until Rami removed it (`logout`); at 23:14 UTC it held 0 logins, so the
+restart did not try the dead session against Instagram.
+
+`config.yml` sets `matrix_bridge_mautrix_meta_instagram_container_image_self_build: true`,
+the fork as `..._self_build_repo`, and `..._version: bce18b56e20616a9347450e24062936ba67ade4b`.
+To go back to the published image, delete those three lines and install again.
+
+- Install `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`:
+  `ok=250 changed=6 failed=0`, 300 s in total. The role cloned the fork into
+  `/matrix/mautrix-meta-instagram/container-src` (6.6 MB, at `bce18b56`) and built the image
+  on the server in about 2 minutes (checkout done 23:16:09, image made 23:18:15 UTC). Only the
+  Instagram bridge restarted; Synapse and the WhatsApp bridge did not.
+- Self-check: `ok=36 failed=0`, all 6 checks working.
+
+| Container | Image | Arch |
+|---|---|---|
+| `matrix-mautrix-meta-instagram` | `localhost/mautrix/meta:ig-bce18b56e20616a9347450e24062936ba67ade4b-arm64` (177 MB) | arm64, built on the server |
+
+**After:** the bridge runs, logs no `ERR` or `FTL` line, and holds 0 logins. WhatsApp runs
+with its 1 login and no errors. Memory 2.7 GiB of 23 GiB (2.6 before); the bridge uses 9 MiB.
+Load 0.74 just after the build. Disk 34 of 96 GB (33 before): the new image, and Docker's
+build cache, now 2.6 GB (2.4 GB of it can be freed, for example with the playbook's system
+cleanup; that is a deletion, so it waits for Rami). The old published image
+`dock.mau.dev/mautrix/meta:ig-v0.2610.0` stays on disk, unused.
+
+## 2026-10-30: Rami's Instagram login on the fork (T4.1)
+
+Rami linked Instagram with `login android` from `@rami`. Read only, after the login: the
+bridge holds 1 login, owned by `@rami:ramimaalouf.com`, and 24 of 24 chats have rooms.
+During the login it logged 2 `ERR` lines: `GET qe/sync` answered HTTP 405 (expected: the
+password key comes with that answer), and one reconnection state update that it could not
+send. No `ERR` line after the login.
+
+## 2026-10-31: debug logs for the main account's login (T4.1)
+
+The main account's try (03:36 UTC) logged 2 `ERR` lines at the `warn` level: the expected
+405 on `GET qe/sync`, then HTTP 429 on
+`POST api/v1/bloks/async_action/com.bloks.www.caa.ar.submit_code.async/`, 68 s later. So
+Meta sent the login to its account recovery ("caa.ar") code step, and refused the code
+submit with a rate limit. The `warn` level hides the screen names in between.
+
+`config.yml` sets `matrix_bridge_mautrix_meta_instagram_logging_min_level: debug`. Install:
+`ok=250 changed=5 failed=0`. The Instagram and WhatsApp bridges restarted at 05:09:55 UTC;
+Synapse did not. WhatsApp: 1 login, no `WRN` or `ERR`. Delete the line after the login.
+
+## 2026-10-31: the Instagram bridge back on upstream (T4.1)
+
+Upstream merged its own fix for the password key request on 2026-10-28, about 5 hours
+after our fork's commit: mautrix/meta#483 (`64e2f61`) asks `launcher/sync/` instead of
+`qe/sync/`. Our fix conflicts with it, so we send no pull request. Upstream `main` also has
+#484, fixes for the login code step (where the main account's login stopped with a 429).
+No release has them yet (the last one is `v0.2610.0`, 2026-10-16).
+
+Rami's decision: go back to upstream. `config.yml` removes the self-build and the fork, and
+sets `matrix_bridge_mautrix_meta_instagram_version` to upstream `main`
+`4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d` (2026-10-30). Its CI passed (arm64 build
+included), and `dock.mau.dev` has its image, so the server pulls it and builds nothing.
+
+**Before:** the bridge held 0 logins. The main account's last try ended at 05:30 UTC with
+HTTP 429 on `GET www.instagram.com/accounts/login/` ("temporarily limiting login attempts
+from this network"); no login was in progress.
+
+- Install `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`:
+  `ok=248 changed=5 failed=0`, 3 min. The Instagram bridge, the WhatsApp bridge and Traefik
+  restarted at 05:41:45 UTC; Synapse did not.
+- Self-check: `ok=36 failed=0`.
+
+| Container | Image |
+|---|---|
+| `matrix-mautrix-meta-instagram` | `dock.mau.dev/mautrix/meta:ig-4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d-arm64` (177 MB) |
+
+**After:** the bridge reports `version=v26.10+dev.4a7ebd92`, starts with no `WRN` or `ERR`,
+and holds 0 logins. WhatsApp logged one `WRN` at the shutdown (websocket close) and none
+after. Memory 3 of 23 GiB, disk 47 of 96 GB, load 0.66. Two unused images stay on disk:
+our fork's `localhost/mautrix/meta:ig-bce18b56…-arm64` and `ig-v0.2610.0` (177 MB each),
+with the build cache; removing them is a deletion, so it waits for Rami. The debug log
+level stays on for the main account's next login.
+
+## 2026-11-02: the LinkedIn bridge (mautrix-linkedin)
+
+Rami's request ("please add linkedin"). The pinned playbook supports `mautrix-linkedin`
+(the older `beeper-linkedin` is archived and stays off). Its default version, the last
+release `v0.2609.0` (2026-09-16), has only the cookie login. Upstream `main` added a
+password login on 2026-10-09 (`158ab42`) and its 2FA on 2026-10-12 (#72): email, SMS or
+authenticator code (6 digits), or an approval in the LinkedIn app, with a browser
+fallback. So `config.yml` enables the bridge and sets
+`matrix_bridge_mautrix_linkedin_version` to `main`
+`6cc6a8981941b0ac1d50e4c65cfb210668f8fe7e-arm64` (2026-11-02). Its CI passed (arm64 build
+included), and `dock.mau.dev` has that tag, so the server pulls it and builds nothing.
+
+- Install `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start`:
+  `ok=262 changed=14 failed=0`, 3.5 min. Traefik restarted at 23:28:58 UTC; Synapse, the
+  WhatsApp and Instagram bridges and the new bridge at 23:29:07-08.
+- Self-check: `ok=36 failed=0`.
+- `@test1` made a direct chat with `@linkedinbot:ramimaalouf.com` and sent `login`. The bot
+  answered with 2 flows: `cookies` and `password`. The check's session signed out, and
+  `@test1` left the room.
+
+| Container | Image |
+|---|---|
+| `matrix-mautrix-linkedin` | `dock.mau.dev/mautrix/linkedin:6cc6a8981941b0ac1d50e4c65cfb210668f8fe7e-arm64` |
+
+**After:** the bridge logs at `warn` and logged nothing at that level. WhatsApp and
+Instagram each still hold 1 login, with no `WRN` or `ERR` after the restart. Memory 4 of
+23 GiB, disk 61 of 96 GB. The bridge's first sync makes rooms for the 10 most recent
+chats only (`network.sync.create_limit: 10`, the playbook's default).
+
+## 2026-11-02: Rami's LinkedIn login (cookies)
+
+- `login password` failed at 23:52:46 UTC: `WRN LinkedIn native login did not complete
+  kind=bad_response stage=completion status=200`. LinkedIn answered, but the bridge did not
+  know the answer. A wrong password has its own message, so the password was likely fine.
+  The bot then offered "Continue in browser", which is the cookie step.
+- The cookie step requires a cURL with the `Cookie` header (`JSESSIONID`) and the headers
+  `X-LI-Track` and `X-LI-Page-Instance`. LinkedIn's current website sends neither header
+  (a Chrome search of all requests found none). The bridge only checks that they are
+  present: when `mpName` in `X-LI-Track` is not `voyager-web`, it uses its own default
+  values (`pkg/linkedingo/client.go`, lines 73-97), as the password login does.
+- So the working step: in a Chrome private window, log in and open the feed; copy a
+  `www.linkedin.com` request from after the login as cURL (`-b` with `li_at` and
+  `JSESSIONID`); close the window without a logout; paste it in the bot chat with
+  `-H 'x-li-track: {"clientVersion":""}' -H 'x-li-page-instance: urn:li:page:x'` at the
+  end. The bot redacts the message.
+- Result (00:27 UTC on 11-03): 1 login, 20 chats known, 10 with rooms (`create_limit`),
+  61 messages. Logs since 23:50: only the 2 `native login did not complete` warnings and 2
+  `mpName is not voyager-web, using default xLiTrack`; no `ERR`.
