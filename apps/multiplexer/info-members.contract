@@ -1,0 +1,139 @@
+// a chat's info page's state and actions (info.contract): it opens from the chat bar's picture and
+// name, and its buttons are the chat list's actions (B7, B8) on the open chat.
+use ChatInfo, ChatMembers, ChatMedia, Viewed, InfoReply from "./info.contract"
+
+members Multiplexer
+  // the page shows every member, and more than a row of media, once asked.
+  state allMembers = false
+  state allMedia = false
+  // what the sheets over the page are typing: the group's new name, a name only you see, someone to add.
+  state infoDraft = ""
+  state infoPicked: Picked[] = []
+  state customDraft = ""
+  state inviteDraft = ""
+  // a sheet's change was asked since it opened: its refusal shows on it (a refused one runs no then).
+  state infoAsked = false
+  derive infoRoom = stack(nav).filter(x => x.name == "info").length > 0 ? openRoom : ""
+  resource chatInfo = loadChatInfo(infoRoom) as shape ChatInfo else empty()
+  resource chatMembers = loadChatMembers(infoRoom, allMembers ? 1000 : 6) as shape ChatMembers else empty()
+  resource chatMedia = loadChatMedia(infoRoom, allMedia ? 40 : 4) as shape ChatMedia else empty()
+  mutation renamed as shape InfoReply refreshes chatInfo, roomList then infoSaved
+  mutation pictured as shape InfoReply refreshes chatInfo, roomList then infoSaved
+  mutation customNamed as shape InfoReply refreshes chatInfo, roomList then infoSaved
+  mutation invited as shape InfoReply refreshes chatMembers, chatInfo then infoSaved
+  // the page shows the open chat's info only, and until it has loaded, what the chat list knows.
+  derive infoLoaded = chatInfo.id == openRoom and chatInfo.id != ""
+  derive infoShown = infoLoaded ? chatInfo : ChatInfo(id=openRoom, name=openName, roomName=openName, customName="", topic="",
+    picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
+    initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork, isOneToOne=openIsDirect,
+    memberCount=0, canRename=false, canChangePicture=false, canInvite=false)
+  derive openArchived = match openRoomInfo { case some(r) => r.archived, case none => false }
+  derive openLowPriority = match openRoomInfo { case some(r) => r.lowPriority, case none => false }
+  derive infoSaving = pending(renamed) or pending(pictured) or pending(customNamed) or pending(invited)
+  derive groupRefused = infoAsked and not infoSaving and (failed(renamed) or failed(pictured))
+  derive customRefused = infoAsked and not infoSaving and failed(customNamed)
+  derive inviteRefused = infoAsked and not infoSaving and failed(invited)
+  // the viewer shows a photo or a video of the chat, or of the info page's grid (older than the chat's messages).
+  derive shownPhotoItem = first(chatMedia.items.filter(x => x.id == shownPhoto))
+  derive shownVideoItem = first(chatMedia.items.filter(x => x.id == shownVideo))
+  derive viewedPhoto = match shownPhotoMessage {
+    case some(m) => Viewed(found=true, sender=(m.isOwn ? "You" : m.senderName), time=m.time, image=m.image, label=(m.body != "" ? m.body : "Photo")),
+    case none => match shownPhotoItem {
+      case some(x) => Viewed(found=true, sender=(x.isOwn ? "You" : x.senderName), time=x.time, image=x.image, label=(x.caption != "" ? x.caption : "Photo")),
+      case none => Viewed(found=false, sender="Photo", time=0, image="", label="Photo") } }
+  derive viewedVideo = match shownVideoMessage {
+    case some(m) => Viewed(found=true, sender=(m.isOwn ? "You" : m.senderName), time=m.time, image=m.image, label=(m.body != "" ? m.body : "Video")),
+    case none => match shownVideoItem {
+      case some(x) => Viewed(found=true, sender=(x.isOwn ? "You" : x.senderName), time=x.time, image=x.image, label=(x.caption != "" ? x.caption : "Video")),
+      case none => Viewed(found=false, sender="Video", time=0, image="", label="Video") } }
+
+  // a tap on the chat bar's picture and name: the page zooms out of it.
+  action openInfo
+    keepDraftNow()
+    held = ""
+    panel = false
+    allMembers = false
+    allMedia = false
+    blur("composer")
+    nav = push(nav, path("info", openRoom))
+  action closeInfo
+    nav = back(nav)
+  action seeAllMembers
+    allMembers = true
+  action seeAllMedia
+    allMedia = true
+  action showInfoMedia(id: string, isVideo: bool)
+    if isVideo
+      nav = push(nav, path("video", openRoom, id))
+    else
+      nav = push(nav, path("photo", openRoom, id))
+  // the four buttons and More: each shows on the page and in the list at once.
+  action archiveOpen
+    send changedChat = changeChat(openRoom, openArchived ? "unarchive" : "archive")
+    haptic("success")
+  action lowPriorityOpen
+    send changedChat = changeChat(openRoom, openLowPriority ? "inbox" : "lowPriority")
+    haptic("success")
+  // marked unread, the chat is left, as the chat bar's Mark as Unread does; read, it stays.
+  action readOpen
+    if openUnread > 0
+      send changedChat = changeChat(openRoom, "read")
+      haptic("success")
+    else
+      send changedChat = changeChat(openRoom, "unread")
+      haptic("success")
+      nav = back(back(nav))
+  action askDeleteOpen
+    showModal("info-delete")
+  action deleteOpen
+    send changedChat = changeChat(openRoom, "delete")
+    haptic("success")
+    nav = back(back(nav))
+  // Edit: the group's name (and picture) for everyone, or a name only you see.
+  action editGroup
+    infoDraft = infoShown.roomName
+    infoPicked = []
+    infoAsked = false
+    nav = push(nav, path("editInfo", openRoom))
+  action customize
+    customDraft = infoShown.customName
+    infoAsked = false
+    nav = push(nav, path("customName", openRoom))
+  action addMember
+    inviteDraft = ""
+    infoAsked = false
+    nav = push(nav, path("addMember", openRoom))
+  action typeInfoName(value: string)
+    infoDraft = value
+  action typeCustomName(value: string)
+    customDraft = value
+  action typeInvite(value: string)
+    inviteDraft = value
+  action choosePicture
+    showPicker("info-pick-picture")
+  action picturePicked(files: Picked[])
+    infoPicked = files
+  action saveGroup
+    infoAsked = true
+    match first(infoPicked)
+      case some(f)
+        send pictured = setChatPicture(openRoom, f)
+      case none
+        infoAsked = true
+    if infoDraft.trim() != "" and infoDraft.trim() != infoShown.roomName
+      send renamed = renameChat(openRoom, infoDraft)
+  action saveCustomName
+    infoAsked = true
+    send customNamed = setCustomName(openRoom, customDraft)
+  action resetCustomName
+    customDraft = ""
+    infoAsked = true
+    send customNamed = setCustomName(openRoom, "")
+  action invite
+    infoAsked = true
+    send invited = inviteMember(openRoom, inviteDraft)
+  // a sheet closes once all its changes are made; a refusal keeps it open, saying so.
+  action infoSaved
+    if not infoSaving and not groupRefused and (top(nav).name == "editInfo" or top(nav).name == "customName" or top(nav).name == "addMember")
+      haptic("success")
+      nav = back(nav)

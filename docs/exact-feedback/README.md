@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26; 73 to 76 on 2026-11-03, with new evidence for 2 and 60.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26; 73 to 76 on 2026-11-03, with new evidence for 2 and 60; 83 to 85 on 2026-11-03 (77 to 82 are search's, recorded with its merge), with new evidence for 61 and the zoom filming finding.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -95,6 +95,9 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 74 | A disabled menu row with no press is dropped from the iOS menu. | About 5 min | P3 | [a-disabled-menu-row-without-a-press](issues/20261103-a-disabled-menu-row-without-a-press.md) |
 | 75 | A test's `reload` on iOS comes back at the first screen, not where `at` opened it. | About 3 min | P3 | [a-test-s-reload-forgets-its](issues/20261103-a-test-s-reload-forgets-its.md) |
 | 76 | A large title comes back inline when a route with no bar turns into one with a large title. | About 8 min | P3 | [a-large-title-comes-back-inline](issues/20261103-a-large-title-comes-back-inline.md) |
+| 83 | The zoom transition (`navigationSource`) has no doc an app can read. | About 10 min | P3 | [navigation-source-has-no-doc](issues/20261103-navigation-source-has-no-doc.md) |
+| 84 | A route cannot say "a bar with buttons and no title" without an empty heading. | About 3 min | P3 | [a-bar-with-buttons-and-no](issues/20261103-a-bar-with-buttons-and-no.md) |
+| 85 | `path()` takes only a literal route name, so a choice of two routes needs two pushes. | About 1 min | P3 | [path-needs-a-literal-route-name](issues/20261103-path-needs-a-literal-route-name.md) |
 
 ## What worked well
 

@@ -1,0 +1,361 @@
+// a chat's info page, after Beeper's: it zooms out of the chat bar's picture and name. Its
+// picture, name and network, four buttons (Search, Archive or Unpin, Low Priority, More), the
+// chat's newest photos and videos, and its members; Edit renames the group or gives it a name
+// only you see. The state and actions are info-members.contract's.
+use Face from "./bubble.contract"
+use networkName from "./network.contract"
+use deleteMessage from "./inbox.contract"
+
+// what the page shows of the chat. name: the one it shows (yours, when you gave it one); roomName:
+// the one everyone sees; customName: yours, or "". picture: its picture once downloaded (""),
+// else initials. memberCount: the people who have joined, its bridge's bot left out. isOneToOne:
+// a chat with one other person, which has no members' list.
+shape ChatInfo
+  id: string
+  name: string
+  roomName: string
+  customName: string
+  topic: string
+  picture: string
+  initials: string
+  network: string
+  isOneToOne: bool
+  memberCount: number
+  canRename: bool
+  canChangePicture: bool
+  canInvite: bool
+
+// a change's reply (app.contract's Reply, which a members file cannot name).
+shape InfoReply
+  ok: bool
+
+shape ChatMember
+  id: string
+  name: string
+  picture: string
+  initials: string
+  isOwn: bool
+
+// room: the chat they are of, so a page never shows another chat's. total: everyone, though only
+// the first ones by name may be here.
+shape ChatMembers
+  room: string
+  total: number
+  members: ChatMember[]
+
+// a photo or a video of the grid: its picture (a photo's thumbnail, a video's poster) once it is
+// downloaded, else ""; seconds, a video's length.
+shape ChatMediaItem
+  id: string
+  isVideo: bool
+  time: number
+  senderName: string
+  isOwn: bool
+  caption: string
+  image: string
+  seconds: number
+
+shape ChatMedia
+  room: string
+  items: ChatMediaItem[]
+
+// what the photo or video viewer shows of what it opened: a message of the chat, or a photo of the
+// info page's grid, which may be older than the chat's loaded messages.
+shape Viewed
+  found: bool
+  sender: string
+  time: number
+  image: string
+  label: string
+
+// under the name: "WhatsApp Group - 7 members", or the network for a chat with one person.
+fn infoSubtitle(network: string, isOneToOne: bool, count: number): string = isOneToOne ? networkName(network) : `${networkName(network)} Group - ${count} ${count == 1 ? "member" : "members"}`
+// a video's length on its tile: "0:07".
+fn clipLength(s: number): string = `${floor(s / 60)}:${s % 60 < 10 ? "0" : ""}${s % 60}`
+
+// one of the four buttons under the name: its symbol over its label, on a card.
+component InfoButton
+  props
+    label: string
+    symbol: string
+    press: action
+    disabled: bool
+    identifier: string
+    // two by two at the accessibility text sizes, else four in a row.
+    largeText: bool
+  view
+    button appearance="none" press=press disabled=disabled id=identifier testId=identifier flex=(largeText ? "1 1 40%" : "1 1 0") min-width=0
+      display="flex" flex-direction="column" align-items="center" justify-content="center" gap=4 padding="10px 4px" min-height=64
+      border-radius=14 background-color="-exact-secondary-grouped-background" opacity=(disabled ? 0.45 : 1)
+      image symbol font-size="min(-exact-title3, 24px)" color="AccentColor" aria-hidden=true
+      text label font="-exact-caption1" font-size="min(-exact-caption1, 20px)" color="-exact-label" text-align="center"
+
+// the page. The Search button waits for search in one chat (B19).
+component InfoPage
+  props
+    route: string
+    info: ChatInfo
+    loaded: bool
+    members: ChatMember[]
+    total: number
+    media: ChatMediaItem[]
+    mediaLoaded: bool
+    // the grid shows more than its first row.
+    moreMedia: bool
+    pinned: bool
+    archived: bool
+    lowPriority: bool
+    muted: bool
+    unread: bool
+    close: action
+    archive: action
+    moveLowPriority: action
+    pin: action
+    read: action
+    mute: action
+    askDelete: action
+    deleteChat: action
+    edit: action
+    customize: action
+    addMember: action
+    seeMembers: action
+    seeMedia: action
+    open: action
+    largeText: bool
+  derive canEditGroup = not info.isOneToOne and (info.canRename or info.canChangePicture)
+  view
+    column navigationKey=route navigationPresentation="fullscreen" navigationSource="chat-title" navigationScroll="info"
+      position="absolute" inset=0 display="flex" flex-direction="column" testId="info-page"
+      header display="flex" align-items="center"
+        button id="back" press=close aria-label="Close" testId="close-info"
+          image "symbol:close"
+        // the bar has no title, as Beeper's: the name is the page's own, under the picture.
+        text "" role="heading" aria-level=2
+        button popovertarget="info-edit" testId="info-edit"
+          text "Edit"
+      column id="info-edit" popover="auto" role="menu"
+        if canEditGroup
+          button press=edit popovertarget="info-edit" popovertargetaction="hide" testId="edit-group"
+            image "symbol:pencil"
+            text "Edit Group Info"
+        button press=customize popovertarget="info-edit" popovertargetaction="hide" testId="customize"
+          image "symbol:person"
+          text "Customize for Me"
+      // the info page's own actions, in Beeper's order; Remind Me and Jump to Date are not here yet.
+      column id="info-more" popover="auto" role="menu"
+        button press=pin popovertarget="info-more" popovertargetaction="hide" testId="info-more-pin"
+          image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
+          text (pinned ? "Unpin" : "Pin")
+        button press=read popovertarget="info-more" popovertargetaction="hide" testId="info-more-read"
+          image (unread ? "symbol:messages" : "symbol:icon.mark-unread")
+          text (unread ? "Mark as Read" : "Mark as Unread")
+        button press=mute popovertarget="info-more" popovertargetaction="hide" testId="info-more-mute"
+          image (muted ? "symbol:notifications" : "symbol:icon.bell-slash")
+          text (muted ? "Unmute" : "Mute")
+        hr
+        button press=askDelete destructive=true popovertarget="info-more" popovertargetaction="hide" testId="info-more-delete"
+          image "symbol:delete"
+          text "Delete"
+      list id="info" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="info-list"
+        // the header: the picture, the name and what the chat is, with no card.
+        section background-color="transparent"
+          column align-items="center" gap=4 width="100%" padding-bottom=4
+            Face(picture=info.picture, initials=info.initials, size=(largeText ? 120 : 96))
+            text info.name role="heading" aria-level=1 font="-exact-title2" font-weight=700 text-align="center" margin-top=8
+              testId="info-name"
+            if loaded
+              text infoSubtitle(info.network, info.isOneToOne, info.memberCount) font="-exact-subheadline" color="-exact-secondary-label"
+                text-align="center" testId="info-subtitle"
+            if info.customName != ""
+              text `Everyone else sees “${info.roomName}”` font="-exact-footnote" color="-exact-tertiary-label" text-align="center"
+                testId="info-room-name"
+        // Beeper's four: a pinned chat offers Unpin where another offers Archive.
+        section background-color="transparent"
+          row gap=8 width="100%" flex-wrap=(largeText ? "wrap" : "nowrap")
+            InfoButton(label="Search", symbol="symbol:search", press=close, disabled=true, identifier="info-search", largeText=largeText)
+            if pinned
+              InfoButton(label="Low Priority", symbol="symbol:icon.low-priority", press=moveLowPriority, disabled=false, identifier="info-low-priority", largeText=largeText)
+              InfoButton(label="Unpin", symbol="symbol:icon.pin-slash", press=pin, disabled=false, identifier="info-pin", largeText=largeText)
+            else
+              InfoButton(label=(archived ? "Unarchive" : "Archive"), symbol=(archived ? "symbol:icon.unarchive" : "symbol:icon.archive"),
+                press=archive, disabled=false, identifier="info-archive", largeText=largeText)
+              InfoButton(label=(lowPriority ? "Inbox" : "Low Priority"), symbol=(lowPriority ? "symbol:icon.tray" : "symbol:icon.low-priority"),
+                press=moveLowPriority, disabled=false, identifier="info-low-priority", largeText=largeText)
+            button appearance="none" popovertarget="info-more" testId="info-more" aria-label="More" flex=(largeText ? "1 1 40%" : "1 1 0") min-width=0
+              display="flex" flex-direction="column" align-items="center" justify-content="center" gap=4 padding="10px 4px" min-height=64
+              border-radius=14 background-color="-exact-secondary-grouped-background"
+              image "symbol:more" font-size="min(-exact-title3, 24px)" color="AccentColor" aria-hidden=true
+              text "More" font="-exact-caption1" font-size="min(-exact-caption1, 20px)" color="-exact-label"
+        if info.topic != ""
+          section
+            header
+              text "About"
+            row
+              text info.topic white-space="pre-wrap" overflow-wrap="break-word" min-width=0 testId="info-topic"
+        // the newest photos and videos: a row of four, or more once asked; a tap opens the viewer,
+        // which zooms out of the tile.
+        section
+          header
+            text "Media"
+          if media.length == 0
+            row
+              text (mediaLoaded ? "No photos or videos yet." : "Loading…") color="-exact-secondary-label" testId="info-no-media"
+          else
+            view display="grid" grid-template-columns=(largeText ? "repeat(3, 1fr)" : "repeat(4, 1fr)") gap=6 width="100%" padding=10 box-sizing="border-box"
+              testId="info-media"
+              for m in media key=m.id
+                button appearance="none" press=open(m.id, m.isVideo) id=(m.isVideo ? `video-${m.id}` : `photo-${m.id}`)
+                  testId=`info-media-${m.id}` aria-label=(m.caption != "" ? m.caption : (m.isVideo ? "Video" : "Photo"))
+                  aspect-ratio="1 / 1" border-radius=10 overflow="hidden" background-color="-exact-tertiary-fill" position="relative"
+                  if m.image != ""
+                    image m.image width="100%" height="100%" object-fit="cover" aria-label=""
+                  if m.isVideo
+                    row position="absolute" left=4 bottom=4 gap=2 align-items="center" padding="1px 5px" border-radius=8
+                      background-color="media.scrim" aria-hidden=true
+                      image "symbol:play-fill" font-size="min(-exact-caption2, 14px)" color="media.ink"
+                      if m.seconds > 0
+                        text clipLength(m.seconds) font-size="min(-exact-caption2, 14px)" color="media.ink" font-variant-numeric="tabular-nums"
+            if not moreMedia and media.length >= 4
+              button press=seeMedia testId="info-see-media"
+                text "See More"
+                image "symbol:forward-chevron"
+        // the members, by name. A bridged group gets its people on its network: Matrix cannot add one there.
+        if not info.isOneToOne and loaded
+          section
+            header
+              text `${total} ${total == 1 ? "Member" : "Members"}`
+            if info.canInvite and info.network == "matrix"
+              button press=addMember testId="info-add-member"
+                image "symbol:follow"
+                text "Add Member"
+            for m in members key=m.id
+              row gap=12 align-items="center" testId=`info-member-${m.id}`
+                Face(picture=m.picture, initials=m.initials, size=32)
+                text m.name flex=1 min-width=0
+                if m.isOwn
+                  text "You" color="-exact-secondary-label"
+            if total > members.length
+              button press=seeMembers testId="info-see-members"
+                text "See All"
+                image "symbol:forward-chevron"
+            footer
+              text (info.network != "matrix" ? `People join this group on ${networkName(info.network)}.` : "")
+      dialog id="info-delete" role="alertdialog" aria-label=`Delete “${info.name}”?`
+        text deleteMessage(info.network)
+        button press=deleteChat destructive=true commandfor="info-delete" command="close" testId="info-delete-confirm"
+          text "Delete"
+        button commandfor="info-delete" command="close" testId="info-delete-cancel"
+          text "Cancel"
+
+// a sheet with one field, over the info page: Edit Group Info (the name, and the picture when the
+// chat lets you change it), Customize for Me (a name only you see) and Add Member.
+component InfoSheet
+  props
+    route: string
+    title: string
+    // the button that saves: "Save", "Invite".
+    done: string
+    canSave: bool
+    saving: bool
+    close: action
+    save: action
+  slot
+  view
+    column navigationKey=route navigationPresentation="modal" navigationScroll="info-sheet" position="absolute" inset=0
+      display="flex" flex-direction="column" testId="info-sheet"
+      header display="flex" align-items="center"
+        button id="back" press=close testId="info-sheet-cancel"
+          text "Cancel"
+        text title role="heading" aria-level=1 flex=1
+        button press=save disabled=(not canSave or saving) buttonStyle="filled" testId="info-sheet-save"
+          text done
+      list id="info-sheet" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        children
+
+// Edit Group Info: a new name, and a new picture when the chat lets you change it, for everyone
+// in the chat and on its network.
+component EditGroupSheet
+  props
+    route: string
+    info: ChatInfo
+    draft: string
+    // the picked photo's path, or "".
+    picked: string
+    saving: bool
+    refused: bool
+    type: action
+    choose: action
+    pick: action
+    close: action
+    save: action
+  derive renamed = draft.trim() != "" and draft.trim() != info.roomName
+  view
+    InfoSheet(route=route, title="Edit Group Info", done="Save", canSave=((renamed and info.canRename) or picked != ""), saving=saving,
+      close=close, save=save)
+      if info.canChangePicture
+        section background-color="transparent"
+          column align-items="center" gap=8 width="100%"
+            Face(picture=(picked != "" ? picked : info.picture), initials=info.initials, size=96)
+            button press=choose disabled=saving testId="edit-picture"
+              text "Change Picture"
+            input type="file" id="info-pick-picture" accept="image/jpeg,image/png,image/webp" display="none" change=pick
+              testId="info-pick-picture"
+      section
+        header
+          text "Name"
+        input value=draft input=type placeholder=info.roomName disabled=(saving or not info.canRename) aria-label="Group Name"
+          autocapitalize="words" enterkeyhint="done" testId="edit-name"
+        footer
+          text (refused ? "That change didn’t go through. Try again." : (not info.canRename ? "Only the group’s admins can rename it."
+            : (info.network == "matrix" ? "Everyone in the chat sees the new name." : `Everyone in the chat sees the new name, on ${networkName(info.network)} too.`)))
+            color=(refused ? "-exact-system-red" : "-exact-secondary-label") testId="edit-footer"
+
+// Customize for Me: a name for the chat that only you see, on all your devices.
+component CustomNameSheet
+  props
+    route: string
+    info: ChatInfo
+    draft: string
+    saving: bool
+    refused: bool
+    type: action
+    reset: action
+    close: action
+    save: action
+  view
+    InfoSheet(route=route, title="Customize for Me", done="Save", canSave=(draft.trim() != info.customName), saving=saving,
+      close=close, save=save)
+      section
+        header
+          text "Name"
+        input value=draft input=type placeholder=info.roomName disabled=saving aria-label="Your Name for the Chat"
+          autocapitalize="words" enterkeyhint="done" testId="custom-name"
+        footer
+          text (refused ? "That name didn’t save. Try again." : `Only you see this name, on all your devices. Everyone else sees “${info.roomName}”.`)
+            color=(refused ? "-exact-system-red" : "-exact-secondary-label") testId="custom-footer"
+      if info.customName != ""
+        section
+          button press=reset destructive=true disabled=saving testId="custom-reset"
+            text "Use the Chat’s Own Name"
+
+// Add Member: someone's Matrix ID (@name:server), invited to the chat.
+component AddMemberSheet
+  props
+    route: string
+    draft: string
+    saving: bool
+    refused: bool
+    type: action
+    close: action
+    save: action
+  derive valid = draft.trim().startsWith("@") and draft.trim().includes(":")
+  view
+    InfoSheet(route=route, title="Add Member", done="Invite", canSave=valid, saving=saving, close=close, save=save)
+      section
+        header
+          text "Matrix ID"
+        input value=draft input=type placeholder="@name:server" disabled=saving aria-label="Matrix ID" autocapitalize="none"
+          autocorrect="off" spellcheck=false enterkeyhint="send" testId="invite-id"
+        footer
+          text (refused ? "That person couldn’t be invited. Check the ID and try again." : "They get an invitation and join when they accept it.")
+            color=(refused ? "-exact-system-red" : "-exact-secondary-label") testId="invite-footer"

@@ -13,6 +13,8 @@ public final class MatrixAccount: @unchecked Sendable {
     let chats = ChatStates()
     /// The emojis this device counted and the server has not confirmed (MessageActions.swift).
     let emojiUses = EmojiUseStates()
+    /// The chats' media timelines and own names (ChatInfo.swift).
+    let infoStates = ChatInfoStates()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -140,6 +142,7 @@ public final class MatrixAccount: @unchecked Sendable {
         }
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
+        await fillCustomNames(&rooms)
         return rooms
     }
 
@@ -259,7 +262,10 @@ public final class MatrixAccount: @unchecked Sendable {
     public func imageFile(roomId: String, messageId: String, full: Bool, directory: URL,
                           thumbnailSide: UInt64 = 800, timeout: TimeInterval = 30) async throws -> URL {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        guard let (source, thumbnailSource, image) = live.items.image(of: messageId) else { throw MatrixCoreError.noImage(messageId) }
+        // a photo of the info page's grid is in the chat's media timeline.
+        guard let (source, thumbnailSource, image) = await (mediaItems(roomId, for: messageId) ?? live.items).image(of: messageId) else {
+            throw MatrixCoreError.noImage(messageId)
+        }
         let file = directory.appendingPathComponent(full ? image.fullName : image.thumbnailName)
         if FileManager.default.fileExists(atPath: file.path) { return file }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -291,8 +297,8 @@ public final class MatrixAccount: @unchecked Sendable {
 
     /// A picture's media url (a sender's, `Message.senderPicture`) as a file in `directory`,
     /// at most `side` pixels a side. Downloaded once; later calls return the same file.
-    public func pictureFile(url: String, directory: URL, side: UInt64 = 160) async throws -> URL {
-        let file = directory.appendingPathComponent(avatarFileName(url))
+    public func pictureFile(url: String, directory: URL, side: UInt64 = 160, name: String? = nil) async throws -> URL {
+        let file = directory.appendingPathComponent(name ?? avatarFileName(url))
         if FileManager.default.fileExists(atPath: file.path) { return file }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let source = try MediaSource.fromUrl(url: url)
@@ -805,7 +811,7 @@ func mediaKey(_ url: String) -> String {
     SHA256.hash(data: Data(url.utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
 }
 
-private func avatarFileName(_ url: String) -> String { "\(mediaKey(url))-avatar.jpg" }
+func avatarFileName(_ url: String) -> String { "\(mediaKey(url))-avatar.jpg" }
 
 extension MessageImage {
     init(_ content: ImageMessageContent) {

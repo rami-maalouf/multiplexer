@@ -14,7 +14,7 @@ final class Matrix: ExactModule {
     /// Topics that changed and app.ts has not heard of yet: a burst of changes becomes one ask.
     private var changedTopics: Set<String> = []
     /// Downloaded pictures, as `app:/cache/matrix-media/<name>` in the view.
-    private var media: URL { context.cache.appendingPathComponent("matrix-media", isDirectory: true) }
+    var media: URL { context.cache.appendingPathComponent("matrix-media", isDirectory: true) }
     /// Thumbnails on their way, and ones that failed (not tried again until the next launch).
     private var downloading: Set<String> = [], failedDownloads: Set<String> = []
     /// Each photo's last thumbnail shown, by room and message: a photo this device sent keeps it
@@ -51,7 +51,7 @@ final class Matrix: ExactModule {
                     let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { room in
-                        ["id": room.id, "name": room.name, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
+                        ["id": room.id, "name": room.name, "roomName": room.roomName, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
                          "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
                          "unread": room.unreadCount, "network": room.network, "markedUnread": room.isMarkedUnread,
                          "oneToOne": room.isOneToOne, "listed": inbox.listed.contains(room.id),
@@ -195,11 +195,14 @@ final class Matrix: ExactModule {
                                     _ = try await account.pictureFile(url: profile.avatarUrl, directory: self.media)
                                 },
                                 "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""])
+                case "chatInfo", "chatMembers", "chatMedia", "rename", "customName", "invite", "setPicture":
+                    // a chat's info page (Info.swift).
+                    reply.send(try await info(request))
                 case "signOut":
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile and signOut")
+                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -267,7 +270,7 @@ final class Matrix: ExactModule {
         }
     }
 
-    @MainActor private func signedIn() async throws -> MatrixAccount {
+    @MainActor func signedIn() async throws -> MatrixAccount {
         if let account { return try await account.value }
         guard let stored = try stored() else { throw ExactNativeRefusal("signed out") }
         let restoring = Task { try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store)) }
@@ -286,7 +289,7 @@ final class Matrix: ExactModule {
     /// on Rami's real account must never mark a chat read (AGENTS.md, the safety rule), and
     /// with the WhatsApp bridge a receipt also marks the chat read in WhatsApp. A chat's
     /// actions (mute, archive, ...) follow the same rule.
-    private func sendsReadReceipts(_ account: MatrixAccount) throws -> Bool {
+    func sendsReadReceipts(_ account: MatrixAccount) throws -> Bool {
         if !context.agent { return true }
         return try account.userId.hasPrefix("@test")
     }
@@ -374,7 +377,7 @@ final class Matrix: ExactModule {
     }
 
     /// The file an `app:/tmp/…`, `app:/cache/…` or `app:/data/…` path names in this module's folders.
-    private func appFile(_ path: String) -> URL? {
+    func appFile(_ path: String) -> URL? {
         let roots = [("app:/tmp/", context.temporary), ("app:/cache/", context.cache), ("app:/data/", context.data)]
         guard let (prefix, root) = roots.first(where: { path.hasPrefix($0.0) }) else { return nil }
         let rest = path.dropFirst(prefix.count).split(separator: "/").map(String.init)
@@ -392,7 +395,7 @@ final class Matrix: ExactModule {
 
     /// A downloaded picture's `app:/` path once its file is here. Until then "": `fetch`
     /// starts (once), and when it ends app.ts is told `change`, so it asks again.
-    @MainActor private func cached(_ name: String, then change: MatrixChange, fetch: @escaping () async throws -> Void) -> String {
+    @MainActor func cached(_ name: String, then change: MatrixChange, fetch: @escaping () async throws -> Void) -> String {
         guard !name.isEmpty else { return "" }
         if FileManager.default.fileExists(atPath: media.appendingPathComponent(name).path) { return "app:/cache/matrix-media/\(name)" }
         guard !failedDownloads.contains(name), downloading.insert(name).inserted else { return "" }
@@ -429,6 +432,7 @@ final class Matrix: ExactModule {
         case .rooms: changedTopics.insert("rooms")
         case .room(let roomId): changedTopics.insert("thread:\(roomId)")
         case .profile: changedTopics.insert("profile")
+        case .info(let roomId): changedTopics.insert("info:\(roomId)")
         }
     }
 
