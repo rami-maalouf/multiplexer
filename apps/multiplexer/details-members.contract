@@ -11,6 +11,8 @@ members Multiplexer
   // the chat moves to its "New" line as it opens; that move is not the reader leaving the newest
   // message, which would read the chat (app.contract's scrolled).
   state placing = false
+  // the list asked for older messages while the chat moved to its line (app.contract's loadOlder).
+  state olderWanted = false
   derive shownVideo = top(nav).name == "video" ? top(nav).params.message : ""
   derive shownVideoMessage = first(thread.messages.filter(m => m.id == shownVideo))
   resource video = loadVideo(openRoom, shownVideo) as shape VideoFile else empty()
@@ -57,6 +59,9 @@ members Multiplexer
       seenUnread = seenUnread.concat([id])
   action donePlacing
     placing = false
+    if olderWanted and threadShown and not thread.atStart and not pending(older)
+      olderWanted = false
+      send older = loadOlderMessages(openRoom)
   action jumpToEnd
     scrollIntoView("transcript", lastId, block="end", behavior="smooth")
   // a tap on a video's poster plays it full screen, zooming out of the poster.

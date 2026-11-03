@@ -469,9 +469,15 @@ message, and keeps the reader's place.
 - [x] Scrolling up near the top of a chat loads 20 older messages. (2026-10-27: the count goes from 20 to 40.)
 - [x] The rows I read do not move when older ones are added above. (`tree --ax`: 9 visible rows at the same place before and after.)
 - [x] At the room's first message, loading stops. (The test room's 58 messages, from "Multiplexer test 48643855…".)
-- [ ] A sign that older messages are loading, and that the chat has reached its start. (Possible now: a marker item put first by a `derive`,
-  `[marker].concat(messages)`, drawn by its key in the `for`'s one root; `reachstart` still fires. Checked in a minimal Exact app;
-  Exact PR #1411 (open) documents it. Finding 20.)
+- [x] A sign that older messages are loading, and that the chat has reached its start. (2026-11-03: a row above the oldest
+  loaded message, `OlderLine`: a small spinner while older ones load, then "Start of the chat" in the footnote's grey. It is
+  one more row of the transcript's list, `[Message(f, id="~older")].concat(thread.messages)`, so `reachstart` still sees the
+  top; Exact finding 20, PR #1411. As `@test1` in "Multiplexer search test history": 20 messages to 50, then "Start of the
+  chat" above "History 1"; `check` clean in light, dark and the largest text size.)
+- [x] A chat that opens at its "New" line loads older messages too. (2026-11-03: `reachstart` fired once while the chat moved
+  to the line, `loadOlder` held it back, and the list never asked again: the chat stayed at its last 20 messages (seen
+  before this change). Now the held load is made when the line is placed (`olderWanted`, `donePlacing`), and the line stays
+  in view.)
 
 **Verification:**
 - [x] MatrixCore test `testOlderMessagesLoadUntilTheStart`.
@@ -900,8 +906,10 @@ chat info page, B20), and "..." on the right.
 - [x] Picture (with its network logo) and name in a glass capsule; not pressable until B20.
   "..." offers Pin, Mark as Unread (it goes back to the list) and Mute.
 - [x] The app's own bar fixes T2.13's sharp bar: the long-press blur now covers it, in dark and light.
-- [ ] Not driven: a real edge swipe back (Exact finding 56); `back` works. It can be driven now:
-  `tap root drag 320 0 from 2 <y> over 400` under `--touch platform --timing platform` (Exact PR #1406, open, makes the refusal name it).
+- [x] A real edge swipe back over the messages (2026-11-03, `--touch platform --timing platform`, as `@test1`):
+  `tap root drag 320 0 from 2 276 over 400`, at the height of a bubble that a swipe right answers, went back to the inbox
+  ("willShow 0, by the edge swipe", then the drawn Back pressed), and no reply started (`composers` empty). Four runs; in the
+  first, the log also showed the chat pushed again and popped a moment later, not seen in the other three.
 - [x] Rami (2026-11-03): Mark as Unread inside a chat goes back to the list; Back leaves out muted,
   archived and Low Priority chats.
 
