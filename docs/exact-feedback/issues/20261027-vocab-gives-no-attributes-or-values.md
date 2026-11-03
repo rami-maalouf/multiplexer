@@ -32,3 +32,7 @@ Cost: about 5 minutes.
 
 Seen at exact2 `65577096ed`. The vocab code in `contract/cli/src/main.rs` is unchanged at
 `cee509ac82`.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1359 (fixes part of it): `contract vocab <tag>` prints the tag's attributes and events, and `listStyle` lists its values. Values for every property are a design question.

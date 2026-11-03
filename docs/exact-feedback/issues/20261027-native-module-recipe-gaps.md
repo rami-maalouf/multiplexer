@@ -45,3 +45,7 @@ grep. What would help: one line in `docs/recipes/native-module.md` ("write under
 ## Pull request (2026-11-02)
 
 https://github.com/ccheever/exact2/pull/1341 (fixes part of it): the recipe names a module's folders, where its secrets go, and its Swift mode. `clock data` and `later`, packages, and a file into `image` are not in it.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1359 (fixes part of it): `contract vocab image` says how to show a file a native module wrote (`context.cache` is `app:/cache`).
