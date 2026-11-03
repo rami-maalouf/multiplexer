@@ -454,6 +454,15 @@ const sources: Sources = {
     await native!.later({ op: 'forward', roomId, messageId, to });
     return { ok: true };
   },
+  // Settings' Encryption: the account's recovery (on, off, key: this iPhone needs the recovery
+  // key), and the key entered to read older encrypted messages.
+  loadRecovery: async ([userId], _store, _storage, native): Promise<Result<'loadRecovery'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, status: '' };
+    const answer = (await native.later({ op: 'recovery' })) as { status: string };
+    return { owner: userId, status: answer.status };
+  },
+  recover: async ([key], _store, _storage, native): Promise<Result<'recover'>> =>
+    (await native!.later({ op: 'recover', key })) as { ok: boolean; problem: string },
   // a held photo's Copy: its original (downloaded once), as a PNG on the clipboard, which takes
   // PNG only; a large photo is made smaller to fit the clipboard's 2 MB.
   copyPhoto: async ([roomId, messageId], _store, storage, native): Promise<Result<'copyPhoto'>> => {

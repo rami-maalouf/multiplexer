@@ -419,6 +419,7 @@ component Multiplexer
   members "./chat-search-members.contract"
   members "./send-later-members.contract"
   members "./gif-members.contract"
+  members "./encryption-members.contract"
 
   action step
     now = performanceNow()
@@ -1014,7 +1015,8 @@ component Multiplexer
             picked=laterWhen, saving=laterSaving, refused=laterRefused, pick=pickLater, close=closeLater, save=saveLater)
         if e.name == "settings"
           SettingsScreen(route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
-            signOut=askSignOut, largeText=viewport.accessibilityTextSize)
+            signOut=askSignOut, recovery=recovery, recoveryDraft=recoveryDraft, unlocking=pending(unlocked), refused=recoveryRefused,
+            typeKey=typeRecoveryKey, unlock=unlockRecovery, largeText=viewport.accessibilityTextSize)
         // the filter sheet, from the bottom: half height, pulled up to full; UIKit's glass below full.
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
