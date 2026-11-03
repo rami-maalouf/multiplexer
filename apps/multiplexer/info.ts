@@ -38,11 +38,11 @@ export const infoSources: InfoSources = {
     native.watch(`info:${roomId}`);
     const answer = (await native.later({ op: 'chatMedia', roomId, limit })) as {
       media: { id: string; isVideo: boolean; time: number; senderName: string; isOwn: boolean; caption: string;
-        image: string; duration: number }[];
+        width: number; height: number; image: string; duration: number }[];
     };
     return {
       room: roomId,
-      items: answer.media.map(({ duration, ...m }) => ({ ...m, seconds: Math.round(duration / 1000) })),
+      items: answer.media.map(({ duration, width: _w, height: _h, ...m }) => ({ ...m, seconds: Math.round(duration / 1000) })),
     };
   },
   // a new name and picture reach everyone in the chat, and its network through the bridge.

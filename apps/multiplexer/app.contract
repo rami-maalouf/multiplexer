@@ -985,7 +985,7 @@ component Multiplexer
         // the chat's info page (info.contract), full screen, zoomed out of the chat bar's picture and name.
         if e.name == "info"
           InfoPage(route=`${e.id}`, info=infoShown, loaded=infoLoaded, members=chatMembers.members, total=chatMembers.total,
-            media=chatMedia.items, moreMedia=allMedia, pinned=openPinned, archived=openArchived, lowPriority=openLowPriority,
+            media=chatMedia.items, mediaLoaded=(chatMedia.room == openRoom), moreMedia=allMedia, pinned=openPinned, archived=openArchived, lowPriority=openLowPriority,
             muted=openMuted, unread=(openUnread > 0), close=closeInfo, archive=archiveOpen, moveLowPriority=lowPriorityOpen,
             pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
             customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,

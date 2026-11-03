@@ -81,12 +81,14 @@ component InfoButton
     press: action
     disabled: bool
     identifier: string
+    // two by two at the accessibility text sizes, else four in a row.
+    largeText: bool
   view
-    button appearance="none" press=press disabled=disabled id=identifier testId=identifier flex="1 1 4.5rem" min-width=0
+    button appearance="none" press=press disabled=disabled id=identifier testId=identifier flex=(largeText ? "1 1 40%" : "1 1 0") min-width=0
       display="flex" flex-direction="column" align-items="center" justify-content="center" gap=4 padding="10px 4px" min-height=64
       border-radius=14 background-color="-exact-secondary-grouped-background" opacity=(disabled ? 0.45 : 1)
       image symbol font-size="min(-exact-title3, 24px)" color="AccentColor" aria-hidden=true
-      text label font="-exact-caption1" color="-exact-label" text-align="center"
+      text label font="-exact-caption1" font-size="min(-exact-caption1, 20px)" color="-exact-label" text-align="center"
 
 // the page. The Search button waits for search in one chat (B19).
 component InfoPage
@@ -97,6 +99,7 @@ component InfoPage
     members: ChatMember[]
     total: number
     media: ChatMediaItem[]
+    mediaLoaded: bool
     // the grid shows more than its first row.
     moreMedia: bool
     pinned: bool
@@ -138,6 +141,21 @@ component InfoPage
         button press=customize popovertarget="info-edit" popovertargetaction="hide" testId="customize"
           image "symbol:person"
           text "Customize for Me"
+      // the info page's own actions, in Beeper's order; Remind Me and Jump to Date are not here yet.
+      column id="info-more" popover="auto" role="menu"
+        button press=pin popovertarget="info-more" popovertargetaction="hide" testId="info-more-pin"
+          image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
+          text (pinned ? "Unpin" : "Pin")
+        button press=read popovertarget="info-more" popovertargetaction="hide" testId="info-more-read"
+          image (unread ? "symbol:messages" : "symbol:icon.mark-unread")
+          text (unread ? "Mark as Read" : "Mark as Unread")
+        button press=mute popovertarget="info-more" popovertargetaction="hide" testId="info-more-mute"
+          image (muted ? "symbol:notifications" : "symbol:icon.bell-slash")
+          text (muted ? "Unmute" : "Mute")
+        hr
+        button press=askDelete destructive=true popovertarget="info-more" popovertargetaction="hide" testId="info-more-delete"
+          image "symbol:delete"
+          text "Delete"
       list id="info" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="info-list"
         // the header: the picture, the name and what the chat is, with no card.
         section background-color="transparent"
@@ -153,36 +171,21 @@ component InfoPage
                 testId="info-room-name"
         // Beeper's four: a pinned chat offers Unpin where another offers Archive.
         section background-color="transparent"
-          row gap=8 width="100%" flex-wrap="wrap"
-            InfoButton(label="Search", symbol="symbol:search", press=close, disabled=true, identifier="info-search")
+          row gap=8 width="100%" flex-wrap=(largeText ? "wrap" : "nowrap")
+            InfoButton(label="Search", symbol="symbol:search", press=close, disabled=true, identifier="info-search", largeText=largeText)
             if pinned
-              InfoButton(label="Low Priority", symbol="symbol:icon.low-priority", press=moveLowPriority, disabled=false, identifier="info-low-priority")
-              InfoButton(label="Unpin", symbol="symbol:icon.pin-slash", press=pin, disabled=false, identifier="info-pin")
+              InfoButton(label="Low Priority", symbol="symbol:icon.low-priority", press=moveLowPriority, disabled=false, identifier="info-low-priority", largeText=largeText)
+              InfoButton(label="Unpin", symbol="symbol:icon.pin-slash", press=pin, disabled=false, identifier="info-pin", largeText=largeText)
             else
               InfoButton(label=(archived ? "Unarchive" : "Archive"), symbol=(archived ? "symbol:icon.unarchive" : "symbol:icon.archive"),
-                press=archive, disabled=false, identifier="info-archive")
+                press=archive, disabled=false, identifier="info-archive", largeText=largeText)
               InfoButton(label=(lowPriority ? "Inbox" : "Low Priority"), symbol=(lowPriority ? "symbol:icon.tray" : "symbol:icon.low-priority"),
-                press=moveLowPriority, disabled=false, identifier="info-low-priority")
-            button appearance="none" popovertarget="info-more" testId="info-more" aria-label="More" flex="1 1 4.5rem" min-width=0
+                press=moveLowPriority, disabled=false, identifier="info-low-priority", largeText=largeText)
+            button appearance="none" popovertarget="info-more" testId="info-more" aria-label="More" flex=(largeText ? "1 1 40%" : "1 1 0") min-width=0
               display="flex" flex-direction="column" align-items="center" justify-content="center" gap=4 padding="10px 4px" min-height=64
               border-radius=14 background-color="-exact-secondary-grouped-background"
               image "symbol:more" font-size="min(-exact-title3, 24px)" color="AccentColor" aria-hidden=true
-              text "More" font="-exact-caption1" color="-exact-label"
-          // the info page's own actions, in Beeper's order; Remind Me and Jump to Date are not here yet.
-          column id="info-more" popover="auto" role="menu"
-            button press=pin popovertarget="info-more" popovertargetaction="hide" testId="info-more-pin"
-              image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
-              text (pinned ? "Unpin" : "Pin")
-            button press=read popovertarget="info-more" popovertargetaction="hide" testId="info-more-read"
-              image (unread ? "symbol:messages" : "symbol:icon.mark-unread")
-              text (unread ? "Mark as Read" : "Mark as Unread")
-            button press=mute popovertarget="info-more" popovertargetaction="hide" testId="info-more-mute"
-              image (muted ? "symbol:notifications" : "symbol:icon.bell-slash")
-              text (muted ? "Unmute" : "Mute")
-            hr
-            button press=askDelete destructive=true popovertarget="info-more" popovertargetaction="hide" testId="info-more-delete"
-              image "symbol:delete"
-              text "Delete"
+              text "More" font="-exact-caption1" font-size="min(-exact-caption1, 20px)" color="-exact-label"
         if info.topic != ""
           section
             header
@@ -196,9 +199,9 @@ component InfoPage
             text "Media"
           if media.length == 0
             row
-              text (loaded ? "No photos or videos yet." : "Loading…") color="-exact-secondary-label" testId="info-no-media"
+              text (mediaLoaded ? "No photos or videos yet." : "Loading…") color="-exact-secondary-label" testId="info-no-media"
           else
-            view display="grid" grid-template-columns=(largeText ? "repeat(3, 1fr)" : "repeat(4, 1fr)") gap=6 width="100%" padding="4px 0"
+            view display="grid" grid-template-columns=(largeText ? "repeat(3, 1fr)" : "repeat(4, 1fr)") gap=6 width="100%" padding=10 box-sizing="border-box"
               testId="info-media"
               for m in media key=m.id
                 button appearance="none" press=open(m.id, m.isVideo) id=(m.isVideo ? `video-${m.id}` : `photo-${m.id}`)
