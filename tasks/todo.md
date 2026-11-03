@@ -908,6 +908,16 @@ emoji, a search and "Frequently used".
   does not change it); another device's new bookmark shows within a minute (the sdk tells no
   listener of custom account data); a message further back than 1,000 events opens the chat at its
   newest with B18's note. Each bookmark is about 0.5 KB of one event: fine for hundreds.
+- [x] Fixed on the way: a new device's store has no account data in its first seconds, not even
+  after the first sync. The list read then was empty (seen in a drive right after sign-in: a saved
+  message offered "Bookmark" again), and a change made from it could have replaced every bookmark
+  on the server. MatrixCore now reads the event from the server while the store has none, and a
+  change throws if that read fails (`testANewDeviceKeepsTheBookmarksSavedBefore`, which failed
+  before the fix with "a new device lists the bookmarks saved before: []").
+- [ ] The same risk, not fixed: Customize for Me's names, Archive and Delete
+  (`com.ramimaalouf.multiplexer.chats`) and the frequent emojis read only the store, so a change in a
+  new device's first seconds could replace the account's others. The same server read would fix
+  them (`accountDataOnServer` in `Bookmarks.swift`).
 - [x] Share a text, photo, file or video (media downloaded first, under its file name).
 - [x] Forward a text, photo, file or video to one or more chats from a sheet with search; media is
   not uploaded again (`testAForwardedTextPhotoAndFileArriveInAnotherChat`).

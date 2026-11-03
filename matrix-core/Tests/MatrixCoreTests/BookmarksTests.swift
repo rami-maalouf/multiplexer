@@ -73,6 +73,45 @@ final class BookmarksTests: XCTestCase {
         try await owner.removeBookmark(roomId: roomId, eventId: sent.eventId)
     }
 
+    /// A device just signed in lists the bookmarks saved before at once (its store is empty until
+    /// its first sync), then saves one more: both stay, here and on the first device.
+    func testANewDeviceKeepsTheBookmarksSavedBefore() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let (owner, other, roomId) = try await twoPeopleInARoom(homeserver, user, password, user2, password2)
+        for old in await owner.bookmarks() where old.roomId == roomId {
+            try await owner.removeBookmark(roomId: roomId, eventId: old.eventId)
+        }
+        let first = "Kept \(token())", second = "Added \(token())"
+        try await other.send(roomId: roomId, text: first)
+        try await other.send(roomId: roomId, text: second)
+        let kept = try await message(owner, roomId, within: 30) { $0.body == first }
+        _ = try await message(owner, roomId, within: 30) { $0.body == second }
+        try await owner.bookmark(roomId: roomId, messageId: kept.id)
+
+        // the list first, as an app asks for it at launch, before anything has synced.
+        let fresh = try await signIn(homeserver, user, password)
+        let before = await fresh.bookmarks().filter { $0.roomId == roomId }.map(\.eventId)
+        XCTAssertTrue(before.contains(kept.eventId), "a new device lists the bookmarks saved before: \(before)")
+        // the list starts the sync, as an app's chat list does; then the chat opens at once.
+        _ = try await fresh.rooms()
+        let shown = try await fresh.messages(roomId: roomId, limit: 20)
+        let added = try XCTUnwrap(shown.last { $0.body == second }, "the new device has the message")
+        try await fresh.bookmark(roomId: roomId, messageId: added.id)
+
+        let here = await fresh.bookmarks().filter { $0.roomId == roomId }.map(\.eventId)
+        XCTAssertEqual(Set(here), [kept.eventId, added.eventId], "the new device keeps the one saved before")
+        let start = Date()
+        var there = await owner.bookmarks().filter { $0.roomId == roomId }.map(\.eventId)
+        while Set(there) != [kept.eventId, added.eventId], Date().timeIntervalSince(start) < 20 {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            there = await owner.bookmarks().filter { $0.roomId == roomId }.map(\.eventId)
+        }
+        XCTAssertEqual(Set(there), [kept.eventId, added.eventId], "the first device has both")
+        for b in await owner.bookmarks() where b.roomId == roomId {
+            try await owner.removeBookmark(roomId: roomId, eventId: b.eventId)
+        }
+    }
+
     /// The event's content keeps what the list shows, cuts a long text, and keeps keys it does not know.
     func testTheContentKeepsOtherKeysAndCutsLongTexts() throws {
         let json = #"{"bookmarks":[{"room":"!a:x","event":"$b","sender":"@c:x","senderName":"C","body":"hi","kind":"voice","fileName":"","ts":5,"savedAt":9}],"labels":{"k":1}}"#

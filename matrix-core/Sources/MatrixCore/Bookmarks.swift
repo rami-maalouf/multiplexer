@@ -29,10 +29,11 @@ public struct Bookmark: Equatable, Sendable {
 /// Bookmarks: one global account data event, so they follow the account to its other devices.
 /// No bridge reads account data (`NOTES.md`, "Bookmarks"), so nothing of it reaches a network.
 extension MatrixAccount {
-    /// The saved messages, the last saved first.
+    /// The saved messages, the last saved first (empty when neither the store nor the server can
+    /// say).
     public func bookmarks() async -> [Bookmark] {
         let me = (try? client.userId()) ?? ""
-        return await currentBookmarks().items.map { $0.bookmark(me: me) }
+        return ((try? await currentBookmarks()) ?? Bookmarks()).items.map { $0.bookmark(me: me) }
     }
 
     /// Saves a message of an open chat (`messageId`, the chat's id for it). A message the server
@@ -56,16 +57,23 @@ extension MatrixAccount {
         try await changeBookmarks { $0.items.removeAll { $0.roomId == roomId && $0.eventId == eventId } }
     }
 
-    /// The bookmarks this device just wrote until the store has them, else the store's.
-    private func currentBookmarks() async -> Bookmarks {
-        bookmarkStates.value(stored: Bookmarks(json: (try? await client.accountData(eventType: Bookmarks.type)) ?? nil))
+    /// The bookmarks this device just wrote until the store has them, else the store's. A store
+    /// that has no bookmarks event yet (a device just signed in: the sync brings account data after
+    /// its first sync) asks the server, so a first change does not start from an empty list.
+    private func currentBookmarks() async throws -> Bookmarks {
+        if let stored = try? await client.accountData(eventType: Bookmarks.type) {
+            return bookmarkStates.value(stored: Bookmarks(json: stored))
+        }
+        let session = try savedSession()
+        let onServer = try await bookmarkStates.server { try await accountDataOnServer(Bookmarks.type, session: session) }
+        return bookmarkStates.value(stored: Bookmarks(json: onServer))
     }
 
     /// Changes the bookmarks one change at a time, from the newest this device knows, so two
     /// changes in a row both stay. The list shows a change at once.
     private func changeBookmarks(_ change: @escaping @Sendable (inout Bookmarks) -> Void) async throws {
         try await bookmarkStates.serially {
-            let before = await self.currentBookmarks()
+            let before = try await self.currentBookmarks()
             var list = before
             change(&list)
             if list == before { return }
@@ -192,6 +200,17 @@ final class BookmarkStates: @unchecked Sendable {
     private let lock = NSLock()
     private var written: (list: Bookmarks, since: Date)?
     private var changing: Task<Void, Error>?
+    /// The server's event, read while the store has none, and when.
+    private var fetched: (content: String?, at: Date)?
+
+    /// The server's content (`fetch`), read again once it is older than `patience`; a failed read
+    /// throws, so no change starts from a list this device does not know.
+    func server(_ fetch: () async throws -> String?) async throws -> String? {
+        if let fetched = lock.withLock({ fetched }), Date().timeIntervalSince(fetched.at) < Self.patience { return fetched.content }
+        let content = try await fetch()
+        lock.withLock { fetched = (content, Date()) }
+        return content
+    }
 
     func value(stored: Bookmarks) -> Bookmarks {
         lock.withLock {
@@ -219,5 +238,21 @@ final class BookmarkStates: @unchecked Sendable {
             return next
         }
         try await task.value
+    }
+}
+
+/// A global account data event's content on the server (`GET /user/{userId}/account_data/{type}`),
+/// as JSON; nil when the account has none.
+func accountDataOnServer(_ type: String, session: SavedSession) async throws -> String? {
+    guard let base = URL(string: session.homeserverUrl) else { throw URLError(.badURL) }
+    let url = base.appendingPathComponent("_matrix/client/v3/user").appendingPathComponent(session.userId)
+        .appendingPathComponent("account_data").appendingPathComponent(type)
+    var request = URLRequest(url: url, timeoutInterval: 10)
+    request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+    let (data, response) = try await URLSession.shared.data(for: request)
+    switch (response as? HTTPURLResponse)?.statusCode {
+    case 200: return String(decoding: data, as: UTF8.self)
+    case 404: return nil
+    default: throw URLError(.badServerResponse)
     }
 }

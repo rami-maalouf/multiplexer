@@ -319,6 +319,14 @@ custom room account data, so they are one global account data event,
   (`MatrixCoreError.notBookmarkable`). `Message.eventId` says which messages of a chat are saved.
 - **Shown at once.** A change shows before the server confirms it (`BookmarkStates`, 30 s), and
   changes go one at a time from the newest list this device knows, so two in a row both stay.
+- **A new device's store has no account data at first**, not even after the first sync (seen
+  2026-11-03: `Client.accountData` answered nil after `startSync`, and the event came some seconds
+  later). A list read then was empty, and a change made from it would have replaced every
+  bookmark on the server. So while the store has no bookmarks event, MatrixCore reads it from the
+  server (`GET /user/{userId}/account_data/{type}`, kept 30 s); if that read fails, a change
+  throws instead of writing (`testANewDeviceKeepsTheBookmarksSavedBefore`). The other account
+  data events (`com.ramimaalouf.multiplexer.names`, `.chats`, `io.element.recent_emoji`) still
+  read only the store, so a change made in a new device's first seconds could replace them too.
 - **Limit: another device's bookmark** reaches this one's store with the sync, but the sdk tells
   no listener of a custom global account data event. The app reads the list again each minute.
 - **Size.** Each bookmark is about 0.5 KB, and the whole event goes to every device at each

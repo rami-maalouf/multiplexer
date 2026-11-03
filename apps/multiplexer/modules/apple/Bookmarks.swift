@@ -9,8 +9,9 @@ extension Matrix {
         case "bookmarks":
             // the last saved first, each with its chat as the list shows it; a chat the account
             // left is not shown.
-            let saved = await account.bookmarks()
+            // the rooms first: they start the sync, which fills the store the bookmarks are in.
             let byId = Dictionary(try await account.rooms().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let saved = await account.bookmarks()
             return ["bookmarks": saved.compactMap { b -> [String: Any]? in
                 guard let chat = byId[b.roomId] else { return nil }
                 return ["room": b.roomId, "event": b.eventId, "chatName": chat.name, "network": chat.network,
