@@ -20,7 +20,9 @@ final class RequestsTests: XCTestCase {
 
         let me = try await signIn(homeserver, user, password)
         // a run that stopped half way left this account in the room, or invited.
-        if try await me.rooms().contains(where: { $0.id == roomId }) || me.requests().contains(where: { $0.id == roomId }) {
+        let joined = try await me.rooms().contains { $0.id == roomId }
+        let invited = try await me.requests().contains { $0.id == roomId }
+        if joined || invited {
             try await me.decline(request: roomId)
             try await until("the room is left") { try await !me.rooms().contains { $0.id == roomId } }
         }
@@ -29,7 +31,8 @@ final class RequestsTests: XCTestCase {
         // invited: a request, with who invited, and not a chat in the list.
         try await owner.invite(roomId: roomId, userId: user)
         try await until("the invite is a request") { try await me.requests().contains { $0.id == roomId } }
-        let request = try XCTUnwrap(try await me.requests().first { $0.id == roomId })
+        let found = try await me.requests().first { $0.id == roomId }
+        let request = try XCTUnwrap(found)
         XCTAssertEqual(request.name, roomName)
         XCTAssertEqual(request.inviterId, user2)
         XCTAssertFalse(request.isDirect)
