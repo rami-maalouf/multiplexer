@@ -25,3 +25,5 @@ icons
   icon.arrow-down-circle = icon(sf "arrow.down.circle", svg "icons/arrow-down-circle.svg")
   // the reply arrow beside a swiped bubble; the svg is Exact's forward arrow, mirrored.
   icon.arrowshape-turn-up-left = icon(sf "arrowshape.turn.up.left", svg "icons/arrowshape-turn-up-left.svg")
+  // a held message's Forward, as Beeper draws it; the svg is the reply arrow's, mirrored.
+  icon.arrowshape-turn-up-right = icon(sf "arrowshape.turn.up.right", svg "icons/arrowshape-turn-up-right.svg")

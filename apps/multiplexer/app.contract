@@ -8,6 +8,8 @@ use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage, listTitle, list
 use NetworkBadge, networkName from "./network.contract"
 use InboxSheet, NetworkCount from "./sheet.contract"
 use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
+use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
+use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 
 shape Session
   userId: string
@@ -64,6 +66,8 @@ shape RoomList
 // hasReply: it answers a message, whose sender (replyName, "You" for yours) and text show above it.
 // A file message (isFile) has its name and size in bytes; its body is the caption, or "".
 // progress: how much of a photo or file on its way is uploaded, from 0 to 1; -1 when none uploads.
+// isDeleted: deleted for everyone, so it has no text, picture or file. isEditable: your own text
+// message, which an edit can change.
 shape Message
   id: string
   senderName: string
@@ -83,6 +87,8 @@ shape Message
   photoWidth: number
   waitingForKey: bool
   isEdited: bool
+  isDeleted: bool
+  isEditable: bool
   hasReply: bool
   replyName: string
   replyBody: string
@@ -132,6 +138,10 @@ shape SignInReply
 shape Reply
   ok: bool
 
+// the emojis the account reacts with most, the most used first.
+shape EmojiList
+  emojis: string[]
+
 // the largest file the server takes, in bytes; 0 while it is not known.
 shape UploadLimit
   bytes: number
@@ -157,6 +167,8 @@ routes nav
   home "/"
     room "/room/:id"
       photo "/room/:id/photo/:message"
+      reactions "/room/:id/reactions/:message"
+      forward "/room/:id/forward/:message"
     inboxes "/inboxes"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
@@ -167,6 +179,8 @@ fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
 // unread and not muted, or with a mention.
 fn inboxUnread(r: Room): bool = not r.archived and not r.lowPriority and (loud(r) or r.mentions > 0)
 fn countText(n: number): string = n > 99 ? "99+" : n.toString()
+// a message in one line, for a reply bar or the forward sheet: its text, else "Photo" or its file's name.
+fn messageLine(m: Message): string = m.body != "" ? m.body : (m.isImage ? "Photo" : (m.isFile ? m.fileName : ""))
 // a chat's composer: the one touched in this launch, else the draft kept in the account's store
 // (saved, once it is this chat's), else an empty one.
 fn composerOf(cs: Composer[], room: string, saved: Composer): Composer = match first(cs.filter(c => c.room == room)) { case some(c) => c, case none => saved.room == room ? saved : Composer(room=room, text="", replyTo="", replyName="", replyBody="", attachments=[]) }
@@ -193,6 +207,23 @@ component Multiplexer
   state heldY = 0
   state heldHeight = 0
   state heldWidth = 0
+  // what was held: "text" (a bubble), "photo" or "file"; the overlay lifts a copy of it.
+  state heldKind = "text"
+  // your own message being edited in the open chat ("" for none): the composer holds its new
+  // text, editOld what it said, and the chat's draft waits until the edit ends.
+  state editing = ""
+  state editText = ""
+  state editOld = ""
+  // the message the delete alert asks about.
+  state deleting = ""
+  // the message whose photo or file is downloaded to share.
+  state sharing = ""
+  // the forward sheet's search, and the chats checked.
+  state forwardQuery = ""
+  state forwardTo: string[] = []
+  // the reaction sheet's search, and the group in view (its tab is chosen).
+  state emojiQuery = ""
+  state emojiGroup = "frequent"
   // the reader scrolled the chat's newest message out of view.
   state away = false
   // the "+" panel is open, in the keyboard's place.
@@ -221,6 +252,7 @@ component Multiplexer
   // newest activity first: the order the server ranks the rooms in.
   resource roomList = loadRoomsByRecency(session.userId, filter, network, chatList) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
+  resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
   mutation pinned as shape Reply refreshes roomList
   mutation changedChat as shape Reply queue refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
@@ -232,7 +264,12 @@ component Multiplexer
   mutation retried as shape Reply
   mutation discarded as shape Reply
   mutation older as shape Reply
-  mutation reacted as shape Reply
+  mutation reacted as shape Reply refreshes frequentEmojis
+  mutation edited as shape Reply
+  mutation deletedMessage as shape Reply
+  mutation forwarded as shape Reply
+  mutation fetched as shape OpenedFile then shareFetched
+  mutation resetEmojis as shape Reply refreshes frequentEmojis
   mutation markedRead as shape Reply
   mutation keptDraft as shape Reply
   derive canSignIn = server.trim() != "" and user.trim() != "" and password != "" and not pending(signedIn)
@@ -260,6 +297,23 @@ component Multiplexer
   derive lastId = match thread.messages.at(-1) { case some(m) => m.id, case none => "" }
   // the reactions a long press offers first, as Beeper does.
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
+  // the held message, and what its menu offers: Forward once the server has it, Copy for a text or
+  // a caption, Edit and Delete on your own.
+  derive heldMessage = first(thread.messages.filter(m => m.id == held))
+  derive heldText = match heldMessage { case some(m) => m.body, case none => "" }
+  derive heldCanForward = match heldMessage { case some(m) => m.state == "sent", case none => false }
+  derive heldCanEdit = match heldMessage { case some(m) => m.isEditable, case none => false }
+  derive heldRows = 3 + (heldCanForward ? 1 : 0) + (heldText != "" ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldOwn ? 1 : 0)
+  // the menu's height, so a message low on the screen moves up and the menu fits under it.
+  derive heldMenuHeight = heldRows * (viewport.accessibilityTextSize ? 64 : 44) + 12 + (heldOwn ? 13 : 0)
+  // the message a sheet over the chat acts on: the reaction sheet's or the forward sheet's.
+  derive sheetMessage = top(nav).name == "reactions" or top(nav).name == "forward" ? top(nav).params.message : ""
+  derive forwardChats = roomList.rooms.map(r => ForwardChat(id=r.id, name=r.name, avatar=r.avatar, initials=r.initials, network=r.network))
+  derive forwardWhat = match first(thread.messages.filter(m => m.id == sheetMessage)) { case some(m) => messageLine(m), case none => "" }
+  // the reaction sheet's grid: six emoji a row on a phone, more on a wide screen. It is made while
+  // a message is held, so the sheet opens full.
+  derive emojiColumns = max(6, round((viewport.width - 16) / 64 - 0.5))
+  resource emojiRows = loadEmojiRows(emojiQuery, emojiColumns, frequentEmojis.emojis, held != "" or top(nav).name == "reactions") as shape EmojiRow[] else empty()
   derive threadShown = thread.room == openRoom
   // a chat marked unread by hand counts one: reading it takes the mark away.
   derive openUnread = match openRoomInfo { case some(r) => r.unread + (r.markedUnread ? 1 : 0), case none => 0 }
@@ -305,16 +359,21 @@ component Multiplexer
     held = ""
     panel = false
     tooLarge = ""
+    editing = ""
     // a chat opens at its newest message.
     away = false
   action back
     if reading and not away and openUnread > 0
       send markedRead = markRead(openRoom)
+    // closing a sheet over the chat keeps an edit; leaving the chat ends it.
+    let sheet = top(nav).name == "reactions" or top(nav).name == "forward"
     keepDraftNow()
     nav = back(nav)
     held = ""
     panel = false
     tooLarge = ""
+    if not sheet
+      editing = ""
   action readNow
     send markedRead = markRead(openRoom)
   action keepDraftNow
@@ -363,12 +422,22 @@ component Multiplexer
     refresh roomList
   action reloadThread
     refresh thread
+  // while an edit is under way the field holds its text; the draft waits.
   action editDraft(v: string)
-    composers = withComposer(composers, Composer(composer, text=v))
-    unsaved = openRoom
+    if editing != ""
+      editText = v
+    else
+      composers = withComposer(composers, Composer(composer, text=v))
+      unsaved = openRoom
   // as Messages does, Send clears the composer at once and scrolls to the end, even from far up.
   action post
-    if composer.attachments.length > 0
+    // an edit that changed nothing just ends.
+    if editing != ""
+      if editText.trim() != "" and editText.trim() != editOld
+        send edited = editMessage(openRoom, editing, editText.trim())
+      editing = ""
+      editText = ""
+    else if composer.attachments.length > 0
       if not pending(sentMedia)
         // the text is the caption: it goes with the last photo or file, the reply with the first.
         send sentMedia = sendMedia(openRoom, composer.attachments, composer.text.trim(), composer.replyTo)
@@ -431,6 +500,7 @@ component Multiplexer
     composers = withComposer(composers, Composer(composer, replyTo=id, replyName=name, replyBody=body))
     unsaved = openRoom
     held = ""
+    editing = ""
     revealing = id
     focus("composer")
   action cancelReply
@@ -442,15 +512,29 @@ component Multiplexer
     heldHeight = min(320, frame(`message-${id}`).height)
     heldWidth = frame(`message-${id}`).width
     held = id
+    heldKind = "text"
     heldBody = body
     heldName = name
     heldOwn = own
     heldTail = tail
     blur("composer")
     haptic("impact-light")
+  // a long press on a photo or a file lifts it the same way; body is what a reply quotes of it.
+  action holdMedia(id: string, kind: string, name: string, own: bool, body: string)
+    heldY = frame(`${kind}-${id}`).y
+    heldHeight = min(320, frame(`${kind}-${id}`).height)
+    heldWidth = frame(`${kind}-${id}`).width
+    held = id
+    heldKind = kind
+    heldBody = body
+    heldName = name
+    heldOwn = own
+    heldTail = false
+    blur("composer")
+    haptic("impact-light")
   action letGo
     if held != ""
-      focus(`bubble-${held}`)
+      focus(heldKind == "text" ? `bubble-${held}` : `${heldKind}-${held}`)
     held = ""
   action menuKey(k: string)
     if k == "Escape"
@@ -462,8 +546,87 @@ component Multiplexer
   action toggleReaction(id: string, key: string)
     send reacted = react(openRoom, id, key)
   action copyHeld
-    copyText(heldBody)
+    copyText(heldText)
     letGo()
+  // a text goes to the share sheet as it is; a photo or a file is downloaded first (shareFetched).
+  action shareHeld
+    if heldKind == "text"
+      share(text=heldText)
+    else if not pending(fetched)
+      sharing = held
+      send fetched = fetchMedia(openRoom, held)
+    letGo()
+  action shareFetched
+    match fetched
+      case some(f)
+        if f.message == sharing and f.path != ""
+          share(title=f.name, files=[f.path])
+      case none
+        sharing = sharing
+    sharing = ""
+  // the forward sheet rises over the chat; the menu closes under it.
+  action forwardHeld
+    forwardQuery = ""
+    forwardTo = []
+    nav = push(nav, path("forward", openRoom, held))
+    held = ""
+  action searchForward(v: string)
+    forwardQuery = v
+  action toggleForward(id: string)
+    forwardTo = forwardTo.includes(id) ? forwardTo.filter(x => x != id) : forwardTo.concat([id])
+    haptic("selection")
+  action sendForward
+    if forwardTo.length > 0
+      send forwarded = forwardMessage(openRoom, sheetMessage, forwardTo)
+      nav = back(nav)
+      haptic("success")
+  // Edit: the composer takes the message's text, under an "Editing" bar.
+  action startEdit
+    editing = held
+    editText = heldText
+    editOld = heldText
+    revealing = held
+    held = ""
+    panel = false
+    focus("composer")
+    // the caret at the text's end, ready to add to it (an offset past the end is clamped).
+    setSelectionRange("composer", 1000000, 1000000)
+  action cancelEdit
+    editing = ""
+    editText = ""
+  // Delete asks first: it deletes the message for everyone.
+  action askDeleteMessage
+    deleting = held
+    letGo()
+    showModal("delete-message")
+  action deleteNow
+    send deletedMessage = deleteMessage(openRoom, deleting)
+    deleting = ""
+  // the reaction bar's "+": the sheet of every emoji rises over the held message.
+  action openReactions
+    emojiQuery = ""
+    emojiGroup = "frequent"
+    nav = push(nav, path("reactions", openRoom, held))
+  action pickEmoji(key: string)
+    send reacted = react(openRoom, sheetMessage, key)
+    nav = back(nav)
+    held = ""
+  action searchEmoji(v: string)
+    emojiQuery = v
+  action chooseEmojiGroup(g: string)
+    emojiGroup = g
+    scrollIntoView("emoji-grid", g, block="start")
+    haptic("selection")
+  // the tab follows the group whose row is at the grid's top.
+  action emojiScrolled(x: number, y: number, e: ScrollEvent)
+    match e.firstVisibleKey
+      case some(k)
+        if emojiGroupOf(k) != emojiGroup
+          emojiGroup = emojiGroupOf(k)
+      case none
+        emojiGroup = emojiGroup
+  action resetFrequent
+    send resetEmojis = resetFrequentEmojis()
   action toEnd
     scrollIntoView("transcript", lastId, block="end")
   action revealNow
@@ -542,6 +705,7 @@ component Multiplexer
     held = ""
     panel = false
     tooLarge = ""
+    editing = ""
     haptic("success")
 
   view
@@ -732,6 +896,13 @@ component Multiplexer
             InboxSheet(networks=roomList.networks, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
               chooseList=chooseList, largeText=viewport.accessibilityTextSize)
+        // a held message's sheets: every emoji, half height and pulled up to full; the chats to forward to.
+        if e.name == "reactions"
+          EmojiSheet(route=`${e.id}`, rows=emojiRows, query=emojiQuery, group=emojiGroup, columns=emojiColumns, search=searchEmoji,
+            pick=pickEmoji, reset=resetFrequent, choose=chooseEmojiGroup, scrolled=emojiScrolled, close=back)
+        if e.name == "forward"
+          ForwardSheet(route=`${e.id}`, chats=forwardChats, query=forwardQuery, chosen=forwardTo, what=forwardWhat, search=searchForward,
+            toggle=toggleForward, send=sendForward, cancel=back)
         if e.name == "photo"
           column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`photo-${e.params.message}`
             position="absolute" inset=0 display="flex" flex-direction="column"
@@ -772,14 +943,15 @@ component Multiplexer
                           margin-bottom=2
                       // in a group, the sender's picture sits beside the last bubble of their run.
                       row position="relative" max-width="80%" min-width=0 padding-left=(thread.group and not m.isOwn ? 36 : 0)
-                        padding-bottom=(m.endsRun and not m.waitingForKey and (not (m.isImage or m.isFile) or m.body != "") ? 6.65 : 0)
+                        padding-bottom=(m.endsRun and not m.waitingForKey and not m.isDeleted and (not (m.isImage or m.isFile) or m.body != "") ? 6.65 : 0)
                         if thread.group and not m.isOwn and m.endsRun
-                          view position="absolute" left=0 bottom=(not m.waitingForKey and (not (m.isImage or m.isFile) or m.body != "") ? 6.65 : 0)
+                          view position="absolute" left=0 bottom=(not m.waitingForKey and not m.isDeleted and (not (m.isImage or m.isFile) or m.body != "") ? 6.65 : 0)
                             Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
                         column align-items=(m.isOwn ? "flex-end" : "flex-start") gap=2 min-width=0
                           // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box.
                           if m.isImage
-                            button appearance="none" press=showPhoto(m.id) id=`photo-${m.id}` width=`${m.photoWidth}rem` max-width="100%"
+                            button appearance="none" press=showPhoto(m.id) contextmenu=holdMedia(m.id, "photo", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m))
+                              opacity=(held == m.id ? 0 : 1) id=`photo-${m.id}` width=`${m.photoWidth}rem` max-width="100%"
                               aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
                               border-radius=18 overflow="hidden" background-color="-exact-secondary-background" position="relative"
                               aria-label=(m.body != "" ? m.body : "Photo") testId=`photo-${m.id}`
@@ -793,11 +965,15 @@ component Multiplexer
                                     UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
                           if m.isFile
                             FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
-                              opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize, open=openFile(m.id), identifier=`file-${m.id}`)
+                              opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize, open=openFile(m.id),
+                              hold=holdMedia(m.id, "file", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), identifier=`file-${m.id}`)
                           // a message on its way is dimmed; one that failed says so, with a way to send it again.
                           if m.waitingForKey
                             text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
                               background-color="-exact-fill" color="-exact-secondary-label" testId=`message-${m.id}`
+                          else if m.isDeleted
+                            text "Message deleted" padding="8px 14px 9px" border-radius=20 font-style="italic"
+                              background-color="-exact-fill" color="-exact-secondary-label" testId=`deleted-${m.id}`
                           else if not (m.isImage or m.isFile) or m.body != ""
                             if m.hasReply
                               column padding="2px 0 2px 10px" margin="0 6px 2px" border-left="2px solid -exact-separator" max-width="100%"
@@ -855,7 +1031,15 @@ component Multiplexer
             // on past the list's frame, and without it they show through the reply and the field.
             if threadShown
               column inert=(held != "") flex-shrink=0 background-color="-exact-background" testId="composer-bar"
-                if composer.replyTo != ""
+                // an edit's bar takes the reply bar's place, in its look; the reply waits with the draft.
+                if editing != ""
+                  row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="edit-bar"
+                    column flex=1 min-width=0
+                      text "Editing" font="-exact-caption1" font-weight=600 color="AccentColor"
+                      text editOld font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
+                    button press=cancelEdit aria-label="Cancel Editing" testId="cancel-edit"
+                      image "symbol:close"
+                else if composer.replyTo != ""
                   row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="reply-bar"
                     column flex=1 min-width=0
                       text `Replying to ${composer.replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
@@ -864,13 +1048,13 @@ component Multiplexer
                       image "symbol:close"
                 // "+" on the left, as Beeper and Messages have it; the photos and files picked sit above the text.
                 row align-items="flex-end" gap=8 margin="6px 12px"
-                  AddButton(open=panel, press=togglePanel)
+                  AddButton(open=panel, press=togglePanel, disabled=(editing != ""))
                   // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
                   input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp" multiple=true display="none"
                     change=photosPicked testId="pick-photos"
                   input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
                   column flex=1 min-width=0 border-radius=22 border="1px solid -exact-separator"
-                    if composer.attachments.length > 0
+                    if composer.attachments.length > 0 and editing == ""
                       Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
                     if tooLarge != ""
                       text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
@@ -881,13 +1065,15 @@ component Multiplexer
                     row align-items="flex-end" padding="0 4px 0 12px"
                       if openNetwork != "matrix" and not viewport.accessibilityTextSize
                         ComposerNetwork(network=openNetwork)
-                      textarea id="composer" value=composer.text input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
+                      textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
                         placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
                         aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="12px 0"
                         border="none" background-color="transparent"
-                      button press=post disabled=((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia))
-                        buttonStyle="filled" margin="4px 0" retainFocus=true aria-label="Send" testId="send"
-                        image "symbol:send"
+                      // while editing, a checkmark saves the edit.
+                      button press=post buttonStyle="filled" margin="4px 0" retainFocus=true testId="send"
+                        disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
+                        aria-label=(editing != "" ? "Save Edit" : "Send")
+                        image (editing != "" ? "symbol:checkmark" : "symbol:send")
             if threadShown and panel
               AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
             ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
@@ -902,24 +1088,42 @@ component Multiplexer
                 button press=letGo aria-label="Close" position="absolute" top=-120 left=0 right=0 bottom=-60 backgroundMaterial="thin" testId="close-menu"
                 column position="absolute" left=12 right=12 gap=10 align-items=(heldOwn ? "flex-end" : "flex-start")
                   padding-left=(thread.group and not heldOwn ? 36 : 0)
-                  top=max(76, min(heldY - 64, viewport.height - heldHeight - 220))
+                  top=max(76, min(heldY - 64, viewport.height - heldHeight - heldMenuHeight - 120))
+                  // Beeper's six, then "+" for every emoji.
                   row gap=2 padding=6 border-radius=28 backgroundMaterial="glass" testId="quick-reactions"
                     for k in quickReactions key=k
                       button appearance="none" press=react(k) min-width=44 min-height=44 border-radius=22 aria-label=k testId=`react-${k}`
                         display="flex" align-items="center" justify-content="center"
                         text k font="-exact-title1"
-                  column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" max-height=320 overflow="hidden"
-                    padding-bottom=6.65
-                    Balloon(body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
-                  column width="14.5rem" max-width="100%" padding="6px 0" border-radius=22 backgroundMaterial="glass" testId="message-actions"
-                    button appearance="none" press=startReply(held, heldName, heldBody) id="menu-reply" testId="menu-reply"
-                      display="flex" flex-direction="row" align-items="center" justify-content="space-between" min-height=44 padding="0 18px"
-                      text "Reply"
-                      image "symbol:reply"
-                    button appearance="none" press=copyHeld testId="menu-copy"
-                      display="flex" flex-direction="row" align-items="center" justify-content="space-between" min-height=44 padding="0 18px"
-                      text "Copy"
-                      image "symbol:copy"
+                    button appearance="none" press=openReactions min-width=44 min-height=44 border-radius=22 aria-label="More Reactions"
+                      testId="react-more" display="flex" align-items="center" justify-content="center" background-color="-exact-tertiary-fill"
+                      image "symbol:add" font="-exact-title3" color="-exact-label"
+                  // a copy of what was held, where it was: a bubble, a photo or a file.
+                  if heldKind == "photo"
+                    // the margin keeps the menu clear of the photo, which the host enlarges.
+                    view contextTarget=`photo-${held}` contextMagnify=true width=heldWidth height=heldHeight max-width="100%" border-radius=18
+                      overflow="hidden" background-color="-exact-secondary-background" margin-bottom=14 testId="held-photo"
+                      match heldMessage
+                        case some(m)
+                          if m.image != ""
+                            image m.image width="100%" height="100%" object-fit="cover" aria-label=(m.body != "" ? m.body : "Photo")
+                        case none
+                          view
+                  else if heldKind == "file"
+                    column contextTarget=`file-${held}` contextMagnify=true width=heldWidth max-width="100%" margin-bottom=6 testId="held-file"
+                      match heldMessage
+                        case some(m)
+                          FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=-1, opening=false,
+                            stacked=viewport.accessibilityTextSize, open=letGo, hold=letGo, identifier="held-file-bubble")
+                        case none
+                          view
+                  else
+                    column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" max-height=320 overflow="hidden"
+                      padding-bottom=6.65
+                      Balloon(body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
+                  MessageActions(canForward=heldCanForward, canCopy=(heldText != ""), canEdit=heldCanEdit, canDelete=heldOwn,
+                    reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
+                    markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
       dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"
         text problem testId="problem"
         button commandfor="sign-in-failed" command="close" testId="sign-in-failed-ok"
@@ -929,6 +1133,12 @@ component Multiplexer
         button press=changeAimed("delete") destructive=true commandfor="delete-chat" command="close" testId="delete-chat-confirm"
           text "Delete"
         button commandfor="delete-chat" command="close" testId="delete-chat-cancel"
+          text "Cancel"
+      dialog id="delete-message" role="alertdialog" aria-label="Delete Message?"
+        text deleteMessageText(openNetwork) testId="delete-message-text"
+        button press=deleteNow destructive=true commandfor="delete-message" command="close" testId="delete-message-confirm"
+          text "Delete for Everyone"
+        button commandfor="delete-message" command="close" testId="delete-message-cancel"
           text "Cancel"
       dialog id="sign-out" role="alertdialog" aria-label="Sign Out?"
         text "This iPhone forgets your session. Your chats stay on the server."

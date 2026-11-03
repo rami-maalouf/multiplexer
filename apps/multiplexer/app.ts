@@ -1,4 +1,5 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
+import { emojiRows } from './emoji-rows.ts';
 
 // app.json’s app.id: change the two together.
 export const appId = 'com.ramimaalouf.multiplexer';
@@ -35,6 +36,8 @@ type MessagesAnswer = {
     id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
     isImage: boolean; image: string; imageWidth: number; imageHeight: number; waitingForKey: boolean;
     isEdited: boolean; senderPicture: string;
+    // deleted for everyone (body ""); your own text message, which an edit can change.
+    isDeleted: boolean; isEditable: boolean;
     // empty when the message answers none.
     reply: { senderName?: string; body?: string; isOwn?: boolean };
     // empty when the message is no file message.
@@ -162,6 +165,7 @@ const sources: Sources = {
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage, image: m.image, imageWidth: m.imageWidth, imageHeight: m.imageHeight,
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
+        isDeleted: m.isDeleted, isEditable: m.isEditable,
         // a reply shows who wrote what it answers once that message is loaded; until then, or if
         // it cannot load, no quote shows rather than an empty one.
         hasReply: (m.reply.body ?? '') !== '',
@@ -242,6 +246,38 @@ const sources: Sources = {
     await native!.later({ op: 'react', roomId, messageId, key });
     return { ok: true };
   },
+  // a held message's actions. an edit changes your own text message for everyone; a delete
+  // deletes a message for everyone; a forward sends a copy to each chosen chat. Each shows in the
+  // chats when their timelines do.
+  editMessage: async ([roomId, messageId, text], _store, _storage, native): Promise<Result<'editMessage'>> => {
+    await native!.later({ op: 'edit', roomId, messageId, text });
+    return { ok: true };
+  },
+  deleteMessage: async ([roomId, messageId], _store, _storage, native): Promise<Result<'deleteMessage'>> => {
+    await native!.later({ op: 'deleteMessage', roomId, messageId });
+    return { ok: true };
+  },
+  forwardMessage: async ([roomId, messageId, to], _store, _storage, native): Promise<Result<'forwardMessage'>> => {
+    await native!.later({ op: 'forward', roomId, messageId, to });
+    return { ok: true };
+  },
+  // a photo's or file's original, downloaded once into the cache under its own name, to share.
+  fetchMedia: async ([roomId, messageId], _store, _storage, native): Promise<Result<'fetchMedia'>> => {
+    const answer = (await native!.later({ op: 'media', roomId, messageId })) as { path: string; name: string };
+    return { message: messageId, name: answer.name, path: answer.path };
+  },
+  // the emojis the account reacts with most, for the reaction sheet's "Frequently used".
+  loadFrequentEmojis: async ([userId], _store, _storage, native): Promise<Result<'loadFrequentEmojis'>> => {
+    if (userId === '' || !native?.available) return { emojis: [] };
+    return (await native.later({ op: 'emojis' })) as { emojis: string[] };
+  },
+  resetFrequentEmojis: async (_args, _store, _storage, native): Promise<Result<'resetFrequentEmojis'>> => {
+    await native!.later({ op: 'resetEmojis' });
+    return { ok: true };
+  },
+  // the reaction sheet's grid (emoji-rows.ts), while the sheet can open: empty otherwise.
+  loadEmojiRows: async ([query, columns, frequent, wanted]): Promise<Result<'loadEmojiRows'>> =>
+    (wanted ? emojiRows(query, columns, frequent) : []),
   retryMessage: async ([roomId, messageId], _store, _storage, native): Promise<Result<'retryMessage'>> => {
     await native!.later({ op: 'retry', roomId, messageId });
     return { ok: true };

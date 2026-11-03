@@ -1,0 +1,96 @@
+// the reaction sheet, after Beeper's: the reaction bar's "+" opens it at half height, and it pulls
+// up to full. A search field; "Frequently used" (the account's own emojis, with Reset); then every
+// emoji by group, with a tab for each group at the bottom. Exact has no emoji grid, so the app
+// draws one from Unicode's list (emoji.ts, emoji-rows.ts): the iOS emoji keyboard has its own
+// recent emojis, not the account's, and no Reset.
+use EmptyState from "exact:content"
+
+shape Emoji
+  emoji: string
+  name: string
+
+// one row of the grid: a group's name ("Smileys & Emotion"), key the group's id, or a row of its
+// emoji ("" title), key the group's id and the row's number ("smileys-3"), so the grid knows which
+// group is in view from its first row's key. "frequent" is the frequently used, "found" a search's.
+shape EmojiRow
+  key: string
+  title: string
+  emojis: Emoji[]
+
+// a group's tab: its id, its name for VoiceOver, its symbol.
+shape EmojiTab
+  id: string
+  name: string
+  symbol: string
+
+// the group a row of the grid belongs to ("smileys" for "smileys-3").
+fn emojiGroupOf(key: string): string = match key.split("-").at(0) { case some(g) => g, case none => key }
+
+component EmojiSheet
+  props
+    // the sheet's route (its stack entry's id).
+    route: string
+    rows: EmojiRow[]
+    query: string
+    // the group in view, whose tab is chosen.
+    group: string
+    columns: number
+    search: action
+    pick: action
+    reset: action
+    // a tab: the grid goes to its group.
+    choose: action
+    scrolled: action
+    close: action
+  // Beeper's tabs, in Unicode's order; the frequently used belong to the first.
+  derive tabs = [EmojiTab(id="smileys", name="Smileys & Emotion", symbol="symbol:emoji"),
+    EmojiTab(id="people", name="People & Body", symbol="symbol:sf/person"),
+    EmojiTab(id="animals", name="Animals & Nature", symbol="symbol:sf/cat"),
+    EmojiTab(id="food", name="Food & Drink", symbol="symbol:sf/cup.and.saucer"),
+    EmojiTab(id="activities", name="Activities", symbol="symbol:sf/soccerball"),
+    EmojiTab(id="travel", name="Travel & Places", symbol="symbol:sf/car"),
+    EmojiTab(id="objects", name="Objects", symbol="symbol:sf/lightbulb"),
+    EmojiTab(id="symbols", name="Symbols", symbol="symbol:sf/number.square"),
+    EmojiTab(id="flags", name="Flags", symbol="symbol:sf/flag")]
+  derive chosenTab = group == "frequent" ? "smileys" : group
+  view
+    column navigationKey=route navigationPresentation="modal" navigationDetent="medium large" navigationScroll="emoji-grid"
+      position="absolute" inset=0 display="flex" flex-direction="column" testId="reactions-sheet"
+      header display="flex" align-items="center" padding="8px 16px"
+        text "Reactions" role="heading" flex=1
+        button id="back" press=close testId="emoji-cancel"
+          text "Cancel"
+      // under the title, as Beeper's: a bar's search field would sit at the sheet's bottom, under the tabs.
+      input type="search" value=query input=search placeholder="Search" aria-label="Search Emoji" margin="4px 16px 4px"
+        testId="emoji-search"
+      if rows.length == 0 and query.trim() != ""
+        EmptyState(symbol="symbol:search", title="No Emoji Found", message=`Nothing matches “${query.trim()}”.`)
+      else
+        list id="emoji-grid" appearance="none" virtualized=true scroll=scrolled flex=1 min-height=0 testId="emoji-grid"
+          for r in rows key=r.key
+            column
+              if r.title != ""
+                row align-items="center" padding="18px 20px 4px" testId=`emoji-group-${r.key}`
+                  text r.title role="heading" aria-level=2 font="-exact-subheadline" font-weight=600 color="-exact-secondary-label"
+                    flex=1 min-width=0
+                  if r.key == "frequent"
+                    button press=reset testId="emoji-reset"
+                      text "Reset"
+              else
+                row padding="0 8px"
+                  for e in r.emojis key=e.emoji
+                    // a 44-point target at least; the cells keep their width in a short last row.
+                    button appearance="none" press=pick(e.emoji) aria-label=e.name testId=`emoji-${e.emoji}`
+                      width=`${100 / columns}%` min-height=56 display="flex" align-items="center" justify-content="center"
+                      // a box wider than the glyph, so a newer emoji's is not cut at a measured width.
+                      text e.emoji font-size=34 min-width=48 text-align="center"
+      // the groups' tabs, under the grid as Beeper has them; a search hides them. Their background
+      // reaches 40 points past the route, over the strip the sheet keeps under it, where the grid
+      // draws rows past its own frame.
+      if query.trim() == ""
+        row justify-content="space-between" padding="4px 12px" padding-bottom="calc(44px + env(safe-area-inset-bottom))"
+          margin-bottom=-40 border-top="1px solid -exact-separator" background-color="-exact-secondary-background" testId="emoji-tabs"
+          for t in tabs key=t.id
+            button appearance="none" press=choose(t.id) aria-label=t.name aria-pressed=(chosenTab == t.id)
+              min-width=36 min-height=44 display="flex" align-items="center" justify-content="center" testId=`emoji-tab-${t.id}`
+              image t.symbol font="-exact-title3" color=(chosenTab == t.id ? "AccentColor" : "-exact-secondary-label")

@@ -91,6 +91,7 @@ final class Matrix: ExactModule {
                         ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
                          "waitingForKey": $0.waitingForKey, "isEdited": $0.isEdited,
+                         "isDeleted": $0.isDeleted, "isEditable": $0.isEditable,
                          "isImage": $0.image != nil, "image": thumbnail(account, roomId: roomId, message: $0),
                          "imageWidth": $0.image?.width ?? 0, "imageHeight": $0.image?.height ?? 0,
                          "senderPicture": senderPicture(account, roomId: roomId, message: $0),
@@ -143,9 +144,24 @@ final class Matrix: ExactModule {
                 case "maxUploadSize":
                     reply.send(["bytes": try await signedIn().maxUploadSize()])
                 case "react":
-                    try await signedIn().toggleReaction(roomId: request["roomId"] as? String ?? "",
-                                                        messageId: request["messageId"] as? String ?? "", key: request["key"] as? String ?? "")
+                    let account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's messages") }
+                    try await account.toggleReaction(roomId: request["roomId"] as? String ?? "",
+                                                     messageId: request["messageId"] as? String ?? "", key: request["key"] as? String ?? "")
                     reply.send(["ok": true])
+                case "edit", "deleteMessage", "forward", "resetEmojis":
+                    // a held message's actions (MatrixCore's MessageActions.swift); a drive makes them
+                    // only as a test user, as it reacts.
+                    try await messageAction(request)
+                    reply.send(["ok": true])
+                case "media":
+                    // a photo's or file's original, under its sender's name, for the share sheet.
+                    let file = try await signedIn().mediaFile(roomId: request["roomId"] as? String ?? "",
+                                                              messageId: request["messageId"] as? String ?? "", directory: files)
+                    let folder = file.deletingLastPathComponent().lastPathComponent
+                    reply.send(["path": "app:/cache/matrix-files/\(folder)/\(file.lastPathComponent)", "name": file.lastPathComponent])
+                case "emojis":
+                    reply.send(["emojis": try await signedIn().frequentEmojis()])
                 case "discard":
                     try await signedIn().discard(roomId: request["roomId"] as? String ?? "", messageId: request["messageId"] as? String ?? "")
                     reply.send(["ok": true])
@@ -156,7 +172,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -246,6 +262,21 @@ final class Matrix: ExactModule {
     private func sendsReadReceipts(_ account: MatrixAccount) throws -> Bool {
         if !context.agent { return true }
         return try account.userId.hasPrefix("@test")
+    }
+
+    /// Edits or deletes your own message, forwards a message to other chats, or forgets the
+    /// frequent emojis. A drive does these, and reacts, only as a test user (`sendsReadReceipts`).
+    @MainActor private func messageAction(_ request: [String: Any]) async throws {
+        let account = try await signedIn()
+        guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's messages") }
+        let roomId = request["roomId"] as? String ?? "", messageId = request["messageId"] as? String ?? ""
+        switch request["op"] as? String {
+        case "edit": try await account.edit(roomId: roomId, messageId: messageId, text: request["text"] as? String ?? "")
+        case "deleteMessage": try await account.delete(roomId: roomId, messageId: messageId)
+        case "forward":
+            for target in request["to"] as? [String] ?? [] { try await account.forward(roomId: roomId, messageId: messageId, to: target) }
+        default: try await account.resetFrequentEmojis()
+        }
     }
 
     /// A photo message's thumbnail as an `app:/` path once it is here (see `cached`); until then

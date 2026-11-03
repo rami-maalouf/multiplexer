@@ -1,0 +1,108 @@
+// a held message's actions, after Beeper's menu, and the sheet that forwards a message to other
+// chats. The overlay that holds them (the chat blurred, the reactions, the lifted bubble) is the
+// chat screen's, in app.contract.
+use EmptyState from "exact:content"
+use Face from "./bubble.contract"
+use NetworkBadge, networkName from "./network.contract"
+
+// a chat the forward sheet offers.
+shape ForwardChat
+  id: string
+  name: string
+  avatar: string
+  initials: string
+  network: string
+
+// the delete alert's message. A bridge passes a delete on to its network, where it allows one.
+fn deleteMessageText(network: string): string = network == "matrix" ? "It is deleted for everyone in this chat." : `It is deleted for everyone in this chat, and on ${networkName(network)}.`
+
+// one action: its name, then its symbol, as a UIKit menu shows them; a destructive one in red.
+component MenuRow
+  props
+    label: string
+    symbol: string
+    press: action
+    destructive: bool
+    identifier: string
+  view
+    button appearance="none" press=press id=identifier testId=identifier
+      display="flex" flex-direction="row" align-items="center" justify-content="space-between" gap=16 min-height=44 padding="0 18px"
+      text label color=(destructive ? "-exact-system-red" : "-exact-label")
+      image symbol color=(destructive ? "-exact-system-red" : "-exact-label") aria-hidden=true
+
+// Beeper's order: Reply, Share, Forward, Copy, Mark as Unread; then Edit and Delete on your own
+// messages, apart. Forward needs a message the server has; Copy, a text or a caption.
+component MessageActions
+  props
+    canForward: bool
+    canCopy: bool
+    canEdit: bool
+    canDelete: bool
+    reply: action
+    share: action
+    forward: action
+    copy: action
+    markUnread: action
+    edit: action
+    delete: action
+  view
+    column width="14.5rem" max-width="100%" padding="6px 0" border-radius=22 backgroundMaterial="material" role="menu" testId="message-actions"
+      MenuRow(label="Reply", symbol="symbol:icon.arrowshape-turn-up-left", press=reply, destructive=false, identifier="menu-reply")
+      MenuRow(label="Share", symbol="symbol:share", press=share, destructive=false, identifier="menu-share")
+      if canForward
+        MenuRow(label="Forward", symbol="symbol:icon.arrowshape-turn-up-right", press=forward, destructive=false, identifier="menu-forward")
+      if canCopy
+        MenuRow(label="Copy", symbol="symbol:copy", press=copy, destructive=false, identifier="menu-copy")
+      MenuRow(label="Mark as Unread", symbol="symbol:icon.mark-unread", press=markUnread, destructive=false, identifier="menu-unread")
+      if canEdit or canDelete
+        view height=1 margin="6px 0" background-color="-exact-separator" aria-hidden=true
+      if canEdit
+        MenuRow(label="Edit", symbol="symbol:pencil", press=edit, destructive=false, identifier="menu-edit")
+      if canDelete
+        MenuRow(label="Delete", symbol="symbol:delete", press=delete, destructive=true, identifier="menu-delete")
+
+// the chats to forward a message to: each row checks one, and Send sends it to every chat checked.
+// The search narrows them by name; the subtitle says what goes.
+component ForwardSheet
+  props
+    // the sheet's route (its stack entry's id).
+    route: string
+    chats: ForwardChat[]
+    query: string
+    chosen: string[]
+    // what goes: the message's text, "Photo", or the file's name.
+    what: string
+    search: action
+    toggle: action
+    send: action
+    cancel: action
+  derive typed = query.trim().toLowerCase()
+  derive shown = chats.filter(c => typed == "" or c.name.toLowerCase().includes(typed))
+  view
+    column navigationKey=route navigationPresentation="modal" navigationScroll="forward-chats"
+      position="absolute" inset=0 display="flex" flex-direction="column" testId="forward-route"
+      header display="flex" align-items="center" padding="8px 16px"
+        button id="back" press=cancel aria-label="Cancel" testId="forward-cancel"
+          image "symbol:close"
+        text "Forward" role="heading"
+        text what testId="forward-what"
+        button press=send disabled=(chosen.length == 0) buttonStyle="bordered-prominent"
+          aria-label=(chosen.length > 1 ? `Send to ${chosen.length} Chats` : "Send") testId="forward-send"
+          image "symbol:send"
+      // in the sheet, not the bar: UIKit hides a bar's search field's bar while it searches, and Send with it.
+      input type="search" value=query input=search placeholder="Search" aria-label="Search Chats" margin="4px 16px 8px"
+        testId="forward-search"
+      if shown.length == 0
+        EmptyState(symbol="symbol:search", title="No Chats Found", message=`No chat’s name has “${query.trim()}”.`)
+      else
+        list id="forward-chats" flex=1 min-height=0 testId="forward-chats"
+          for c in shown key=c.id
+            button appearance="none" role="checkbox" aria-checked=chosen.includes(c.id) press=toggle(c.id) aria-label=c.name
+              display="flex" flex-direction="row" align-items="center" gap=12 min-height=56 width="100%" text-align="start" testId=`forward-${c.id}`
+              view position="relative" flex-shrink=0
+                Face(picture=c.avatar, initials=c.initials, size=40)
+                if c.network != "matrix"
+                  NetworkBadge(network=c.network, identifier=`forward-network-${c.id}`)
+              text c.name font="-exact-body" color="-exact-label" flex=1 min-width=0
+              if chosen.includes(c.id)
+                image "symbol:checkmark" font="-exact-headline" color="AccentColor" aria-hidden=true
