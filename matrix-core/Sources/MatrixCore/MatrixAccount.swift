@@ -142,7 +142,11 @@ public final class MatrixAccount: @unchecked Sendable {
     /// its last `limit` messages; later calls return those and every message since, so a
     /// new message never pushes one the reader has loaded out of the chat.
     public func messages(roomId: String, limit: Int, timeout: TimeInterval = 30) async throws -> [Message] {
-        try await liveTimeline(roomId, limit: limit, timeout: timeout).shown(limit: limit)
+        let live = try await liveTimeline(roomId, limit: limit, timeout: timeout)
+        let shown = live.shown(limit: limit)
+        // a quote's sender or a reader whose name no message carries: from the room's members.
+        lookUpNames(roomId, live.items.names)
+        return shown
     }
 
     /// The chat's live timeline, opened the first time with its last `limit` messages.
@@ -171,8 +175,13 @@ public final class MatrixAccount: @unchecked Sendable {
         // from here on, a change is news: a message came, or one was sent, edited or removed.
         items.onChange = { [weak self] in self?.notify(.room(roomId)) }
         // a sender's name comes with the room's members; until they load, a message shows the
-        // sender's id. Their profiles arrive as timeline changes.
-        Task { await timeline.fetchMembers() }
+        // sender's id. Their profiles arrive as timeline changes; a quote's and a reader's names
+        // are looked up again.
+        Task {
+            await timeline.fetchMembers()
+            items.names.membersLoaded()
+            self.notify(.room(roomId))
+        }
         return live
     }
 
@@ -241,22 +250,23 @@ public final class MatrixAccount: @unchecked Sendable {
     public func imageFile(roomId: String, messageId: String, full: Bool, directory: URL,
                           thumbnailSide: UInt64 = 800, timeout: TimeInterval = 30) async throws -> URL {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        guard let (content, image) = live.items.image(of: messageId) else { throw MatrixCoreError.noImage(messageId) }
+        guard let (source, thumbnailSource, image) = live.items.image(of: messageId) else { throw MatrixCoreError.noImage(messageId) }
         let file = directory.appendingPathComponent(full ? image.fullName : image.thumbnailName)
         if FileManager.default.fileExists(atPath: file.path) { return file }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let data: Data
-        if full {
-            data = try await client.getMediaContent(mediaSource: content.source)
-        } else if let thumbnail = content.info?.thumbnailSource, let small = try? await client.getMediaContent(mediaSource: thumbnail) {
+        if full || image.isSticker {
+            // a sticker is small, and a server's thumbnail of it would lose its transparency.
+            data = try await client.getMediaContent(mediaSource: source)
+        } else if let thumbnail = thumbnailSource, let small = try? await client.getMediaContent(mediaSource: thumbnail) {
             // the sender's own thumbnail: a photo this device sends has it in the send queue's cache.
             data = small
         } else {
             // a server may have no thumbnail for a small picture: then the picture itself.
             do {
-                data = try await client.getMediaThumbnail(mediaSource: content.source, width: thumbnailSide, height: thumbnailSide)
+                data = try await client.getMediaThumbnail(mediaSource: source, width: thumbnailSide, height: thumbnailSide)
             } catch {
-                data = try await client.getMediaContent(mediaSource: content.source)
+                data = try await client.getMediaContent(mediaSource: source)
             }
         }
         try data.write(to: file, options: .atomic)
@@ -500,6 +510,8 @@ final class LiveTimeline: @unchecked Sendable {
 final class TimelineItems: TimelineListener, @unchecked Sendable {
     /// This account's user id: its reactions are marked as its own.
     private let me: String
+    /// Names that a quote or a read receipt needs and its event does not carry (ChatDetails.swift).
+    let names = MemberNames()
     private let lock = NSLock()
     private var items: [TimelineItem] = []
     private var lastUpdate = Date()
@@ -550,7 +562,12 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     func messages() -> [Message] {
-        lock.withLock { items.compactMap { item in item.asEvent().flatMap { Message($0, id: item.uniqueId().id, me: me) } } }
+        lock.withLock { chatMessages(items, me: me, names: names) }
+    }
+
+    /// Reads the items as they are now.
+    func read<T>(_ body: ([TimelineItem], _ me: String) -> T) -> T {
+        lock.withLock { body(items, me) }
     }
 
     /// The event ids of replies whose quoted message is not loaded: the sdk loads a quote when
@@ -567,12 +584,20 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
         }
     }
 
-    func image(of messageId: String) -> (ImageMessageContent, MessageImage)? {
+    /// A photo's or a sticker's picture, its sender's thumbnail of it (nil for none), and its names.
+    func image(of messageId: String) -> (MediaSource, MediaSource?, MessageImage)? {
         lock.withLock {
             guard let event = items.first(where: { $0.uniqueId().id == messageId })?.asEvent(),
-                  case .msgLike(let like) = event.content, case .message(let message) = like.kind,
-                  case .image(let content) = message.msgType else { return nil }
-            return (content, MessageImage(content))
+                  case .msgLike(let like) = event.content else { return nil }
+            switch like.kind {
+            case .message(let message):
+                guard case .image(let content) = message.msgType else { return nil }
+                return (content.source, content.info?.thumbnailSource, MessageImage(content))
+            case .sticker(_, let info, let source):
+                return (source, nil, MessageImage(sticker: info, source: source))
+            default:
+                return nil
+            }
         }
     }
 
@@ -683,7 +708,7 @@ private func displayName(_ sender: String, _ profile: ProfileDetails) -> String 
 }
 
 extension Message {
-    init?(_ event: EventTimelineItem, id: String, me: String) {
+    init?(_ event: EventTimelineItem, id: String, me: String, names: MemberNames) {
         guard case .msgLike(let content) = event.content else { return nil }
         let name = displayName(event.sender, event.senderProfile)
         var picture = ""
@@ -691,6 +716,17 @@ extension Message {
         if case .unableToDecrypt = content.kind {
             self.init(id: id, sender: event.sender, senderName: name, body: "", timestamp: event.timestamp,
                       isOwn: event.isOwn, sendState: .sent, image: nil, waitingForKey: true, senderPicture: picture)
+            return
+        }
+        let reactions = event.reactions.map { reaction in
+            MessageReaction(key: reaction.key, count: reaction.senders.count, isMine: reaction.senders.contains { $0.senderId == me })
+        }
+        if case .sticker(_, let info, let source) = content.kind {
+            self.init(id: id, sender: event.sender, senderName: name, body: "", timestamp: event.timestamp,
+                      isOwn: event.isOwn, sendState: .sent, image: MessageImage(sticker: info, source: source),
+                      reply: content.inReplyTo.map { QuotedMessage($0, me: me, names: names) }, reactions: reactions,
+                      senderPicture: picture)
+            isSticker = true
             return
         }
         guard case .message(let message) = content.kind else { return nil }
@@ -704,23 +740,23 @@ extension Message {
         // a remote echo has no local send state: the server has it.
         case .sent?, nil: sendState = .sent
         }
-        var body = message.body, image: MessageImage?, file: MessageFile?
+        var body = message.body, image: MessageImage?, file: MessageFile?, video: MessageVideo?
         if case .image(let content) = message.msgType {
             body = content.caption ?? ""
             image = MessageImage(content)
         } else if case .file(let content) = message.msgType {
             body = content.caption ?? ""
             file = MessageFile(content)
+        } else if case .video(let content) = message.msgType {
+            body = content.caption ?? ""
+            video = MessageVideo(content)
         }
         self.init(id: id, sender: event.sender, senderName: name, body: body, timestamp: event.timestamp,
                   isOwn: event.isOwn, sendState: sendState, image: image, isEdited: message.isEdited,
-                  reply: content.inReplyTo.map { QuotedMessage($0, me: me) },
-                  reactions: event.reactions.map { reaction in
-                      MessageReaction(key: reaction.key, count: reaction.senders.count,
-                                      isMine: reaction.senders.contains { $0.senderId == me })
-                  },
-                  senderPicture: picture)
+                  reply: content.inReplyTo.map { QuotedMessage($0, me: me, names: names) },
+                  reactions: reactions, senderPicture: picture)
         self.file = file
+        self.video = video
         uploadProgress = uploaded
     }
 }
@@ -731,10 +767,14 @@ extension Message {
 }
 
 extension QuotedMessage {
-    init(_ details: InReplyToDetails, me: String) {
+    /// The sdk loads a quoted message without its sender's profile, so its name comes from `names`
+    /// (the room's members); "" until it is known.
+    init(_ details: InReplyToDetails, me: String, names: MemberNames) {
         switch details.event() {
         case .ready(let content, let sender, let profile, _, _):
-            self.init(senderName: displayName(sender, profile), body: preview(content) ?? "Message", isOwn: sender == me)
+            let name: String
+            if case .ready(let shown?, _, _, _, _) = profile { name = shown } else { name = names.name(sender) ?? "" }
+            self.init(senderName: name, body: preview(content) ?? "Message", isOwn: sender == me)
         case .unavailable, .pending, .error:
             self.init(senderName: "", body: "", isOwn: false)
         }

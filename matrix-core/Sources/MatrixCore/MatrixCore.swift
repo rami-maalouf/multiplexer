@@ -98,6 +98,13 @@ public struct Message: Equatable, Sendable {
     public var file: MessageFile? = nil
     /// How much of a photo or file on its way is uploaded, from 0 to 1; nil when nothing uploads.
     public var uploadProgress: Double? = nil
+    /// The video of a video message; nil for others. `body` is then its caption, or "".
+    public var video: MessageVideo? = nil
+    /// A sticker: `image` is its picture, which shows with no bubble; `body` is "".
+    public var isSticker: Bool = false
+    /// Who has read the chat up to this message, besides its sender and this account
+    /// (ChatDetails.swift); the earliest reader first.
+    public var readBy: [MessageReader] = []
 }
 
 /// What a file message shows of its file (`MatrixAccount.fileContent` downloads it).
@@ -208,6 +215,8 @@ public struct MessageImage: Equatable, Sendable {
     /// downloaded file can be found again.
     public var thumbnailName: String
     public var fullName: String
+    /// A sticker's picture: its thumbnail is the picture itself.
+    public var isSticker: Bool = false
 }
 
 /// Where a message is on its way to the server. Others' messages are `sent`.
@@ -226,6 +235,8 @@ public enum MatrixCoreError: Error, Equatable {
     case noImage(String)
     /// The message is not a file message, or not in the open chat.
     case noFile(String)
+    /// The message is not a video message (or its video has no poster), or not in the open chat.
+    case noVideo(String)
     /// A Keychain call failed with this `OSStatus`.
     case keychain(Int32)
 }
