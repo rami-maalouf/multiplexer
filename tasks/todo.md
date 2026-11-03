@@ -740,7 +740,23 @@ Mute, Label, Delete (red).
   from the app and from another device; now it brings a muted one back too, and the answer does
   not archive it again (`testYourOwnMessageBringsAnArchivedChatBack`, `.exact/choices/archive-back.png`).
   The "@" with no push and the bell for WhatsApp mutes were built with B7.
-- [ ] Another device's archive or delete shows only at the next list change.
+- [x] Another device's archive or delete shows only at the next list change. (2026-11-03, branch
+  `work/list-freshness`: reproduced in the app first, an unarchive from another device not shown
+  45 s later. The SDK observes only its own account data types, so MatrixCore reads the chats'
+  marks and own names from its store every 2 s while it syncs (no request) and tells the list when
+  one changed (`AccountDataWatch`, `testAnotherDevicesArchiveTellsTheList`). The same drive with
+  the fix shows the chat back at the next read. `scripts/mark-chat-as-test-user.sh` archives or
+  unarchives as a test user from a short-lived device; `send-test-message.sh --delete-last` deletes
+  a test user's newest message.)
+- [x] Fixed on the way (2026-11-03): `testRecentMediaIsTheNewestPhotosAndVideos` failed 1 run in 3 with
+  only the newest video. A sync with a gap resets the media timeline to its newest events, and the
+  "reached the start" flag from an earlier page back stopped any new one; the flag now holds only
+  until the next reset (`MediaTimeline`, 5 runs of 5 pass). The chat's own timeline (`LiveTimeline`)
+  keeps the same flag: not changed, as B15 works there; check it with B15.
+- [ ] Seen 2026-11-03 under load from parallel threads: a new device's first sync of `@test1` took
+  near the 30 s limit, so `testANameOnlyYouSeeShowsOnYourOtherDeviceNotTheOthers` timed out twice
+  ("the first sync") and passed alone (53 s). A failed run leaves its own name on the info test
+  room, which then fails `testInfoNamesItsMembersAndWhatYouMayChange`.
 
 **Dependencies:** B6 (the menu exists). **Scope:** M
 
@@ -903,8 +919,14 @@ emoji, a search and "Frequently used".
   a press inside a swipe; the media components only draw. Copy writes the original photo as a PNG with
   `@exact/clipboard` (Exact's image clipboard, from data code; no native code). Drives with real touches:
   each kind swipes to a reply with its quote, and still opens and holds.)
-- [ ] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
-  messages out of a room's latest event).
+- [x] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
+  messages out of a room's latest event). (2026-11-03, branch `work/list-freshness`: MatrixCore keeps
+  the newest message each row showed (`latest-messages.json` in the account's store folder); a
+  latest event older than it means it was deleted, so the row says "Message deleted" with its
+  sender, the chat never opened, and still after a relaunch (`testTheListSaysMessageDeletedWithTheChatNotOpened`,
+  which fails without the fix). The time stays the message before's, as the SDK orders the list by
+  it. Not caught: a message that arrived and was deleted while the app never showed it. Drive,
+  dark: `.exact/fresh/delete-before-dark.png`, `delete-after-dark.png`.)
 - [x] Rami (2026-11-03) ok to all; to build: hide Edit and Delete after the limits. Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
   hide Edit and Delete after WhatsApp's limits (about 15 minutes, about 2 days); skin tones.
   Done 2026-11-03 (branch `work/choices-followup`): in a WhatsApp chat, Edit shows for 15 minutes

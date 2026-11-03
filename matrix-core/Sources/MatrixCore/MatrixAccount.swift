@@ -594,8 +594,13 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     private var cut: UInt64 = 0
     private var lastUpdate = Date()
     private var changed: (@Sendable () -> Void)?
+    /// How many times the sdk cleared or reset the items: a sync with a gap can reset a timeline
+    /// to its newest events, after which a page back is needed again.
+    private var resets = 0
 
     init(me: String) { self.me = me }
+
+    var resetCount: Int { lock.withLock { resets } }
 
     /// Called after each batch of diffs, from the sdk's task.
     var onChange: (@Sendable () -> Void)? {
@@ -615,7 +620,9 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     private func apply(_ d: TimelineDiff) {
         switch d {
         case .append(let values): items += values
-        case .clear: items = []
+        case .clear:
+            items = []
+            resets += 1
         case .pushFront(let value): items.insert(value, at: 0)
         case .pushBack(let value): items.append(value)
         case .popFront: if !items.isEmpty { items.removeFirst() }
@@ -624,7 +631,9 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
         case .set(let index, let value): items[Int(index)] = value
         case .remove(let index): items.remove(at: Int(index))
         case .truncate(let length): items = Array(items.prefix(Int(length)))
-        case .reset(let values): items = values
+        case .reset(let values):
+            items = values
+            resets += 1
         }
     }
 
