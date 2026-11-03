@@ -17,6 +17,10 @@ public final class MatrixAccount: @unchecked Sendable {
     let search = SearchState()
     /// The chats' media timelines and own names (ChatInfo.swift).
     let infoStates = ChatInfoStates()
+    /// The newest message each chat's preview showed, and the watch on other devices' archives,
+    /// deletes and names (ListFreshness.swift).
+    let latest: LatestMessages
+    let accountDataWatch = AccountDataWatch()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -28,8 +32,9 @@ public final class MatrixAccount: @unchecked Sendable {
     /// The open chats' timelines once they are ready, which `rooms()` reads without waiting.
     private var readyTimelines: [String: LiveTimeline] = [:]
 
-    private init(client: Client) {
+    private init(client: Client, storeDirectory: URL) {
         self.client = client
+        latest = LatestMessages(file: storeDirectory.appendingPathComponent("latest-messages.json"))
         // a photo or file on its way tells how much of it is uploaded (`Message.uploadProgress`).
         client.enableSendQueueUploadProgress(enable: true)
     }
@@ -46,7 +51,7 @@ public final class MatrixAccount: @unchecked Sendable {
             let client = try await builder(storeDirectory, role: .app(searchIndexKey: searchIndexKey), sessionStorage: sessionStorage)
                 .serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
             try await client.login(username: user, password: password, initialDeviceName: deviceName, deviceId: nil)
-            return MatrixAccount(client: client)
+            return MatrixAccount(client: client, storeDirectory: storeDirectory)
         } catch {
             throw SignInError(error)
         }
@@ -60,7 +65,7 @@ public final class MatrixAccount: @unchecked Sendable {
         let client = try await builder(storeDirectory, role: .app(searchIndexKey: searchIndexKey), sessionStorage: sessionStorage ?? .memory(saved))
             .homeserverUrl(url: saved.homeserverUrl).build()
         try await client.restoreSession(session: saved.sdkSession)
-        return MatrixAccount(client: client)
+        return MatrixAccount(client: client, storeDirectory: storeDirectory)
     }
 
     /// Signs a session out on the server without its store (a reinstall lost it), through
@@ -161,6 +166,7 @@ public final class MatrixAccount: @unchecked Sendable {
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
+                latest.fill(&summary)
             case .local(let timestamp, let sender, let profile, let content, _):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: true, profile: profile, content: content)
             case .none, .remoteInvite:
@@ -169,6 +175,7 @@ public final class MatrixAccount: @unchecked Sendable {
             if let live = lock.withLock({ readyTimelines[summary.id] }) { summary.fillDeleted(live.items.messages()) }
             rooms.append(summary)
         }
+        latest.save()
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
@@ -391,6 +398,7 @@ public final class MatrixAccount: @unchecked Sendable {
             readyTimelines = [:]
         }
         search.stop()
+        accountDataWatch.stop()
         await syncService?.stop()
         syncService = nil
         try await client.logout()
@@ -413,6 +421,8 @@ public final class MatrixAccount: @unchecked Sendable {
             roomOrder = order
         }
         startSearchBackfill()
+        // another device's archive, delete or name changes no room: the list hears of it here.
+        accountDataWatch.start(client) { [weak self] in self?.notify(.rooms) }
     }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.
@@ -618,8 +628,13 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     private var cut: UInt64 = 0
     private var lastUpdate = Date()
     private var changed: (@Sendable () -> Void)?
+    /// How many times the sdk cleared or reset the items: a sync with a gap can reset a timeline
+    /// to its newest events, after which a page back is needed again.
+    private var resets = 0
 
     init(me: String) { self.me = me }
+
+    var resetCount: Int { lock.withLock { resets } }
 
     /// Called after each batch of diffs, from the sdk's task.
     var onChange: (@Sendable () -> Void)? {
@@ -639,7 +654,9 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     private func apply(_ d: TimelineDiff) {
         switch d {
         case .append(let values): items += values
-        case .clear: items = []
+        case .clear:
+            items = []
+            resets += 1
         case .pushFront(let value): items.insert(value, at: 0)
         case .pushBack(let value): items.append(value)
         case .popFront: if !items.isEmpty { items.removeFirst() }
@@ -648,7 +665,9 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
         case .set(let index, let value): items[Int(index)] = value
         case .remove(let index): items.remove(at: Int(index))
         case .truncate(let length): items = Array(items.prefix(Int(length)))
-        case .reset(let values): items = values
+        case .reset(let values):
+            items = values
+            resets += 1
         }
     }
 

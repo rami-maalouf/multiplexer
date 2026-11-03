@@ -98,3 +98,10 @@ https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eig
    room-<id>` answered the same. The refusal could show the `tap <list> into <key>` form with the
    list's own key for that row (its `key`, not its `testId`). About 3 minutes.
 
+
+## One more (2026-11-03, a chat list task, `ed43ad09a0`)
+
+- `state roomList.rooms` on a 15.8 KB list ends with `all of it: "state roomList.rooms --full",
+  or --json`. `state roomList.rooms --json` printed the same summary again, not the value; only
+  `--full` did. If `--json` is the drive's own flag (`agent ios --json`), the hint could say so
+  ("or the drive's `--json`"). About 2 minutes and one more drive.

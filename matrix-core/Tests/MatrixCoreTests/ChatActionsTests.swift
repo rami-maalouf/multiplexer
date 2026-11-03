@@ -59,6 +59,32 @@ final class ChatActionsTests: XCTestCase {
         _ = try await summary(owner, held) { $0.unreadCount == 0 && $0.unreadMentions == 0 && !$0.isMuted }
     }
 
+    /// Another device's archive changes no room, so the room list does not tell of it: the account
+    /// data watch does, within a few seconds, so the open list updates. (Other changes reach the
+    /// room list now and then, so the test listens to a watch of its own; a drive checks the app.)
+    func testAnotherDevicesArchiveTellsTheList() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let archived = try await testRooms(owner, sender, user2: user2)[archiveName]!
+        try await reset(owner, archived)
+        let second = try await signIn(homeserver, user, password)
+        _ = try await summary(second, archived) { !$0.isArchived }
+
+        let heard = Heard(), watch = AccountDataWatch()
+        watch.start(second.client, interval: 0.5) { heard.add() }
+        defer { watch.stop() }
+        try await Task.sleep(nanoseconds: 3_000_000_000)
+        XCTAssertEqual(heard.count, 0, "the watch heard a change before any")
+        try await owner.archive(roomId: archived)
+        let told = Date()
+        while heard.count == 0, Date().timeIntervalSince(told) < 15 { try await Task.sleep(nanoseconds: 200_000_000) }
+        XCTAssertEqual(heard.count, 1, "the other device was not told of the archive")
+        let shown = try await second.rooms().first { $0.id == archived }
+        XCTAssertEqual(shown?.isArchived, true, "told, the list still shows the chat in the inbox")
+        try await owner.unarchive(roomId: archived)
+    }
+
     func testLowPriorityArchiveAndDeleteLeaveTheInboxOnAnotherDevice() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
         let owner = try await signIn(homeserver, user, password)
@@ -440,4 +466,12 @@ final class ChatActionsTests: XCTestCase {
         }
         fatalError("unreachable")
     }
+}
+
+/// Counts the room list changes a device was told of.
+private final class Heard: @unchecked Sendable {
+    private let lock = NSLock()
+    private var told = 0
+    var count: Int { lock.withLock { told } }
+    func add() { lock.withLock { told += 1 } }
 }
