@@ -7,6 +7,7 @@ use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText from
 use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage from "./inbox.contract"
 use NetworkBadge, networkName from "./network.contract"
 use InboxSheet, NetworkCount from "./sheet.contract"
+use ChatBar from "./chat.contract"
 
 shape Session
   userId: string
@@ -14,7 +15,7 @@ shape Session
 // avatar: the room's picture once it is downloaded (""), else its initials show. network: the
 // chat network its bridge brings it from (whatsapp, instagram, ...), or matrix for none. listed:
 // the list shows it under the filter menu's choice (a pinned chat, or one the filter leaves out,
-// is still here, so an open chat keeps its name).
+// is still here, so an open chat keeps its name). markedUnread: marked unread by hand.
 shape Room
   id: string
   name: string
@@ -28,6 +29,7 @@ shape Room
   unread: number
   network: string
   listed: bool
+  markedUnread: bool
 
 // owner is the account the rooms belong to, so a list never shows under another account; filter
 // the filter menu's choice the list is for, network the filter sheet's ("": every network).
@@ -225,6 +227,10 @@ component Multiplexer
   derive openRoomInfo = first(roomList.rooms.filter(r => r.id == openRoom))
   derive openName = match openRoomInfo { case some(r) => r.name, case none => "" }
   derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
+  derive openNetwork = match openRoomInfo { case some(r) => r.network, case none => "matrix" }
+  derive openPinned = roomList.pinned.map(p => p.id).includes(openRoom)
+  // Back's count: the other chats with unread messages, or marked unread by hand, on every network.
+  derive otherUnread = roomList.rooms.filter(r => r.id != openRoom and (r.unread > 0 or r.markedUnread)).length
   resource thread = loadMessages(openRoom, openIsDirect, openName) as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
   resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
@@ -469,6 +475,10 @@ component Multiplexer
   action togglePin
     send pinned = setPinned(aimed, not aimedPinned)
     haptic("success")
+  // the chat bar's "..." pins the open chat.
+  action togglePinOpen
+    send pinned = setPinned(openRoom, not openPinned)
+    haptic("success")
 
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content"
@@ -631,15 +641,20 @@ component Multiplexer
               case none
                 column flex=1
         if e.name == "room"
-          column navigationKey=`${e.id}` navigationScroll="transcript" position="absolute" inset=0 display="flex" flex-direction="column"
-            header display="flex" align-items="center"
-              text openName role="heading" aria-level=2
+          // the chat draws its own bar (chat.contract), so a held message's blur covers it.
+          column navigationKey=`${e.id}` navigationBar="none" navigationScroll="transcript" position="absolute" inset=0
+            display="flex" flex-direction="column"
+            // a box above the transcript, so the host clears the screen's top of the status bar and
+            // the bar's top=0 starts under it (a scroller at the top edge is inset by UIKit instead).
+            view height=0 flex-shrink=0 aria-hidden=true
             if threadShown
               if thread.messages.length == 0
                 EmptyState(symbol="symbol:messages", title="No Messages Yet", message="Messages in this chat show here.")
               else
+                // the first message can scroll down from under the bar, a chat name of two lines too.
                 list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
-                  reachstart=loadOlder scroll=scrolled flex=1 min-height=0 testId="transcript"
+                  reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=(viewport.accessibilityTextSize ? 116 : 100)
+                  testId="transcript"
                   for m in thread.messages key=m.id
                     column id=`row-${m.id}` align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
                       if m.startsGroup
@@ -763,11 +778,16 @@ component Multiplexer
                         image "symbol:send"
             if threadShown and panel
               AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
+            ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
+              initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork,
+              unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, covered=(held != ""),
+              largeText=viewport.accessibilityTextSize)
             // a held message: the chat blurs, the bubble stays where it was, the reactions sit above it
             // and its actions under it, as Beeper and Messages show them.
             if held != ""
               column keycapture=menuKey position="absolute" inset=0 z-index=30 testId="message-menu"
-                button press=letGo aria-label="Close" position="absolute" inset=0 backgroundMaterial="thin" testId="close-menu"
+                // the blur reaches past the screen's top and bottom edges too: under the status bar and the home indicator.
+                button press=letGo aria-label="Close" position="absolute" top=-120 left=0 right=0 bottom=-60 backgroundMaterial="thin" testId="close-menu"
                 column position="absolute" left=12 right=12 gap=10 align-items=(heldOwn ? "flex-end" : "flex-start")
                   padding-left=(thread.group and not heldOwn ? 36 : 0)
                   top=max(76, min(heldY - 64, viewport.height - heldHeight - 220))

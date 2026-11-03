@@ -116,7 +116,7 @@ const sources: Sources = {
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     return {
       owner: userId, filter, network, networks: answer.networks, unread: answer.unread,
-      rooms: answer.rooms.map(({ markedUnread: _, oneToOne: __, ...r }) => ({ ...r, initials: initials(r.name) })),
+      rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
         const r = byId.get(id);
         return r ? [{

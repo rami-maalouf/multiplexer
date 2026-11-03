@@ -1,0 +1,69 @@
+// the chat screen's own top bar, after Beeper's. The screen has no
+// system bar: this one floats over the transcript, which scrolls under it, so a held message's
+// blur covers it too (the system bar stayed sharp above it).
+use Face from "./bubble.contract"
+use NetworkBadge from "./network.contract"
+
+// the count on Back: "12", or "999+" past that.
+fn unreadText(n: number): string = n > 999 ? "999+" : n.toString()
+
+// Back on the left, in its glass capsule with the other chats' unread count (none at 0); the
+// chat's picture, with its network's logo on the corner, over its name in a glass capsule in the
+// middle; "..." on the right, which opens the chat's actions. The picture and the name open
+// nothing yet: the chat's info page comes later. The bar passes touches between its parts on to
+// the transcript under it.
+component ChatBar
+  props
+    name: string
+    picture: string
+    initials: string
+    network: string
+    // unread chats besides this one.
+    unread: number
+    back: action
+    pinned: bool
+    pin: action
+    // a held message's menu covers the bar.
+    covered: bool
+    // the reader chose one of the accessibility text sizes.
+    largeText: bool
+  // Back's chevron and count grow a little at the accessibility sizes, as a system bar's stay put.
+  derive labelSize = largeText ? 20 : 17
+  view
+    view position="absolute" top=0 left=0 right=0 pointer-events="none" inert=covered testId="chat-bar"
+      // as iOS's scroll edge effect: the transcript fades out under the status bar and the bar. It
+      // starts above the screen's top, where the list still draws rows past its frame.
+      view position="absolute" top=-120 left=0 right=0 height=232
+        background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 62%, transparent 100%)"
+      // the two sides share the room the title leaves, so the title stays in the middle of the screen
+      // whatever Back's count, until a long name needs that room.
+      row position="relative" padding="0 16px" align-items="flex-start"
+        view flex="1 1 0" display="flex" justify-content="flex-start"
+          // the edge swipe presses it too: its id is the screen's Back.
+          button id="back" press=back buttonStyle="glass" min-width=44 height=44 flex-shrink=0 pointer-events="auto"
+            aria-label=(unread > 0 ? `Back, ${unread} unread ${unread == 1 ? "chat" : "chats"}` : "Back") testId="back"
+            image "symbol:back" font-size=labelSize
+            if unread > 0
+              text unreadText(unread) font-size=labelSize
+        // it takes a tap, as a system bar's title does, so a tap there reaches no message under it.
+        column align-items="center" flex="0 1 auto" min-width=0 margin="0 8px" pointer-events="auto" testId="chat-title"
+          // the picture is opaque over the transcript, and sits on the name's capsule.
+          view position="relative" z-index=1 flex-shrink=0 border-radius=22 background-color="-exact-background"
+            Face(picture=picture, initials=initials, size=44)
+            if network != "matrix"
+              NetworkBadge(network=network, identifier="chat-network")
+          view backgroundMaterial="glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
+            // it grows with the text size to a cap, as a system bar's title stays put.
+            text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
+              line-clamp=2
+              testId="chat-name"
+        view flex="1 1 0" display="flex" justify-content="flex-end"
+          button popovertarget="chat-actions" buttonStyle="glass" width=44 height=44 flex-shrink=0 pointer-events="auto"
+            aria-label="More" testId="chat-more"
+            image "symbol:more"
+        // what exists so far; muting, marking unread and the chat's info page join it with their tasks.
+        column id="chat-actions" popover="auto" role="menu" pointer-events="auto"
+          button press=pin popovertarget="chat-actions" popovertargetaction="hide" testId="chat-pin"
+            image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
+            text (pinned ? "Unpin" : "Pin")
+
