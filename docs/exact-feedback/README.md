@@ -161,6 +161,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 | 2026-10-27 | `cea3ed9a-11b2-4359-9849-7cab26e44f59` | 2 diary entries (findings 16 to 19, and new evidence for finding 4) and 20 command-log lines | Claude, with Rami's yes |
 | 2026-10-27 | `a3326479-5a74-4d5f-8ac3-1351e418d588` | 3 diary entries (finding 20, and new evidence for findings 9, 12 and 16) and 39 command-log lines | Claude, with Rami's yes |
 | 2026-11-02 | `f63c011a-dedb-4c1e-ae6b-4bee50181ae4` | 7 diary entries (findings 21 to 29, 33 and 34, and new evidence for findings 13 and 15; from the B1 and inbox entries, findings 30 to 32 and 35 to 37, and new evidence for findings 13 and 17) and 287 command-log lines | Claude, with Rami's yes |
+| 2026-11-03 | `623dd86e-723a-4d6d-a5e1-d671e965d0d9` | 17 diary entries (findings 38 to 89, with new evidence for earlier ones; the app's README not attached) and 63 command-log lines | Claude, with Rami's yes |
 
 The first two sends include finding 14, which was withdrawn after they were sent.
 

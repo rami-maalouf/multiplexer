@@ -18,6 +18,6 @@ task: five small follow-ups to the owner's choices: "Sent" instead of "Delivered
 
 ### Checkpoints
 - `bun test ./limits.test.ts`: 3 passed.
-- MatrixCore: the whole suite 45 run, 1 skipped, 0 failed (two new tests: a deleted chat comes back with only its new messages; our own message brings an archived chat back, a muted one too).
+- The app's core library: the whole suite 45 run, 1 skipped, 0 failed (two new tests: a deleted chat comes back with only its new messages; our own message brings an archived chat back, a muted one too).
 - Drives as a test user: "Sent" under our own message; the menu in a chat on the limited network at the real time (Edit and Delete), 20 minutes later (Delete only) and 49 hours later (neither); a plain chat at 49 hours (both); a chat deleted and brought back by a new message shows only it; an archived chat came back after our own message; the info page's subtitle with "·". Signed out at the end.
 - `verify ios`: clean (5 tests, light and dark, the largest text size).

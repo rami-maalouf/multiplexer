@@ -22,7 +22,7 @@ task: search in one chat, from its info page: a field at the bottom, the chat's 
 - `press=` with a choice of two actions; a typed empty list literal.
 
 ### Checkpoints
-- MatrixCore: `SearchTests` 7 passed, with the new `testOneChatsMessagesAndKinds` (a photo named "snapshot" and a file named "Minutes ... .bin" are found by their type; a voice message under Audio; words narrow a kind by a word's start; another chat's message is not found).
+- The app's core library: `SearchTests` 7 passed, with the new `testOneChatsMessagesAndKinds` (a photo named "snapshot" and a file named "Minutes ... .bin" are found by their type; a voice message under Audio; words narrow a kind by a word's start; another chat's message is not found).
 - `bun test`: 7 passed (4 new, for the one-chat rows).
 - Drives as a test user on the Simulator: the info page's Search, words, each kind, a found message opening the chat at it (marked), both X buttons back to the page; light, dark and the largest text size, `check both` clean.
 - `verify ios`: clean (5 tests, check light and dark).
