@@ -35,7 +35,8 @@ component SettingsScreen
       list id="settings" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
         if userId != ""
           section
-            row gap=14 align-items="center" testId="account"
+            // at the accessibility sizes the picture goes above, so the id has the row's width.
+            row gap=14 flex-direction=(largeText ? "column" : "row") align-items=(largeText ? "flex-start" : "center") testId="account"
               view width=side height=side border-radius=(side / 2) overflow="hidden" flex-shrink=0
                 background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
                 if shown and profile.avatar != ""
@@ -44,7 +45,8 @@ component SettingsScreen
                   text (shown ? profile.initials : "") font="-exact-title2" font-weight=600 color="-exact-secondary-label" aria-hidden=true
               column flex=1 min-width=0 gap=2
                 text (shown ? profile.name : "") font="-exact-title3" font-weight=600 testId="account-name"
-                text userId font="-exact-subheadline" color="-exact-secondary-label" testId="account-id"
+                text userId font="-exact-subheadline" color="-exact-secondary-label" overflow-wrap="anywhere" hyphens="none"
+                  testId="account-id"
         section
           header
             text "Voice Messages"
