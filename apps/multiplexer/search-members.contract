@@ -1,0 +1,119 @@
+// the inbox's search (search.contract): its state, what it found, and its actions. The bottom
+// bar's search button opens it over the inbox; X closes it, and the inbox is as it was. A found
+// message opens its chat there (the jump): the chat pages back to it, or says it could not.
+use SearchFound, Jump from "./search.contract"
+
+members Multiplexer
+  // the search is open in the inbox's place, with the words typed and the kind chosen above the
+  // results (images, videos, links, files; "" for none).
+  state searching = false
+  state searchQuery = ""
+  state searchKind = ""
+  // the field has the keyboard.
+  state searchFocused = false
+  // the chats opened last and the searches made last, newest first, kept across launches for
+  // the account that made them (recentOwner).
+  state recentChats: string[] = [] persist
+  state recentSearches: string[] = [] persist
+  state recentOwner = "" persist
+  // a found message the chat opens at: its event until the chat has paged back to it; then its
+  // id in the chat, shown marked a moment. jumpMissed: the chat where it was not found.
+  state jumpRoom = ""
+  state jumpEvent = ""
+  state jumpedTo = ""
+  state jumpMissed = ""
+  resource found = loadSearch(session.userId, searching, searchQuery.trim(), searchKind, recentChats) as shape SearchFound else empty()
+  mutation jumped as shape Jump then afterJump
+  derive foundShown = found.owner == session.userId and found.query == searchQuery.trim() and found.kind == searchKind
+  task noteRecentChat when openRoom != "" key=openRoom
+    after(1, rememberChat)
+  task recentForAccount when session.userId != "" and session.userId != recentOwner
+    after(1, startRecent)
+  // the chat is open and its messages are here: it pages back to the found message.
+  task jumpWhenOpen when jumpEvent != "" and openRoom == jumpRoom and threadShown key=jumpEvent
+    after(1, startJump)
+  task showJump when jumpedTo != "" and threadShown and thread.messages.map(m => m.id).includes(jumpedTo) key=jumpedTo
+    after(1, revealJump)
+  task endJump when jumpedTo != "" key=jumpedTo
+    after(3000, clearJump)
+  task endMissed when jumpMissed != "" key=jumpMissed
+    after(4000, clearMissed)
+
+  action openSearch
+    searching = true
+    searchQuery = ""
+    searchKind = ""
+    haptic("selection")
+  action closeSearch
+    searching = false
+    searchQuery = ""
+    searchKind = ""
+    searchFocused = false
+    blur()
+  action typeSearch(v: string)
+    searchQuery = v
+  action searchFocus
+    searchFocused = true
+  action searchBlur
+    searchFocused = false
+  // the keyboard's Search key keeps the search and puts the keyboard away.
+  action submitSearch
+    rememberSearch()
+    blur()
+  // a second press on the kind chosen clears it. A kind is for looking through: the keyboard goes.
+  action chooseKind(k: string)
+    let chosen = searchKind == k ? "" : k
+    searchKind = chosen
+    if chosen != ""
+      blur()
+    haptic("selection")
+  action useSearch(q: string)
+    searchQuery = q
+  action clearSearches
+    recentSearches = []
+  action rememberSearch
+    let q = searchQuery.trim()
+    if q != ""
+      recentSearches = [q].concat(recentSearches.filter(s => s.toLowerCase() != q.toLowerCase())).slice(0, 10)
+  action rememberChat
+    recentChats = [openRoom].concat(recentChats.filter(x => x != openRoom)).slice(0, 20)
+  // another account's recent chats and searches are not this one's.
+  action startRecent
+    recentChats = []
+    recentSearches = []
+    recentOwner = session.userId
+  action openFoundChat(id: string)
+    rememberSearch()
+    follow(path("room", id))
+  action openFoundMessage(room: string, event: string)
+    rememberSearch()
+    jumpRoom = room
+    jumpEvent = event
+    jumpedTo = ""
+    jumpMissed = ""
+    follow(path("room", room))
+  action openFoundLink(url: string)
+    rememberSearch()
+    openLink(url)
+  action startJump
+    send jumped = showMessage(jumpRoom, jumpEvent)
+  // found: the chat moves to it once its messages hold it (showJump); else a note says so and the
+  // chat stays at its newest.
+  action afterJump
+    match jumped
+      case some(j)
+        if j.id != ""
+          jumpedTo = j.id
+        else
+          jumpMissed = jumpRoom
+      case none
+        jumpMissed = jumpRoom
+    jumpEvent = ""
+  // moving to it is not the reader leaving the newest message, which would read the chat.
+  action revealJump
+    placing = true
+    scrollIntoView("transcript", jumpedTo, block="center")
+  action clearJump
+    jumpedTo = ""
+  action clearMissed
+    jumpMissed = ""

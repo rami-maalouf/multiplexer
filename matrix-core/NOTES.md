@@ -240,6 +240,57 @@ bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a Wha
 - The tests: `ChatActionsTests` (rooms "Multiplexer hold test", "... archive", "... delete", and
   "... WhatsApp", whose bridge bot is a service member and is not invited).
 
+## Search
+
+Search across chats (`Search.swift`, B18): chats by name, then messages, then links. The server
+takes no part: matrix-rust-sdk keeps a message index on the device.
+
+- **How the index is built.** `ClientBuilder.withSearchIndexStore(path:key:)` turns it on when
+  the client is built (sign-in and restore). From then on the sdk indexes every message the event
+  cache gets: from sync, from paging back, and, once per store, the events it already held
+  (`reindexed-v1`). Its backfill (`Client.runSearchBackfill(strategy: .foreground)`, started with
+  the sync; it needs `enableAutomaticBackPagination`) pages every joined chat back a week at a
+  time, the newest week of every chat first, to 13 weeks (about 3 months), at the foreground's
+  pace: one chat introduced a second, behind the sdk's other paging. It starts again at each
+  launch; pages the cache already holds cost no request.
+- **Where it lives.** `<store>/search/<room id>/`, one tantivy index per chat, beside the sdk's
+  `data` and `cache` folders, so Sign Out removes it with the store.
+- **Its key.** 32 random bytes as hex (`SearchIndex.newKey`), made at sign-in and kept only in
+  the Keychain with the session (`StoredSession.searchKey`, this device only, after first
+  unlock). A session kept before B18 gets a key at its next launch, and its index starts empty
+  (the sdk makes the index again when the key does not open it). On disk the index is not
+  readable (its `meta.json` is binary). The sdk's own stores (the event cache, which holds the
+  same messages) are not encrypted: we pass them no passphrase.
+- **What it holds.** Per message: its event id, body, time and sender. A photo's, video's, voice
+  note's or file's body is its file name and caption. Edits replace the old text; a deletion
+  removes it. Encrypted messages are indexed once this device can decrypt them.
+- **What a query matches.** Whole words, every word (`+word`), newest first. The sdk's tantivy
+  0.27 refuses a one-word prefix (`"wor"*` needs two terms) and has regexes off, so the start
+  of a word finds nothing until the word is whole; the app says so when nothing is found.
+  Case does not count; accents do (`café` is not `cafe`). Chat names are matched here, not by
+  the sdk: every word anywhere in the name, case and accents aside, the name's start first
+  (`chatsNamed`); the sdk's `.fuzzyMatchRoomName` filter lives on the one shared room list
+  (RoomFilters.swift says why we filter ourselves).
+- **Links** are messages whose text has `http://`, `https://` or `www.` (as the chat makes them
+  tappable). While typing, a message goes under Links when one of its links has one of the words.
+- **Kinds** (Images, Videos, Files) go by words in the file name: `image`, `jpg`, `png`, ...;
+  `video`, `mp4`, `mov`, ...; `pdf`, `docx`, `zip`, ... (`SearchKind.indexWords`); the results are
+  then kept by their message type. A file whose name has none of these words is not under its
+  kind. The bridges name media `image.jpg`, `video.mp4` (mautrix-whatsapp `wa-media.go`).
+- **Opening a found message** pages the chat's live timeline back until it holds the event (at
+  most 1000 events, from the cache first), then shows from 5 messages before it, so the chat
+  stays live: new messages come and sending works. Further back, the chat opens at its newest
+  messages and says so. `TimelineFocus.event` would reach any message in one request, but its
+  timeline is not live (no new messages, no send) and the chat would have to switch timelines.
+- **One room's search** (B19): `search(_:in:)` and `search(kind:_:in:)` keep one chat's results.
+  The sdk's per-room search is not in the bindings, so this pages through every chat's results.
+- **Numbers, `@test1` (29 chats, simulator).** Index 0.3 to 0.9 MB for 28 chats, event cache 2 to
+  6 MB; the backfill was still running after 63 s of a launch. A search of words answers in 5 to
+  25 ms, a kind (up to 15 pages) in 16 to 92 ms. The app logs the index's size and the backfill's
+  state each minute (`matrix: search index …`) and each search's time (`matrix: search answered …`).
+- The tests: `SearchTests` (rooms "Multiplexer search test" and "... history", the second with 40
+  numbered messages from its first run).
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The

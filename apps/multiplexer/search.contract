@@ -1,0 +1,367 @@
+// the search across all chats, after Beeper's: the bottom bar's search button turns into a field
+// at the bottom with the keyboard up. Before typing: the kinds (Images, Videos, Links, Files), the
+// searches made last and the chats opened last. While typing: chats by name, then messages, then
+// links (Rami, 2026-11-02). Its state and actions are the inbox's (search-members.contract); the
+// screen it searches from draws the bar and the list in its own place.
+use Badge from "exact:content"
+use Face from "./bubble.contract"
+use NetworkBadge from "./network.contract"
+
+// the field grows out of the search button's place at the right, as Beeper's does, and the
+// results come in under it.
+keyframes widen
+  from translate="62% 0px" opacity=0
+keyframes appear
+  from opacity=0
+
+// a piece of a found message's text: hit, one of the words searched for.
+shape SnippetRun
+  id: string
+  text: string
+  hit: bool
+
+// a chat found by its name, or opened last. preview: its newest message as the inbox shows it.
+// loud: unread and not muted (a bolder name, the time in the accent).
+shape FoundChat
+  id: string
+  name: string
+  avatar: string
+  initials: string
+  network: string
+  preview: string
+  lastTime: number
+  unread: number
+  loud: bool
+  muted: bool
+  mentions: number
+  markedUnread: bool
+
+// a found message: its chat (room, chatName, its picture and network), the event it is, who sent
+// it ("You", a name, or "" in a chat with that one person), its text with the words marked, and
+// what it is (kind: text, image, video, audio, file or other). link: its first link ("" for
+// none); picture: a photo's thumbnail or a video's poster once downloaded; seconds: a video's
+// length; fileName and fileSize (bytes): a file's.
+shape FoundMessage
+  id: string
+  room: string
+  event: string
+  chatName: string
+  avatar: string
+  initials: string
+  network: string
+  sender: string
+  snippet: SnippetRun[]
+  time: number
+  kind: string
+  link: string
+  picture: string
+  seconds: number
+  fileName: string
+  fileSize: number
+
+// what the search found for owner's query and kind ("" for none): chats by name (or the chats
+// opened last, before any word), messages, and messages with a link that has a word.
+shape SearchFound
+  owner: string
+  query: string
+  kind: string
+  chats: FoundChat[]
+  messages: FoundMessage[]
+  links: FoundMessage[]
+
+// a found message's chat, paged back to it: the message's id there ("" when it is further back).
+shape Jump
+  id: string
+
+// the kinds above the results, as Beeper names them.
+fn kindName(k: string): string = k == "images" ? "Images" : (k == "videos" ? "Videos" : (k == "links" ? "Links" : "Files"))
+fn kindSymbol(k: string): string = k == "images" ? "symbol:photo" : (k == "videos" ? "symbol:icon.video" : (k == "links" ? "symbol:link" : "symbol:document"))
+// the field's placeholder: the chats searched, or the kind chosen.
+fn searchPlaceholder(kind: string): string = kind == "" ? "All Chats" : `Search ${kindName(kind)}`
+// what a found photo, video or file is called when it has no caption.
+fn kindLine(m: FoundMessage): string = m.kind == "image" ? "Photo" : (m.kind == "video" ? "Video" : (m.kind == "audio" ? "Voice message" : (m.kind == "file" ? m.fileName : "")))
+fn twoDigits(n: number): string = n < 10 ? `0${n}` : `${n}`
+fn videoLength(s: number): string = `${floor(s / 60)}:${twoDigits(s % 60)}`
+fn fileSizeText(bytes: number): string = bytes >= 1000000 ? `${round(bytes / 100000) / 10} MB` : (bytes >= 1000 ? `${round(bytes / 1000)} KB` : `${bytes} ${bytes == 1 ? "byte" : "bytes"}`)
+fn countText(n: number): string = n > 99 ? "99+" : n.toString()
+// what VoiceOver says for a found chat and a found message: the chat, its unread count, then the text.
+fn chatLabel(c: FoundChat): string = `${c.name}${c.unread > 0 ? `, ${c.unread} unread` : ""}${c.preview != "" ? `. ${c.preview}` : ""}`
+fn messageLabel(m: FoundMessage): string = `${m.chatName}. ${m.sender != "" ? `${m.sender}: ` : ""}${m.snippet.map(r => r.text).join("")}${m.link != "" ? `. ${m.link}` : ""}`
+
+// the bar at the bottom while searching: the field in a glass capsule, and the round close
+// button beside it, as Beeper has them. The field takes the search button's place.
+component SearchBar
+  props
+    query: string
+    kind: string
+    type: action
+    submit: action
+    close: action
+    // the field has the keyboard: the bar stands a little above it, as Beeper's does.
+    focused: bool
+    focus: action
+    blur: action
+    // the reader chose one of the accessibility text sizes; asked for less motion.
+    largeText: bool
+    reduced: bool
+  view
+    row position="absolute" left=0 right=0 bottom=0 padding="0 16px" align-items="center" gap=12 glassGroup=12
+      translate=(focused ? "0px -10px" : "0px 0px") transition="translate -exact-spring(400, 36, 1)"
+      pointer-events="none" testId="search-bar"
+      // the field's own fill and border give way to the glass; a chat search takes the plain
+      // keyboard with Search, not the web's address keyboard.
+      row flex=1 min-width=0 min-height=48 border-radius=24 backgroundMaterial="glass" align-items="center" gap=8 padding="0 12px 0 16px"
+        pointer-events="auto" sharedElement="search" -exact-layout-transition=(reduced ? "none" : "340ms cubic-bezier(.32,.72,0,1)")
+        image "symbol:search" font-size="1.0625rem" color="-exact-secondary-label" aria-hidden=true
+        input type="search" inputmode="text" id="search-field" value=query input=type submit=submit focus=focus blur=blur autofocus=true
+          enterkeyhint="search"
+          placeholder=searchPlaceholder(kind) aria-label=searchPlaceholder(kind) font-size="min(-exact-body, 22px)"
+          border="none" background-color="transparent" flex=1 min-width=0 min-height=44 testId="search-field"
+      button buttonStyle="glass" press=close width=48 height=48 pointer-events="auto" aria-label="Close Search" testId="close-search"
+        animation=(reduced ? "none" : "appear 200ms ease 120ms both")
+        image "symbol:close" font-size="1.25rem"
+
+// a kind above the results: a round button with its symbol and its name under it, filled with
+// the accent while it is chosen (a second press clears it).
+component KindButton
+  props
+    kind: string
+    chosen: bool
+    choose: action
+    largeText: bool
+  view
+    button appearance="none" press=choose(kind) aria-label=kindName(kind) aria-pressed=chosen testId=`kind-${kind}`
+      display="flex" flex-direction="column" align-items="center" gap=6 flex=1 min-width=0 padding="4px 0"
+      view width=(largeText ? 64 : 52) height=(largeText ? 64 : 52) border-radius=(largeText ? 32 : 26) display="flex" align-items="center"
+        justify-content="center" background-color=(chosen ? "AccentColor" : "-exact-tertiary-fill")
+        image kindSymbol(kind) font-size="1.375rem" color=(chosen ? "AccentColorText" : "-exact-label") aria-hidden=true
+      // a quarter of the screen's width: the name grows with the text size to a cap, on one line.
+      text kindName(kind) font="-exact-footnote" font-size="min(-exact-footnote, 19px)" white-space="nowrap"
+        color=(chosen ? "AccentColor" : "-exact-label") text-align="center" max-width="100%"
+
+// a chat, as the inbox's row shows it: its picture with its network's logo, its name, its time,
+// its newest message, and its unread count.
+component ChatResult
+  props
+    chat: FoundChat
+    open: action
+    now: number
+    offset: number
+  view
+    button appearance="none" press=open(chat.id) aria-label=chatLabel(chat) testId=`found-chat-${chat.id}`
+      display="flex" flex-direction="row" align-items="center" width="100%" text-align="start"
+      view position="relative" flex-shrink=0 margin-right=12
+        Face(picture=chat.avatar, initials=chat.initials, size=44)
+        if chat.network != "matrix"
+          NetworkBadge(network=chat.network, identifier=`found-network-${chat.id}`)
+      column flex=1 min-width=0 gap=2
+        row flex-wrap="wrap" column-gap=6 align-items="baseline"
+          text font="-exact-headline" font-weight=(chat.loud ? 700 : 600) color="-exact-label" flex="1 1 10rem" min-width=0
+            text chat.name
+            if chat.muted
+              text " "
+              image "symbol:icon.bell-slash" width="0.8em" height="0.8em" vertical-align="baseline" color="-exact-secondary-label"
+                aria-label="Muted"
+          if chat.lastTime > 0
+            text formatDay(chat.lastTime, now, offset, "list") font="-exact-subheadline" margin-left="auto"
+              color=(chat.loud ? "AccentColor" : "-exact-secondary-label")
+        row gap=8 align-items="flex-start"
+          text chat.preview font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2 flex=1 min-width=0
+          if chat.mentions > 0
+            view flex-shrink=0
+              Badge(label=`@ ${countText(max(chat.unread, chat.mentions))}`, tint=some("AccentColor"))
+          else if chat.unread > 0
+            view flex-shrink=0
+              Badge(label=countText(chat.unread), tint=(chat.muted ? none : some("AccentColor")))
+          else if chat.markedUnread
+            view width=12 height=12 border-radius=6 margin="4px 4px 0" aria-label="Unread"
+              background-color=(chat.muted ? "-exact-tertiary-label" : "AccentColor")
+
+// a found message: its chat's picture, the chat's name and the message's time, then who sent it
+// and its text with the words in bold. A link's row shows its link in the accent first, and a
+// button beside it opens the link's page.
+component MessageResult
+  props
+    message: FoundMessage
+    open: action
+    openLink: action
+    showLink: bool
+    now: number
+    offset: number
+  view
+    row align-items="center" gap=0 width="100%"
+      button appearance="none" press=open(message.room, message.event) aria-label=messageLabel(message)
+        testId=`found-${message.event}` display="flex" flex-direction="row" align-items="flex-start" flex=1 min-width=0 text-align="start"
+        view position="relative" flex-shrink=0 margin-right=12
+          Face(picture=message.avatar, initials=message.initials, size=40)
+          if message.network != "matrix"
+            NetworkBadge(network=message.network, identifier=`found-network-${message.event}`)
+        column flex=1 min-width=0 gap=2
+          row flex-wrap="wrap" column-gap=6 align-items="baseline"
+            text message.chatName font="-exact-subheadline" font-weight=600 color="-exact-label" flex="1 1 8rem" min-width=0 line-clamp=1
+            text formatDay(message.time, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label" margin-left="auto"
+          if showLink and message.link != ""
+            text message.link font="-exact-subheadline" color="AccentColor" line-clamp=1 testId=`found-link-${message.event}`
+          text font="-exact-subheadline" color="-exact-secondary-label" line-clamp=(showLink ? 1 : 2) testId=`found-text-${message.event}`
+            if message.sender != ""
+              text `${message.sender}: ` color="-exact-secondary-label"
+            for r in message.snippet key=r.id
+              text r.text font-weight=(r.hit ? 600 : 400) color=(r.hit ? "-exact-label" : "-exact-secondary-label")
+      if showLink and message.link != ""
+        button press=openLink(message.link) aria-label="Open Link" testId=`open-link-${message.event}` margin-left=8
+          image "symbol:icon.safari"
+
+// a found photo or video in the kind's grid, three to a row, as Photos shows them; a tap opens its
+// chat at it. A video shows its length. The grid's row says no gap and its own padding: a list's
+// row puts gaps and padding between its children, and a tile has its own.
+component PictureTile
+  props
+    message: FoundMessage
+    open: action
+  view
+    button appearance="none" press=open(message.room, message.event) width="33.333%" aspect-ratio="1" padding=1 box-sizing="border-box"
+      aria-label=(message.kind == "video" ? `Video in ${message.chatName}` : `Photo in ${message.chatName}`) testId=`found-${message.event}`
+      view width="100%" height="100%" background-color="-exact-tertiary-fill" position="relative" overflow="hidden"
+        display="flex" align-items="center" justify-content="center"
+        if message.picture != ""
+          image message.picture width="100%" height="100%" object-fit="cover" aria-label=""
+        else
+          image (message.kind == "video" ? "symbol:icon.video" : "symbol:photo") font-size="1.375rem" color="-exact-secondary-label" aria-hidden=true
+        if message.kind == "video"
+          row position="absolute" left=6 bottom=5 gap=3 align-items="center" aria-hidden=true
+            image "symbol:play-fill" font-size="0.6875rem" color="media.ink"
+            if message.seconds > 0
+              text videoLength(message.seconds) font="-exact-caption2" font-weight=600 color="media.ink" font-variant-numeric="tabular-nums"
+
+// a found file: its symbol, its name, its size and chat, and its time.
+component FileResult
+  props
+    message: FoundMessage
+    open: action
+    now: number
+    offset: number
+  view
+    button appearance="none" press=open(message.room, message.event) aria-label=`${message.fileName}, ${message.chatName}`
+      testId=`found-${message.event}`
+      display="flex" flex-direction="row" align-items="center" gap=12 width="100%" text-align="start"
+      view width=40 height=40 border-radius=10 flex-shrink=0 background-color="-exact-tertiary-fill" display="flex" align-items="center"
+        justify-content="center"
+        image "symbol:document" font-size="1.25rem" color="AccentColor" aria-hidden=true
+      column flex=1 min-width=0 gap=2
+        // at large text sizes the time wraps under the name instead of narrowing it.
+        row flex-wrap="wrap" column-gap=6 align-items="baseline"
+          text message.fileName font="-exact-subheadline" font-weight=600 color="-exact-label" line-clamp=1 flex="1 1 8rem" min-width=0
+          text formatDay(message.time, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label" margin-left="auto"
+        text (message.fileSize > 0 ? `${fileSizeText(message.fileSize)} · ${message.chatName}` : message.chatName)
+          font="-exact-footnote" color="-exact-secondary-label" line-clamp=1
+
+// what the search shows in the list's place: the kinds, then what was found (or the recent
+// searches and chats before any word). found answers query and kind once shown is true.
+component SearchResults
+  props
+    found: SearchFound
+    shown: bool
+    loading: bool
+    query: string
+    kind: string
+    recentSearches: string[]
+    now: number
+    offset: number
+    largeText: bool
+    reduced: bool
+    chooseKind: action
+    openChat: action
+    openMessage: action
+    openLink: action
+    useSearch: action
+    clearSearches: action
+  derive typed = query.trim() != ""
+  derive empty = shown and not loading and found.chats.length == 0 and found.messages.length == 0 and found.links.length == 0
+  derive pictures = kind == "images" or kind == "videos"
+  view
+    // over the inbox's list, which stays where it was under it; its ground reaches past the
+    // screen's top and bottom edges, under the status bar and the home indicator, where the list
+    // would show.
+    column position="absolute" left=0 right=0 top=-120 bottom=-60 padding="120px 0 60px" box-sizing="border-box" display="flex"
+      flex-direction="column" background-color="-exact-background" animation=(reduced ? "none" : "appear 220ms ease both") testId="search-screen"
+      list id="search-results" appearance="auto" listStyle="plain" keyboardDismissMode="on-drag" flex=1 min-height=0 padding-bottom=72
+        testId="search-results"
+        section
+          row padding="8px 0 10px" gap=4 testId="kinds"
+            for k in ["images", "videos", "links", "files"] key=k
+              KindButton(kind=k, chosen=(kind == k), choose=chooseKind, largeText=largeText)
+        if not typed and kind == ""
+          if recentSearches.length > 0
+            section testId="recent-searches"
+              header
+                text "Recent Searches"
+              for s in recentSearches.slice(0, 5) key=s
+                button appearance="none" press=useSearch(s) aria-label=s testId=`recent-search-${s}`
+                  display="flex" flex-direction="row" align-items="center" gap=12 width="100%" min-height=44 text-align="start"
+                  image "symbol:icon.clock" font-size="1.0625rem" color="-exact-secondary-label" aria-hidden=true
+                  text s font="-exact-body" color="-exact-label" flex=1 min-width=0 line-clamp=1
+              button press=clearSearches testId="clear-searches"
+                text "Clear Recent Searches"
+          if found.chats.length > 0
+            section testId="recent-chats"
+              header
+                text "Recent"
+              for c in found.chats key=c.id
+                ChatResult(chat=c, open=openChat, now=now, offset=offset)
+        else if empty
+          section
+            column align-items="center" gap=8 padding="48px 0" text-align="center" width="100%" testId="no-results"
+              image "symbol:search" font-size="2.25rem" color="-exact-tertiary-label" aria-hidden=true
+              text (typed ? `No Results for “${query.trim()}”` : `No ${kindName(kind)}`) font="-exact-title3" font-weight=600 color="-exact-label"
+              text "Search finds any part of a chat’s name, and whole words in the messages this iPhone has from about the last 3 months."
+                font="-exact-subheadline" color="-exact-secondary-label"
+        else if kind != ""
+          section testId=`found-${kind}`
+            header
+              text kindName(kind)
+            if pictures
+              row flex-wrap="wrap" gap=0 padding="0 15px" box-sizing="border-box" width="100%" testId="found-grid"
+                for m in found.messages key=m.id
+                  PictureTile(message=m, open=openMessage)
+            else if kind == "files"
+              for m in found.messages key=m.id
+                FileResult(message=m, open=openMessage, now=now, offset=offset)
+            else
+              for m in found.messages key=m.id
+                MessageResult(message=m, open=openMessage, openLink=openLink, showLink=true, now=now, offset=offset)
+        else
+          if found.chats.length > 0
+            section testId="found-chats"
+              header
+                text "Chats"
+              for c in found.chats.slice(0, 8) key=c.id
+                ChatResult(chat=c, open=openChat, now=now, offset=offset)
+          if found.messages.length > 0
+            section testId="found-messages"
+              header
+                text "Messages"
+              for m in found.messages key=m.id
+                MessageResult(message=m, open=openMessage, openLink=openLink, showLink=false, now=now, offset=offset)
+          if found.links.length > 0
+            section testId="found-links"
+              header
+                text "Links"
+              for m in found.links key=m.id
+                MessageResult(message=m, open=openMessage, openLink=openLink, showLink=true, now=now, offset=offset)
+        if loading and (typed or kind != "")
+          section
+            row justify-content="center" padding="12px 0" testId="search-loading"
+              progress aria-label="Searching"
+
+// over a chat opened at a found message that is further back than it pages: it shows its newest
+// messages, and says so a moment.
+component JumpNote
+  props
+    // the reader chose one of the accessibility text sizes: the chat's bar is taller.
+    largeText: bool
+  view
+    // under the chat's bar, where its transcript begins (app.contract's padding-top).
+    row position="absolute" top=(largeText ? 124 : 108) left=16 right=16 justify-content="center" pointer-events="none" z-index=20
+      testId="jump-note"
+      text "Couldn’t find that message here. Showing the newest messages." font="-exact-footnote" color="-exact-label"
+        text-align="center" padding="8px 14px" border-radius=18 backgroundMaterial="glass" role="status"

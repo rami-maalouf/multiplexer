@@ -28,10 +28,11 @@ fn listEmptyMessage(l: string, network: string): string = `${l == "archive" ? "C
 fn deleteMessage(network: string): string = `It leaves Multiplexer on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
 
 // the floating bar over the chat list: a round filter button on the left (filled with the accent
-// while a filter is on), and a capsule in the middle: Inbox (the chosen network's logo when the
+// while a filter is on), a capsule in the middle: Inbox (the chosen network's logo when the
 // filter sheet chose one), Archive, the list shown selected, then the up-down button that opens
-// the filter sheet. a press on the list shown goes back to its top. glass that comes close
-// merges, as the platform's does.
+// the filter sheet; and a round search button on the right, which turns into the search's field
+// (search.contract's SearchBar). a press on the list shown goes back to its top. glass that comes
+// close merges, as the platform's does.
 component BottomBar
   props
     filter: string
@@ -43,6 +44,7 @@ component BottomBar
     list: string
     network: string
     sheet: action
+    search: action
     // the reader chose one of the accessibility text sizes.
     largeText: bool
   derive inArchive = list == "archive"
@@ -71,8 +73,12 @@ component BottomBar
         button appearance="none" press=sheet aria-label="Inboxes" testId="inboxes-button"
           width=44 height=44 border-radius=22 display="flex" align-items="center" justify-content="center"
           image "symbol:chooser" font-size=symbolSize color="-exact-label"
-      // search comes here with its task; until then the capsule stays in the middle.
-      view width=48 height=48 aria-hidden=true
+      // its own glass face, as the capsule's: it flies into the search's field (a native button
+      // takes no layout transition).
+      button appearance="none" press=search backgroundMaterial="glass" width=48 height=48 border-radius=24 pointer-events="auto"
+        display="flex" align-items="center" justify-content="center" aria-label="Search" testId="search"
+        sharedElement="search" -exact-layout-transition="340ms cubic-bezier(.32,.72,0,1)"
+        image "symbol:search" font-size=symbolSize color="-exact-label"
       column id="filter-menu" popover="auto" role="menu" pointer-events="auto"
         for f in ["all", "unread", "unanswered", "people", "groups"] key=f
           button role="menuitemradio" aria-checked=(filter == f) press=choose(f)

@@ -32,7 +32,8 @@ members Multiplexer
   action keepNewLine
     newLine = thread.firstUnread
     newLineRoom = openRoom
-    if thread.firstUnread != ""
+    // a chat opened at a found message moves there instead (search-members.contract).
+    if thread.firstUnread != "" and (jumpEvent == "" or jumpRoom != openRoom)
       placing = true
       scrollIntoView("transcript", thread.firstUnread, block="center")
   action forgetNewLine

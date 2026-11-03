@@ -13,6 +13,8 @@ public final class MatrixAccount: @unchecked Sendable {
     let chats = ChatStates()
     /// The emojis this device counted and the server has not confirmed (MessageActions.swift).
     let emojiUses = EmojiUseStates()
+    /// The message search index's backfill and the found pictures (Search.swift).
+    let search = SearchState()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -31,10 +33,13 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// Signs in with a user name and password. `homeserver` is a server name
-    /// (`matrix.org`) or a URL; the store lives in `storeDirectory`. Throws a `SignInError`.
-    public static func signIn(homeserver: String, user: String, password: String, deviceName: String, storeDirectory: URL) async throws -> MatrixAccount {
+    /// (`matrix.org`) or a URL; the store lives in `storeDirectory`, with the message search
+    /// index, encrypted with `searchIndexKey` (`SearchIndex.newKey`; nil: not encrypted). Throws
+    /// a `SignInError`.
+    public static func signIn(homeserver: String, user: String, password: String, deviceName: String, storeDirectory: URL,
+                              searchIndexKey: String? = nil) async throws -> MatrixAccount {
         do {
-            let client = try await builder(storeDirectory).serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
+            let client = try await builder(storeDirectory, searchIndexKey: searchIndexKey).serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
             try await client.login(username: user, password: password, initialDeviceName: deviceName, deviceId: nil)
             return MatrixAccount(client: client)
         } catch {
@@ -42,9 +47,10 @@ public final class MatrixAccount: @unchecked Sendable {
         }
     }
 
-    /// Signs in again with a session that `savedSession()` returned.
-    public static func restore(_ saved: SavedSession, storeDirectory: URL) async throws -> MatrixAccount {
-        let client = try await builder(storeDirectory).homeserverUrl(url: saved.homeserverUrl).build()
+    /// Signs in again with a session that `savedSession()` returned, and the search index's key
+    /// it signed in with (another key starts the index again, empty).
+    public static func restore(_ saved: SavedSession, storeDirectory: URL, searchIndexKey: String? = nil) async throws -> MatrixAccount {
+        let client = try await builder(storeDirectory, searchIndexKey: searchIndexKey).homeserverUrl(url: saved.homeserverUrl).build()
         try await client.restoreSession(session: Session(
             accessToken: saved.accessToken,
             refreshToken: saved.refreshToken,
@@ -71,13 +77,17 @@ public final class MatrixAccount: @unchecked Sendable {
         }
     }
 
-    private static func builder(_ storeDirectory: URL) throws -> ClientBuilder {
+    private static func builder(_ storeDirectory: URL, searchIndexKey: String?) throws -> ClientBuilder {
         let data = storeDirectory.appendingPathComponent("data"), cache = storeDirectory.appendingPathComponent("cache")
-        try FileManager.default.createDirectory(at: data, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
+        let search = SearchIndex.directory(in: storeDirectory)
+        for folder in [data, cache, search] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
         return ClientBuilder()
             .sessionPaths(dataPath: data.path, cachePath: cache.path)
             .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
+            // the sdk indexes each message the device syncs or pages back; its backfill pages back
+            // every chat (`startSearchBackfill`), which needs automatic back-pagination.
+            .withSearchIndexStore(path: search.path, key: searchIndexKey)
+            .enableAutomaticBackPagination(enableAutomaticBackPagination: true)
     }
 
     public var userId: String {
@@ -348,6 +358,7 @@ public final class MatrixAccount: @unchecked Sendable {
             timelines = [:]
             readyTimelines = [:]
         }
+        search.stop()
         await syncService?.stop()
         syncService = nil
         try await client.logout()
@@ -369,6 +380,7 @@ public final class MatrixAccount: @unchecked Sendable {
             roomEntries = entries
             roomOrder = order
         }
+        startSearchBackfill()
     }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.
@@ -497,6 +509,31 @@ final class LiveTimeline: @unchecked Sendable {
             lock.withLock { reachedStart = start }
         }
         await items.settle()
+    }
+
+    /// Pages back until the timeline holds the event `eventId`, at most `limit` events or to the
+    /// room's start, then shows from `context` messages before it (never fewer than it shows).
+    /// The message's id in the chat, or nil when it is not that far back.
+    func show(event eventId: String, context: Int, limit: Int) async throws -> String? {
+        var paged = 0
+        while true {
+            if let id = items.messageId(ofEvent: eventId) {
+                let all = items.messages(), first = lock.withLock { firstShown }
+                let at = all.firstIndex { $0.id == id } ?? 0, shownFrom = all.firstIndex { $0.id == first } ?? all.count
+                if at - context < shownFrom { lock.withLock { firstShown = all[max(0, at - context)].id } }
+                return id
+            }
+            if lock.withLock({ reachedStart }) || paged >= limit {
+                // the last page's diffs may still be on their way.
+                await items.settle()
+                guard items.messageId(ofEvent: eventId) != nil else { return nil }
+                continue
+            }
+            let start = try await timeline.paginateBackwards(numEvents: 50)
+            paged += 50
+            lock.withLock { reachedStart = start }
+            await items.settle(quiet: 0.15, limit: 2)
+        }
     }
 
     func showOlder(_ count: Int) async throws {

@@ -1,5 +1,6 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
 import { emojiRows } from './emoji-rows.ts';
+import { searchFound, type SearchAnswer } from './search.ts';
 
 // app.json’s app.id: change the two together.
 export const appId = 'com.ramimaalouf.multiplexer';
@@ -234,6 +235,19 @@ const sources: Sources = {
     await native!.later({ op: 'chat', roomId, action });
     return { ok: true };
   },
+  // the search screen's results (search.ts): a kind's messages, the chats opened last (recent,
+  // newest first) before any word, or chats by name, messages and links. Nothing while it is closed.
+  loadSearch: async ([userId, searching, query, kind, recent], _store, _storage, native): Promise<Result<'loadSearch'>> => {
+    if (userId === '' || !searching || !native?.available) return { owner: userId, query, kind, chats: [], messages: [], links: [] };
+    // a found photo's picture, once downloaded; the recent chats' last messages as they change.
+    native.watch('search');
+    if (query === '' && kind === '') native.watch('rooms');
+    const answer = (await native.later({ op: 'search', query, kind, recent })) as SearchAnswer;
+    return { owner: userId, query, kind, ...searchFound(answer, query, initials) };
+  },
+  // a found message's chat pages back to it: its id there, or "" when it is further back.
+  showMessage: async ([roomId, eventId], _store, _storage, native): Promise<Result<'showMessage'>> =>
+    (await native!.later({ op: 'showMessage', roomId, eventId })) as { id: string },
   // the messages of a day go together in the reader's zone (utcOffset, in minutes).
   loadMessages: async ([roomId, isDirect, roomName, utcOffset], _store, _storage, native): Promise<Result<'loadMessages'>> => {
     if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, firstUnread: '', messages: [] };

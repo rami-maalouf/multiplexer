@@ -129,7 +129,7 @@ extension MatrixAccount {
     /// The account's push rules: read once from the store, then kept current by the sync and by
     /// this device's own changes. A change from another device tells the list.
     func notificationSettings() async -> NotificationSettings {
-        await chats.settings {
+        await chats.settings { [self] in
             let settings = await self.client.getNotificationSettings()
             settings.setDelegate(delegate: SettingsChanged { [weak self] in self?.notify(.rooms) })
             return settings

@@ -1,15 +1,18 @@
 import Foundation
 import Security
 
-/// What the Keychain holds for the signed-in account: its session, and the name of
-/// its store folder (a session without its store has lost its encryption keys).
+/// What the Keychain holds for the signed-in account: its session, the name of its store
+/// folder (a session without its store has lost its encryption keys), and the key of its
+/// message search index (`SearchIndex.newKey`; nil for a session kept before the index).
 public struct StoredSession: Codable, Equatable, Sendable {
     public var session: SavedSession
     public var store: String
+    public var searchKey: String?
 
-    public init(session: SavedSession, store: String) {
+    public init(session: SavedSession, store: String, searchKey: String? = nil) {
         self.session = session
         self.store = store
+        self.searchKey = searchKey
     }
 }
 

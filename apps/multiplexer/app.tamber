@@ -37,3 +37,7 @@ icons
   icon.arrowshape-turn-up-right = icon(sf "arrowshape.turn.up.right", svg "icons/arrowshape-turn-up-right.svg")
   // the chat's jump to its newest message, beside the count of unread messages below, as Beeper draws it.
   icon.arrow-down = icon(sf "arrow.down", svg "icons/arrow-down.svg")
+  // search's Videos kind, a recent search, and a found link's page, as Beeper and Safari draw them.
+  icon.video = icon(sf "video", svg "icons/video.svg")
+  icon.clock = icon(sf "clock", svg "icons/clock.svg")
+  icon.safari = icon(sf "safari", svg "icons/safari.svg")
