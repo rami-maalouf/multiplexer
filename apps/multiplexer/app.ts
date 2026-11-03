@@ -76,11 +76,12 @@ const STICKER_SIDE = 9.5;
 // a voice message's waveform shows as this many bars.
 const VOICE_BARS = 32;
 /** A waveform (each part from 0 to 1) as the bars a voice message shows, each its loudest part; a
- * flat line when it has none. */
-const barsOf = (levels: number[]): number[] => Array.from({ length: VOICE_BARS }, (_, i) => {
-  if (levels.length === 0) return 0;
+ * flat line when it has none. Each bar's id is its place. */
+const barsOf = (levels: number[]): { id: string; level: number }[] => Array.from({ length: VOICE_BARS }, (_, i) => {
   const from = Math.floor((i * levels.length) / VOICE_BARS);
-  return Math.max(...levels.slice(from, Math.max(from + 1, Math.floor(((i + 1) * levels.length) / VOICE_BARS))));
+  const level = levels.length === 0 ? 0
+    : Math.max(...levels.slice(from, Math.max(from + 1, Math.floor(((i + 1) * levels.length) / VOICE_BARS))));
+  return { id: String(i), level };
 });
 // a length in whole seconds, at least one for a sound of any length.
 const secondsOf = (ms: number): number => (ms > 0 ? Math.max(1, Math.round(ms / 1000)) : 0);

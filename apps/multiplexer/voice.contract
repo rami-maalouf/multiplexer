@@ -9,6 +9,12 @@ shape VoiceFile
   message: string
   path: string
 
+// one bar of a voice message's waveform: how loud its part is, from 0 to 1. id is its place, from 0:
+// a key that is not the loop's position keeps `verify` clean (the bars are never inserted or moved).
+shape VoiceBar
+  id: string
+  level: number
+
 // a recording made ready to go: recording is the recorder's file (it plays in the draft), path the
 // Ogg Opus file that goes, duration in milliseconds (seconds, whole), waveform the loudness of each
 // part for the others, bars the draft's.
@@ -19,7 +25,7 @@ shape VoiceDraft
   size: number
   waveform: number[]
   seconds: number
-  bars: number[]
+  bars: VoiceBar[]
 
 shape VoiceSent
   ok: bool
@@ -28,21 +34,22 @@ shape VoiceSent
 fn speedText(speed: number): string = `${speed}x`
 // the speed after this one: 1x, 1.5x, 2x, then 1x again.
 fn nextSpeed(speed: number): number = speed == 1 ? 1.5 : (speed == 1.5 ? 2 : 1)
-// a draft's bars, flat while its waveform is being measured.
-fn restingBars(bars: number[]): number[] = bars.length > 0 ? bars : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 // a voice message's waveform: one bar for each part, from its start to its end, as tall as that
-// part is loud. While it plays, the bars played are in full ink and the rest faint.
+// part is loud. While it plays, the bars played are in full ink and the rest faint. With no bars yet
+// (a draft's waveform is being measured), a flat line.
 component VoiceBars
   props
-    bars: number[]
+    bars: VoiceBar[]
     // how much has played, from 0 to 1; -1 when it is not the one playing (every bar in full ink).
     played: number
     ink: string
   view
     row flex=1 min-width=0 height=26 align-items="center" justify-content="space-between" gap=1 aria-hidden=true
-      for b, i in bars key=i
-        view width=2 flex-shrink=0 height=(3 + b * 23) border-radius=1 background-color=ink
+      if bars.length == 0
+        view flex=1 height=2 border-radius=1 background-color=ink opacity=0.4
+      for b, i in bars key=b.id
+        view width=2 flex-shrink=0 height=(3 + b.level * 23) border-radius=1 background-color=ink
           opacity=(played < 0 or i < played * bars.length ? 1 : 0.4)
 
 // the round play or pause mark: the ink's disc with the bubble's colour cut out, as Beeper draws it;
@@ -60,16 +67,17 @@ component VoicePlayMark
       if loading
         progress aria-label="Loading"
       else
-        image (playing ? "symbol:pause-fill" : "symbol:play-fill") font-size=(size * 0.42) color=fill margin-left=(playing ? 0 : 2)
-          aria-hidden=true
+        // it grows with the reader's text a little, to what its disc holds.
+        image (playing ? "symbol:pause-fill" : "symbol:play-fill") font-size=(size > 30 ? "min(-exact-subheadline, 14px)" : "min(-exact-footnote, 12px)")
+          color=fill margin-left=(playing ? 0 : 2) aria-hidden=true
 
 // a voice message: play, its waveform, its length (the time left once it has played some) and the
 // speed chip, which changes the speed of every voice message. Yours in the accent, others' grey, with
 // no tail, as Beeper's. At the accessibility text sizes (stacked) the length and the chip go under
-// the waveform. A still one (a held message's copy, a chat's preview) has no buttons.
+// the waveform. VoiceStill draws one with no buttons.
 component VoiceBubble
   props
-    bars: number[]
+    bars: VoiceBar[]
     // its length in seconds (0 when the sender did not say: the player's is used once it plays).
     seconds: number
     outgoing: bool
@@ -82,7 +90,6 @@ component VoiceBubble
     speed: number
     dimmed: bool
     stacked: bool
-    still: bool
     play: action
     speedUp: action
     identifier: string
@@ -95,40 +102,61 @@ component VoiceBubble
       width="16.5rem" max-width="100%" box-sizing="border-box" padding=(stacked ? "6px 12px 6px 4px" : "1px 6px 1px 4px")
       border-radius=20 background-color=fill opacity=(dimmed ? 0.6 : 1)
       row align-items="center" gap=8 min-width=0
-        if still
-          view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
-            VoicePlayMark(playing=false, loading=false, ink=ink, fill=fill, size=32)
-        else
-          // the length in its name, so VoiceOver tells one voice message's button from another's.
-          button appearance="none" press=play aria-label=`${playing ? "Pause" : "Play"}, ${lengthText(seconds)}` testId=`${identifier}-play`
-            min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
-            VoicePlayMark(playing=playing, loading=loading, ink=ink, fill=fill, size=32)
+        // the length in its name, so VoiceOver tells one voice message's button from another's.
+        button appearance="none" press=play aria-label=`${playing ? "Pause" : "Play"}, ${lengthText(seconds)}` testId=`${identifier}-play`
+          min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
+          VoicePlayMark(playing=playing, loading=loading, ink=ink, fill=fill, size=32)
         VoiceBars(bars=bars, played=played, ink=ink)
         if not stacked
           text lengthText(shown) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" flex-shrink=0
             testId=`${identifier}-time`
-          VoiceSpeed(speed=speed, outgoing=outgoing, still=still, press=speedUp, identifier=`${identifier}-speed`)
+          VoiceSpeed(speed=speed, outgoing=outgoing, press=speedUp, identifier=`${identifier}-speed`)
       if stacked
         row align-items="center" justify-content="space-between" gap=8 padding-left=6
           text lengthText(shown) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" testId=`${identifier}-time`
-          VoiceSpeed(speed=speed, outgoing=outgoing, still=still, press=speedUp, identifier=`${identifier}-speed`)
+          VoiceSpeed(speed=speed, outgoing=outgoing, press=speedUp, identifier=`${identifier}-speed`)
+
+// a voice message as VoiceBubble draws it at rest, with no buttons: a held message's copy, and a
+// chat's preview (itself a button).
+component VoiceStill
+  props
+    bars: VoiceBar[]
+    seconds: number
+    outgoing: bool
+    speed: number
+    dimmed: bool
+    stacked: bool
+    identifier: string
+  derive ink = outgoing ? "AccentColorText" : "-exact-label"
+  derive fill = outgoing ? "AccentColor" : "bubble.incoming"
+  view
+    column id=identifier testId=identifier role="group" aria-label=`Voice message, ${lengthText(seconds)}` gap=4
+      width="16.5rem" max-width="100%" box-sizing="border-box" padding=(stacked ? "6px 12px 6px 4px" : "1px 6px 1px 4px")
+      border-radius=20 background-color=fill opacity=(dimmed ? 0.6 : 1)
+      row align-items="center" gap=8 min-width=0
+        view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
+          VoicePlayMark(playing=false, loading=false, ink=ink, fill=fill, size=32)
+        VoiceBars(bars=bars, played=-1, ink=ink)
+        if not stacked
+          text lengthText(seconds) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" flex-shrink=0
+          view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
+            VoiceSpeedText(speed=speed, outgoing=outgoing)
+      if stacked
+        row align-items="center" justify-content="space-between" gap=8 padding-left=6
+          text lengthText(seconds) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums"
+          VoiceSpeedText(speed=speed, outgoing=outgoing)
 
 // the speed chip: "1x" on a faint fill, in a 44-point target.
 component VoiceSpeed
   props
     speed: number
     outgoing: bool
-    still: bool
     press: action
     identifier: string
   view
-    if still
-      view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
-        VoiceSpeedText(speed=speed, outgoing=outgoing)
-    else
-      button appearance="none" press=press aria-label=`Playback Speed ${speedText(speed)}` testId=identifier min-width=44 min-height=44
-        display="flex" align-items="center" justify-content="center" flex-shrink=0 -exact-press-haptic="selection"
-        VoiceSpeedText(speed=speed, outgoing=outgoing)
+    button appearance="none" press=press aria-label=`Playback Speed ${speedText(speed)}` testId=identifier min-width=44 min-height=44
+      display="flex" align-items="center" justify-content="center" flex-shrink=0 -exact-press-haptic="selection"
+      VoiceSpeedText(speed=speed, outgoing=outgoing)
 
 component VoiceSpeedText
   props
@@ -172,12 +200,12 @@ component RecordingBar
       button appearance="none" press=stop disabled=starting aria-label="Stop Recording" testId="voice-stop" width=44 height=44
         display="flex" align-items="center" justify-content="center" flex-shrink=0
         view width=34 height=34 border-radius=17 background-color="-exact-system-red" display="flex" align-items="center" justify-content="center"
-          image "symbol:stop-fill" font-size=14 color="voice.on-red" aria-hidden=true
+          image "symbol:stop-fill" font-size="min(-exact-subheadline, 14px)" color="voice.on-red" aria-hidden=true
 
 // the recording before it goes: Delete, play with its waveform and length, and Send.
 component DraftBar
   props
-    bars: number[]
+    bars: VoiceBar[]
     seconds: number
     // the draft is the one in the player (playing or paused).
     current: bool

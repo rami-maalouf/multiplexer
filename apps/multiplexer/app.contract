@@ -11,7 +11,7 @@ use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, seenText from "./details.contract"
-use VoiceBubble, VoiceButton, RecordingBar, DraftBar, restingBars from "./voice.contract"
+use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
 
 shape Session
   userId: string
@@ -116,7 +116,7 @@ shape Message
   status: string
   statusTime: number
   isAudio: bool
-  bars: number[]
+  bars: VoiceBar[]
 
 // isMine: this account reacted with it, so a tap takes it back.
 shape Reaction
@@ -895,9 +895,8 @@ component Multiplexer
                               image m.image width="100%" height="100%" object-fit=(m.isSticker ? "contain" : "cover") aria-label=(m.body != "" ? m.body : "Photo")
                         if m.isAudio
                           view max-width="80%"
-                            VoiceBubble(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=false, playing=false, loading=false, time=0,
-                              speed=voiceSpeed, dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, still=true, play=openChat(aimed),
-                              speedUp=openChat(aimed), identifier=`peek-voice-${m.id}`)
+                            VoiceStill(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, speed=voiceSpeed, dimmed=(m.state == "sending"),
+                              stacked=viewport.accessibilityTextSize, identifier=`peek-voice-${m.id}`)
                         if m.waitingForKey
                           text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
                             background-color="-exact-fill" color="-exact-secondary-label"
@@ -1044,7 +1043,7 @@ component Multiplexer
                               VoiceBubble(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=(voicePlaying == m.id and voiceRoom == openRoom),
                                 playing=(voicePlaying == m.id and voiceRoom == openRoom and not voicePaused and voiceSrc != ""),
                                 loading=(voicePlaying == m.id and voiceSrc == "" and not failed(voiceFile)), time=voiceTime, speed=voiceSpeed,
-                                dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, still=false, play=playVoice(m.id), speedUp=speedUp,
+                                dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, play=playVoice(m.id), speedUp=speedUp,
                                 identifier=`voice-${m.id}`)
                           // a message on its way is dimmed; one that failed says so, with a way to send it again.
                           if m.waitingForKey
@@ -1149,7 +1148,7 @@ component Multiplexer
                   // a voice message takes the field's place while it records, then as a draft until it goes.
                   if recording == "draft"
                     view flex=1 min-width=0
-                      DraftBar(bars=restingBars(draftBars), seconds=draftSeconds, current=(voicePlaying == "draft"),
+                      DraftBar(bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
                         playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, preparing=pending(voicePrepared),
                         remove=cancelVoice, play=playVoice("draft"), send=sendVoiceDraft)
                   else if recording != "idle"
@@ -1244,9 +1243,8 @@ component Multiplexer
                     column contextTarget=`voice-${held}` contextMagnify=true width=heldWidth max-width="100%" margin-bottom=6 testId="held-voice"
                       match heldMessage
                         case some(m)
-                          VoiceBubble(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=false, playing=false, loading=false, time=0,
-                            speed=voiceSpeed, dimmed=false, stacked=viewport.accessibilityTextSize, still=true, play=letGo, speedUp=letGo,
-                            identifier="held-voice-bubble")
+                          VoiceStill(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, speed=voiceSpeed, dimmed=false,
+                            stacked=viewport.accessibilityTextSize, identifier="held-voice-bubble")
                         case none
                           view
                   else if heldBig
