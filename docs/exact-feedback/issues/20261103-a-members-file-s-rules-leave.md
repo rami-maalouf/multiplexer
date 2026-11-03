@@ -36,3 +36,10 @@ Seen on 2026-11-03 at exact2 `ed43ad09a0`.
 ## Pull request (2026-11-03)
 
 https://github.com/ccheever/exact2/pull/1364 (fixes it): a members file may declare shapes, `fn`s and components beside its block (its block calls them as they are; another file names them on a `use` line). The grammar says so, and `contract vocab members` answers with a two-file example.
+
+More evidence on 2026-11-03 at `ed43ad09a0`: a members file's `mutation renamed as shape Reply`
+named a shape of the root, and `contract-use-missing` said "`Reply` is declared in
+`app.contract`, which uses this file: naming it here would make a cycle; move it to a file both
+can use". Moving a shape that 20 of the root's mutations use would touch a file other agents
+edit, so the feature's file declared a second `ok: bool` shape. A members file sees its root's
+state; seeing its root's shapes too would remove the copy. About 2 minutes.

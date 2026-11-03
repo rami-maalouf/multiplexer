@@ -41,3 +41,8 @@ its box (101 to 200 points wide in the recording's scale) over about 30 frames, 
 on close. What remains: `screenshot … over` refuses under `--timing platform` ("film is the agent
 clock's, and --timing platform leaves UIKit's motion on its own"), so filming a UIKit transition
 still needs a recording outside Exact. That is the `QUEUE.md` entry named above.
+
+Seen again on 2026-11-03 at `ed43ad09a0`, with a profile page zoomed out of a chat bar's capsule
+(`navigationSource="chat-title"`): `screenshot … over 600 every 100` showed the chat unchanged in
+all 7 frames. A Simulator recording under `--timing platform` filmed the zoom open and closed;
+the frames came from `ffmpeg`, outside Exact (about 4 minutes).

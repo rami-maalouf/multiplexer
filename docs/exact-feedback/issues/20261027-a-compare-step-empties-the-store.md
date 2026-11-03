@@ -29,3 +29,7 @@ Cost: about 5 minutes.
 
 Seen on 2026-10-27 at exact2 `cee509ac82`, on iOS: the agent's `default` storage folder
 was recreated at the drive's start.
+
+## Fixed in exact2 (seen 2026-11-03 at `cee6cccb34`)
+
+`scripts/agent.mjs` prints "note: --storage <name> starts empty, as a drive that compares with a reference does, where one that does not keeps it (--keep-storage keeps it here)", and `--keep-storage` keeps the store in a drive that compares.

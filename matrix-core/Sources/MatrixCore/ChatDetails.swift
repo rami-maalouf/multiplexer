@@ -211,7 +211,8 @@ extension MatrixAccount {
 
     private func videoContent(roomId: String, messageId: String, timeout: TimeInterval) async throws -> (VideoMessageContent, MessageVideo) {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        guard let event = live.items.event(of: messageId), case .msgLike(let like) = event.content,
+        // a video of the info page's grid is in the chat's media timeline.
+        guard let event = await (mediaItems(roomId, for: messageId) ?? live.items).event(of: messageId), case .msgLike(let like) = event.content,
               case .message(let message) = like.kind, case .video(let content) = message.msgType else {
             throw MatrixCoreError.noVideo(messageId)
         }

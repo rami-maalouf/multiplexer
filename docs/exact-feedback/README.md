@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26; 73 to 76 on 2026-11-03, with new evidence for 2 and 60. 77 to 82 on 2026-11-03 (B18 search), with new evidence for 13 and 26.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26; 73 to 76 on 2026-11-03, with new evidence for 2 and 60. 77 to 82 on 2026-11-03 (B18 search), with new evidence for 13 and 26; 83 to 85 on 2026-11-03 (B20 chat info), with new evidence for 61 and the zoom filming finding.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -36,7 +36,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 15 | After `update`, `lock` reports "no changes" for a `Cargo.lock` that `update` rewrote. Fixed in PR #1347 (open). | About 2 min | P3 | [update-and-lock-disagree-about-cargo-lock](issues/20261027-update-and-lock-disagree-about-cargo-lock.md) |
 | 16 | A drive cannot wait for work that a native module starts by itself or pushes after a mutation, so it needs a fixed real-time wait. | About 6 min, and slow drives | P3 | [a-drive-cannot-wait-for-a](issues/20261027-a-drive-cannot-wait-for-a.md) |
 | 17 | `clock until state` and `expect state` take different path forms, and the refusal shows only the grammar. Fixed in PR #1339 (open). | About 3 min and a wasted drive | P3 | [clock-until-state-and-expect-state](issues/20261027-clock-until-state-and-expect-state.md) |
-| 18 | A `compare` step empties the store for the whole drive, and nothing says so. | About 5 min | P3 | [a-compare-step-empties-the-store](issues/20261027-a-compare-step-empties-the-store.md) |
+| 18 | A `compare` step empties the store for the whole drive, and nothing says so. Fixed in exact2 at `cee6cccb34`: the drive prints "starts empty, as a drive that compares with a reference does", and `--keep-storage` keeps the store. | About 5 min | P3 | [a-compare-step-empties-the-store](issues/20261027-a-compare-step-empties-the-store.md) |
 | 19 | A transcript moved by one row when an update removed its first row above the view (seen once, not isolated). | About 10 min to measure | P3 | [a-transcript-moved-by-one-row](issues/20261027-a-transcript-moved-by-one-row.md) |
 | 20 | A virtualized list has no place for a row outside its `for`, so a chat cannot show that it is loading older messages, or that it has reached the start. | About 3 min, and a gap in the chat | P3 | [a-virtualized-list-has-no-place](issues/20261027-a-virtualized-list-has-no-place.md) |
 | 21 | Closed: fixed in exact2 (`rem` inside `min()` compiles at `ed43ad09a0`). Was: a size could not both scale with the text and stop at a cap. | About 2 min, and a fixed-size picture | P3 | [rem-cannot-go-inside-min-so](issues/closed/20261027-rem-cannot-go-inside-min-so.md) |
@@ -66,7 +66,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 45 | No keyboard fact: a chat cannot keep a message in view as the keyboard comes up. | About 15 min | P3 | [no-keyboard-fact-a-chat-cannot](issues/20261102-no-keyboard-fact-a-chat-cannot.md) |
 | 46 | An app checkout at another folder depth cannot build: `EXACT2` does not cover the app's Cargo paths. Partly fixed in PR #1346 (open). | About 10 min, four builds | P3 | [an-app-checkout-at-another-depth](issues/20261102-an-app-checkout-at-another-depth.md) |
 | 47 | A real-touch tap at a point does not scroll its target into view, and a tap that opened nothing still says "tapped". Partly fixed in PR #1340 (open). | About 8 min, five drives | P3 | [a-real-touch-tap-at-a](issues/20261102-a-real-touch-tap-at-a.md) |
-| 48 | `check` measures a half-height sheet's rows at their drawn size (x0.96) and does not say why. | About 3 min | P3 | [check-measures-a-half-height-sheet](issues/20261102-check-measures-a-half-height-sheet.md) |
+| 48 | `check` measures a half-height sheet's rows at their drawn size (x0.96) and does not say why. Partly fixed in PR #1368 (open). | About 3 min | P3 | [check-measures-a-half-height-sheet](issues/20261102-check-measures-a-half-height-sheet.md) |
 | 49 | A plain list's first row has a top separator that the app cannot hide. | About 6 min | P3 | [a-plain-list-s-first-row](issues/20261102-a-plain-list-s-first-row.md) |
 | 50 | `scrollIntoView` cannot open a collapsed large title again. | About 10 min | P3 | [scrollintoview-cannot-open-a-collapsed-large](issues/20261102-scrollintoview-cannot-open-a-collapsed-large.md) |
 | 51 | A symbol inside a text with no width or height draws nothing, with no warning. | About 20 min | P3 | [a-symbol-inside-a-text-with](issues/20261103-a-symbol-inside-a-text-with.md) |
@@ -101,6 +101,9 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 80 | A data module answer refused for its 100 ms turn shows as a stale page; only logs name it. | About 10 min | P3 | [a-refused-data-module-answer-shows-stale](issues/20261103-a-refused-data-module-answer-shows-stale.md) |
 | 81 | A search field in content gets the web address keyboard. | About 2 min | P3 | [a-search-field-gets-the-web-address-keyboard](issues/20261103-a-search-field-gets-the-web-address-keyboard.md) |
 | 82 | `display` on a list turns its cells into a flex row, with no warning. | About 5 min | P3 | [display-on-a-list-turns-its-cells](issues/20261103-display-on-a-list-turns-its-cells.md) |
+| 83 | The zoom transition (`navigationSource`) has no doc an app can read. | About 10 min | P3 | [navigation-source-has-no-doc](issues/20261103-navigation-source-has-no-doc.md) |
+| 84 | A route cannot say "a bar with buttons and no title" without an empty heading. | About 3 min | P3 | [a-bar-with-buttons-and-no](issues/20261103-a-bar-with-buttons-and-no.md) |
+| 85 | `path()` takes only a literal route name, so a choice of two routes needs two pushes. | About 1 min | P3 | [path-needs-a-literal-route-name](issues/20261103-path-needs-a-literal-route-name.md) |
 
 ## What worked well
 
@@ -204,3 +207,4 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1365](https://github.com/ccheever/exact2/pull/1365): `caps` counts a file's lines as `wc -l` does | 59 | Open |
 | 2026-11-03 | [#1366](https://github.com/ccheever/exact2/pull/1366): the agent's help and the guide name `state media` and what a drive cannot show of a video | 62 | Open |
 | 2026-11-03 | [#1367](https://github.com/ccheever/exact2/pull/1367): the search card says the bar hides while the person searches | 65 | Open |
+| 2026-11-03 | [#1368](https://github.com/ccheever/exact2/pull/1368): `check` names the scale of a sheet iOS draws scaled under a target finding | 48 | Open |
