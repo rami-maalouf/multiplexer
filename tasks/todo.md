@@ -955,14 +955,29 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
 (`navigationSource`).
 
 **Acceptance criteria:**
-- [ ] It zooms out of the top bar's capsule and shrinks back on close.
-- [ ] Picture, name, "WhatsApp Group - 7 members" (or the network for a DM); Search, Archive,
-  Low Priority (or Unpin) and More; Media; Members with Add member.
-- [ ] Edit: Edit Group Info; Customize for Me (a name only you see).
-- [ ] More: Pin, Mark as Read, Mute, Delete. Jump to Date: the SDK has none (jump to a message
-  works). Remind Me: "Later".
-- [ ] Bookmarks: this chat's saved messages (B14).
+- [x] It zooms out of the top bar's capsule and shrinks back on close. (A Simulator recording
+  under `--timing platform`: `apps/multiplexer/.exact/b20/zoom-open.png` and `zoom-close.png`.)
+- [x] Picture, name, "WhatsApp Group - 7 members" (or the network for a DM); Search, Archive,
+  Low Priority (or Unpin) and More; Media; Members with Add member. (`info.contract`,
+  `info-members.contract`, `info.ts`, `modules/apple/Info.swift`, MatrixCore `ChatInfo.swift`.
+  The member count leaves out the bridge's bot. Media: the chat's newest photos and videos from
+  a timeline of its own, four, then up to 40 at "See More"; a tile opens the photo or video
+  viewer, zoomed out of it. Members: six by name, "See All" for the rest. Search is shown
+  disabled until B19. Add Member shows only in plain Matrix groups where you may invite; a
+  bridged group says "People join this group on WhatsApp", as Matrix cannot add someone there.
+  A DM shows no members' list.)
+- [x] Edit: Edit Group Info (name and picture, for groups you may change); Customize for Me (a
+  name only you see, in the account's data `com.ramimaalouf.multiplexer.names`, so it follows the
+  account to its other devices; the list, the chat bar and the forward sheet show it, and the page
+  says what everyone else sees; "Use the Chat's Own Name" takes it away).
+- [x] More: Pin, Mark as Read (or Unread, which leaves the chat as the chat bar's does), Mute,
+  Delete (with the list's alert). Jump to Date: the SDK has none (jump to a message works), so it
+  is left out. Remind Me: "Later".
+- [ ] Bookmarks: this chat's saved messages (B14). Not built: B14 has no bookmarks yet.
 - [ ] Message expiry: last of all (Rami: keep it, "not urgent"); see "Later".
+- [x] Gate: MatrixCore `ChatInfoTests` 5 passed and the whole suite 43 passed (1 skipped);
+  drives as `@test1` in dark, light and the largest text size, `check both` clean on the page and
+  its sheets; `verify ios` clean (2026-11-03). Screenshots in `apps/multiplexer/.exact/b20/`.
 
 **Dependencies:** B9. **Scope:** L
 
