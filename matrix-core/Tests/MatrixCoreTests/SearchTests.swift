@@ -132,6 +132,65 @@ final class SearchTests: XCTestCase {
         XCTAssertGreaterThan(try Data(contentsOf: file).count, 0)
     }
 
+    /// In one chat: words find its messages only, and each kind is found by its type, a voice
+    /// message too, and a photo or file whose name the index would not know as one; words
+    /// narrow a kind by the start of a word.
+    func testOneChatsMessagesAndKinds() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let reader = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let roomId = try await room(roomName, owner: reader, other: sender, user2: user2)
+        let otherId = try await room(historyName, owner: reader, other: sender, user2: user2)
+        let session = try sender.savedSession()
+
+        let word = "otter" + token(), mxc = "mxc://example.org/\(token())"
+        let here = try await sendEvent(["msgtype": "m.text", "body": "An \(word) at https://example.org/\(word) today"], roomId: roomId, session: session)
+        _ = try await sendEvent(["msgtype": "m.text", "body": "Another \(word) elsewhere"], roomId: otherId, session: session)
+        let file = try await sendEvent(["msgtype": "m.file", "body": "Minutes \(word).bin", "filename": "Minutes \(word).bin", "url": mxc,
+                                        "info": ["mimetype": "application/octet-stream", "size": 1234]], roomId: roomId, session: session)
+        let photo = try await sendEvent(["msgtype": "m.image", "body": "snapshot", "url": mxc, "info": ["mimetype": "image/jpeg", "w": 4, "h": 3]],
+                                        roomId: roomId, session: session)
+        let voice = try await sendEvent(["msgtype": "m.audio", "body": "Voice message.ogg", "url": mxc,
+                                         "info": ["mimetype": "audio/ogg", "duration": 2500, "size": 900],
+                                         "org.matrix.msc1767.audio": ["duration": 2500, "waveform": [0, 512, 1024]],
+                                         "org.matrix.msc3245.voice": [:] as [String: Any]], roomId: roomId, session: session)
+
+        // the words find this chat's message only, and no chats.
+        var found = try await reader.search(word, in: roomId)
+        let start = Date()
+        while !(found.messages + found.links).contains(where: { $0.eventId == here }), Date().timeIntervalSince(start) < 30 {
+            try await Task.sleep(nanoseconds: 500_000_000)
+            found = try await reader.search(word, in: roomId)
+        }
+        XCTAssertTrue(found.links.contains { $0.eventId == here }, "the chat's message is not found")
+        XCTAssertTrue((found.messages + found.links).allSatisfy { $0.chat.id == roomId }, "another chat's message is found")
+        XCTAssertTrue(found.chats.isEmpty)
+
+        // each kind by its type.
+        let files = try await kind(reader, .files, roomId: roomId) { $0.contains { $0.eventId == file } }
+        XCTAssertTrue(files.allSatisfy { $0.kind == .file })
+        XCTAssertEqual(files.first { $0.eventId == file }?.file?.size, 1234)
+        let images = try await kind(reader, .images, roomId: roomId) { $0.contains { $0.eventId == photo } }
+        XCTAssertTrue(images.allSatisfy { $0.kind == .image }, "a video or other is under Images")
+        let audio = try await kind(reader, .audio, roomId: roomId) { $0.contains { $0.eventId == voice } }
+        let note = try XCTUnwrap(audio.first { $0.eventId == voice })
+        XCTAssertEqual(note.audio?.isVoice, true)
+        XCTAssertEqual(note.audio?.duration, 2500)
+        XCTAssertFalse(note.isOwn)
+        let links = try await kind(reader, .links, roomId: roomId) { $0.contains { $0.eventId == here } }
+        XCTAssertTrue(links.allSatisfy { !$0.links.isEmpty })
+        let videos = try await reader.chatKind(.videos, roomId: roomId)
+        XCTAssertTrue(videos.allSatisfy { $0.kind == .video })
+
+        // words narrow a kind: the start of a word of the file's name, in any case.
+        let minutes = try await reader.chatKind(.files, String(word.uppercased().prefix(9)), roomId: roomId)
+        XCTAssertEqual(minutes.map(\.eventId), [file])
+        let none = try await reader.chatKind(.files, "zebra\(token())", roomId: roomId)
+        XCTAssertTrue(none.isEmpty)
+        let linked = try await reader.chatKind(.links, word, roomId: roomId)
+        XCTAssertEqual(linked.map(\.eventId), [here])
+    }
+
     /// A found message further back than the chat loads opens the chat there: its timeline pages
     /// back to it, and the chat shows from a few messages before it.
     func testAnOlderMessageOpensItsChatThere() async throws {
@@ -228,6 +287,30 @@ final class SearchTests: XCTestCase {
     }
 
     /// Sends a text through the client-server api, waiting out the server's rate limit.
+    /// One kind's messages in the chat once `done` holds, or the last ones after 30 s.
+    private func kind(_ account: MatrixAccount, _ kind: SearchKind, roomId: String, until done: ([FoundMessage]) -> Bool) async throws -> [FoundMessage] {
+        let start = Date()
+        var found = try await account.chatKind(kind, roomId: roomId)
+        while !done(found), Date().timeIntervalSince(start) < 30 {
+            try await Task.sleep(nanoseconds: 500_000_000)
+            found = try await account.chatKind(kind, roomId: roomId)
+        }
+        XCTAssertTrue(done(found), "\(kind) did not hold what was expected: \(found.map(\.body))")
+        return found
+    }
+
+    /// Sends an event of the message `content`, through the client-server api: its event id.
+    private func sendEvent(_ content: [String: Any], roomId: String, session: SavedSession) async throws -> String {
+        for _ in 0..<10 {
+            let reply = try await api("PUT", ["rooms", roomId, "send", "m.room.message", UUID().uuidString], content, session: session)
+            if let id = reply["event_id"] as? String { return id }
+            let wait = (reply["retry_after_ms"] as? Int) ?? 1000
+            try await Task.sleep(nanoseconds: UInt64(wait) * 1_000_000)
+        }
+        XCTFail("the server refused \(content)")
+        throw CancellationError()
+    }
+
     private func sendText(_ text: String, roomId: String, session: SavedSession) async throws {
         for _ in 0..<10 {
             let reply = try await api("PUT", ["rooms", roomId, "send", "m.room.message", UUID().uuidString],
