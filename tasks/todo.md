@@ -833,6 +833,10 @@ it the one exception to invariant 1.
   `is_animated`), downloaded straight to a file; animated GIFs now play in the chat (the whole file,
   not the server's still thumbnail). `gif.contract`, `gif-members.contract`, `app.ts` (2026-11-03).
 - [ ] A GIF sent from the app plays in WhatsApp (check how the bridge sends it: GIF or video).
+  2026-11-03: sent from `@rami` (Rami's OK: his chat with himself, Mama, Dana, Osama and Ali G
+  are test chats) to his WhatsApp chat with himself: "Sent", and no failure notice from the bridge
+  after several minutes (the bridge logs warnings only). Left: Rami looks on his phone that it plays
+  there as a GIF.
 
 **Dependencies:** B11. **Scope:** M
 
