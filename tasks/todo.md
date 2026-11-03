@@ -661,8 +661,7 @@ Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and com
 - [x] MatrixCore filters the list itself (`NetworkFilter.swift`, `NetworkFilterTests`).
 - [ ] After a network change in a list scrolled down, the large title stays collapsed (Exact
   finding 50); a short line shows above the pinned grid (finding 49).
-- [ ] **Ask Rami:** keep the Matrix row (first), move it last, or remove it; count unread chats
-  or messages; the title shows the network's name.
+- [x] Rami (2026-11-03): keep the Matrix row first; count unread chats; the title shows the network's name.
 
 **Dependencies:** B1, B3. **Scope:** M
 
@@ -701,7 +700,7 @@ messages shows a dot on its picture (Rami: a dot, as in Messages).
   from the server once per pinned chat.
 - [x] The grid is the list's first row and scrolls away with it.
 - [x] An unread pinned chat shows a dot, which clears when the chat is read.
-- [ ] **Ask Rami** before any pin on `@rami`: the bridge may pass a pin to WhatsApp (which allows
+- [ ] Rami (2026-11-03): a pin stays in our app, never in WhatsApp. Check the bridge does not pass it before any pin on `@rami`: the bridge may pass a pin to WhatsApp (which allows
   3). His real account has no pinned chats today.
 
 **Dependencies:** none (B7 adds the rest of the menu). **Scope:** M
@@ -729,7 +728,8 @@ Mute, Label, Delete (red).
 - [x] Nothing of this reaches WhatsApp: Synapse sends a bridge no account data. Only Mark as Read
   (a read receipt) does.
 - [ ] Label, Remind Me, Select chat: "Later".
-- [ ] **Ask Rami:** a deleted chat that comes back shows its whole history (or only new messages);
+- [ ] Rami (2026-11-03), all as suggested (check what is built): a deleted chat that comes back shows only new messages (not its whole history);
+  was: a deleted chat that comes back shows its whole history (or only new messages);
   your own message brings an archived chat back; a mention in a muted chat gives "@" but no push
   (WhatsApp pushes it; P3.6); WhatsApp mutes show the bell (the bridge copies them as
   mentions-only).
@@ -770,7 +770,7 @@ chat info page, B20), and "..." on the right.
   "..." offers Pin, Mark as Unread (it goes back to the list) and Mute.
 - [x] The app's own bar fixes T2.13's sharp bar: the long-press blur now covers it, in dark and light.
 - [ ] Not driven: a real edge swipe back (Exact finding 56); `back` works.
-- [ ] **Ask Rami:** Mark as Unread inside a chat goes back to the list; Back leaves out muted,
+- [x] Rami (2026-11-03): Mark as Unread inside a chat goes back to the list; Back leaves out muted,
   archived and Low Priority chats.
 
 **Dependencies:** none. B20 uses it. **Scope:** M
@@ -864,7 +864,7 @@ emoji, a search and "Frequently used".
 - [ ] Swipe to reply on photos, files, videos and stickers; Copy for a photo (Exact copies text only).
 - [ ] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
   messages out of a room's latest event).
-- [ ] **Ask Rami:** Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
+- [ ] Rami (2026-11-03) ok to all; to build: hide Edit and Delete after the limits. Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
   hide Edit and Delete after WhatsApp's limits (about 15 minutes, about 2 days); skin tones.
 
 **Dependencies:** T2.13. **Scope:** M
@@ -888,7 +888,7 @@ emoji, a search and "Frequently used".
 - [ ] The jump count is the chat's whole unread count, not exactly the messages below the view;
   no "New" line when the first unread message is older than the 20 loaded.
 - [ ] Stickers and large emoji have no swipe to reply or long press (B14's area).
-- [ ] **Ask Rami:** open at the "New" line (built) or at the newest; "Delivered" means our server
+- [ ] Rami (2026-11-03): keep the "New" line, in-app Safari, one header per gap, typing later; to build: "Sent" instead of "Delivered". Was: open at the "New" line (built) or at the newest; "Delivered" means our server
   has it, not WhatsApp ("Sent" instead?); links in Safari's in-app view or the Safari app; one
   header per gap; the typing indicator now or later.
 
