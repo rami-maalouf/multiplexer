@@ -1111,7 +1111,8 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
   `verify ios` clean.
 - [ ] After Sign Out, the sign-in screen's title shows small until the next launch (Exact
   finding "a large title comes back inline").
-- [ ] A picture on the account: `@test1` has none, so only the initials were seen.
+- [x] A picture on the account: `@test1` has none, so only the initials were seen. (2026-11-03: `@test1` has a
+  picture now; Settings shows it in its circle, `check both` clean: `apps/multiplexer/.exact/b21/account-picture.png`.)
 
 **Dependencies:** none. **Scope:** S
 
