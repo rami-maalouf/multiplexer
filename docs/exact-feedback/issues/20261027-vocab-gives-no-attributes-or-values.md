@@ -32,3 +32,14 @@ Cost: about 5 minutes.
 
 Seen at exact2 `65577096ed`. The vocab code in `contract/cli/src/main.rs` is unchanged at
 `cee509ac82`.
+
+## Seen again at `ed43ad09a0` (2026-11-03)
+
+A custom voice-message player (a hidden `audio` and the app's own play button, progress and
+speed): `contract vocab audio` answered only "tag, Video (html); sets semanticTag=audio;
+positional src". `vocab playbackRate`, `preservesPitch`, `paused` and `timeupdate` each answered
+by name, but the list of what the media node takes (and that an `audio` without `controls` draws
+no box, so a custom player is a hidden `audio`) came from the video LLP (§3 and §8). About 5
+minutes. A recipe for "a custom audio player" (play and pause through `paused`, progress through
+`timeupdate`, `ended`, speed through `playbackRate`) would have saved the search; once found,
+each of these worked on the first drive.

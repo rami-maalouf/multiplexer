@@ -41,3 +41,11 @@ real touch reaches changes from one run to the next.
 The link row's miss is still there: under `--touch platform`, `tap room-<id>` on a chat-list
 `link` row failed with "the touch landed on node #210, not on node #208 the aim hit-tested".
 `type root /room/<id>` (the root's `navigate`) opened the screen instead. About 2 minutes.
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+To check swipe to reply on a new kind of bubble: `tap <bubble> drag 90 0` without the flag
+named `--touch platform` (good); with it, the drive's first step, `tap room-<id>` on the chat
+list's `link` row, failed: "the touch landed on node #16, not on node #14 the aim hit-tested".
+`tap "<the chat's name>"` (the row's text) worked this time, and the drag then fired
+`swiperight`. About 3 minutes.
