@@ -893,6 +893,11 @@ component Multiplexer
                             background-color=(m.isSticker ? "transparent" : "-exact-secondary-background")
                             if m.image != ""
                               image m.image width="100%" height="100%" object-fit=(m.isSticker ? "contain" : "cover") aria-label=(m.body != "" ? m.body : "Photo")
+                        if m.isAudio
+                          view max-width="80%"
+                            VoiceBubble(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=false, playing=false, loading=false, time=0,
+                              speed=voiceSpeed, dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, still=true, play=openChat(aimed),
+                              speedUp=openChat(aimed), identifier=`peek-voice-${m.id}`)
                         if m.waitingForKey
                           text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
                             background-color="-exact-fill" color="-exact-secondary-label"
