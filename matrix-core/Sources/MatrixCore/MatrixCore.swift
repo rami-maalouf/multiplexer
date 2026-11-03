@@ -104,6 +104,8 @@ public struct Message: Equatable, Sendable {
     public var uploadProgress: Double? = nil
     /// The video of a video message; nil for others. `body` is then its caption, or "".
     public var video: MessageVideo? = nil
+    /// The sound of a voice message or an audio file (Voice.swift); nil for others. `body` is then its caption, or "".
+    public var audio: MessageAudio? = nil
     /// A sticker: `image` is its picture, which shows with no bubble; `body` is "".
     public var isSticker: Bool = false
     /// Who has read the chat up to this message, besides its sender and this account
@@ -245,6 +247,8 @@ public enum MatrixCoreError: Error, Equatable {
     case notForwardable(String)
     /// The message is not a video message (or its video has no poster), or not in the open chat.
     case noVideo(String)
+    /// The message is not a voice message or an audio file, or not in the open chat.
+    case noAudio(String)
     /// A Keychain call failed with this `OSStatus`.
     case keychain(Int32)
 }

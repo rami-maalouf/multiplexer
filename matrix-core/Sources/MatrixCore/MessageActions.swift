@@ -68,6 +68,14 @@ extension MatrixAccount {
             if downloaded.lastPathComponent == named.lastPathComponent { return downloaded }
             do { try FileManager.default.linkItem(at: downloaded, to: named) } catch { try FileManager.default.copyItem(at: downloaded, to: named) }
             return named
+        case .audio(let content):
+            let file = directory.appendingPathComponent(mediaKey(content.source.url()), isDirectory: true)
+                .appendingPathComponent(shareName(content.filename, fallback: "Voice message.ogg"))
+            if FileManager.default.fileExists(atPath: file.path) { return file }
+            let data = try await client.getMediaContent(mediaSource: content.source)
+            try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: file, options: .atomic)
+            return file
         default:
             throw MatrixCoreError.noFile(messageId)
         }

@@ -693,7 +693,7 @@ private func preview(_ type: MessageType, body: String) -> String {
     case .image: return "Photo"
     case .gallery: return "Photos"
     case .video: return "Video"
-    case .audio: return "Audio"
+    case .audio(let content): return content.voice == nil ? "Audio" : "Voice message"
     case .file: return "File"
     case .location: return "Location"
     default: return body
@@ -754,7 +754,7 @@ extension Message {
         // a remote echo has no local send state: the server has it.
         case .sent?, nil: sendState = .sent
         }
-        var body = message.body, image: MessageImage?, file: MessageFile?, video: MessageVideo?
+        var body = message.body, image: MessageImage?, file: MessageFile?, video: MessageVideo?, audio: MessageAudio?
         if case .image(let content) = message.msgType {
             body = content.caption ?? ""
             image = MessageImage(content)
@@ -764,6 +764,9 @@ extension Message {
         } else if case .video(let content) = message.msgType {
             body = content.caption ?? ""
             video = MessageVideo(content)
+        } else if case .audio(let content) = message.msgType {
+            body = content.caption ?? ""
+            audio = MessageAudio(content)
         }
         self.init(id: id, sender: event.sender, senderName: name, body: body, timestamp: event.timestamp,
                   isOwn: event.isOwn, sendState: sendState, image: image, isEdited: message.isEdited,
@@ -771,6 +774,7 @@ extension Message {
                   reactions: reactions, senderPicture: picture)
         self.file = file
         self.video = video
+        self.audio = audio
         uploadProgress = uploaded
         isEditable = Message.isEditable(event, message)
     }
