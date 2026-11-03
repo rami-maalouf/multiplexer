@@ -44,15 +44,18 @@ final class Matrix: ExactModule {
                     // under the filter menu's choice and the filter sheet's network ("": every network),
                     // the pinned ones' ids in their pin order, and the sheet's rows with their unread chats.
                     let started = Date(), account = try await signedIn()
-                    let network = request["network"] as? String ?? ""
-                    let inbox = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all,
-                                                        list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox,
-                                                        network: network.isEmpty ? nil : network)
+                    let network = request["network"] as? String ?? "", filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
+                    // Reminders is not a list a chat is in: it shows the chats with a reminder, from every list.
+                    let inbox = request["list"] as? String == "reminders"
+                        ? try await account.reminderList(filter: filter, network: network.isEmpty ? nil : network)
+                        : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox,
+                                                  network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
                        "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
+                       "reminders": rooms.filter { !$0.isHidden && $0.reminderAt != nil }.count,
                        "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
                 case "pin", "unpin":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
@@ -72,7 +75,17 @@ final class Matrix: ExactModule {
                     case "archive": try await account.archive(roomId: roomId)
                     case "unarchive": try await account.unarchive(roomId: roomId)
                     case "delete": try await account.hide(roomId: roomId)
-                    default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive and delete")
+                    case "clearReminder": try await account.clearReminder(roomId: roomId)
+                    case "remind":
+                        // Remind Me: `when` is "tomorrow", "monday" or a picked time without a zone, as Send Later's.
+                        guard let when = ScheduledMessage.date(for: request["when"] as? String ?? ""), when > Date().addingTimeInterval(5) else {
+                            reply.send(["ok": false, "at": 0, "problem": "past"])
+                            return
+                        }
+                        try await account.setReminder(roomId: roomId, at: when)
+                        reply.send(["ok": true, "at": (when.timeIntervalSince1970 * 1000).rounded(), "problem": ""])
+                        return
+                    default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive, delete, remind and clearReminder")
                     }
                     reply.send(["ok": true])
                 case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":
@@ -348,7 +361,7 @@ final class Matrix: ExactModule {
          "unread": room.unreadCount, "network": room.network, "markedUnread": room.isMarkedUnread,
          "oneToOne": room.isOneToOne, "listed": listed,
          "muted": room.isMuted, "mentions": room.unreadMentions, "lowPriority": room.isLowPriority,
-         "archived": room.isArchived,
+         "archived": room.isArchived, "reminder": Double(room.reminderAt ?? 0),
          "avatar": cached(room.avatarName, topic: topic) { _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
     }
 

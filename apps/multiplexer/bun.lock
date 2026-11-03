@@ -9,6 +9,7 @@
         "@exact/clipboard": "file:../../../exact/exact2/packages/clipboard",
         "@exact/in-app-browser": "file:../../../exact/exact2/packages/in-app-browser",
         "@exact/media-capture": "file:../../../exact/exact2/packages/media-capture",
+        "@exact/notifications": "file:../../../exact/exact2/packages/notifications",
         "@exact/recording": "file:../../../exact/exact2/packages/recording",
         "@exact/speech-recognition": "file:../../../exact/exact2/packages/speech-recognition",
       },
@@ -22,6 +23,8 @@
     "@exact/in-app-browser": ["@exact/in-app-browser@file:../../../exact/exact2/packages/in-app-browser", {}],
 
     "@exact/media-capture": ["@exact/media-capture@file:../../../exact/exact2/packages/media-capture", {}],
+
+    "@exact/notifications": ["@exact/notifications@file:../../../exact/exact2/packages/notifications", {}],
 
     "@exact/recording": ["@exact/recording@file:../../../exact/exact2/packages/recording", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
 
