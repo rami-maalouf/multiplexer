@@ -180,6 +180,13 @@ branch `server/m0-checkpoint`). Rami's decision of 2026-10-28 stands; nothing be
   hour, with chat data); `config.yml` says to delete that line after the login. Deleting it
   restarts the bridges for about 10 s. (3) The two unused Instagram images and Docker's build
   cache (a deletion: `server/notes/install.md`, 2026-10-31).
+- **Rami's answers (2026-11-03): "do whatever you think is best".** Applied the same day
+  (`server/notes/install.md`, 2026-11-03): (1) a daily pull to the Mac with the media and
+  Synapse's signing key (`server/pull-backup.sh`, launchd at 21:30, `~/Backups/multiplexer-server`;
+  first pull 1.9 GB, file counts equal to the server's); (2) the Instagram debug line deleted
+  through the playbook (0 debug lines after); (3) the two images and our build's cache deleted
+  by hand (1.17 GB), because the playbook's prune tools would also delete other projects'
+  stopped containers; the other project's Caddy cache stays.
 
 ## Phase 1: first own screen (M1)
 
@@ -686,8 +693,12 @@ types), so prove that first.
 from the bridge's display name template on the server.
 
 **Acceptance criteria:**
-- [ ] **Rami's OK at that time** before any server change (the plan's rule 7).
+- [x] **Rami's OK at that time** before any server change (the plan's rule 7). (2026-11-03:
+  "do whatever you think is best"; all three suffixes, so no network repeats its logo.)
 - [ ] The template changes through the playbook (invariant 6), and names update in the app.
+  (2026-11-03: applied through the playbook, all three; `!wa sync contacts` sent. On the
+  server the WhatsApp names lose " (WA)": see the result below. Open: a read-only drive on
+  `@rami` to see the names in the app.)
 
 **Prepared (2026-11-03, branch `server/b2-names`, not merged, not applied).** `config.yml` adds
 three lines, the playbook's defaults at the pinned commit without the suffix:
@@ -718,7 +729,10 @@ have no suffix.
 `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start` (the three bridges
 restart, about 10 s); `!wa sync contacts` in the WhatsApp bot chat; a read-only drive on `@rami`.
 
-**Ask Rami:** remove " (WA)", " (IG)" and " (LinkedIn)" all three, as prepared, or only " (WA)"?
+**Applied 2026-11-03** (`server/notes/install.md`). The bot does not answer `!wa sync contacts`,
+but it renamed in the background (about 900 a minute): 14,529 names with " (WA)" became 2,250 by
+23:03 UTC. The rest are people with no contact info (26 DM rooms of 279 keep " (WA)" for now);
+each changes on that person's next update.
 
 **Dependencies:** B1 (so each chat still shows its network). **Scope:** S (server conversation)
 
@@ -1102,7 +1116,12 @@ user setting". Beeper keeps the speed per note; ours keeps one speed for the who
   for a received waveform). (2026-11-03, `voice.contract`.)
 - [x] Changing the speed on any note changes it on every note, and the app remembers it. Videos
   keep their own normal speed (Rami). (`state voiceSpeed = 1 persist`.)
-- [ ] Transcribe: "Later".
+- [x] Transcribe (2026-11-03, from "Later"): a held voice message offers Transcribe; Apple's on-device recognizer
+  (`@exact/speech-recognition`, `processLocally`, no cost, nothing leaves the iPhone) turns it into text in the
+  iPhone's language, shown under it and kept across launches by its sound file's name (`transcribe-members.contract`).
+  Under a drive the package hears nothing, so the app was driven to "No speech in this voice message."; on this
+  Mac the same engine transcribed a spoken Ogg Opus clip correctly. Left for Rami's iPhone: one real voice note
+  (and whether Arabic notes need the language chosen).
 
 **Dependencies:** T2.13. **Scope:** M
 
@@ -1419,7 +1438,8 @@ the extension builds it reads `@test2`'s message in a plain and an encrypted roo
 ### P3.3 Server: Sygnal (server conversation)
 
 **Acceptance criteria:**
-- [ ] Rami's OK, and the DNS record from P3.0.
+- [ ] Rami's OK, and the DNS record from P3.0. (Rami's OK, 2026-11-03: install it when P3.0's
+  APNs key is in the Keychain and the DNS record exists. Neither exists yet.)
 - [ ] Through the playbook (invariant 6): `matrix_sygnal_enabled: true`; two APNs apps,
   `com.ramimaalouf.multiplexer.ios.dev` (`platform: sandbox`) and `com.ramimaalouf.multiplexer.ios`
   (production), both with team `3V2UU7RRK9` and topic `com.ramimaalouf.multiplexer`; the key from

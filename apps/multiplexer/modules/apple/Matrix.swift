@@ -120,7 +120,7 @@ final class Matrix: ExactModule {
                          "progress": $0.uploadProgress ?? -1, "isSticker": $0.isSticker,
                          "video": $0.video.map { ["width": $0.width, "height": $0.height, "duration": $0.duration] } ?? [:],
                          "poster": poster(account, roomId: roomId, message: $0),
-                         "audio": $0.audio.map { ["isVoice": $0.isVoice, "duration": $0.duration, "waveform": $0.waveform] } ?? [:],
+                         "audio": $0.audio.map { ["isVoice": $0.isVoice, "duration": $0.duration, "waveform": $0.waveform, "key": $0.fileName] } ?? [:],
                          "readers": $0.readBy.map { ["name": $0.name, "time": Double($0.timestamp ?? 0)] }]
                     }])
                 case "markRead":
