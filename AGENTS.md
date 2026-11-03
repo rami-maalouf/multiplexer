@@ -62,6 +62,10 @@ Without it the app builds, and the GIF sheet says it could not load GIFs.
 
 Test MatrixCore (about 10 s after the first build):
 
+Two MatrixCore runs at once (two conversations, the same test users) time out on "the first
+sync". Hold the shared lock around every run, on your own simulator:
+`until mkdir /tmp/mx-matrixcore.lock 2>/dev/null; do sleep 10; done; <run>; rmdir /tmp/mx-matrixcore.lock`.
+
 ```sh
 ./scripts/test-matrix-core.sh
 ```
