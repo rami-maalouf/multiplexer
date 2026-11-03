@@ -851,15 +851,21 @@ messages. The reaction bar keeps Beeper's six fixed emojis; its "+" opens a shee
 emoji, a search and "Frequently used".
 
 **Acceptance criteria:**
-- [ ] Share (`share(...)`), Forward (copy the content and send it to the chosen chat: the SDK has
-  no forward), Mark as Unread (the chat, from this message), Edit and Delete on your own.
-- [ ] The "+" sheet: half height, pulls up to full, search, "Frequently used" (the SDK's recent
-  emojis), all emojis by category. Exact has no emoji grid: the app draws one, or uses the iOS
-  emoji keyboard.
-- [ ] Long press on a photo too (T2.13: only text bubbles have it).
-- [ ] Bookmark: saved in the account's own data; shown in each chat's info page (B20) and in one
-  list of all bookmarks (a row in the filter sheet).
-- [ ] Sending an edit, deleting a sent message and recent emojis are proven in a MatrixCore test.
+- [x] The menu in Beeper's order: Reply, Share, Forward, Copy, Mark as Unread, then Edit and a red
+  Delete on your own messages. (2026-11-03, `menu.contract`.) Bookmark comes with its list later.
+- [x] Share a text, photo, file or video (media downloaded first, under its file name).
+- [x] Forward a text, photo, file or video to one or more chats from a sheet with search; media is
+  not uploaded again (`testAForwardedTextPhotoAndFileArriveInAnotherChat`).
+- [x] Edit your own text ("Editing" bar with Cancel; the other sees "Edited") and Delete for
+  everyone ("Message deleted" for both and in the list) (`testAnEditAndADeleteReachTheOtherPerson`).
+- [x] The reaction bar's "+" opens a sheet: half height to full, search, "Frequently used" from the
+  account (`io.element.recent_emoji`, with Reset), all 1,906 emoji by group with 9 tabs.
+- [x] Long press on photos, files, videos, stickers and large emoji too.
+- [ ] Swipe to reply on photos, files, videos and stickers; Copy for a photo (Exact copies text only).
+- [ ] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
+  messages out of a room's latest event).
+- [ ] **Ask Rami:** Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
+  hide Edit and Delete after WhatsApp's limits (about 15 minutes, about 2 days); skin tones.
 
 **Dependencies:** T2.13. **Scope:** M
 

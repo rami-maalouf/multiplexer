@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -82,6 +82,11 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 61 | A members file's rules do not say whether it may also hold components, and `contract vocab` does not know `members`. | About 5 min | P3 | [a-members-file-s-rules-leave](issues/20261103-a-members-file-s-rules-leave.md) |
 | 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
 | 63 | `formatDay` has no style for a chat's day label. | About 5 min | P3 | [formatday-has-no-style-for](issues/20261103-formatday-has-no-style-for.md) |
+| 64 | A search field in a sheet's content draws its magnifier over its text at the accessibility sizes. | About 15 min | P3 | [a-search-field-in-a-sheet](issues/20261103-a-search-field-in-a-sheet.md) |
+| 65 | A sheet's bar search field hides the bar and its Send while searching, and the search card does not say so. | About 10 min | P3 | [a-sheet-s-bar-search-field](issues/20261103-a-sheet-s-bar-search-field.md) |
+| 66 | The edit-sheet recipe nests a sheet's header as `lower-header-nested` warns against. | About 5 min | P3 | [the-edit-sheet-recipe-nests-a](issues/20261103-the-edit-sheet-recipe-nests-a.md) |
+| 67 | The theme recipe shows an SF-only icon token, which the build refuses. | About 2 min | P3 | [the-theme-recipe-shows-an-sf](issues/20261103-the-theme-recipe-shows-an-sf.md) |
+| 68 | A drag on a virtualized list in a half-height sheet aims under the row after the list. | About 6 min | P3 | [a-drag-on-a-virtualized-list](issues/20261103-a-drag-on-a-virtualized-list.md) |
 
 ## What worked well
 
