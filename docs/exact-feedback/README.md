@@ -80,7 +80,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 59 | `caps` counts one more line than `wc -l`. Fixed in PR #1365 (open). | About 3 min | P3 | [caps-counts-one-more-line-than](issues/20261103-caps-counts-one-more-line-than.md) |
 | 60 | iOS adds a hyphen inside a link's address under `break-word`, and an inline run's `hyphens` is dropped. | About 15 min | P3 | [ios-hyphenates-a-link-inside-a](issues/20261103-ios-hyphenates-a-link-inside-a.md) |
 | 61 | A members file's rules do not say whether it may also hold components, and `contract vocab` does not know `members`. Fixed in PR #1364 (open). | About 5 min | P3 | [a-members-file-s-rules-leave](issues/20261103-a-members-file-s-rules-leave.md) |
-| 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
+| 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. Fixed in PR #1366 (open). | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
 | 63 | `formatDay` has no style for a chat's day label. | About 5 min | P3 | [formatday-has-no-style-for](issues/20261103-formatday-has-no-style-for.md) |
 | 64 | A search field in a sheet's content draws its magnifier over its text at the accessibility sizes. | About 15 min | P3 | [a-search-field-in-a-sheet](issues/20261103-a-search-field-in-a-sheet.md) |
 | 65 | A sheet's bar search field hides the bar and its Send while searching, and the search card does not say so. | About 10 min | P3 | [a-sheet-s-bar-search-field](issues/20261103-a-sheet-s-bar-search-field.md) |
@@ -192,3 +192,4 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1363](https://github.com/ccheever/exact2/pull/1363): the permissions recipe says a refused request runs no `then` | 72 | Open |
 | 2026-11-03 | [#1364](https://github.com/ccheever/exact2/pull/1364): `contract vocab` answers `members`, and the grammar says what a members file may declare | 61 | Open |
 | 2026-11-03 | [#1365](https://github.com/ccheever/exact2/pull/1365): `caps` counts a file's lines as `wc -l` does | 59 | Open |
+| 2026-11-03 | [#1366](https://github.com/ccheever/exact2/pull/1366): the agent's help and the guide name `state media` and what a drive cannot show of a video | 62 | Open |

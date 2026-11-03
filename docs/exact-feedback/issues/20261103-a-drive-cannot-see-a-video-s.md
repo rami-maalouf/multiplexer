@@ -37,3 +37,7 @@ These are pull request candidates.
 Seen on 2026-11-03 at exact2 `ed43ad09a0` on the iOS 26.5 Simulator: `state media` read
 `"renderer":"AVKit","paused":false,"muted":false,"volume":1`; screenshots
 with and without `--touch platform`.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1366 (fixes it): `agent --help all` and contract-for-agents name `state media` (Apple), say that under the agent a video takes no audio session, and that AVKit's controls show only under `--touch platform`. The ios-driving recipe is not changed.
