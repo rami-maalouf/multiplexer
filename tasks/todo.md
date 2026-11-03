@@ -1005,8 +1005,8 @@ Videos, Links, Files, Audio and Bookmarks.
   know. Words typed on a kind's page narrow it by the start of a word (text, file name, link).
 - [ ] Bookmarks: not built, as B14 has no bookmarks yet.
 - [x] Gate: MatrixCore `SearchTests` 7 passed (new: `testOneChatsMessagesAndKinds`), `ChatInfoTests` 5 passed, the
-  whole suite passed but for `testFrequentEmojisCountReactionsAndReset`, which fails on `main` too (see
-  "Known failing test" below); `bun test` 7
+  whole suite passed but for `testFrequentEmojisCountReactionsAndReset`, which failed on `main` too (see
+  "Known failing test" below, now fixed); `bun test` 7
   passed (new: `search.test.ts`); drives as `@test1` in light, dark and the largest text size,
   `check both` clean; `verify ios` clean (2026-11-03). Screenshots in `apps/multiplexer/.exact/b19/`.
 - Fixed on the way, in the all-chats search too: a link row's time wrapped under the chat's name
@@ -1015,11 +1015,21 @@ Videos, Links, Files, Audio and Bookmarks.
 
 **Dependencies:** B18, B20. **Scope:** M
 
-**Known failing test (found 2026-11-03, during B19):** `MessageActionsTests.testFrequentEmojisCountReactionsAndReset`
-fails on `main` and on B19 alike: the server's `recent_emoji` counts stay `[1, 1, 1]` where the
-test expects `[2, 1, 1]` (order "🔥, 🎉, 🦄" against "🎉, 🔥, 🦄"), then "no matching message
-within 30 s". Not caused by B19; to fix next. Also: two MatrixCore runs at the same time as the
-same test users time out on "the first sync"; run one suite at a time.
+**Known failing test (found 2026-11-03, during B19; fixed 2026-11-03, branch `fix/frequent-emoji-test`):**
+`MessageActionsTests.testFrequentEmojisCountReactionsAndReset` failed on `main` about one run in two. The
+counting was right; the test raced the sdk. It took a reaction back while it was still being sent: the
+sdk then shows the server's copy again for about a second, until its redaction lands (seen: gone at
+0.5 s, back at 1.1 s, gone at 1.8 s). A toggle in that second takes the reaction back again instead of
+adding it, so the second 🎉 did not count. Now the test takes back only a reaction the server has, and
+toggles again once it is gone; MatrixCore counts a reaction from the sdk's answer (`toggleReaction`
+returns true when it added one), not from its own copy of the timeline. 8 runs in a row passed (before:
+a failure in the second); `MessageActionsTests` 4 passed; every other MatrixCore test passed once (a full
+run during a short server outage, then its failed tests again under the lock: 21 passed). Not fixed, as it is the sdk's: in the app, a reaction taken back within
+about half a second shows again for about a second. Also: two MatrixCore runs at the same time as the
+same test users time out on "the first sync"; run one suite at a time. Every conversation
+holds a lock around each run (agreed 2026-11-03): `until mkdir /tmp/mx-matrixcore.lock 2>/dev/null; do sleep
+10; done; <the run>; rmdir /tmp/mx-matrixcore.lock`. Do not wait with `pgrep`: two waiters see a quiet moment
+at once, and `pgrep -f "xcodebuild test -scheme MatrixCore"` in a shell loop matches the loop's own command line.
 
 ### B20 The chat info page
 

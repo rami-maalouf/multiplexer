@@ -242,10 +242,10 @@ public final class MatrixAccount: @unchecked Sendable {
     public func toggleReaction(roomId: String, messageId: String, key: String, timeout: TimeInterval = 30) async throws {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         guard let event = live.items.event(of: messageId) else { return }
-        let me = (try? client.userId()) ?? ""
-        let had = event.reactions.contains { $0.key == key && $0.senders.contains { $0.senderId == me } }
-        _ = try await live.timeline.toggleReaction(itemId: event.eventOrTransactionId, key: key)
-        if !had { await countReaction(key) }
+        // the sdk adds or takes back from its own state at the call, and says which (true: added).
+        if try await live.timeline.toggleReaction(itemId: event.eventOrTransactionId, key: key) {
+            await countReaction(key)
+        }
     }
 
     /// Sends a text message and returns once the server has accepted it.

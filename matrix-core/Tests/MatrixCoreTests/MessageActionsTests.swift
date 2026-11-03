@@ -130,16 +130,16 @@ final class MessageActionsTests: XCTestCase {
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🦄")
         let shown = try await owner.frequentEmojis()
         XCTAssertEqual(shown, ["🦄"], "a reaction does not count at once")
-        _ = try await message(owner, roomId) { $0.id == target.id && $0.reactions.contains { $0.key == "🦄" && $0.isMine } }
+        try await ownReactions(owner, roomId, target.id, are: ["🦄"])
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🦄")
-        _ = try await message(owner, roomId) { $0.id == target.id && $0.reactions.isEmpty }
+        try await ownReactions(owner, roomId, target.id, are: [])
         // two reactions in a row both count, before the sync brings the first back.
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🎉")
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🔥")
-        _ = try await message(owner, roomId) { $0.id == target.id && $0.reactions.count == 2 }
+        try await ownReactions(owner, roomId, target.id, are: ["🎉", "🔥"])
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🎉")
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🔥")
-        _ = try await message(owner, roomId) { $0.id == target.id && $0.reactions.isEmpty }
+        try await ownReactions(owner, roomId, target.id, are: [])
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🎉")
         // the most used first, the latest among equals; the server has the same counts.
         let ordered = try await owner.frequentEmojis()
@@ -155,8 +155,9 @@ final class MessageActionsTests: XCTestCase {
         let sdk = try await second.client.getRecentEmojis()
         XCTAssertEqual(sdk.map(\.emoji), ["🎉", "🔥", "🦄"])
 
+        try await ownReactions(owner, roomId, target.id, are: ["🎉"])
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🎉")
-        _ = try await message(owner, roomId) { $0.id == target.id && $0.reactions.isEmpty }
+        try await ownReactions(owner, roomId, target.id, are: [])
 
         // reset, on every device; a new reaction counts again.
         try await owner.resetFrequentEmojis()
@@ -164,7 +165,9 @@ final class MessageActionsTests: XCTestCase {
         _ = try await frequent(second, within: 45) { $0.isEmpty }
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🎉")
         _ = try await frequent(owner) { $0 == ["🎉"] }
+        try await ownReactions(owner, roomId, target.id, are: ["🎉"])
         try await owner.toggleReaction(roomId: roomId, messageId: target.id, key: "🎉")
+        try await ownReactions(owner, roomId, target.id, are: [])
         try await owner.resetFrequentEmojis()
     }
 
@@ -229,6 +232,28 @@ final class MessageActionsTests: XCTestCase {
             try await Task.sleep(nanoseconds: 300_000_000)
         }
         XCTFail("no matching message within 30 s")
+        throw CancellationError()
+    }
+
+    /// Waits until this account's reactions on a message are exactly `keys`, each one on the server.
+    /// A reaction taken back while it is still being sent comes back from the server for about a
+    /// second, until the sdk's redaction lands; a toggle then takes it back again instead of
+    /// adding it. So a test takes back only a sent reaction, and toggles again once it is gone.
+    private func ownReactions(_ account: MatrixAccount, _ roomId: String, _ messageId: String, are keys: Set<String>) async throws {
+        let live = try await account.liveTimeline(roomId, limit: 20, timeout: 30)
+        let me = try account.client.userId()
+        let start = Date()
+        var mine: [String: Bool] = [:]
+        while Date().timeIntervalSince(start) < 30 {
+            // each of this account's reactions, and whether the server has it (no send state).
+            mine = [:]
+            for reaction in live.items.event(of: messageId)?.reactions ?? [] {
+                if let sender = reaction.senders.first(where: { $0.senderId == me }) { mine[reaction.key] = sender.sendState == nil }
+            }
+            if Set(mine.keys) == keys, !mine.values.contains(false) { return }
+            try await Task.sleep(nanoseconds: 300_000_000)
+        }
+        XCTFail("this account's reactions are \(mine) (true: on the server), not \(keys.sorted())")
         throw CancellationError()
     }
 
