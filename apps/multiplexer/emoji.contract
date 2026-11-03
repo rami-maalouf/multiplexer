@@ -42,6 +42,8 @@ component EmojiSheet
     choose: action
     scrolled: action
     close: action
+    // the reader chose one of the accessibility text sizes.
+    largeText: bool
   // Beeper's tabs, in Unicode's order; the frequently used belong to the first.
   derive tabs = [EmojiTab(id="smileys", name="Smileys & Emotion", symbol="symbol:emoji"),
     EmojiTab(id="people", name="People & Body", symbol="symbol:sf/person"),
@@ -61,8 +63,10 @@ component EmojiSheet
         button id="back" press=close testId="emoji-cancel"
           text "Cancel"
       // under the title, as Beeper's: a bar's search field would sit at the sheet's bottom, under the tabs.
+      // at the accessibility text sizes the field draws its magnifier over its text: the padding moves the
+      // text past it, and its size stops at a cap.
       input type="search" value=query input=search placeholder="Search" aria-label="Search Emoji" margin="4px 16px 4px"
-        testId="emoji-search"
+        font-size="min(-exact-body, 22px)" padding-left=(largeText ? 40 : 0) testId="emoji-search"
       if rows.length == 0 and query.trim() != ""
         EmptyState(symbol="symbol:search", title="No Emoji Found", message=`Nothing matches “${query.trim()}”.`)
       else
@@ -71,11 +75,12 @@ component EmojiSheet
             column
               if r.title != ""
                 row align-items="center" padding="18px 20px 4px" testId=`emoji-group-${r.key}`
-                  text r.title role="heading" aria-level=2 font="-exact-subheadline" font-weight=600 color="-exact-secondary-label"
-                    flex=1 min-width=0
+                  // the titles grow to a cap, as the emoji do not grow: the half-height sheet keeps its grid.
+                  text r.title role="heading" aria-level=2 font-size="min(-exact-subheadline, 22px)" font-weight=600
+                    color="-exact-secondary-label" flex=1 min-width=0
                   if r.key == "frequent"
                     button press=reset testId="emoji-reset"
-                      text "Reset"
+                      text "Reset" font-size="min(-exact-body, 22px)"
               else
                 row padding="0 8px"
                   for e in r.emojis key=e.emoji
@@ -93,4 +98,4 @@ component EmojiSheet
           for t in tabs key=t.id
             button appearance="none" press=choose(t.id) aria-label=t.name aria-pressed=(chosenTab == t.id)
               min-width=36 min-height=44 display="flex" align-items="center" justify-content="center" testId=`emoji-tab-${t.id}`
-              image t.symbol font="-exact-title3" color=(chosenTab == t.id ? "AccentColor" : "-exact-secondary-label")
+              image t.symbol font-size="min(-exact-title3, 24px)" color=(chosenTab == t.id ? "AccentColor" : "-exact-secondary-label")

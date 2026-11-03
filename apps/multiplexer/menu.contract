@@ -27,13 +27,16 @@ component MenuRow
   view
     button appearance="none" press=press id=identifier testId=identifier
       display="flex" flex-direction="row" align-items="center" justify-content="space-between" gap=16 min-height=44 padding="0 18px"
-      text label color=(destructive ? "-exact-system-red" : "-exact-label")
+      text-align="start" flex-shrink=0 width="100%" box-sizing="border-box"
+      text label color=(destructive ? "-exact-system-red" : "-exact-label") flex=1 min-width=0
       image symbol color=(destructive ? "-exact-system-red" : "-exact-label") aria-hidden=true
 
 // Beeper's order: Reply, Share, Forward, Copy, Mark as Unread; then Edit and Delete on your own
 // messages, apart. Forward needs a message the server has; Copy, a text or a caption.
 component MessageActions
   props
+    // the room under the held message: past it, the actions scroll (the largest text sizes).
+    maxHeight: number
     canForward: bool
     canCopy: bool
     canEdit: bool
@@ -46,7 +49,8 @@ component MessageActions
     edit: action
     delete: action
   view
-    column width="14.5rem" max-width="100%" padding="6px 0" border-radius=22 backgroundMaterial="material" role="menu" testId="message-actions"
+    scroll width="14.5rem" max-width="100%" max-height=maxHeight padding="6px 0" border-radius=22 backgroundMaterial="material" role="menu"
+      testId="message-actions"
       MenuRow(label="Reply", symbol="symbol:icon.arrowshape-turn-up-left", press=reply, destructive=false, identifier="menu-reply")
       MenuRow(label="Share", symbol="symbol:share", press=share, destructive=false, identifier="menu-share")
       if canForward
@@ -76,6 +80,8 @@ component ForwardSheet
     toggle: action
     send: action
     cancel: action
+    // the reader chose one of the accessibility text sizes.
+    largeText: bool
   derive typed = query.trim().toLowerCase()
   derive shown = chats.filter(c => typed == "" or c.name.toLowerCase().includes(typed))
   view
@@ -90,8 +96,10 @@ component ForwardSheet
           aria-label=(chosen.length > 1 ? `Send to ${chosen.length} Chats` : "Send") testId="forward-send"
           image "symbol:send"
       // in the sheet, not the bar: UIKit hides a bar's search field's bar while it searches, and Send with it.
+      // at the accessibility text sizes the field draws its magnifier over its text: the padding moves the
+      // text past it, and its size stops at a cap.
       input type="search" value=query input=search placeholder="Search" aria-label="Search Chats" margin="4px 16px 8px"
-        testId="forward-search"
+        font-size="min(-exact-body, 22px)" padding-left=(largeText ? 40 : 0) testId="forward-search"
       if shown.length == 0
         EmptyState(symbol="symbol:search", title="No Chats Found", message=`No chat’s name has “${query.trim()}”.`)
       else

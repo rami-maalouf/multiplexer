@@ -306,6 +306,12 @@ component Multiplexer
   derive heldRows = 3 + (heldCanForward ? 1 : 0) + (heldText != "" ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldOwn ? 1 : 0)
   // the menu's height, so a message low on the screen moves up and the menu fits under it.
   derive heldMenuHeight = heldRows * (viewport.accessibilityTextSize ? 64 : 44) + 12 + (heldOwn ? 13 : 0)
+  // at the largest text sizes the lifted copy is shorter (a photo shrinks to fit), so the menu
+  // has room under it; what it still lacks, it scrolls.
+  derive heldCap = viewport.accessibilityTextSize ? 200 : 320
+  derive heldScale = min(1, heldCap / max(1, heldHeight))
+  derive heldShown = min(heldHeight, heldCap)
+  derive heldMenuRoom = max(132, viewport.height - heldShown - 196)
   // the message a sheet over the chat acts on: the reaction sheet's or the forward sheet's.
   derive sheetMessage = top(nav).name == "reactions" or top(nav).name == "forward" ? top(nav).params.message : ""
   derive forwardChats = roomList.rooms.map(r => ForwardChat(id=r.id, name=r.name, avatar=r.avatar, initials=r.initials, network=r.network))
@@ -899,10 +905,11 @@ component Multiplexer
         // a held message's sheets: every emoji, half height and pulled up to full; the chats to forward to.
         if e.name == "reactions"
           EmojiSheet(route=`${e.id}`, rows=emojiRows, query=emojiQuery, group=emojiGroup, columns=emojiColumns, search=searchEmoji,
-            pick=pickEmoji, reset=resetFrequent, choose=chooseEmojiGroup, scrolled=emojiScrolled, close=back)
+            pick=pickEmoji, reset=resetFrequent, choose=chooseEmojiGroup, scrolled=emojiScrolled, close=back,
+            largeText=viewport.accessibilityTextSize)
         if e.name == "forward"
           ForwardSheet(route=`${e.id}`, chats=forwardChats, query=forwardQuery, chosen=forwardTo, what=forwardWhat, search=searchForward,
-            toggle=toggleForward, send=sendForward, cancel=back)
+            toggle=toggleForward, send=sendForward, cancel=back, largeText=viewport.accessibilityTextSize)
         if e.name == "photo"
           column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`photo-${e.params.message}`
             position="absolute" inset=0 display="flex" flex-direction="column"
@@ -1088,20 +1095,21 @@ component Multiplexer
                 button press=letGo aria-label="Close" position="absolute" top=-120 left=0 right=0 bottom=-60 backgroundMaterial="thin" testId="close-menu"
                 column position="absolute" left=12 right=12 gap=10 align-items=(heldOwn ? "flex-end" : "flex-start")
                   padding-left=(thread.group and not heldOwn ? 36 : 0)
-                  top=max(76, min(heldY - 64, viewport.height - heldHeight - heldMenuHeight - 120))
+                  top=max(76, min(heldY - 64, viewport.height - heldShown - min(heldMenuHeight, heldMenuRoom) - 120))
                   // Beeper's six, then "+" for every emoji.
                   row gap=2 padding=6 border-radius=28 backgroundMaterial="glass" testId="quick-reactions"
                     for k in quickReactions key=k
+                      // fixed as Beeper's, a little larger at the largest text sizes, so the bar fits the screen.
                       button appearance="none" press=react(k) min-width=44 min-height=44 border-radius=22 aria-label=k testId=`react-${k}`
                         display="flex" align-items="center" justify-content="center"
-                        text k font="-exact-title1"
+                        text k font-size="min(-exact-title1, 30px)"
                     button appearance="none" press=openReactions min-width=44 min-height=44 border-radius=22 aria-label="More Reactions"
                       testId="react-more" display="flex" align-items="center" justify-content="center" background-color="-exact-tertiary-fill"
-                      image "symbol:add" font="-exact-title3" color="-exact-label"
+                      image "symbol:add" font-size="min(-exact-title3, 22px)" color="-exact-label"
                   // a copy of what was held, where it was: a bubble, a photo or a file.
                   if heldKind == "photo"
                     // the margin keeps the menu clear of the photo, which the host enlarges.
-                    view contextTarget=`photo-${held}` contextMagnify=true width=heldWidth height=heldHeight max-width="100%" border-radius=18
+                    view contextTarget=`photo-${held}` contextMagnify=true width=(heldWidth * heldScale) height=(heldHeight * heldScale) max-width="100%" border-radius=18
                       overflow="hidden" background-color="-exact-secondary-background" margin-bottom=14 testId="held-photo"
                       match heldMessage
                         case some(m)
@@ -1118,12 +1126,16 @@ component Multiplexer
                         case none
                           view
                   else
-                    column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" max-height=320 overflow="hidden"
+                    // a bubble cut at the cap keeps round corners where it is cut.
+                    column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" max-height=heldCap overflow="hidden"
+                      border-radius=(heldHeight > heldCap ? 20 : 0)
                       padding-bottom=6.65
                       Balloon(body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
-                  MessageActions(canForward=heldCanForward, canCopy=(heldText != ""), canEdit=heldCanEdit, canDelete=heldOwn,
-                    reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
-                    markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
+                  // the emoji sheet hides the actions, as Beeper's does: they would show through it.
+                  if top(nav).name != "reactions"
+                    MessageActions(maxHeight=heldMenuRoom, canForward=heldCanForward, canCopy=(heldText != ""), canEdit=heldCanEdit, canDelete=heldOwn,
+                      reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
+                      markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
       dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"
         text problem testId="problem"
         button commandfor="sign-in-failed" command="close" testId="sign-in-failed-ok"
