@@ -761,10 +761,14 @@ unread count, the chat's picture and name in a glass capsule in the middle (a ta
 chat info page, B20), and "..." on the right.
 
 **Acceptance criteria:**
-- [ ] Back shows the unread count of all other chats, and updates live.
-- [ ] Picture and name in the middle; "..." opens a menu (its items come with B20).
-- [ ] While the long-press overlay is open, the bar does not stay sharp above the blur (today it
-  does: Exact finding 27). Check whether the app's own bar fixes it.
+- [x] Back shows the inbox's other unread chats (as the sheet's Inbox row counts them), live; a
+  plain glass circle at 0. (2026-11-03, `chat.contract`.)
+- [x] Picture (with its network logo) and name in a glass capsule; not pressable until B20.
+  "..." offers Pin, Mark as Unread (it goes back to the list) and Mute.
+- [x] The app's own bar fixes T2.13's sharp bar: the long-press blur now covers it, in dark and light.
+- [ ] Not driven: a real edge swipe back (Exact finding 56); `back` works.
+- [ ] **Ask Rami:** Mark as Unread inside a chat goes back to the list; Back leaves out muted,
+  archived and Low Priority chats.
 
 **Dependencies:** none. B20 uses it. **Scope:** M
 
@@ -775,8 +779,9 @@ WhatsApp" (the chat's network), and the voice button on the right while the fiel
 (Send when there is text).
 
 **Acceptance criteria:**
-- [ ] The placeholder names the chat's network ("Reply on WhatsApp"); a plain Matrix chat says
-  "Message". (B1 is merged, and drafts landed on 2026-11-02, so this can start.)
+- [x] The placeholder names the chat's network ("Reply on WhatsApp"), with the network's logo at
+  the field's start; a plain Matrix chat says "Message"; with photos picked, "Add a caption".
+  (2026-11-03.) At the accessibility text sizes it says "Message" with no logo, so it is not cut.
 - [x] "+" opens the panel (B11). (2026-11-02.) The voice button comes with B17.
 
 **Dependencies:** B1. **Scope:** S
