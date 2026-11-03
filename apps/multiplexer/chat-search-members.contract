@@ -1,0 +1,60 @@
+// the search in one chat (search.contract's ChatSearchResults), from its info page's Search, as
+// Beeper's: the page turns into it in place, with the field at the bottom and the keyboard up;
+// X turns it back. A found message closes the page and opens the chat at it, as the all-chats
+// search does (search-members.contract's jump). Its words and kind are its own, so the inbox's
+// search under it stays as it was.
+use SearchFound from "./search.contract"
+
+members Multiplexer
+  state chatSearching = false
+  state chatQuery = ""
+  state chatKind = ""
+  state chatSearchFocused = false
+  // the search was closed on this visit of the page: the page fades back in.
+  state chatSearchClosed = false
+  // the search in a chat shows no recent chats: an empty list of their ids, typed for the source.
+  state noChats: string[] = []
+  resource chatFound = loadSearch(session.userId, chatSearching and infoRoom != "", chatQuery.trim(), chatKind, noChats, infoRoom) as shape SearchFound else empty()
+  derive chatFoundShown = (chatFound.owner == session.userId and chatFound.room == infoRoom and chatFound.query == chatQuery.trim()
+    and chatFound.kind == chatKind)
+
+  action openChatSearch
+    chatSearching = true
+    chatQuery = ""
+    chatKind = ""
+    haptic("selection")
+  action closeChatSearch
+    chatSearching = false
+    chatSearchClosed = true
+    chatQuery = ""
+    chatKind = ""
+    chatSearchFocused = false
+    blur()
+  action typeChatSearch(v: string)
+    chatQuery = v
+  action chatSearchFocus
+    chatSearchFocused = true
+  action chatSearchBlur
+    chatSearchFocused = false
+  // the keyboard's Search key keeps the search and puts the keyboard away.
+  action submitChatSearch
+    blur()
+  // a second press on the kind chosen clears it. A kind is for looking through: the keyboard goes.
+  action chooseChatKind(k: string)
+    let chosen = chatKind == k ? "" : k
+    chatKind = chosen
+    if chosen != ""
+      blur()
+    haptic("selection")
+  // the page closes to the chat under it, which pages back to the message (jumpWhenOpen).
+  action openChatFound(room: string, event: string)
+    jumpRoom = room
+    jumpEvent = event
+    jumpedTo = ""
+    jumpMissed = ""
+    chatSearching = false
+    chatSearchFocused = false
+    blur()
+    nav = back(nav)
+  action openChatLink(url: string)
+    openLink(url)

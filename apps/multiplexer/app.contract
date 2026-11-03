@@ -12,7 +12,7 @@ use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.co
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, seenText from "./details.contract"
 use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
-use SearchBar, SearchResults, JumpNote from "./search.contract"
+use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
 
@@ -405,6 +405,7 @@ component Multiplexer
   members "./voice-members.contract"
   members "./search-members.contract"
   members "./info-members.contract"
+  members "./chat-search-members.contract"
 
   action step
     now = performanceNow()
@@ -905,7 +906,7 @@ component Multiplexer
                   recentSearches=recentSearches, now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion, chooseKind=chooseKind, openChat=openFoundChat, openMessage=openFoundMessage, openLink=openFoundLink,
                   useSearch=useSearch, clearSearches=clearSearches)
-                SearchBar(query=searchQuery, kind=searchKind, type=typeSearch, submit=submitSearch, close=closeSearch,
+                SearchBar(query=searchQuery, kind=searchKind, scope="", type=typeSearch, submit=submitSearch, close=closeSearch,
                   focused=searchFocused, focus=searchFocus, blur=searchBlur, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion)
               else if roomsShown
@@ -1024,7 +1025,15 @@ component Multiplexer
             muted=openMuted, unread=(openUnread > 0), close=closeInfo, archive=archiveOpen, moveLowPriority=lowPriorityOpen,
             pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
             customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,
-            largeText=viewport.accessibilityTextSize)
+            searching=chatSearching, returned=chatSearchClosed, search=openChatSearch, closeSearch=closeChatSearch,
+            largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion)
+            // the search in this chat, in the page's place (chat-search-members.contract).
+            ChatSearchResults(found=chatFound, shown=chatFoundShown, loading=pending(chatFound), query=chatQuery, kind=chatKind,
+              now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion,
+              chooseKind=chooseChatKind, openMessage=openChatFound, openLink=openChatLink)
+            SearchBar(query=chatQuery, kind=chatKind, scope=infoShown.name, type=typeChatSearch, submit=submitChatSearch,
+              close=closeChatSearch, focused=chatSearchFocused, focus=chatSearchFocus, blur=chatSearchBlur,
+              largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion)
         if e.name == "editInfo"
           EditGroupSheet(route=`${e.id}`, info=infoShown, draft=infoDraft, picked=(match first(infoPicked) { case some(f) => f.path, case none => "" }),
             saving=infoSaving, refused=groupRefused, type=typeInfoName, choose=choosePicture, pick=picturePicked, close=back, save=saveGroup)

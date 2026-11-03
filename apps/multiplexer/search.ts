@@ -9,11 +9,11 @@ type Chat = {
   unread: number; network: string; markedUnread: boolean; muted: boolean; mentions: number; avatar: string;
 };
 // a found message, with its chat's name, picture and network. kind: text, image, video, audio,
-// file or other; links: the links in its text; seconds: a video's length.
+// file or other; links: the links in its text; seconds: a video's or a voice message's length.
 type Hit = {
   room: string; chatName: string; isDirect: boolean; network: string; avatar: string; event: string; senderName: string;
   isOwn: boolean; body: string; time: number; kind: string; links: string[]; picture: string; seconds: number;
-  fileName: string; fileSize: number;
+  isVoice: boolean; fileName: string; fileSize: number; senderPicture: string;
 };
 export type SearchAnswer = { chats: Chat[]; messages: Hit[]; links: Hit[] };
 
@@ -78,8 +78,10 @@ export const snippetOf = (body: string, words: string[]): { id: string; text: st
 const kindText = (h: Hit): string =>
   h.kind === 'image' ? 'Photo' : h.kind === 'video' ? 'Video' : h.kind === 'audio' ? 'Voice message' : h.kind === 'file' ? h.fileName : 'Message';
 
-/** The module's answer for `query` as the screen's shapes. A chat with one person names no sender. */
-export const searchFound = (answer: SearchAnswer, query: string, initials: (name: string) => string): Omit<Found, 'owner' | 'query' | 'kind'> => {
+/** The module's answer for `query` as the screen's shapes. A chat with one person names no sender,
+ * but in one chat's search (inChat) each row names its sender. */
+export const searchFound = (answer: SearchAnswer, query: string, initials: (name: string) => string, inChat = false):
+  Omit<Found, 'owner' | 'room' | 'query' | 'kind'> => {
   const words = wordsOf(query);
   const chat = (c: Chat): Found['chats'][number] => ({
     id: c.id, name: c.name, avatar: c.avatar, initials: initials(c.name), network: c.network, lastTime: c.lastTime,
@@ -91,8 +93,9 @@ export const searchFound = (answer: SearchAnswer, query: string, initials: (name
   });
   const message = (h: Hit): Found['messages'][number] => ({
     id: `${h.room}/${h.event}`, room: h.room, event: h.event, chatName: h.chatName, avatar: h.avatar, initials: initials(h.chatName),
-    network: h.network, time: h.time, kind: h.kind, picture: h.picture, seconds: h.seconds, fileName: h.fileName, fileSize: h.fileSize,
-    sender: h.isOwn ? 'You' : h.isDirect || h.senderName === h.chatName ? '' : h.senderName,
+    network: h.network, time: h.time, kind: h.kind, picture: h.picture, seconds: h.seconds, isVoice: h.isVoice,
+    fileName: h.fileName, fileSize: h.fileSize, senderAvatar: h.senderPicture, senderInitials: initials(h.senderName),
+    sender: h.isOwn ? 'You' : inChat ? h.senderName : h.isDirect || h.senderName === h.chatName ? '' : h.senderName,
     snippet: h.body !== '' ? snippetOf(h.body, words) : [{ id: '0', text: kindText(h), hit: false }],
     // the link with a word searched for, else its first.
     link: h.links.find((l) => words.some((w) => fold(l).includes(w))) ?? h.links[0] ?? '',

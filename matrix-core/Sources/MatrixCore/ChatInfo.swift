@@ -120,13 +120,7 @@ extension MatrixAccount {
     /// The chat's media timeline, opened once.
     func mediaTimeline(_ roomId: String, timeout: TimeInterval) async throws -> MediaTimeline {
         let opening = infoStates.timeline(roomId) {
-            let timeline = try await self.room(roomId, timeout: timeout).timelineWithConfiguration(configuration: TimelineConfiguration(
-                focus: .live(hideThreadedEvents: false), filter: .onlyMessage(types: [.image, .video]),
-                internalIdPrefix: MediaTimeline.prefix, dateDividerMode: .monthly, trackReadReceipts: .disabled, reportUtds: false))
-            let items = TimelineItems(me: (try? self.client.userId()) ?? "")
-            let handle = await timeline.addListener(listener: items)
-            items.onChange = { [weak self] in self?.notify(.info(roomId)) }
-            return MediaTimeline(timeline: timeline, items: items, handle: handle)
+            try await self.openTimeline(roomId, types: [.image, .video], prefix: MediaTimeline.prefix, change: .info(roomId), timeout: timeout)
         }
         do {
             return try await opening.value
@@ -134,6 +128,19 @@ extension MatrixAccount {
             infoStates.forgetTimeline(roomId)
             throw error
         }
+    }
+
+    /// A live timeline of the chat with only messages of `types`, its items' ids starting with
+    /// `prefix`; a change of its items tells `change`.
+    func openTimeline(_ roomId: String, types: [RoomMessageEventMessageType], prefix: String, change: MatrixChange,
+                      timeout: TimeInterval) async throws -> MediaTimeline {
+        let timeline = try await room(roomId, timeout: timeout).timelineWithConfiguration(configuration: TimelineConfiguration(
+            focus: .live(hideThreadedEvents: false), filter: .onlyMessage(types: types),
+            internalIdPrefix: prefix, dateDividerMode: .monthly, trackReadReceipts: .disabled, reportUtds: false))
+        let items = TimelineItems(me: (try? client.userId()) ?? "")
+        let handle = await timeline.addListener(listener: items)
+        items.onChange = { [weak self] in self?.notify(change) }
+        return MediaTimeline(timeline: timeline, items: items, handle: handle)
     }
 
     /// The items of the chat's media timeline once it is open, for a photo or video of its grid
@@ -280,7 +287,8 @@ final class ChatInfoStates: @unchecked Sendable {
     }
 }
 
-/// A chat's timeline of only its photos and videos, and its listener.
+/// A chat's timeline of only some kinds of message (its photos and videos for the info page; a
+/// kind for the search in the chat), and its listener.
 final class MediaTimeline: @unchecked Sendable {
     /// Its items' ids start with this, so a photo of the grid is not taken for a message's.
     static let prefix = "media-"
@@ -299,10 +307,14 @@ final class MediaTimeline: @unchecked Sendable {
     /// Pages back until it holds `count` photos and videos or the room's start; at most 8 pages
     /// of 50 events, since most of a chat's events are no photo.
     func pageBackMedia(until count: Int) async throws {
-        for _ in 0..<8 {
+        try await pageBack(until: count, pages: 8) { self.items.read { items, _ in items.filter { $0.asEvent() != nil }.count } }
+    }
+
+    /// Pages back until `held` counts `count` or the room's start, at most `pages` pages of 50 events.
+    func pageBack(until count: Int, pages: Int, held: () -> Int) async throws {
+        for _ in 0..<pages {
             await items.settle(quiet: 0.3)
-            let held = items.read { items, _ in items.filter { $0.asEvent() != nil }.count }
-            if lock.withLock({ reachedStart }) || held >= count { return }
+            if lock.withLock({ reachedStart }) || held() >= count { return }
             let start = try await timeline.paginateBackwards(numEvents: 50)
             lock.withLock { reachedStart = start }
         }

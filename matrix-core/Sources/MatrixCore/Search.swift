@@ -65,9 +65,10 @@ public enum SearchIndex {
     }
 }
 
-/// The kinds a search shows across chats, newest first, with or without words.
+/// The kinds a search shows across chats or in one chat (audio: one chat only), newest first,
+/// with or without words.
 public enum SearchKind: String, CaseIterable, Sendable {
-    case images, videos, links, files
+    case images, videos, links, files, audio
 
     /// Words in the messages of this kind, of which a message must have one. The index holds a
     /// photo's, video's or file's file name and caption, so the kinds go by the file name's
@@ -81,6 +82,18 @@ public enum SearchKind: String, CaseIterable, Sendable {
         case .files: return ["document", "file", "pdf", "doc", "docx", "xls", "xlsx", "csv", "ppt", "pptx", "key", "pages",
                              "numbers", "txt", "rtf", "md", "zip", "rar", "7z", "gz", "json", "xml", "html", "epub", "apk",
                              "dmg", "ics", "vcf", "psd", "svg", "sketch", "fig"]
+        case .audio: return ["audio", "voice", "ogg", "opus", "m4a", "mp3", "aac", "wav", "amr"]
+        }
+    }
+
+    /// The message types of this kind, for a chat's timeline of them (`chatKind`). A link has no
+    /// type: it is found in a text's words. Photos and videos share the info page's timeline.
+    var messageTypes: [RoomMessageEventMessageType] {
+        switch self {
+        case .images, .videos: return [.image, .video]
+        case .links: return [.text, .notice, .emote]
+        case .files: return [.file]
+        case .audio: return [.audio]
         }
     }
 
@@ -90,6 +103,7 @@ public enum SearchKind: String, CaseIterable, Sendable {
         case .videos: return message.kind == .video
         case .links: return !message.links.isEmpty
         case .files: return message.kind == .file
+        case .audio: return message.kind == .audio
         }
     }
 }
@@ -115,7 +129,15 @@ public struct FoundMessage: Equatable, Sendable {
     public var image: MessageImage?
     /// A video, with the name `searchPicture` gives its poster; nil for others.
     public var video: MessageVideo?
+    /// A file's name and size; an audio file's too (a voice message's name is the sdk's).
     public var file: MessageFile?
+    /// A voice message's or audio file's sound; nil for others.
+    public var audio: MessageAudio? = nil
+    /// The sender's picture's media url; "" for none.
+    public var senderPicture: String = ""
+
+    /// The file name `MatrixAccount.pictureFile` gives the sender's picture; "" for none.
+    public var senderPictureName: String { senderPicture.isEmpty ? "" : avatarFileName(senderPicture) }
 }
 
 /// What a search for words finds, in the order the screen shows it (Rami, 2026-11-02).
@@ -153,6 +175,39 @@ final class SearchState: @unchecked Sendable {
     private var started: Date?
     private var ended: Date?
     private var pictures: [String: Picture] = [:]
+    /// The timelines of one kind (`chatKind`) of one chat at a time, `room`: those of another
+    /// chat close when it opens one. By kind.
+    private var room = ""
+    private var timelines: [SearchKind: Task<MediaTimeline, Error>] = [:]
+    /// Each kind's paging back, and the count it pages back for.
+    private var pagings: [SearchKind: (limit: Int, task: Task<Void, Error>)] = [:]
+
+    /// The chat's timeline of `kind`: the one opening or open, else the one `open` starts.
+    func timeline(_ kind: SearchKind, _ roomId: String, open: @escaping @Sendable () async throws -> MediaTimeline) -> Task<MediaTimeline, Error> {
+        lock.withLock {
+            if roomId != room { (room, timelines, pagings) = (roomId, [:], [:]) }
+            if let made = timelines[kind] { return made }
+            let task = Task { try await open() }
+            timelines[kind] = task
+            return task
+        }
+    }
+
+    func forgetTimeline(_ kind: SearchKind, _ roomId: String) {
+        lock.withLock { if roomId == room { (timelines[kind], pagings[kind]) = (nil, nil) } }
+    }
+
+    /// The chat's paging back of `kind` for `limit` messages: it pages back once, and a later ask
+    /// for no more waits for that one, so the words typed on a kind's page read what it holds.
+    func paging(_ kind: SearchKind, _ roomId: String, _ limit: Int, page: @escaping @Sendable () async throws -> Void) -> Task<Void, Error> {
+        lock.withLock {
+            if roomId != room { (room, timelines, pagings) = (roomId, [:], [:]) }
+            if let made = pagings[kind], made.limit >= limit { return made.task }
+            let task = Task { try await page() }
+            pagings[kind] = (limit, task)
+            return task
+        }
+    }
 
     func start(_ handle: TaskHandle) {
         lock.withLock {
@@ -213,13 +268,14 @@ extension MatrixAccount {
 
     /// What `text` finds: chats by name (a part of a name is enough), then messages with every
     /// word, then the messages whose link has one of the words. `roomId` keeps one chat's
-    /// messages only (no chats then). Messages come from the index: those this device has synced
-    /// or paged back.
+    /// messages only (no chats then): the index has no search in one chat, so it reads more of
+    /// every chat's results. Messages come from the index: those this device has synced or paged
+    /// back.
     public func search(_ text: String, in roomId: String? = nil, limit: Int = 40, timeout: TimeInterval = 30) async throws -> SearchResults {
         let words = SearchIndex.words(text)
         let chats = try await rooms(timeout: timeout)
         guard !words.isEmpty else { return SearchResults(chats: [], messages: [], links: []) }
-        let found = try await messages(words, also: [], in: roomId, chats: chats, limit: limit, pages: 3) { _ in true }
+        let found = try await messages(words, also: [], in: roomId, chats: chats, limit: limit, pages: roomId == nil ? 3 : 30) { _ in true }
         // a link with one of the words puts its message under links.
         let inLink = found.filter { m in m.links.contains { link in words.contains { SearchIndex.fold(link).contains($0) } } }
         let linked = Set(inLink.map(\.eventId))
@@ -227,12 +283,71 @@ extension MatrixAccount {
                              messages: found.filter { !linked.contains($0.eventId) }, links: inLink)
     }
 
-    /// One kind's messages across chats (or in `roomId`), the newest first; the words of `text`
-    /// narrow them. A kind's messages are rare among the rest, so it reads more pages.
-    public func search(kind: SearchKind, _ text: String = "", in roomId: String? = nil, limit: Int = 60,
-                       timeout: TimeInterval = 30) async throws -> [FoundMessage] {
+    /// One kind's messages across chats, the newest first; the words of `text` narrow them. A
+    /// kind's messages are rare among the rest, so it reads more pages. The index knows a photo,
+    /// video or file by its file name only (`indexWords`); in one chat, `chatKind` finds them by
+    /// their type.
+    public func search(kind: SearchKind, _ text: String = "", limit: Int = 60, timeout: TimeInterval = 30) async throws -> [FoundMessage] {
         let chats = try await rooms(timeout: timeout)
-        return try await messages(SearchIndex.words(text), also: kind.indexWords, in: roomId, chats: chats, limit: limit, pages: 15, keep: kind.has)
+        return try await messages(SearchIndex.words(text), also: kind.indexWords, in: nil, chats: chats, limit: limit, pages: 15, keep: kind.has)
+    }
+
+    /// One kind's messages in one chat, the newest first, at most `limit`; the words of `text`
+    /// narrow them, each the start of a word of the message's text, file name or link. They come
+    /// from a timeline of the chat with only the kind's message types (photos and videos: the
+    /// info page's), paged back once, from this device's cache and then the server, at most
+    /// `pages` pages of 50 events: so a photo is found by its type, not its file name, and a
+    /// voice message too, which the index does not know. A deleted chat's older messages went
+    /// with it.
+    public func chatKind(_ kind: SearchKind, _ text: String = "", roomId: String, limit: Int = 60, pages: Int = 20,
+                         timeout: TimeInterval = 30) async throws -> [FoundMessage] {
+        guard let chat = try await rooms(timeout: timeout).first(where: { $0.id == roomId }), !chat.isHidden else { return [] }
+        let live = try await kindTimeline(kind, roomId, timeout: timeout)
+        let me = (try? client.userId()) ?? ""
+        let cut = await chatMarks().cleared[roomId] ?? 0
+        let held: @Sendable () -> [(found: FoundMessage, content: MessageType)] = {
+            live.items.read { items, _ in
+                items.reversed().compactMap { item in
+                    guard let event = item.asEvent(), event.timestamp > cut, case .eventId(let id) = event.eventOrTransactionId,
+                          case .msgLike(let like) = event.content, case .message(let content) = like.kind,
+                          let found = FoundMessage(content: event.content, eventId: id, sender: event.sender, profile: event.senderProfile,
+                                                   timestamp: event.timestamp, chat: chat, me: me),
+                          kind.has(found) else { return nil }
+                    return (found, content.msgType)
+                }
+            }
+        }
+        do {
+            try await search.paging(kind, roomId, limit) { try await live.pageBack(until: limit, pages: pages) { held().count } }.value
+        } catch {
+            search.forgetTimeline(kind, roomId)
+            throw error
+        }
+        let words = SearchIndex.words(SearchIndex.fold(text))
+        let kept = held().filter { Self.has(words, $0.found) }.prefix(limit)
+        for (found, content) in kept { search.keep(found, content) }
+        return kept.map(\.found)
+    }
+
+    /// Every word starts a word of the message's text, file name or links, without case or accents.
+    static func has(_ words: [String], _ message: FoundMessage) -> Bool {
+        guard !words.isEmpty else { return true }
+        let own = SearchIndex.words(SearchIndex.fold(([message.body, message.file?.name ?? ""] + message.links).joined(separator: " ")))
+        return words.allSatisfy { word in own.contains { $0.hasPrefix(word) } }
+    }
+
+    /// The chat's timeline of `kind`, opened once (photos and videos: the info page's).
+    private func kindTimeline(_ kind: SearchKind, _ roomId: String, timeout: TimeInterval) async throws -> MediaTimeline {
+        if kind == .images || kind == .videos { return try await mediaTimeline(roomId, timeout: timeout) }
+        let opening = search.timeline(kind, roomId) {
+            try await self.openTimeline(roomId, types: kind.messageTypes, prefix: "search-\(kind.rawValue)-", change: .search, timeout: timeout)
+        }
+        do {
+            return try await opening.value
+        } catch {
+            search.forgetTimeline(kind, roomId)
+            throw error
+        }
     }
 
     /// The chats with these ids, in this order, but those deleted from this app or gone: the
@@ -345,9 +460,16 @@ extension TimelineItems {
 extension FoundMessage {
     /// A search's message; nil for a result that is no message (a sticker, a poll).
     init?(_ result: MessageSearchResult, chat: RoomSummary, me: String) {
-        guard case .msgLike(let like) = result.content, case .message(let message) = like.kind else { return nil }
+        self.init(content: result.content, eventId: result.eventId, sender: result.sender, profile: result.senderProfile,
+                  timestamp: result.timestamp, chat: chat, me: me)
+    }
+
+    /// A message of the index or of a timeline; nil for one that is no message (a sticker, a poll).
+    init?(content: TimelineItemContent, eventId: String, sender: String, profile: ProfileDetails, timestamp: UInt64,
+          chat: RoomSummary, me: String) {
+        guard case .msgLike(let like) = content, case .message(let message) = like.kind else { return nil }
         var body = message.body, kind = Kind.text
-        var image: MessageImage?, video: MessageVideo?, file: MessageFile?
+        var image: MessageImage?, video: MessageVideo?, file: MessageFile?, audio: MessageAudio?
         switch message.msgType {
         case .image(let content):
             (kind, body, image) = (.image, content.caption ?? "", MessageImage(content))
@@ -356,17 +478,21 @@ extension FoundMessage {
         case .file(let content):
             (kind, body, file) = (.file, content.caption ?? "", MessageFile(content))
         case .audio(let content):
-            (kind, body) = (.audio, content.caption ?? "")
+            (kind, body, audio) = (.audio, content.caption ?? "", MessageAudio(content))
+            file = MessageFile(name: content.filename, size: Int(content.info?.size ?? 0), mimetype: content.info?.mimetype ?? "")
         case .text, .notice, .emote:
             kind = .text
         default:
             kind = .other
         }
-        var name = result.sender
-        if case .ready(let shown?, _, _, _, _) = result.senderProfile { name = shown }
-        self.init(chat: chat, eventId: result.eventId, sender: result.sender, senderName: name, isOwn: result.sender == me,
-                  body: body, timestamp: result.timestamp, kind: kind, links: SearchIndex.links(in: body),
-                  image: image, video: video, file: file)
+        var name = sender, picture = ""
+        if case .ready(let shown, _, let url, _, _) = profile {
+            if let shown, !shown.isEmpty { name = shown }
+            picture = url ?? ""
+        }
+        self.init(chat: chat, eventId: eventId, sender: sender, senderName: name, isOwn: sender == me,
+                  body: body, timestamp: timestamp, kind: kind, links: SearchIndex.links(in: body),
+                  image: image, video: video, file: file, audio: audio, senderPicture: picture)
     }
 }
 

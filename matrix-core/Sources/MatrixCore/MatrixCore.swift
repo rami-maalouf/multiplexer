@@ -24,6 +24,9 @@ public enum MatrixChange: Hashable, Sendable {
     case profile
     /// What a chat's info page shows changed: its photos and videos, or its own name (ChatInfo.swift).
     case info(String)
+    /// A kind's page of the search in a chat has a message more or less: its files, links or
+    /// audio (Search.swift; its photos and videos are the info page's).
+    case search
 }
 
 /// What the app keeps (in the Keychain) to sign in again without a password.

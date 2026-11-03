@@ -22,7 +22,7 @@ members Multiplexer
   state jumpEvent = ""
   state jumpedTo = ""
   state jumpMissed = ""
-  resource found = loadSearch(session.userId, searching, searchQuery.trim(), searchKind, recentChats) as shape SearchFound else empty()
+  resource found = loadSearch(session.userId, searching, searchQuery.trim(), searchKind, recentChats, "") as shape SearchFound else empty()
   mutation jumped as shape Jump then afterJump
   derive foundShown = found.owner == session.userId and found.query == searchQuery.trim() and found.kind == searchKind
   task noteRecentChat when openRoom != "" key=openRoom

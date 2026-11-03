@@ -148,7 +148,8 @@ final class ChatInfoTests: XCTestCase {
         XCTAssertEqual(clip.duration, 3000)
         XCTAssertEqual(clip.width, 640)
         XCTAssertFalse(clip.isOwn)
-        let picture = media[1]
+        // with fewer than two, the test fails here, not with an index out of range.
+        let picture = try XCTUnwrap(media.dropFirst().first, "the photo before the clip is not there")
         XCTAssertFalse(picture.isVideo, "the text between is left out")
         XCTAssertEqual(picture.width, 400)
         XCTAssertEqual(picture.height, 300)

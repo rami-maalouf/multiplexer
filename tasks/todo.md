@@ -960,10 +960,38 @@ searches. Above: Images, Videos, Links, Files, Drafts.
 Videos, Links, Files, Audio and Bookmarks.
 
 **Acceptance criteria:**
-- [ ] Text search in one chat (the SDK has none per chat: filter B18's results by chat).
-- [ ] Pages per kind (a timeline filtered by message type; links found in the text).
+- [x] Text search in one chat (the SDK has none per chat: filter B18's results by chat). The
+  info page's Search turns the page into the search in place, as Beeper's: the bar's title names
+  the chat, the field at the bottom says "Search in <chat>" with the keyboard up, and X (in the
+  bar or beside the field) turns it back, the page fading in. Words find the chat's messages from
+  the index (it reads 30 pages of every chat's results, as the SDK has no search per chat), each
+  row with its sender's picture and name, then its links. A found message closes the page and
+  opens the chat at it, marked (B18's jump). (2026-11-03, `chat-search-members.contract`,
+  `search.contract`'s `ChatSearchResults`, `info.contract`'s slot, MatrixCore `Search.swift`.)
+- [x] Pages per kind (a timeline filtered by message type; links found in the text): Images,
+  Videos, Links, Files and Audio (voice messages and audio files, with their length). Photos
+  and videos come from the info page's media timeline; files, links and audio from a timeline
+  of their own message types, kept for one chat at a time, paged back once (at most 20 pages of
+  50 events, from this device's cache and then the server). So a photo or file is found by its
+  type, not by its file name as across chats, and a voice message too, which the index does not
+  know. Words typed on a kind's page narrow it by the start of a word (text, file name, link).
+- [ ] Bookmarks: not built, as B14 has no bookmarks yet.
+- [x] Gate: MatrixCore `SearchTests` 7 passed (new: `testOneChatsMessagesAndKinds`), `ChatInfoTests` 5 passed, the
+  whole suite passed but for `testFrequentEmojisCountReactionsAndReset`, which fails on `main` too (see
+  "Known failing test" below); `bun test` 7
+  passed (new: `search.test.ts`); drives as `@test1` in light, dark and the largest text size,
+  `check both` clean; `verify ios` clean (2026-11-03). Screenshots in `apps/multiplexer/.exact/b19/`.
+- Fixed on the way, in the all-chats search too: a link row's time wrapped under the chat's name
+  (the name's basis left no room beside the link's button), and the bar's, kinds' and file rows'
+  symbols grew past their circles at the largest text size (now a text style with a cap).
 
 **Dependencies:** B18, B20. **Scope:** M
+
+**Known failing test (found 2026-11-03, during B19):** `MessageActionsTests.testFrequentEmojisCountReactionsAndReset`
+fails on `main` and on B19 alike: the server's `recent_emoji` counts stay `[1, 1, 1]` where the
+test expects `[2, 1, 1]` (order "🔥, 🎉, 🦄" against "🎉, 🔥, 🦄"), then "no matching message
+within 30 s". Not caused by B19; to fix next. Also: two MatrixCore runs at the same time as the
+same test users time out on "the first sync"; run one suite at a time.
 
 ### B20 The chat info page
 
@@ -979,8 +1007,8 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
   `info-members.contract`, `info.ts`, `modules/apple/Info.swift`, MatrixCore `ChatInfo.swift`.
   The member count leaves out the bridge's bot. Media: the chat's newest photos and videos from
   a timeline of its own, four, then up to 40 at "See More"; a tile opens the photo or video
-  viewer, zoomed out of it. Members: six by name, "See All" for the rest. Search is shown
-  disabled until B19. Add Member shows only in plain Matrix groups where you may invite; a
+  viewer, zoomed out of it. Members: six by name, "See All" for the rest. Search opens the
+  search in this chat (B19). Add Member shows only in plain Matrix groups where you may invite; a
   bridged group says "People join this group on WhatsApp", as Matrix cannot add someone there.
   A DM shows no members' list.)
 - [x] Edit: Edit Group Info (name and picture, for groups you may change); Customize for Me (a

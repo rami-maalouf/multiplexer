@@ -331,14 +331,24 @@ final class Matrix: ExactModule {
     }
 
     /// What the search screen shows for a query (`query`), a kind (`kind`: images, videos, links,
-    /// files or "") and the chats opened last (`recent`, newest first).
+    /// files, audio or "") and the chats opened last (`recent`, newest first). With `room`, the
+    /// search in that chat: its messages, and its kinds by their type.
     @MainActor private func search(_ request: [String: Any]) async throws -> [String: Any] {
         let started = Date(), account = try await signedIn()
-        let query = request["query"] as? String ?? ""
+        let query = request["query"] as? String ?? "", room = request["room"] as? String ?? ""
+        let kind = SearchKind(rawValue: request["kind"] as? String ?? "")
+        let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         var chats: [RoomSummary] = [], messages: [FoundMessage] = [], links: [FoundMessage] = []
-        if let kind = SearchKind(rawValue: request["kind"] as? String ?? "") {
+        if !room.isEmpty {
+            if let kind {
+                messages = try await account.chatKind(kind, query, roomId: room)
+            } else if typed {
+                let found = try await account.search(query, in: room)
+                (messages, links) = (found.messages, found.links)
+            }
+        } else if let kind {
             messages = try await account.search(kind: kind, query)
-        } else if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        } else if !typed {
             chats = try await account.chats(request["recent"] as? [String] ?? [])
         } else {
             let found = try await account.search(query)
@@ -353,7 +363,10 @@ final class Matrix: ExactModule {
              "picture": cached(m.image?.thumbnailName ?? m.video?.posterName ?? "", topic: "search") {
                  _ = try await account.searchPicture(eventId: m.eventId, directory: self.media) },
              "width": m.image?.width ?? m.video?.width ?? 0, "height": m.image?.height ?? m.video?.height ?? 0,
-             "seconds": (m.video?.duration ?? 0) / 1000, "fileName": m.file?.name ?? "", "fileSize": m.file?.size ?? 0]
+             "seconds": Int((Double(m.video?.duration ?? m.audio?.duration ?? 0) / 1000).rounded(m.audio == nil ? .down : .toNearestOrAwayFromZero)),
+             "isVoice": m.audio?.isVoice ?? false, "fileName": m.file?.name ?? "", "fileSize": m.file?.size ?? 0,
+             "senderPicture": cached(m.senderPictureName, topic: "search") {
+                 _ = try await account.pictureFile(url: m.senderPicture, directory: self.media) }]
         }
         return ["chats": chats.map { roomRecord($0, listed: true, account, topic: "search") },
                 "messages": messages.map(hit), "links": links.map(hit)]
@@ -511,6 +524,7 @@ final class Matrix: ExactModule {
         case .room(let roomId): return "thread:\(roomId)"
         case .profile: return "profile"
         case .info(let roomId): return "info:\(roomId)"
+        case .search: return "search"
         }
     }
 
