@@ -115,9 +115,9 @@ component TitleMenu
     settings: action
     largeText: bool
   view
-    row padding="6px 16px 10px" align-items="center" testId="title-bar"
+    row padding="2px 16px 6px" align-items="center" testId="title-bar"
       button popovertarget="title-menu" appearance="none" aria-label=`${title}, menu` testId="title-button"
-        display="flex" align-items="center" gap=6 max-width="100%"
+        display="flex" align-items="center" gap=6 max-width="100%" min-height=44
         text title role="heading" aria-level=1 font="-exact-title1" font-weight=700 color="-exact-label" testId="title"
         image "symbol:icon.chevron-down" font=(largeText ? "-exact-title3" : "-exact-headline") font-weight=600 color="-exact-label"
           aria-hidden=true

@@ -1,0 +1,24 @@
+// Settings, opened by its path: a test starts signed out and cannot sign in, so it shows the
+// voice message speed alone (the account and Sign Out need a session; drives check those).
+test "Settings changes the one speed every voice message plays at, and keeps it"
+  at "/settings"
+  clock data
+  expect tree has "settings"
+  expect tree missing "account"
+  expect tree missing "sign-out"
+  expect state voiceSpeed == 1
+  tap "speed-1.5"
+  expect state voiceSpeed == 1.5
+  reload
+  clock data
+  expect state voiceSpeed == 1.5
+
+test "each of Settings' speeds is chosen in turn"
+  at "/settings"
+  clock data
+  tap "speed-2"
+  expect state voiceSpeed == 2
+  tap "speed-1.5"
+  expect state voiceSpeed == 1.5
+  tap "speed-1"
+  expect state voiceSpeed == 1
