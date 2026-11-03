@@ -61,7 +61,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 40 | After `check both`, nodes made later in the drive drew in the other color scheme (seen once). | About 8 min and a wrong fix | P3 | [after-check-both-nodes-made-later](issues/20261102-after-check-both-nodes-made-later.md) |
 | 41 | `font-size` still refuses `rem` inside `min()`, which `width` now takes (follows closed finding 21). | About 3 min | P3 | [font-size-still-refuses-rem-inside](issues/20261102-font-size-still-refuses-rem-inside.md) |
 | 42 | Running a framework script's tests with a newer Bun fails: `ensureBun` drops the `test` verb. | About 3 min | P3 | [running-a-framework-script-s-tests](issues/20261102-running-a-framework-script-s-tests.md) |
-| 43 | Parallel sessions on one machine share the default Simulator: an `ios --run` replaced another session's app in the middle of its drive. | About 15 min | P3 | [parallel-sessions-on-one-machine-share](issues/20261102-parallel-sessions-on-one-machine-share.md) |
+| 43 | Parallel sessions on one machine share the default Simulator: an `ios --run` replaced another session's app in the middle of its drive. Fixed in PR #1329 (open). | About 15 min | P3 | [parallel-sessions-on-one-machine-share](issues/20261102-parallel-sessions-on-one-machine-share.md) |
 | 44 | A virtualized list draws rows past its frame, under the bar that follows it, and refuses `overflow`. | About 25 min | P3 | [a-virtualized-list-draws-rows-past](issues/20261102-a-virtualized-list-draws-rows-past.md) |
 | 45 | No keyboard fact: a chat cannot keep a message in view as the keyboard comes up. | About 15 min | P3 | [no-keyboard-fact-a-chat-cannot](issues/20261102-no-keyboard-fact-a-chat-cannot.md) |
 | 46 | An app checkout at another folder depth cannot build: `EXACT2` does not cover the app's Cargo paths. | About 10 min, four builds | P3 | [an-app-checkout-at-another-depth](issues/20261102-an-app-checkout-at-another-depth.md) |
@@ -149,3 +149,4 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-02 | [#1325](https://github.com/ccheever/exact2/pull/1325): `verify` says the tests could not run, not that they did not compile | 33 | Open |
 | 2026-11-02 | [#1326](https://github.com/ccheever/exact2/pull/1326): a git worktree of an app can take another worktree's simulator (a pitfall) | 43 | Open |
 | 2026-11-02 | [#1327](https://github.com/ccheever/exact2/pull/1327): a bar under a virtualized list needs a background, or rows show through it (a pitfall) | 44 | Open |
+| 2026-11-02 | [#1329](https://github.com/ccheever/exact2/pull/1329): `exact.mjs ios` waits for a drive of the app on its simulator | 43 | Open |
