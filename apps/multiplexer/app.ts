@@ -256,6 +256,33 @@ const sources: Sources = {
     const answer = (await native.later({ op: 'search', query, kind, recent, room })) as SearchAnswer;
     return { owner: userId, room, query, kind, ...searchFound(answer, query, initials, room !== '') };
   },
+  // Send Later (send-later-members.contract): the open chat can have it once it is known not to be
+  // end-to-end encrypted (a message that waits on the server cannot be).
+  loadSendLater: async ([roomId], _store, _storage, native): Promise<Result<'loadSendLater'>> => {
+    if (roomId === '' || !native?.available) return { room: roomId, can: false };
+    return (await native.later({ op: 'canSendLater', roomId })) as { room: string; can: boolean };
+  },
+  // the messages waiting on the server, the soonest first; read again each minute (minute), as
+  // they go at their time, and when one is made, moved, sent or cancelled.
+  loadScheduled: async ([userId, _minute], _store, _storage, native): Promise<Result<'loadScheduled'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, messages: [] };
+    native.watch('scheduled');
+    const answer = (await native.later({ op: 'scheduled' })) as {
+      messages: { id: string; room: string; chatName: string; network: string; avatar: string; body: string; at: number; isReply: boolean }[];
+    };
+    return { owner: userId, messages: answer.messages.map((m) => ({ ...m, initials: initials(m.chatName) })) };
+  },
+  // when: "tomorrow", "monday" or a picked time ("2026-11-04T09:30"), which the module reads in
+  // the iPhone's zone. problem: "" when it waits, else why not (the module's words).
+  sendLater: async ([roomId, text, replyTo, when], _store, _storage, native): Promise<Result<'sendLater'>> =>
+    (await native!.later({ op: 'sendLater', roomId, text, replyTo, when })) as { id: string; at: number; problem: string },
+  reschedule: async ([id, when], _store, _storage, native): Promise<Result<'reschedule'>> =>
+    (await native!.later({ op: 'reschedule', id, when })) as { id: string; at: number; problem: string },
+  // action: "send" (now) or "cancel".
+  changeScheduled: async ([id, action], _store, _storage, native): Promise<Result<'changeScheduled'>> => {
+    const answer = (await native!.later({ op: 'scheduledAction', id, action })) as { ok: boolean; problem?: string };
+    return { ok: answer.ok, problem: answer.problem ?? '' };
+  },
   // a found message's chat pages back to it: its id there, or "" when it is further back.
   showMessage: async ([roomId, eventId], _store, _storage, native): Promise<Result<'showMessage'>> =>
     (await native!.later({ op: 'showMessage', roomId, eventId })) as { id: string },

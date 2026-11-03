@@ -838,14 +838,31 @@ Synapse's delayed events (MSC4140) can hold it; the SDK's bindings cannot send o
 MatrixCore calls the Matrix API itself (to check).
 
 **Acceptance criteria:**
-- [ ] Holding Send opens the choices: a few set times (for example tomorrow at 9:00) and a
-  custom date and time (the native picker). A tap on Send still sends at once.
-- [ ] **Ask Rami** before turning on delayed events on Synapse (a server setting, through the
-  playbook), with a maximum delay he chooses.
-- [ ] A list of scheduled messages, as a row in the filter sheet: send now, change the time, or
-  cancel one.
+- [x] Holding Send opens the choices: a few set times (for example tomorrow at 9:00) and a
+  custom date and time (the native picker). A tap on Send still sends at once. (2026-11-03: a
+  long press on Send offers "Tomorrow, 9:00 AM", "Monday, 9:00 AM" (not on a Sunday) and "Custom
+  Time…", a sheet with the system's date and time picker. The module reads a choice in the
+  iPhone's calendar and zone, daylight saving included. Only in a chat that is not end-to-end
+  encrypted: a message that waits on the server cannot be encrypted, and the SDK cannot send a
+  delayed event, so MatrixCore calls the API itself (`ScheduledMessages.swift`). Bridged chats
+  are not encrypted. The message is plain text (no Markdown) and keeps its reply. The chat shows
+  "1 message scheduled · Sends …" over the composer while one waits.)
+- [x] **Ask Rami** before turning on delayed events on Synapse (a server setting, through the
+  playbook), with a maximum delay he chooses. (Rami, 2026-11-03: yes, 1 year. On the server
+  through the playbook: `matrix_synapse_delayed_events_enabled: true`,
+  `matrix_synapse_max_event_delay_duration: 365d`, commit on branch `server/phase-0`. Synapse
+  keeps one timer for the next message due, so the length adds no load; at most 100 waiting
+  messages a user, Synapse's default.)
+- [x] A list of scheduled messages, as a row in the filter sheet: send now, change the time, or
+  cancel one. (2026-11-03: the sheet's "Send Later" row, with the count; the list opens in the
+  sheet, and a tap on a message offers Send Now, Change Time and Cancel Message. Change Time
+  makes a new waiting message and cancels the old one, as the server cannot move one; if the
+  old one already went, the new one is cancelled and the list says so. The list reads again
+  each minute.)
 - [ ] A scheduled message reaches WhatsApp at its time with the phone off (checked with the test
-  users, then on `@rami` with his OK).
+  users, then on `@rami` with his OK). Test users done (2026-11-03): a message scheduled for 3
+  minutes later arrived at exactly that minute while the app was not running; MatrixCore's
+  `ScheduledMessagesTests`. WhatsApp waits for Rami's OK to send one from `@rami`.
 
 **Dependencies:** B11. **Scope:** L
 

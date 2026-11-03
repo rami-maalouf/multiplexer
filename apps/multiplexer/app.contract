@@ -16,6 +16,7 @@ use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from 
 use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
+use ScheduledBar, ScheduledScreen, LaterSheet, laterProblem, weekdayOf from "./send-later.contract"
 
 shape Session
   userId: string
@@ -201,12 +202,15 @@ routes nav
       video "/room/:id/video/:message"
       reactions "/room/:id/reactions/:message"
       forward "/room/:id/forward/:message"
+      later "/room/:id/later"
       info "/room/:id/info"
         editInfo "/room/:id/info/edit"
         customName "/room/:id/info/name"
         addMember "/room/:id/info/add"
     inboxes "/inboxes"
     settings "/settings"
+    scheduled "/scheduled"
+      laterChange "/scheduled/:delay/time"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
@@ -411,6 +415,7 @@ component Multiplexer
   members "./search-members.contract"
   members "./info-members.contract"
   members "./chat-search-members.contract"
+  members "./send-later-members.contract"
 
   action step
     now = performanceNow()
@@ -567,6 +572,11 @@ component Multiplexer
     editing = ""
     revealing = id
     focus("composer")
+  // Send Later's text now waits on the server: the composer empties, its reply too. A root action,
+  // as a members file cannot name Composer (send-later-members.contract calls it).
+  action clearComposer
+    composers = withComposer(composers, Composer(composer, text="", replyTo=""))
+    unsaved = openRoom
   action cancelReply
     composers = withComposer(composers, Composer(composer, replyTo=""))
     unsaved = openRoom
@@ -981,6 +991,18 @@ component Multiplexer
                 button press=askDelete destructive=true popovertarget="chat-menu" popovertargetaction="hide" testId="menu-delete"
                   image "symbol:delete"
                   text "Delete"
+        // Send Later's list, and its time sheet for the composer's text or a waiting message.
+        if e.name == "scheduled"
+          ScheduledScreen(route=`${e.id}`, messages=scheduledShown, loaded=(scheduledList.owner == session.userId),
+            busy=pending(scheduledChanged), refused=laterRefused, now=shown, offset=time.utcOffset, close=back,
+            sendNow=sendScheduledNow, change=changeLaterTime, cancel=cancelScheduled)
+        if e.name == "later"
+          LaterSheet(route=`${e.id}`, title="Send Later", body=composer.text.trim(), picked=laterWhen, saving=laterSaving,
+            refused=laterRefused, pick=pickLater, close=closeLater, save=saveLater)
+        if e.name == "laterChange"
+          LaterSheet(route=`${e.id}`, title="Change Time",
+            body=(match first(scheduledShown.filter(m => m.id == laterFor)) { case some(m) => m.body, case none => "" }),
+            picked=laterWhen, saving=laterSaving, refused=laterRefused, pick=pickLater, close=closeLater, save=saveLater)
         if e.name == "settings"
           SettingsScreen(route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
             signOut=askSignOut, largeText=viewport.accessibilityTextSize)
@@ -990,7 +1012,7 @@ component Multiplexer
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
             InboxSheet(networks=roomList.networks, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
-              chooseList=chooseList, largeText=viewport.accessibilityTextSize)
+              chooseList=chooseList, scheduled=scheduledShown.length, openScheduled=chooseSendLater, largeText=viewport.accessibilityTextSize)
         // a held message's sheets: every emoji, half height and pulled up to full; the chats to forward to.
         if e.name == "reactions"
           EmojiSheet(route=`${e.id}`, rows=emojiRows, query=emojiQuery, group=emojiGroup, columns=emojiColumns, search=searchEmoji,
@@ -1209,6 +1231,12 @@ component Multiplexer
                 if away and thread.messages.length > 0
                   view position="absolute" bottom="calc(100% + 8px)" right=12
                     JumpButton(count=belowUnread, press=jumpToEnd)
+                // this chat's messages waiting on the server (Send Later): how many, and when the first goes.
+                match first(openScheduled)
+                  case some(m)
+                    ScheduledBar(count=openScheduled.length, first=m.at, now=shown, offset=time.utcOffset, open=openScheduledList)
+                  case none
+                    view
                 // an edit's bar takes the reply bar's place, in its look; the reply waits with the draft.
                 if editing != ""
                   row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="edit-bar"
@@ -1263,10 +1291,24 @@ component Multiplexer
                         if voiceOffered
                           VoiceButton(press=startVoice, disabled=pending(sentVoice))
                         else
-                          button press=post buttonStyle="filled" margin="4px 0" retainFocus=true testId="send"
-                            disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
-                            aria-label=(editing != "" ? "Save Edit" : "Send")
-                            image (editing != "" ? "symbol:checkmark" : "symbol:send")
+                          // a long press offers Send Later's times (send-later-members.contract) where the chat can
+                          // have it; it is on a view around Send, as a native button takes no long press.
+                          view contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "") testId="send-hold"
+                            button press=post buttonStyle="filled" margin="4px 0" retainFocus=true testId="send"
+                              disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
+                              aria-label=(editing != "" ? "Save Edit" : "Send")
+                              image (editing != "" ? "symbol:checkmark" : "symbol:send")
+            column id="send-later-menu" popover="auto" role="menu"
+              button press=sendLaterAt("tomorrow") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-tomorrow"
+                image "symbol:icon.clock"
+                text "Tomorrow, 9:00 AM"
+              if laterMonday
+                button press=sendLaterAt("monday") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-monday"
+                  image "symbol:icon.clock"
+                  text "Monday, 9:00 AM"
+              button press=pickLaterTime popovertarget="send-later-menu" popovertargetaction="hide" testId="later-custom"
+                image "symbol:calendar"
+                text "Custom Time…"
             if threadShown and panel
               AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
             if jumpMissed != "" and jumpMissed == openRoom
@@ -1349,6 +1391,11 @@ component Multiplexer
                     MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=heldCanCopy, canEdit=heldCanEdit, canDelete=heldCanDelete,
                       reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
                       markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
+      // a choice of Send Later's menu the server refused.
+      dialog id="later-refused" role="alertdialog" aria-label="Couldn’t Schedule"
+        text laterProblem(laterRefused)
+        button commandfor="later-refused" command="close" testId="later-refused-ok"
+          text "OK"
       dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"
         text problem testId="problem"
         button commandfor="sign-in-failed" command="close" testId="sign-in-failed-ok"

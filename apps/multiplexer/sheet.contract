@@ -19,6 +19,8 @@ component SheetRow
     logo: bool
     name: string
     unread: number
+    // what the count counts: "unread", or "scheduled" for Send Later's waiting messages.
+    noun: string
     chosen: bool
     value: string
     choose: action
@@ -31,7 +33,7 @@ component SheetRow
   view
     // 46 points tall: UIKit draws the half-height sheet a little smaller, and a row stays 44 there.
     button appearance="none" press=choose(value) aria-selected=chosen
-      aria-label=(unread > 0 ? `${name}, ${unread} unread` : name) testId=identifier
+      aria-label=(unread > 0 ? `${name}, ${unread} ${noun}` : name) testId=identifier
       display="flex" flex-direction="row" align-items="center" gap=12 min-height=46 padding="6px 14px" margin="0 10px"
       box-sizing="border-box" border-radius=16 background-color=(chosen ? "-exact-tertiary-fill" : "transparent") text-align="start"
       // the box is a little wider than a logo, so the tray symbol, which is wider than tall, fits too.
@@ -58,19 +60,24 @@ component InboxSheet
     chosen: string
     choose: action
     chooseList: action
+    // messages waiting on the server, and the list of them (Send Later).
+    scheduled: number
+    openScheduled: action
     largeText: bool
   view
     scroll id="inboxes" flex=1 min-height=0 testId="inboxes"
       column padding="14px 0" gap=4
-        SheetRow(picture="symbol:icon.tray", logo=false, name="Inbox", unread=unread, chosen=(list == "inbox" and chosen == ""),
+        SheetRow(picture="symbol:icon.tray", logo=false, name="Inbox", unread=unread, noun="unread", chosen=(list == "inbox" and chosen == ""),
           value="inbox", choose=chooseList, largeText=largeText, identifier="inboxes-inbox")
-        SheetRow(picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, chosen=(list == "archive"),
+        SheetRow(picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, noun="unread", chosen=(list == "archive"),
           value="archive", choose=chooseList, largeText=largeText, identifier="inboxes-archive")
         // Beeper's next rows come here with their tasks, in its order: Create Label and the
-        // labels, Reminders, Send Later, Bookmarks, Requests.
-        SheetRow(picture="symbol:icon.arrow-down-circle", logo=false, name="Low Priority", unread=lowPriorityUnread,
+        // labels, Reminders, then Send Later; Bookmarks and Requests after it.
+        SheetRow(picture="symbol:icon.clock", logo=false, name="Send Later", unread=scheduled, noun="scheduled", chosen=false,
+          value="scheduled", choose=openScheduled, largeText=largeText, identifier="inboxes-send-later")
+        SheetRow(picture="symbol:icon.arrow-down-circle", logo=false, name="Low Priority", unread=lowPriorityUnread, noun="unread",
           chosen=(list == "lowPriority"), value="lowPriority", choose=chooseList, largeText=largeText, identifier="inboxes-low-priority")
         for n in networks key=n.network
-          SheetRow(picture=`assets/networks/${n.network}.svg`, logo=true, name=networkName(n.network), unread=n.unread,
+          SheetRow(picture=`assets/networks/${n.network}.svg`, logo=true, name=networkName(n.network), unread=n.unread, noun="unread",
             chosen=(chosen == n.network), value=n.network, choose=choose, largeText=largeText, identifier=`inboxes-${n.network}`)
         // the communities come after the networks; the gear, New Space and Edit under the rows.

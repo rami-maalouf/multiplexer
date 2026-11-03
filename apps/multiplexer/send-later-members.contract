@@ -1,0 +1,99 @@
+// Send Later's state and actions (send-later.contract). Holding Send offers set times and a
+// picked one; the composer empties once the server holds the message. The list opens from the
+// filter sheet or the chat's bar; Change Time opens the same time sheet for a waiting message.
+use LaterInfo, ScheduledList, Scheduled, LaterChange, weekdayOf from "./send-later.contract"
+
+members Multiplexer
+  // the picked time (no zone, "2026-11-04T09:30"); the waiting message Change Time moves ("" for
+  // the composer's text); the text sent to wait, so the composer empties only if it still holds it.
+  state laterWhen = ""
+  state laterFor = ""
+  state laterText = ""
+  // why the last try failed ("" for none), shown on the sheet or the list.
+  state laterRefused = ""
+  resource laterInfo = loadSendLater(openRoom) as shape LaterInfo else empty()
+  resource scheduledList = loadScheduled(session.userId, floor(shown / 60000)) as shape ScheduledList else empty()
+  mutation scheduledSend as shape Scheduled refreshes scheduledList then afterSend
+  mutation rescheduled as shape Scheduled refreshes scheduledList then afterMove
+  mutation scheduledChanged as shape LaterChange refreshes scheduledList then afterChange
+  // the composer's text can wait: a chat that is not encrypted, a text and nothing picked, not an edit.
+  derive canLater = (laterInfo.room == openRoom and laterInfo.can and editing == "" and composer.attachments.length == 0
+    and composer.text.trim() != "")
+  derive scheduledShown = scheduledList.owner == session.userId ? scheduledList.messages : []
+  derive openScheduled = scheduledShown.filter(m => m.room == openRoom)
+  derive laterSaving = pending(scheduledSend) or pending(rescheduled)
+  // Monday's choice would be tomorrow's on a Sunday.
+  derive laterMonday = weekdayOf(shown, time.utcOffset) != 0
+
+  // a long press on Send notes nothing: the menu says what to do.
+  action holdSend
+    haptic("impact-light")
+  action sendLaterAt(choice: string)
+    laterText = composer.text.trim()
+    laterRefused = ""
+    send scheduledSend = sendLater(openRoom, composer.text.trim(), composer.replyTo, choice)
+  action pickLaterTime
+    laterFor = ""
+    laterWhen = ""
+    laterRefused = ""
+    blur("composer")
+    nav = push(nav, path("later", openRoom))
+  action changeLaterTime(id: string)
+    laterFor = id
+    laterWhen = ""
+    laterRefused = ""
+    nav = push(nav, path("laterChange", id))
+  action pickLater(v: string)
+    laterWhen = v
+  action saveLater
+    laterRefused = ""
+    if laterFor == ""
+      laterText = composer.text.trim()
+      send scheduledSend = sendLater(openRoom, composer.text.trim(), composer.replyTo, laterWhen)
+    else
+      send rescheduled = reschedule(laterFor, laterWhen)
+  action afterSend
+    match scheduledSend
+      case some(r)
+        laterDone(r.problem)
+      case none
+        laterDone("failed")
+  action afterMove
+    match rescheduled
+      case some(r)
+        laterDone(r.problem)
+      case none
+        laterDone("failed")
+  // held: the composer empties if it still holds that text, and the time sheet closes. Refused:
+  // the sheet says why, or an alert over the chat when the menu's choice was refused.
+  action laterDone(problem: string)
+    laterRefused = problem
+    if problem == ""
+      haptic("success")
+      if laterFor == "" and composer.text.trim() == laterText
+        clearComposer()
+      if top(nav).name == "later" or top(nav).name == "laterChange"
+        nav = back(nav)
+    else
+      haptic("error")
+      if top(nav).name != "later" and top(nav).name != "laterChange"
+        showModal("later-refused")
+  action closeLater
+    nav = back(nav)
+  // the filter sheet's Send Later row passes its value.
+  action chooseSendLater(v: string)
+    openScheduledList()
+  action openScheduledList
+    laterRefused = ""
+    nav = go(nav, path("scheduled"))
+  action sendScheduledNow(id: string)
+    send scheduledChanged = changeScheduled(id, "send")
+  action cancelScheduled(id: string)
+    send scheduledChanged = changeScheduled(id, "cancel")
+  action afterChange
+    match scheduledChanged
+      case some(c)
+        laterRefused = c.ok ? "" : c.problem
+        haptic(c.ok ? "success" : "error")
+      case none
+        laterRefused = "failed"

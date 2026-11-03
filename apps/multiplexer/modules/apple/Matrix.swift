@@ -75,6 +75,9 @@ final class Matrix: ExactModule {
                     default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive and delete")
                     }
                     reply.send(["ok": true])
+                case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":
+                    // Send Later (MatrixCore's ScheduledMessages.swift): messages that wait on the server.
+                    reply.send(try await sendLater(request["op"] as? String ?? "", request))
                 case "search":
                     // what the search screen shows (MatrixCore's Search.swift): a kind's messages, the
                     // recent chats before any word, or chats by name, messages and links.
@@ -330,6 +333,54 @@ final class Matrix: ExactModule {
          "avatar": cached(room.avatarName, topic: topic) { _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
     }
 
+    /// Send Later. `when` is "tomorrow", "monday" or a picked time without a zone
+    /// ("2026-11-04T09:30"), read in the iPhone's calendar and zone. A refusal answers `problem`:
+    /// "encrypted", "past" (a time not ahead), "far" (past the server's maximum), "gone" (it went
+    /// or was cancelled), or "failed".
+    @MainActor private func sendLater(_ op: String, _ request: [String: Any]) async throws -> [String: Any] {
+        let account = try await signedIn()
+        let roomId = request["roomId"] as? String ?? "", id = request["id"] as? String ?? ""
+        func at(_ when: Date) -> Double { (when.timeIntervalSince1970 * 1000).rounded() }
+        do {
+            switch op {
+            case "canSendLater":
+                return ["room": roomId, "can": (try? await account.canSendLater(roomId: roomId)) ?? false]
+            case "sendLater", "reschedule":
+                guard let when = ScheduledMessage.date(for: request["when"] as? String ?? "") else { return ["id": "", "at": 0, "problem": "past"] }
+                guard when > Date().addingTimeInterval(5) else { return ["id": "", "at": 0, "problem": "past"] }
+                let made = op == "sendLater"
+                    ? try await account.sendLater(roomId: roomId, text: request["text"] as? String ?? "",
+                                                  replyTo: (request["replyTo"] as? String).flatMap { $0.isEmpty ? nil : $0 }, at: when)
+                    : try await account.reschedule(id: id, at: when)
+                changed(.scheduled)
+                return ["id": made, "at": at(when), "problem": ""]
+            case "scheduledAction":
+                if request["action"] as? String == "send" { try await account.sendScheduledNow(id: id) } else { try await account.cancelScheduled(id: id) }
+                changed(.scheduled)
+                return ["ok": true]
+            default:
+                let waiting = try await account.scheduledMessages()
+                let byId = Dictionary(try await account.rooms().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+                return ["messages": waiting.map { m -> [String: Any] in
+                    let chat = byId[m.roomId]
+                    return ["id": m.id, "room": m.roomId, "chatName": chat?.name ?? m.roomId, "network": chat?.network ?? "matrix",
+                            "avatar": chat.map { c in cached(c.avatarName, topic: "scheduled") { _ = try await account.avatarFile(roomId: c.id, directory: self.media) } } ?? "",
+                            "body": m.body, "at": Double(m.sendAt), "isReply": m.replyTo != nil]
+                }]
+            }
+        } catch let error as MatrixCoreError {
+            let problem: String
+            switch error {
+            case .scheduleEncrypted: problem = "encrypted"
+            case .scheduleGone: problem = "gone"
+            case .scheduleRefused(let why): problem = why.contains("DELAY_TOO_LARGE") || why.contains("too large") ? "far" : (why.contains("past") ? "past" : "failed")
+            default: throw error
+            }
+            print("matrix: send later refused (\(problem)): \(error)")
+            return op == "scheduledAction" ? ["ok": false, "problem": problem] : ["id": "", "at": 0, "problem": problem]
+        }
+    }
+
     /// What the search screen shows for a query (`query`), a kind (`kind`: images, videos, links,
     /// files, audio or "") and the chats opened last (`recent`, newest first). With `room`, the
     /// search in that chat: its messages, and its kinds by their type.
@@ -524,6 +575,7 @@ final class Matrix: ExactModule {
         case .room(let roomId): return "thread:\(roomId)"
         case .profile: return "profile"
         case .info(let roomId): return "info:\(roomId)"
+        case .scheduled: return "scheduled"
         case .search: return "search"
         }
     }
