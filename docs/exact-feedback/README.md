@@ -85,7 +85,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 64 | A search field in a sheet's content draws its magnifier over its text at the accessibility sizes. | About 15 min | P3 | [a-search-field-in-a-sheet](issues/20261103-a-search-field-in-a-sheet.md) |
 | 65 | A sheet's bar search field hides the bar and its Send while searching, and the search card does not say so. | About 10 min | P3 | [a-sheet-s-bar-search-field](issues/20261103-a-sheet-s-bar-search-field.md) |
 | 66 | The edit-sheet recipe nests a sheet's header as `lower-header-nested` warns against. Fixed in PR #1361 (open). | About 5 min | P3 | [the-edit-sheet-recipe-nests-a](issues/20261103-the-edit-sheet-recipe-nests-a.md) |
-| 67 | The theme recipe shows an SF-only icon token, which the build refuses. | About 2 min | P3 | [the-theme-recipe-shows-an-sf](issues/20261103-the-theme-recipe-shows-an-sf.md) |
+| 67 | The theme recipe shows an SF-only icon token, which the build refuses. Fixed in PR #1362 (open). | About 2 min | P3 | [the-theme-recipe-shows-an-sf](issues/20261103-the-theme-recipe-shows-an-sf.md) |
 | 68 | A drag on a virtualized list in a half-height sheet aims under the row after the list. | About 6 min | P3 | [a-drag-on-a-virtualized-list](issues/20261103-a-drag-on-a-virtualized-list.md) |
 | 69 | A list of plain numbers warns `lower-key-position` for its only key. | About 12 min | P3 | [a-list-of-plain-numbers-warns](issues/20261103-a-list-of-plain-numbers-warns.md) |
 | 70 | `audio-waveform`'s `tint` takes only a hex colour. | About 3 min | P3 | [audio-waveform-s-tint-takes-only](issues/20261103-audio-waveform-s-tint-takes-only.md) |
@@ -188,3 +188,4 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1358](https://github.com/ccheever/exact2/pull/1358): warn when a header readout holds nothing the iOS bar draws | 7 | Open |
 | 2026-11-03 | [#1359](https://github.com/ccheever/exact2/pull/1359): `contract vocab` names a tag's attributes, the list styles, and an image's sources | 9, 10 | Open |
 | 2026-11-03 | [#1361](https://github.com/ccheever/exact2/pull/1361): the edit-sheet recipe's header is its sheet's bar on iOS | 66 | Open |
+| 2026-11-03 | [#1362](https://github.com/ccheever/exact2/pull/1362): the theme recipe's icon token has the `svg` source the web needs | 67 | Open |

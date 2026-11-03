@@ -31,3 +31,7 @@ for apps without the web.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1362 (fixes it): the token has both sources, `icon(sf "play.fill", svg "icons/play.svg")`, and exact2's docs test writes a one-colour SVG for it.
