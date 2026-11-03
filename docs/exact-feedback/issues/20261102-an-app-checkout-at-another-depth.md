@@ -32,3 +32,11 @@ Seen on 2026-11-02 at exact2 `ed43ad09a0`.
 ## Pull request (2026-11-02)
 
 https://github.com/ccheever/exact2/pull/1346 (fixes part of it): the patch check compares paths through symlinks. A checkout at another depth still needs its own Cargo paths: a design question.
+
+## More evidence (2026-11-03)
+
+At `ed43ad09a0`, in a second worktree at another depth, `bun exact.mjs update` rewrote the paths
+in `Cargo.toml`, `apple/Cargo.toml` and `web/Cargo.toml`, but not `package.json`'s `file:` paths
+to the framework's packages: `bun install --frozen-lockfile` then failed with `Could not find
+folder "file:../../../exact/exact2/packages/clipboard"`. The paths were edited by hand and kept out
+of git (`git update-index --skip-worktree`), with `bun.lock`. About 5 minutes.

@@ -4,7 +4,7 @@ import Foundation
 /// The session is in the Keychain; the account's store is a folder in the app's data.
 final class Matrix: ExactModule {
     // the agent's data is a fresh scratch tree, so it keeps its session apart from the app's.
-    private lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
+    lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
     /// A session the server must still forget. Until it does, its device stays on the account.
     private lazy var pending = SessionKeychain(service: keychain.service, slot: "sign-out")
     private var signingOutPending = false
@@ -202,11 +202,14 @@ final class Matrix: ExactModule {
                 case "chatInfo", "chatMembers", "chatMedia", "rename", "customName", "invite", "setPicture":
                     // a chat's info page (Info.swift).
                     reply.send(try await info(request))
+                case "registerPush":
+                    // with the notification permission: the push token to the server (PushRegistration.swift).
+                    reply.send(["registered": try await registerPush()])
                 case "signOut":
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers registerPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -249,7 +252,8 @@ final class Matrix: ExactModule {
         do {
             let signedIn = try await MatrixAccount.signIn(homeserver: server, user: user, password: password,
                                                           deviceName: context.agent ? "Multiplexer test" : "Multiplexer",
-                                                          storeDirectory: stores.appendingPathComponent(store), searchIndexKey: searchKey)
+                                                          storeDirectory: stores.appendingPathComponent(store), searchIndexKey: searchKey,
+                                                          sessionStorage: sessionStorage)
             do {
                 try keychain.write(StoredSession(session: try signedIn.savedSession(), store: store, searchKey: searchKey))
             } catch {
@@ -284,7 +288,8 @@ final class Matrix: ExactModule {
             try keychain.write(stored)
         }
         let restoring = Task { [stored] in
-            try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store), searchIndexKey: stored.searchKey)
+            try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store), searchIndexKey: stored.searchKey,
+                                            sessionStorage: sessionStorage)
         }
         account = restoring
         do {
@@ -296,6 +301,17 @@ final class Matrix: ExactModule {
             account = nil
             throw error
         }
+    }
+
+    /// The session as the sdk keeps it for the notification extension too: the Keychain item,
+    /// whose session a refreshed token replaces.
+    private var sessionStorage: SessionStorage {
+        let keychain = self.keychain
+        return SessionStorage(load: { try? keychain.read()?.session }, save: { session in
+            guard var stored = try? keychain.read() else { return }
+            stored.session = session
+            try? keychain.write(stored)
+        })
     }
 
     /// Read receipts go out, except in a drive on an account that is not a test user: a drive
@@ -586,7 +602,10 @@ final class Matrix: ExactModule {
     @MainActor private func signOut() async throws {
         let stored = try keychain.read()
         var forgotten = false
-        if let signedIn = try? await signedIn() { forgotten = (try? await signedIn.signOut()) != nil }
+        if let signedIn = try? await signedIn() {
+            await deletePusher(signedIn, stored)
+            forgotten = (try? await signedIn.signOut()) != nil
+        }
         account = nil
         if !forgotten, let stored { try pending.write(stored) }
         try keychain.delete()

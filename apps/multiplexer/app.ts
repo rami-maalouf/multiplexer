@@ -13,7 +13,9 @@ export const appId = 'com.ramimaalouf.multiplexer';
 export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
   'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
-  'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs'].join('\n');
+  'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs',
+  // a new message notifies, through push (Matrix.swift's registerPush and the notification extension).
+  'device.notifications purpose.notifications'].join('\n');
 
 // GIFs (gif.contract): the phone calls KLIPY itself, as KLIPY requires (D10). Its app key is set at
 // build from the Keychain (scripts/setup-klipy-key.sh); it ships in the app, as an app key does.
@@ -425,6 +427,12 @@ const sources: Sources = {
     return { ok: true };
   },
   // the largest file the server takes, in bytes; 0 while it is not known.
+  // the module asks for the phone's push token and gives it to the server as a pusher; a drive
+  // does that only for a test user. Without the permission, nothing.
+  registerPush: async ([userId, permission], _store, _storage, native): Promise<Result<'registerPush'>> => {
+    if (userId === '' || permission !== 'granted' || !native?.available) return { registered: false };
+    return (await native.later({ op: 'registerPush' })) as { registered: boolean };
+  },
   loadUploadLimit: async ([userId], _store, _storage, native): Promise<Result<'loadUploadLimit'>> => {
     if (userId === '' || !native?.available) return { bytes: 0 };
     return (await native.later({ op: 'maxUploadSize' })) as { bytes: number };
