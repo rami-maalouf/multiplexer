@@ -68,8 +68,8 @@ shape Viewed
   image: string
   label: string
 
-// under the name: "WhatsApp Group - 7 members", or the network for a chat with one person.
-fn infoSubtitle(network: string, isOneToOne: bool, count: number): string = isOneToOne ? networkName(network) : `${networkName(network)} Group - ${count} ${count == 1 ? "member" : "members"}`
+// under the name: "WhatsApp Group · 7 members", or the network for a chat with one person.
+fn infoSubtitle(network: string, isOneToOne: bool, count: number): string = isOneToOne ? networkName(network) : `${networkName(network)} Group · ${count} ${count == 1 ? "member" : "members"}`
 // a video's length on its tile: "0:07".
 fn clipLength(s: number): string = `${floor(s / 60)}:${s % 60 < 10 ? "0" : ""}${s % 60}`
 
