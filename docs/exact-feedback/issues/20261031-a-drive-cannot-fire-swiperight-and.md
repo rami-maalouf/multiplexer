@@ -35,3 +35,9 @@ Under `--touch platform`, `tap room-preview-<id>` (the workaround above) missed 
 touch landed on node #25, not on node #32 the aim hit-tested". A tap on the row's picture
 (`tap avatar-<id>`, a `view` in the same `link` row) worked. So which part of a `link` row a
 real touch reaches changes from one run to the next.
+
+## More evidence (2026-11-03, `ed43ad09a0`)
+
+The link row's miss is still there: under `--touch platform`, `tap room-<id>` on a chat-list
+`link` row failed with "the touch landed on node #210, not on node #208 the aim hit-tested".
+`type root /room/<id>` (the root's `navigate`) opened the screen instead. About 2 minutes.

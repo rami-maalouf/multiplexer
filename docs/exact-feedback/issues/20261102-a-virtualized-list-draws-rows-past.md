@@ -45,3 +45,10 @@ Pull request https://github.com/ccheever/exact2/pull/1327 adds this to the lists
 `docs/agent-pitfalls.md` (the chat-thread recipe is at its byte cap): give the bar after a
 virtualized list a background or a material. Whether the list should clip at its bottom edge is
 a question for the Exact team.
+
+## More evidence (2026-11-03, `ed43ad09a0`)
+
+It happens at the top edge too. A chat screen with `navigationBar="none"` draws its own floating
+bar; with the system bar gone, the transcript's row above its frame showed in the status bar's
+area (a blue bubble's edge above y 62, where the list starts). The app covers it with its bar's
+fade: a box that starts at `top=-120` and is the page colour down to the route's top.

@@ -53,3 +53,12 @@ The messages in items 1 and 2 are unchanged at `cee509ac82`.
    the path whole (`pick pick-files "<path>"`), but the message does not, and the line on held
    requests in `contract-for-agents.md` (around 3756) shows only `type @pick photo.jpg`. The
    message could say "a path with a space: `pick <id> \"<path>\"`". About 3 minutes and a drive.
+
+## Seen again, and one more (2026-11-03, `ed43ad09a0`)
+
+- Item 7 again: in a chat that marks itself read one second after it shows (which refreshes
+  its list), `screenshot <png> window` gave `pixels="app"` in most tries. A `clock 4000` before
+  the screenshot gave the display in some drives, not all. About 10 minutes.
+9. `pick pick-photos <path>` before the picker was open answered "no held device request
+   answers at that node or has that capability (held: none)". True, but it could name the next
+   step: "open the picker first (the press that calls `showPicker`), then `pick`". About 2 minutes.

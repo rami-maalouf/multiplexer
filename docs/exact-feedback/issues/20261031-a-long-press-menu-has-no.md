@@ -33,3 +33,11 @@ is open. The app's `back` action did not clear the menu's state, so the chat ope
 with the menu already up. The sample chat app clears its selection in `back`; nothing says
 why. A menu that is modal over the bar, or a line in a recipe that `back` must close what
 the screen holds open, would have prevented it.
+
+## The sharp bar: gone with the app's own bar (2026-11-03, `ed43ad09a0`)
+
+The chat screen now draws its own top bar (`navigationBar="none"`) instead of the system's, for
+its look. The hand-drawn menu's blur is in the same route, so it covers that bar too, in light
+and dark, and the bar takes no tap while the menu is open (`inert`). The blur box reaches past
+the route's top and bottom (`top=-120`, `bottom=-60`) to cover the status bar's and the home
+indicator's areas. The palette request above stands: the menu is still about 40 lines by hand.
