@@ -8,6 +8,9 @@ glyph in white on it. The squares and the placement are ours (2026-11-02). The g
 | `whatsapp.svg`, `instagram.svg`, `messenger.svg`, `telegram.svg`, `signal.svg`, `discord.svg` | [Simple Icons](https://simpleicons.org) 16.36.0 (npm `simple-icons`); Telegram's plane is the hole of its circle glyph, drawn alone | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | `linkedin.svg` | `linkedin-in` from [Font Awesome Free](https://fontawesome.com) 7.3.1, by Fonticons, Inc. Changed: drawn in white on a square. Simple Icons has no LinkedIn icon. | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
+`matrix.svg` is ours (2026-11-02): a plain speech bubble on iOS's system grey (`#8E8E93`), for the
+filter sheet's row of chats that no bridge serves. It is not the Matrix logo, so it names no brand.
+
 Colours: Simple Icons' brand colours (WhatsApp `#25D366`, Telegram `#26A5E4`, Signal `#3B45FD`,
 Discord `#5865F2`), LinkedIn's `#0A66C2`, and gradients close to Instagram's and Messenger's app
 icons.

@@ -527,14 +527,14 @@ Each bug was first reproduced in a drive as `@test1` (two test chats), then fixe
 - [x] Leaving a chat closes its long-press menu. Before: the bar's Back stays live above the menu (finding 27), and the chat opened again with the menu up. (Drive: a real tap on Back with the menu open; the platform's Back.)
 - [x] A chat is marked read only when its newest message has been in view for one second (Excord's rule), or when the reader leaves the chat or the end from there. A load no longer marks read: not older pages, not a new message while scrolled up, not behind the photo viewer, not while the app is hidden. `markRead` is its own request; `sendsReadReceipts` is unchanged. (Drives: scrolled up, a message from `@test2` stays unread after Back; at the end, an unread chat reads after 1 s, not at 0.5 s; hidden, a new message stays unread and reads when the app shows again.)
 - [x] Swipe to reply: the bubble already followed the finger (the earlier note that it cannot was wrong); it now springs back over about 250 ms after the lift instead of snapping (the sample's `transition`), and one haptic (Exact's, at the threshold) instead of two (finding 28).
-- [x] Gate: `test ios` 3 passed on exact2 `1bc4c36cb7`; after the update to `ed43ad09a0`, `test ios` 3 passed, `verify ios` clean, and drives with `check both` clean on the chat, the long-press menu, a reaction, the reply bar after a real swipe, and the photo viewer. A drive ends a navigation's zoom at once, so the zoom's motion itself was not seen.
+- [x] Gate: `test ios` 3 passed on exact2 `1bc4c36cb7`; after the update to `ed43ad09a0`, `test ios` 3 passed, `verify ios` clean, and drives with `check both` clean on the chat, the long-press menu, a reaction, the reply bar after a real swipe, and the photo viewer. The zoom's motion: with `--timing platform` and a Simulator recording, the photo grows from its box to full width over about 30 frames, and shrinks back on close (2026-11-02).
 
 **Found on the way (2026-11-02):**
-- A reply's quote can stay empty (a thin grey mark above the bubble): the quoted message's details never load. Seen after a relaunch that keeps the store (a reply in "Multiplexer two-person test", still empty after 4 s; after a fresh sign-in it showed its quote), and after a fresh sign-in on a reply that quotes a photo ("Multiplexer test"). MatrixCore asks for them once per opened chat; they do not arrive. Not fixed here. A likely cause, not checked: `missingQuotes()` passes the quoted message's event id to `fetchDetailsForEvent`, and matrix-rust-sdk describes that call (from memory; the Swift bindings have no doc) as taking the id of the reply itself.
-- Drafts last until the app quits. A saved reply would need the message's event id, not its timeline id. The SDK can store a draft per room (`saveComposerDraft`, `loadComposerDraft`): a later task (B5's Drafts filter needs it).
+- [x] Fixed 2026-11-02: a reply's quote could stay empty. MatrixCore asked the sdk for it with the quoted message's id; the sdk takes the reply's own id (its source says so). A quote still loading, or one that cannot load, now shows nothing instead of an empty bar. (MatrixCore test `testAReplyToAnOldMessageShowsItsQuote`, red before; a drive: a reply to the room's first message shows its quote.)
+- [x] Fixed 2026-11-02: drafts were lost when the app quit. Each chat's text and the message it answers are now kept in the account's store (the sdk's composer draft, per room): 0.6 s after typing stops, when the chat is left, and when the app goes to the background. A sent message removes it; Sign Out removes the store with them. A reply to a message the chat has not loaded is kept by its event id. Photos and files picked are not kept. (MatrixCore test `testADraftKeepsItsTextAndReplyUntilSent`; drives across relaunches: kept, restored with its reply bar, sent with the right quote, then gone; kept when the chat is left at once and when the app is hidden.)
 - With a real touch, an edge swipe while the menu is open lands on the menu's Close layer: it closes the menu, and the chat stays.
-- While the keyboard rises after a reply starts, one frame draws the reply bar over the bubbles; from 50 ms on the layout is right. A reply started on a bubble low in a chat scrolled up leaves that bubble half hidden at the list's bottom edge once the keyboard is up.
-- The reply arrow: `swipeIndicator` works (an experiment: an arrow child that fades in and grows as the swipe reaches the threshold). Not kept, because it changes the look: a decision for Rami.
+- [x] Fixed 2026-11-02: a reply started on a message low on the screen, in a chat scrolled up, left that message under the keyboard; now it scrolls just into view above the reply bar (a timer that waits for the layout, as Exact has no keyboard fact: finding 45). Also: scrolled messages showed through the reply bar and the composer (a virtualized list draws past its frame: finding 44); the two now share one bar in the page's colour, so the look at rest is the same and `check` is clean. With that bar, the one frame that drew the reply bar over the bubbles while the keyboard rises is gone (frames every 25 ms).
+- [x] The reply arrow (Rami's yes, 2026-11-02): a swiped bubble shows SF Symbols' `arrowshape.turn.up.left` to its left, faint at 40 points of drag and full at 64; it fades out faster than the bubble springs back. An icon token (`icon.arrowshape-turn-up-left`) gives hosts without SF Symbols a drawing. (`check both` clean after a swipe, also at the largest text size; `verify ios` clean.)
 
 **Dependencies:** T2.2, T2.3
 **Scope:** M
@@ -648,11 +648,18 @@ Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and com
 "Later"), the gear and Edit.
 
 **Acceptance criteria:**
-- [ ] The sheet opens at half height and pulls up to full (`navigationDetent="medium large"`).
-- [ ] Choosing WhatsApp shows only WhatsApp chats; Inbox shows all. The capsule shows the choice.
-- [ ] The choice is kept across launches (`persist`).
-- [ ] MatrixCore filters the list itself: today `rooms()` returns every chat and takes only its
-  order from the room list service. The filter uses `.identifiers([...])` for a network.
+- [x] The sheet opens at half height and pulls up to full (`navigationDetent="medium large"`).
+  (2026-11-02, `sheet.contract`.) Rows: Inbox, then Matrix (chats no bridge serves, like Beeper's
+  own row) and one row per network, each with its unread chats' count.
+- [x] Choosing WhatsApp shows only WhatsApp chats; Inbox shows all. The title becomes the network's
+  name and the capsule shows its logo. It combines with the filter menu, and the pinned grid shows
+  only that network's pins.
+- [x] The choice is kept across launches; a new sign-in starts at Inbox.
+- [x] MatrixCore filters the list itself (`NetworkFilter.swift`, `NetworkFilterTests`).
+- [ ] After a network change in a list scrolled down, the large title stays collapsed (Exact
+  finding 50); a short line shows above the pinned grid (finding 49).
+- [ ] **Ask Rami:** keep the Matrix row (first), move it last, or remove it; count unread chats
+  or messages; the title shows the network's name.
 
 **Dependencies:** B1, B3. **Scope:** M
 
@@ -669,8 +676,9 @@ DMs, Groups. It works together with the network filter (B4).
   `InboxTests`.) On Rami's real account, bridge bot chats show under DMs.
 - [x] Unread also shows a chat marked unread by hand (`m.marked_unread`): the SDK's filter reads
   only the count, so MatrixCore adds them.
-- [x] Unanswered: chats whose newest message is not yours. Drafts: waits for drafts that outlive
-  the app (another conversation builds them, 2026-11-02).
+- [x] Unanswered: chats whose newest message is not yours. Drafts: drafts outlive the app since
+  2026-11-02 (T2.13), in the sdk's per-room store; the room list does not report them yet, so the
+  Drafts filter still needs MatrixCore to read them for the list.
 - [x] With a filter on, the button fills with the accent colour and the pinned grid hides; a
   filter with no chats offers "Show All Chats". The choice persists across launches.
 
@@ -754,8 +762,7 @@ WhatsApp" (the chat's network), and the voice button on the right while the fiel
 
 **Acceptance criteria:**
 - [ ] The placeholder names the chat's network ("Reply on WhatsApp"); a plain Matrix chat says
-  "Message". (B1 is merged; the composer is being changed for drafts in another conversation, so
-  this waits for that.)
+  "Message". (B1 is merged, and drafts landed on 2026-11-02, so this can start.)
 - [x] "+" opens the panel (B11). (2026-11-02.) The voice button comes with B17.
 
 **Dependencies:** B1. **Scope:** S

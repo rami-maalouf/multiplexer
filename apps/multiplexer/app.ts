@@ -10,11 +10,16 @@ export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
 type SignInAnswer = { ok: boolean; problem: string; detail: string };
-// every chat (listed: the list shows it under the filter), and the pinned chats' ids in pin order.
+// every chat (listed: the list shows it under the filter and the network), the network's pinned
+// chats' ids in pin order, and the filter sheet's networks and each list's unread chats.
 // oneToOne: a chat with one other person.
 type RoomsAnswer = {
   rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { oneToOne: boolean })[];
   pinned: string[];
+  networks: Result<'loadRoomsByRecency'>['networks'];
+  unread: number;
+  archiveUnread: number;
+  lowPriorityUnread: number;
 };
 
 // a chat with no picture shows the first letters of its first two words, as Messages does.
@@ -104,15 +109,19 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  // matrixcore filters the list (filter: all, unread, unanswered, people or groups); with all, the
-  // pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
-    if (userId === '' || !native?.available) return { owner: userId, filter, rooms: [], pinned: [] };
+  // matrixcore filters the list (list: inbox, archive or lowPriority; filter: all, unread,
+  // unanswered, people or groups; network: one network's chats, or "" for every network); in the
+  // inbox under all, the pinned chats are not in it.
+  loadRoomsByRecency: async ([userId, filter, network, list], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+    if (userId === '' || !native?.available) {
+      return { owner: userId, filter, network, list, rooms: [], pinned: [], networks: [], unread: 0, archiveUnread: 0, lowPriorityUnread: 0 };
+    }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
-    const answer = (await native.later({ op: 'rooms', filter })) as RoomsAnswer;
+    const answer = (await native.later({ op: 'rooms', filter, network, list })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     return {
-      owner: userId, filter,
+      owner: userId, filter, network, list, networks: answer.networks, unread: answer.unread,
+      archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
         const r = byId.get(id);
@@ -168,6 +177,18 @@ const sources: Sources = {
   // the view asks when the reader has seen the chat's newest message; loading a chat reads nothing.
   markRead: async ([roomId], _store, _storage, native): Promise<Result<'markRead'>> => {
     await native!.later({ op: 'markRead', roomId });
+    return { ok: true };
+  },
+  // a chat's draft from the account's store, so it outlives the app; the composer's photos and
+  // files are not kept.
+  loadDraft: async ([roomId], _store, _storage, native): Promise<Result<'loadDraft'>> => {
+    const none = { room: roomId, text: '', replyTo: '', replyName: '', replyBody: '', attachments: [] };
+    if (roomId === '' || !native?.available) return none;
+    const answer = (await native.later({ op: 'draft', roomId })) as Omit<typeof none, 'attachments'>;
+    return { ...answer, attachments: [] };
+  },
+  saveDraft: async ([roomId, text, replyTo], _store, _storage, native): Promise<Result<'saveDraft'>> => {
+    await native!.later({ op: 'saveDraft', roomId, text, replyTo });
     return { ok: true };
   },
   loadOlderMessages: async ([roomId], _store, _storage, native): Promise<Result<'loadOlderMessages'>> => {

@@ -7,6 +7,9 @@ final class ChatActionsTests: XCTestCase {
     private let heldName = "Multiplexer hold test"
     private let archiveName = "Multiplexer hold test archive"
     private let deleteName = "Multiplexer hold test delete"
+    /// A chat whose bridge bot is a service member (`io.element.functional_members`), as a mautrix
+    /// bridge marks its bot: a WhatsApp chat. The bot is not invited.
+    private let bridgedName = "Multiplexer hold test WhatsApp"
 
     func testMarkedUnreadClearsOnReadAndAMutedChatStillCountsMentions() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
@@ -56,14 +59,16 @@ final class ChatActionsTests: XCTestCase {
         let owner = try await signIn(homeserver, user, password)
         let sender = try await signIn(homeserver, user2, password2)
         let rooms = try await testRooms(owner, sender, user2: user2)
-        let archived = rooms[archiveName]!, deleted = rooms[deleteName]!
+        let archived = rooms[archiveName]!, deleted = rooms[deleteName]!, bridged = rooms[bridgedName]!
         try await reset(owner, archived)
+        try await reset(owner, bridged)
         // a chat deleted by an earlier run comes back with a message.
         let before = try await summary(owner, deleted) { _ in true }
         if before.isHidden {
             try await say("Back \(UUID().uuidString)", in: deleted, as: sender)
             _ = try await summary(owner, deleted) { !$0.isHidden }
         }
+        try await reset(owner, deleted)
         let second = try await signIn(homeserver, user, password)
 
         // Low Priority: out of the inbox, in its own list, here at once and on the other device.
@@ -86,11 +91,24 @@ final class ChatActionsTests: XCTestCase {
         try await assertListed(second, deleted, in: nil)
         // a new message brings it back, on both.
         try await say("Again \(UUID().uuidString)", in: deleted, as: sender)
-        try await listed(owner, deleted, in: .all)
-        try await listed(second, deleted, in: .all)
+        try await listed(owner, deleted, in: .inbox)
+        try await listed(second, deleted, in: .inbox)
 
+        // the Archive narrowed to a network: its archived chats only.
+        _ = try await summary(owner, bridged) { $0.network == "whatsapp" }
+        try await owner.archive(roomId: bridged)
+        let onWhatsApp = try await owner.inbox(filter: .all, list: .archive, network: "whatsapp").rooms.map(\.id)
+        XCTAssertTrue(onWhatsApp.contains(bridged), "an archived WhatsApp chat is missing from WhatsApp's Archive")
+        XCTAssertFalse(onWhatsApp.contains(archived), "an archived plain chat shows in WhatsApp's Archive")
+        let onMatrix = try await owner.inbox(filter: .all, list: .archive, network: "matrix").rooms.map(\.id)
+        XCTAssertTrue(onMatrix.contains(archived))
+        XCTAssertFalse(onMatrix.contains(bridged))
+        let inboxOnWhatsApp = try await owner.inbox(filter: .all, network: "whatsapp").rooms.map(\.id)
+        XCTAssertFalse(inboxOnWhatsApp.contains(bridged), "an archived WhatsApp chat shows in WhatsApp's inbox")
+
+        try await owner.unarchive(roomId: bridged)
         try await owner.unarchive(roomId: archived)
-        try await listed(second, archived, in: .all)
+        try await listed(second, archived, in: .inbox)
         try await owner.markRead(roomId: deleted)
     }
 
@@ -105,8 +123,8 @@ final class ChatActionsTests: XCTestCase {
         try await owner.archive(roomId: archived)
         try await assertListed(owner, archived, in: .archive)
         try await say("Back \(UUID().uuidString)", in: archived, as: sender)
-        try await listed(owner, archived, in: .all)
-        try await assertListed(owner, archived, in: .all)
+        try await listed(owner, archived, in: .inbox)
+        try await assertListed(owner, archived, in: .inbox)
 
         // a muted one stays archived.
         try await owner.archive(roomId: archived)
@@ -122,7 +140,7 @@ final class ChatActionsTests: XCTestCase {
         _ = try await summary(owner, archived) { !$0.isMuted }
         try await assertListed(owner, archived, in: .archive)
         try await say("Next \(UUID().uuidString)", in: archived, as: sender)
-        try await listed(owner, archived, in: .all)
+        try await listed(owner, archived, in: .inbox)
 
         try await owner.unarchive(roomId: archived)
         try await owner.markRead(roomId: archived)
@@ -143,15 +161,31 @@ final class ChatActionsTests: XCTestCase {
         var rooms = [chat("a"), chat("b"), chat("m", muted: true), chat("p", pinned: true), chat("l", low: true),
                      chat("h"), chat("g"), chat("i")]
         for i in rooms.indices { rooms[i].fillMarks(marks) }
-        func ids(_ filter: RoomFilter) -> [String] { rooms.filter { $0.matches(filter) }.map(\.id) }
+        func ids(_ filter: RoomFilter, _ list: ChatList = .inbox) -> [String] { rooms.filter { $0.matches(filter, in: list) }.map(\.id) }
         // "b" and "g" have a message newer than their marks; "m" is muted, so it stays archived.
-        XCTAssertEqual(ids(.archive), ["a", "m", "p"])
-        XCTAssertEqual(ids(.lowPriority), ["l"])
+        XCTAssertEqual(ids(.all, .archive), ["a", "m", "p"])
+        XCTAssertEqual(ids(.all, .lowPriority), ["l"])
         XCTAssertEqual(ids(.all), ["b", "g", "i"])
         XCTAssertEqual(ids(.unread), ["b", "g", "i"])
-        XCTAssertFalse(rooms.contains { $0.id == "h" && ($0.isInInbox || RoomFilter.allCases.contains(where: $0.matches)) })
+        // the filter menu narrows the Archive too; a pinned archived chat shows there.
+        XCTAssertEqual(ids(.groups, .archive), ["a", "m", "p"])
+        XCTAssertEqual(ids(.people, .archive), [])
+        // a deleted chat is in no list.
+        let deleted = rooms.first { $0.id == "h" }!
+        XCTAssertNil(deleted.list)
+        XCTAssertFalse(ChatList.allCases.contains { list in RoomFilter.allCases.contains { deleted.matches($0, in: list) } })
         // an archived pinned chat leaves the pinned grid too.
         XCTAssertFalse(rooms.first { $0.id == "p" }!.isInInbox)
+
+        // the sheet's counts: each list's unread chats; a muted one only with a mention.
+        var mentioned = chat("n", muted: true)
+        mentioned.unreadMentions = 1
+        let inbox = Inbox(chats: rooms + [chat("q", muted: true), mentioned], listed: [], pinned: [])
+        XCTAssertEqual(inbox.unreadChats(in: .inbox), 4)
+        XCTAssertEqual(inbox.unreadChats, 4)
+        XCTAssertEqual(inbox.unreadChats(in: .archive), 2)
+        XCTAssertEqual(inbox.unreadChats(in: .lowPriority), 1)
+        XCTAssertEqual(inbox.networks, [NetworkCount(network: "matrix", unread: 4)])
 
         // the content keeps another version's keys, and drops the marks of chats that came back.
         var read = ChatMarks(json: #"{"archived":{"a":{"ts":10}},"hidden":{"g":{"ts":5}},"labels":{"x":["a"]}}"#)
@@ -179,12 +213,18 @@ final class ChatActionsTests: XCTestCase {
         let session = try owner.savedSession(), otherSession = try other.savedSession()
         let known = try await owner.rooms()
         var ids: [String: String] = [:]
-        for name in [heldName, archiveName, deleteName] {
+        let server = String(session.userId.split(separator: ":").last ?? "")
+        for name in [heldName, archiveName, deleteName, bridgedName] {
             if let id = known.first(where: { $0.name == name })?.id {
                 ids[name] = id
                 continue
             }
-            let created = try await api("POST", ["createRoom"], ["name": name, "preset": "private_chat", "invite": [user2]], session: session)
+            var body: [String: Any] = ["name": name, "preset": "private_chat", "invite": [user2]]
+            if name == bridgedName {
+                body["initial_state"] = [["type": "io.element.functional_members", "state_key": "",
+                                          "content": ["service_members": ["@whatsappbot:\(server)"]]]]
+            }
+            let created = try await api("POST", ["createRoom"], body, session: session)
             let id = try XCTUnwrap(created["room_id"] as? String, "createRoom: \(created)")
             _ = try await api("POST", ["join", id], [:], session: otherSession)
             ids[name] = id
@@ -206,7 +246,7 @@ final class ChatActionsTests: XCTestCase {
         try await account.unmute(roomId: roomId)
         try await account.setLowPriority(roomId: roomId, false)
         try await account.unarchive(roomId: roomId)
-        try await listed(account, roomId, in: .all)
+        try await listed(account, roomId, in: .inbox)
     }
 
     /// A message from `account`, which the server has; with `mentioning`, it mentions that user
@@ -234,22 +274,21 @@ final class ChatActionsTests: XCTestCase {
         }
     }
 
-    /// Waits until the chat is under `filter`, up to 20 s.
-    private func listed(_ account: MatrixAccount, _ roomId: String, in filter: RoomFilter) async throws {
+    /// Waits until `list` shows the chat, up to 20 s.
+    private func listed(_ account: MatrixAccount, _ roomId: String, in list: ChatList) async throws {
         let start = Date()
-        while try await !account.inbox(filter: filter).listed.contains(roomId) {
-            if Date().timeIntervalSince(start) > 20 { return XCTFail("\(filter): the chat did not show") }
+        while try await !account.inbox(list: list).listed.contains(roomId) {
+            if Date().timeIntervalSince(start) > 20 { return XCTFail("\(list): the chat did not show") }
             try await Task.sleep(nanoseconds: 300_000_000)
         }
     }
 
-    /// The chat is under `filter` and under no other list's filter (all, low priority, archive);
-    /// with nil, under none of them.
-    private func assertListed(_ account: MatrixAccount, _ roomId: String, in filter: RoomFilter?,
+    /// `list` shows the chat and no other list does; with nil, no list does.
+    private func assertListed(_ account: MatrixAccount, _ roomId: String, in expected: ChatList?,
                               file: StaticString = #filePath, line: UInt = #line) async throws {
-        for list in [RoomFilter.all, .lowPriority, .archive] {
-            let shown = try await account.inbox(filter: list).listed.contains(roomId)
-            XCTAssertEqual(shown, list == filter, "\(list): the chat \(shown ? "shows" : "is missing")", file: file, line: line)
+        for list in ChatList.allCases {
+            let shown = try await account.inbox(list: list).listed.contains(roomId)
+            XCTAssertEqual(shown, list == expected, "\(list): the chat \(shown ? "shows" : "is missing")", file: file, line: line)
         }
     }
 

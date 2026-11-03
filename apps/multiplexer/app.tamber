@@ -21,3 +21,7 @@ icons
   icon.low-priority = icon(sf "text.line.last.and.arrowtriangle.forward", svg "icons/low-priority.svg")
   icon.mark-unread = icon(sf "message.badge", svg "icons/mark-unread.svg")
   icon.bell-slash = icon(sf "bell.slash", svg "icons/bell-slash.svg")
+  // the filter sheet's Low Priority row, as Beeper draws it.
+  icon.arrow-down-circle = icon(sf "arrow.down.circle", svg "icons/arrow-down-circle.svg")
+  // the reply arrow beside a swiped bubble; the svg is Exact's forward arrow, mirrored.
+  icon.arrowshape-turn-up-left = icon(sf "arrowshape.turn.up.left", svg "icons/arrowshape-turn-up-left.svg")

@@ -40,10 +40,14 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    // every chat, each saying whether the list shows it under the filter menu's choice,
-                    // and the pinned ones' ids in their pin order.
+                    // every chat, each saying whether the list (inbox, archive or lowPriority) shows it
+                    // under the filter menu's choice and the filter sheet's network ("": every network),
+                    // the pinned ones' ids in their pin order, and the sheet's rows with their unread chats.
                     let started = Date(), account = try await signedIn()
-                    let inbox = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all)
+                    let network = request["network"] as? String ?? ""
+                    let inbox = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all,
+                                                        list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox,
+                                                        network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { room in
@@ -55,7 +59,9 @@ final class Matrix: ExactModule {
                          "archived": room.isArchived,
                          "avatar": cached(room.avatarName, then: .rooms) {
                              _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
-                    }, "pinned": inbox.pinned.map(\.id)])
+                    }, "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
+                       "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
+                       "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
                 case "pin", "unpin":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
@@ -98,6 +104,18 @@ final class Matrix: ExactModule {
                     let account = try await signedIn()
                     if try sendsReadReceipts(account) { try await account.markRead(roomId: request["roomId"] as? String ?? "") }
                     reply.send(["ok": true])
+                case "draft":
+                    // the chat's kept draft, as the view's composer holds one; "" for none.
+                    let roomId = request["roomId"] as? String ?? ""
+                    let draft = try await signedIn().draft(roomId: roomId)
+                    reply.send(["room": roomId, "text": draft?.text ?? "", "replyTo": draft?.reply?.messageId ?? "",
+                                "replyName": draft?.reply.map { $0.isOwn ? "You" : $0.senderName } ?? "",
+                                "replyBody": draft?.reply?.body ?? ""])
+                case "saveDraft":
+                    let replyTo = request["replyTo"] as? String ?? ""
+                    try await signedIn().saveDraft(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "",
+                                                   replyTo: replyTo.isEmpty ? nil : replyTo)
+                    reply.send(["ok": true])
                 case "older":
                     let roomId = request["roomId"] as? String ?? ""
                     try await signedIn().loadOlder(roomId: roomId)
@@ -138,7 +156,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
+                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, send, sendMedia, file, maxUploadSize, react, retry, discard and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
