@@ -540,11 +540,15 @@ final class LiveTimeline: @unchecked Sendable {
     /// shown (all of them when none is shown yet), or the room's start; at most 5 pages,
     /// since a page holds state events too (joins, names).
     func pageBack(until count: Int) async throws {
-        for _ in 0..<5 {
+        // a page is 50 events, at most 20 pages (1,000 events): a room whose newest events are
+        // mostly ones the chat does not show (a bridge's members joining or renamed) needs many
+        // pages for a few messages; before, 100 events of them opened the chat empty, and an
+        // empty chat has no list to ask for more.
+        for _ in 0..<20 {
             // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
             await items.settle()
             if lock.withLock({ reachedStart }) || items.reachesCut || olderThanShown() >= count { return }
-            let start = try await timeline.paginateBackwards(numEvents: UInt16(clamping: count))
+            let start = try await timeline.paginateBackwards(numEvents: 50)
             lock.withLock { reachedStart = start }
         }
         await items.settle()
