@@ -709,9 +709,12 @@ from the bridge's display name template on the server.
   change is one). So the first page holds only hidden events, and the chat does not page back
   to a message. 54 of 279 WhatsApp rooms have no message in their newest 20 events (43 none in
   50). Fix in the app: page back until a shown message or the room's start.
+  Fixed 2026-11-03: a chat pages back 50 events a page, up to 1,000, until it has its messages
+  (`testAChatUnderManyHiddenEventsOpensWithItsMessages`: 120 hidden events above the message).
 - **A raw ID as sender.** 4 inbox previews show the sender as `@whatsapp_lid-…:ramimaalouf.com`
   on a new device, while the server has that person's name (profile and member event). The
   preview falls back to the user ID when the sender's member event is not loaded.
+  Taken by the later lane (task 4), 2026-11-03.
 
 **Prepared (2026-11-03, branch `server/b2-names`, not merged, not applied).** `config.yml` adds
 three lines, the playbook's defaults at the pinned commit without the suffix:
