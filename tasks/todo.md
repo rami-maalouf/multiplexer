@@ -1238,7 +1238,7 @@ Rami wants these, after the tasks above (2026-11-02):
 - Merge Chats: one person on two networks as one chat (B21).
 - Select chat: act on several chats at once (B7, B21).
 - Transcribe voice notes (B16): check whether the iPhone can do it on the phone, at no cost.
-- Communities as filters ("whatever is easiest"): after B4.
+- Communities as filters ("whatever is easiest"): after B4. Done 2026-11-03 ("L2" below).
 - Requests and New Space in the filter sheet: look at what Beeper does first.
 - Message expiry (B20): the very last.
 
@@ -1279,6 +1279,44 @@ built; ask Rami if wanted).
   to WhatsApp as a photo.
 
 **Dependencies:** B10, B11. **Scope:** S
+
+### L2 Communities as filters
+
+**Description:** Beeper's filter sheet lists WhatsApp communities as rows under the networks
+(report, topics 03 and 07). On our server (read only, 2026-11-03) `@rami` has joined 17 spaces:
+each bridge's own space (WhatsApp, Instagram, LinkedIn: every chat of that network, with only
+Rami and the bot as members and no `io.element.functional_members`), and 14 WhatsApp
+communities (spaces the bridge serves as rooms, each holding 1 to 5 groups; 12 of them sit inside
+the WhatsApp space). MatrixCore lists every joined space but the bridges' own as a community
+(`Communities.swift`), with its chats from the sdk's space graph (each chat's parent spaces, up
+through nested ones). A space of Matrix (no bridge) is a community too. The sheet shows them after
+the networks, by name, each with its picture (a rounded square) and its unread chats; choosing
+one narrows the list as a network does (`community` state, kept across launches; choosing a
+network or a list clears it).
+
+**Acceptance criteria:**
+- [x] The sheet lists the communities after the networks, by name, with pictures and unread
+  counts; a bridge's own space is not listed; a space with none of the account's chats is not.
+- [x] Choosing one shows only its chats (and its pinned chats); the title is its name; the
+  capsule shows its picture (or the people symbol).
+- [x] A new device lists a space once its first sync has brought it (on `@rami`, 300 chats:
+  about a minute; before that 12 of the 14 showed).
+- [x] At the accessibility text sizes a row's count goes under its name, so a long word
+  ("WhatsApp") no longer spills (it did since B4). A list preview with one long word (a sender
+  shown by its id) breaks instead of covering the count.
+
+**Verification (2026-11-03):**
+- [ ] MatrixCore: `CommunitiesTests` (the bridge-space rule, the order, the filter and counts, the
+  space graph, and a space of `@test1`'s on a new device), and the whole suite.
+- [x] A read-only drive on `@rami` (no chat opened, signed out at the end): 14 communities, the 3
+  bridge spaces left out; Jiu Jitsu Canada lists its 2 groups; `check` clean in dark, light and
+  the largest text size.
+- [ ] `verify ios`.
+
+Seen on the way (not this task): a WhatsApp group's last sender without a name shows as its id
+(`@whatsapp_lid-…:ramimaalouf.com`) in the list's preview, on `@rami`.
+
+**Dependencies:** B4. **Scope:** S
 
 ## Phase 3: push notifications (M3)
 

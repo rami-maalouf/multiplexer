@@ -37,6 +37,7 @@ type RoomsAnswer = {
   rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { oneToOne: boolean })[];
   pinned: string[];
   networks: Result<'loadRoomsByRecency'>['networks'];
+  communities: Result<'loadRoomsByRecency'>['communities'];
   unread: number;
   archiveUnread: number;
   lowPriorityUnread: number;
@@ -222,17 +223,19 @@ const sources: Sources = {
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
   // matrixcore filters the list (list: inbox, archive or lowPriority; filter: all, unread,
-  // unanswered, people or groups; network: one network's chats, or "" for every network); in the
-  // inbox under all, the pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter, network, list], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+  // unanswered, people or groups; network: one network's chats, or "" for every network;
+  // community: one community's chats instead, a space's id or ""); in the inbox under all, the
+  // pinned chats are not in it.
+  loadRoomsByRecency: async ([userId, filter, network, community, list], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
     if (userId === '' || !native?.available) {
-      return { owner: userId, filter, network, list, rooms: [], pinned: [], networks: [], unread: 0, archiveUnread: 0, lowPriorityUnread: 0 };
+      return { owner: userId, filter, network, community, list, rooms: [], pinned: [], networks: [], communities: [], unread: 0,
+        archiveUnread: 0, lowPriorityUnread: 0 };
     }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
-    const answer = (await native.later({ op: 'rooms', filter, network, list })) as RoomsAnswer;
+    const answer = (await native.later({ op: 'rooms', filter, network, community, list })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     return {
-      owner: userId, filter, network, list, networks: answer.networks, unread: answer.unread,
+      owner: userId, filter, network, community, list, networks: answer.networks, communities: answer.communities, unread: answer.unread,
       archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {

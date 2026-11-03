@@ -7,7 +7,7 @@ use Balloon, Face from "./bubble.contract"
 use Attachment, chosenOf, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage from "./inbox.contract"
 use NetworkBadge, networkName from "./network.contract"
-use InboxSheet, NetworkCount from "./sheet.contract"
+use InboxSheet, NetworkCount, CommunityCount from "./sheet.contract"
 use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
@@ -54,16 +54,19 @@ shape Room
 // the filter menu's choice the list is for, network the filter sheet's ("": every network), list
 // the list shown (inbox, archive or lowPriority). pinned: the network's pinned chats in the inbox,
 // in their pin order; they are not in rooms in the inbox under "all". networks: the filter
-// sheet's rows, each network the account has chats on; unread, archiveUnread,
+// sheet's rows, each network the account has chats on; community the sheet's community ("" for
+// none), communities its rows; unread, archiveUnread,
 // lowPriorityUnread: each list's unread chats on every network.
 shape RoomList
   owner: string
   filter: string
   network: string
+  community: string
   list: string
   rooms: Room[]
   pinned: PinnedChat[]
   networks: NetworkCount[]
+  communities: CommunityCount[]
   unread: number
   archiveUnread: number
   lowPriorityUnread: number
@@ -285,6 +288,9 @@ component Multiplexer
   // the filter sheet's choice: the network whose chats the list shows ("": every network), kept
   // across launches. It works with the filter menu's: unread WhatsApp chats.
   state network = "" persist
+  // or the community whose chats it shows (a space's id; "": none), kept across launches. One of
+  // the two at a time: choosing one clears the other.
+  state community = "" persist
   // the list shown: the inbox, the Archive or Low Priority (inbox.contract's listName), kept
   // across launches. The filter menu and the network narrow any of them.
   state chatList = "inbox" persist
@@ -298,7 +304,7 @@ component Multiplexer
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
-  resource roomList = loadRoomsByRecency(session.userId, filter, network, chatList) as shape RoomList else empty()
+  resource roomList = loadRoomsByRecency(session.userId, filter, network, community, chatList) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
   resource profile = loadProfile(session.userId) as shape Profile else empty()
@@ -383,6 +389,11 @@ component Multiplexer
   derive openUnread = match openRoomInfo { case some(r) => r.unread + (r.markedUnread ? 1 : 0), case none => 0 }
   // the list under the filter menu's choice; the pinned grid shows above it only while no filter is on.
   derive listedRooms = roomList.rooms.filter(r => r.listed)
+  // the filter sheet's community, while the list knows it (a space left on another device is not).
+  derive shownCommunity = first(roomList.communities.filter(c => c.id == community))
+  // the name of what the list is narrowed to, for the title and the empty list: the community's,
+  // else the network's ("": every chat).
+  derive scopeName = match shownCommunity { case some(c) => c.name, case none => (network == "" ? "" : networkName(network)) }
   derive gridShown = roomList.filter == "all" and roomList.list == "inbox" and roomList.pinned.length > 0
   // the held chat's last messages, for its menu's preview. loading them reads nothing: only the
   // chat screen marks a chat read.
@@ -486,6 +497,7 @@ component Multiplexer
     else
       password = ""
       network = ""
+      community = ""
       chatList = "inbox"
   action askSignOut
     showModal("sign-out")
@@ -754,6 +766,7 @@ component Multiplexer
     nav = push(nav, path("inboxes"))
   action chooseNetwork(n: string)
     network = n
+    community = ""
     if top(nav).name == "inboxes"
       nav = back(nav)
     toTop()
@@ -770,9 +783,18 @@ component Multiplexer
       chatList = "archive"
     toTop()
   // the filter sheet's Inbox, Archive and Low Priority rows: that list on every network.
+  // a community's row: its chats in the list shown, as a network's row.
+  action chooseCommunity(id: string)
+    community = id
+    network = ""
+    if top(nav).name == "inboxes"
+      nav = back(nav)
+    toTop()
+    haptic("selection")
   action chooseList(l: string)
     chatList = l
     network = ""
+    community = ""
     if top(nav).name == "inboxes"
       nav = back(nav)
     toTop()
@@ -851,7 +873,7 @@ component Multiplexer
               position="absolute" inset=0 display="flex" flex-direction="column"
               // the title names the network the filter sheet chose, and opens Beeper's menu.
               if not searching
-                TitleMenu(title=listTitle(chatList, network), settings=showSettings, largeText=viewport.accessibilityTextSize)
+                TitleMenu(title=listTitle(chatList, scopeName), settings=showSettings, largeText=viewport.accessibilityTextSize)
               // the list stays under the search, covered, so closing the search finds it where it was.
               if roomsShown
                 if listedRooms.length == 0 and not gridShown and not searching
@@ -862,15 +884,15 @@ component Multiplexer
                   else if roomList.list != "inbox"
                     // an empty Archive or Low Priority: the capsule's Inbox is the way back.
                     EmptyState(symbol=(roomList.list == "archive" ? "symbol:icon.archive" : "symbol:icon.arrow-down-circle"),
-                      title=listEmptyTitle(roomList.list), message=listEmptyMessage(roomList.list, roomList.network))
-                      if roomList.network != ""
+                      title=listEmptyTitle(roomList.list), message=listEmptyMessage(roomList.list, scopeName))
+                      if roomList.network != "" or roomList.community != ""
                         button press=chooseNetwork("") buttonStyle="bordered" testId="show-every-network"
                           text "Show Every Network"
-                  else if roomList.network == ""
+                  else if roomList.network == "" and roomList.community == ""
                     EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
                   else
-                    EmptyState(symbol="symbol:messages", title=`No ${networkName(roomList.network)} Chats`,
-                      message=`Chats from ${networkName(roomList.network)} show here.`)
+                    EmptyState(symbol="symbol:messages", title=`No ${scopeName} Chats`,
+                      message=`Chats from ${scopeName} show here.`)
                       button press=chooseNetwork("") buttonStyle="bordered" testId="show-every-network"
                         text "Show All Chats"
                 else
@@ -912,9 +934,10 @@ component Multiplexer
                                 image "symbol:forward-chevron" font="-exact-footnote" color="-exact-tertiary-label"
                             // an unread chat: a bold name and a count beside the preview; muted, a grey
                             // count; with a mention, "@" and the accent. Marked unread by hand: a dot.
+                            // a word wider than the row (a sender with only an id) breaks, so it stays clear of the count.
                             row gap=8 align-items="flex-start"
                               text (r.lastMessage != "" ? preview(r) : "") font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
-                                flex=1 min-width=0 testId=`room-preview-${r.id}`
+                                overflow-wrap="break-word" flex=1 min-width=0 testId=`room-preview-${r.id}`
                               if r.mentions > 0
                                 view flex-shrink=0 testId=`count-${r.id}`
                                   Badge(label=`@ ${countText(max(r.unread, r.mentions))}`, tint=some("AccentColor"))
@@ -943,6 +966,7 @@ component Multiplexer
                   reduced=viewport.prefersReducedMotion)
               else if roomsShown
                 BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=chatList, network=network,
+                  communityName=(community != "" ? scopeName : ""), communityPicture=(match shownCommunity { case some(c) => c.avatar, case none => "" }),
                   sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize)
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
               // messages (a tap opens the chat), then its actions.
@@ -1024,7 +1048,8 @@ component Multiplexer
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
-            InboxSheet(networks=roomList.networks, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
+            InboxSheet(networks=roomList.networks, communities=roomList.communities, community=community, chooseCommunity=chooseCommunity,
+              unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
               chooseList=chooseList, scheduled=scheduledShown.length, openScheduled=chooseSendLater, largeText=viewport.accessibilityTextSize)
         // a held message's sheets: every emoji, half height and pulled up to full; the chats to forward to.

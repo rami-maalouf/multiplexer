@@ -43,17 +43,23 @@ final class Matrix: ExactModule {
                     // every chat, each saying whether the list (inbox, archive or lowPriority) shows it
                     // under the filter menu's choice and the filter sheet's network ("": every network),
                     // the pinned ones' ids in their pin order, and the sheet's rows with their unread chats.
+                    // a community (a space's id) narrows it instead of a network.
                     let started = Date(), account = try await signedIn()
-                    let network = request["network"] as? String ?? ""
-                    let inbox = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all,
-                                                        list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox,
-                                                        network: network.isEmpty ? nil : network)
+                    let network = request["network"] as? String ?? "", chosen = request["community"] as? String ?? ""
+                    let all = try await account.inbox(filter: RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all,
+                                                      list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox)
+                    let communities = await account.communities(among: all.chats)
+                    let community = communities.first { $0.id == chosen }
+                    let inbox = community != nil ? all.on(community: community) : all.on(network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
                        "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
-                       "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
+                       "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] },
+                       "communities": inbox.counts(of: communities).map { c in
+                           ["id": c.id, "name": c.name, "unread": c.unread,
+                            "avatar": cached(c.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: c.id, directory: self.media) }] }])
                 case "pin", "unpin":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
