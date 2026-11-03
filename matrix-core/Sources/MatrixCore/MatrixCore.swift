@@ -20,6 +20,8 @@ public enum MatrixChange: Hashable, Sendable {
     case rooms
     /// The messages of an open chat changed.
     case room(String)
+    /// What a chat's info page shows changed: its photos and videos, or its own name (ChatInfo.swift).
+    case info(String)
 }
 
 /// What the app keeps (in the Keychain) to sign in again without a password.
@@ -35,7 +37,10 @@ public struct SavedSession: Codable, Equatable, Sendable {
 
 public struct RoomSummary: Equatable, Sendable {
     public var id: String
+    /// The name it shows: the account's own name for it when it has one (`setCustomName`).
     public var name: String
+    /// The name everyone in the chat sees.
+    public var roomName: String = ""
     public var isDirect: Bool
     /// The newest message as one line ("" when the room has none): its text, or its kind ("Photo").
     public var lastMessage: String
