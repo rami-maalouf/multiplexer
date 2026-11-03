@@ -17,6 +17,10 @@ public final class MatrixAccount: @unchecked Sendable {
     let search = SearchState()
     /// The chats' media timelines and own names (ChatInfo.swift).
     let infoStates = ChatInfoStates()
+    /// The newest message each chat's preview showed, and the watch on other devices' archives,
+    /// deletes and names (ListFreshness.swift).
+    let latest: LatestMessages
+    let accountDataWatch = AccountDataWatch()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -28,8 +32,9 @@ public final class MatrixAccount: @unchecked Sendable {
     /// The open chats' timelines once they are ready, which `rooms()` reads without waiting.
     private var readyTimelines: [String: LiveTimeline] = [:]
 
-    private init(client: Client) {
+    private init(client: Client, storeDirectory: URL) {
         self.client = client
+        latest = LatestMessages(file: storeDirectory.appendingPathComponent("latest-messages.json"))
         // a photo or file on its way tells how much of it is uploaded (`Message.uploadProgress`).
         client.enableSendQueueUploadProgress(enable: true)
     }
@@ -43,7 +48,7 @@ public final class MatrixAccount: @unchecked Sendable {
         do {
             let client = try await builder(storeDirectory, searchIndexKey: searchIndexKey).serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
             try await client.login(username: user, password: password, initialDeviceName: deviceName, deviceId: nil)
-            return MatrixAccount(client: client)
+            return MatrixAccount(client: client, storeDirectory: storeDirectory)
         } catch {
             throw SignInError(error)
         }
@@ -61,7 +66,7 @@ public final class MatrixAccount: @unchecked Sendable {
             homeserverUrl: saved.homeserverUrl,
             oauthData: saved.oauthData,
             slidingSyncVersion: saved.nativeSlidingSync ? .native : .none))
-        return MatrixAccount(client: client)
+        return MatrixAccount(client: client, storeDirectory: storeDirectory)
     }
 
     /// Signs a session out on the server without its store (a reinstall lost it), through
@@ -142,6 +147,7 @@ public final class MatrixAccount: @unchecked Sendable {
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
+                latest.fill(&summary)
             case .local(let timestamp, let sender, let profile, let content, _):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: true, profile: profile, content: content)
             case .none, .remoteInvite:
@@ -150,6 +156,7 @@ public final class MatrixAccount: @unchecked Sendable {
             if let live = lock.withLock({ readyTimelines[summary.id] }) { summary.fillDeleted(live.items.messages()) }
             rooms.append(summary)
         }
+        latest.save()
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
@@ -372,6 +379,7 @@ public final class MatrixAccount: @unchecked Sendable {
             readyTimelines = [:]
         }
         search.stop()
+        accountDataWatch.stop()
         await syncService?.stop()
         syncService = nil
         try await client.logout()
@@ -394,6 +402,8 @@ public final class MatrixAccount: @unchecked Sendable {
             roomOrder = order
         }
         startSearchBackfill()
+        // another device's archive, delete or name changes no room: the list hears of it here.
+        accountDataWatch.start(client) { [weak self] in self?.notify(.rooms) }
     }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.

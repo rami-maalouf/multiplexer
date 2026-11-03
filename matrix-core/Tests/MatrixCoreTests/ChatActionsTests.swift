@@ -59,6 +59,37 @@ final class ChatActionsTests: XCTestCase {
         _ = try await summary(owner, held) { $0.unreadCount == 0 && $0.unreadMentions == 0 && !$0.isMuted }
     }
 
+    /// Another device's archive changes no room, so the room list does not tell of it: the account
+    /// data watch does, within a few seconds, so the open list updates.
+    func testAnotherDevicesArchiveTellsTheList() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let archived = try await testRooms(owner, sender, user2: user2)[archiveName]!
+        try await reset(owner, archived)
+        let second = try await signIn(homeserver, user, password)
+        _ = try await summary(second, archived) { !$0.isArchived }
+
+        let heard = Heard()
+        second.onChange { if case .rooms = $0 { heard.add() } }
+        // the list settles: no change for 3 s.
+        var quiet = Date()
+        while Date().timeIntervalSince(quiet) < 3 {
+            let count = heard.count
+            try await Task.sleep(nanoseconds: 500_000_000)
+            if heard.count != count { quiet = Date() }
+            XCTAssertLessThan(Date().timeIntervalSince(quiet), 60)
+        }
+        let start = heard.count
+        try await owner.archive(roomId: archived)
+        let told = Date()
+        while heard.count == start, Date().timeIntervalSince(told) < 15 { try await Task.sleep(nanoseconds: 200_000_000) }
+        XCTAssertGreaterThan(heard.count, start, "the other device's list was not told of the archive")
+        let shown = try await second.rooms().first { $0.id == archived }
+        XCTAssertEqual(shown?.isArchived, true, "told, the list still shows the chat in the inbox")
+        try await owner.unarchive(roomId: archived)
+    }
+
     func testLowPriorityArchiveAndDeleteLeaveTheInboxOnAnotherDevice() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
         let owner = try await signIn(homeserver, user, password)
@@ -440,4 +471,12 @@ final class ChatActionsTests: XCTestCase {
         }
         fatalError("unreachable")
     }
+}
+
+/// Counts the room list changes a device was told of.
+private final class Heard: @unchecked Sendable {
+    private let lock = NSLock()
+    private var told = 0
+    var count: Int { lock.withLock { told } }
+    func add() { lock.withLock { told += 1 } }
 }

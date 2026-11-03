@@ -9,14 +9,17 @@
 #   send-test-message.sh --sticker <picture.png>: an m.sticker event
 #   send-test-message.sh --voice <sound file>: a voice note as the whatsapp bridge brings one (ffmpeg):
 #   ogg opus, its length, a waveform of 64 values from 0 to 100, and the voice mark
+#   send-test-message.sh --delete-last: deletes the sender's newest message in the room for everyone
 #   SENDER=@test2:ramimaalouf.com ROOM="Multiplexer two-person test" (the defaults)
 #   REPLY_TO=<event id> or REPLY_TO=first: the text answers that message, or the room's first
 #   text message (older than what a chat loads when it opens)
 #   MENTION=<user id>: the text mentions that user, as a client's pill does (m.mentions)
 set -euo pipefail
-usage="usage: send-test-message.sh <text> | --image <file> [caption] | --video <file> [caption] | --sticker <file> | --voice <file>"
-image=""; video=""; sticker=""; voice=""; caption=""
-if [ "${1:-}" = "--image" ]; then
+usage="usage: send-test-message.sh <text> | --image <file> [caption] | --video <file> [caption] | --sticker <file> | --voice <file> | --delete-last"
+image=""; video=""; sticker=""; voice=""; caption=""; deletelast=""
+if [ "${1:-}" = "--delete-last" ]; then
+  deletelast=1
+elif [ "${1:-}" = "--image" ]; then
   image="${2:?$usage}"; caption="${3:-}"
 elif [ "${1:-}" = "--video" ]; then
   video="${2:?$usage}"; caption="${3:-}"
@@ -46,6 +49,16 @@ for id in $(curl -sf "$base/client/v3/joined_rooms" -H "$auth" | jq -r '.joined_
   if [ "$name" = "$roomname" ]; then room="$enc"; break; fi
 done
 [ -n "$room" ] || { echo "$sender is in no room named $roomname" >&2; exit 1; }
+
+if [ -n "$deletelast" ]; then
+  last="$(curl -sf "$base/client/v3/rooms/$room/messages?dir=b&limit=50" -H "$auth" \
+    | jq -r --arg me "$sender" '[.chunk[] | select(.sender == $me and (.type == "m.room.message" or .type == "m.sticker") and (.content | length) > 0)][0].event_id // empty')"
+  [ -n "$last" ] || { echo "$sender has no message to delete in the last 50 events of $roomname" >&2; exit 1; }
+  lastenc="$(jq -rn --arg r "$last" '$r|@uri')"
+  curl -sf -X PUT "$base/client/v3/rooms/$room/redact/$lastenc/multiplexer-$(uuidgen)" -H "$auth" \
+    -H 'Content-Type: application/json' -d '{}' | jq -r '"deleted '"$last"' with " + .event_id'
+  exit 0
+fi
 
 eventtype="m.room.message"
 if [ -n "$video" ]; then
