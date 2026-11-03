@@ -1352,7 +1352,33 @@ Rami wants these, after the tasks above (2026-11-02):
   - MatrixCore `RemindersTests` (as `@test1` and `@test2`, under the lock): 3 passed. A reminder shows at once, reaches
     a second device of the account and not the other person; their message leaves it; your answer ends it on both
     devices and in the account's data; Clear takes it away.
-- Merge Chats: one person on two networks as one chat (B21).
+- Merge Chats: one person on two networks as one chat (B21). Designed 2026-11-03, not built: it waits on Rami's
+  choice (plan.md Q6).
+  - What Beeper does (its help page, "Merge chats getting started guide"; our recording shows only the greyed menu
+    row): Inbox menu > Merge Chats > pick the chats > a name and a default network. The merged chat replaces its chats
+    in the list as one row; its unread count is their sum; Mark as Read, pins and labels act on the whole. Inside, one
+    timeline of all their messages by time, with a network mark between messages, one "New" line and one combined
+    receipt. A reply goes on the network of the newest incoming message (else the default chat after 30 minutes), and
+    the composer can pick a network. It suggests merges by the same phone number, email or two-word name. Unmerge:
+    the chat's info > Manage > Unmerge. Merges follow the account to its other devices; the default network does not.
+  - Sound with Matrix: yes. Matrix has no link between rooms, so the merge is the app's: one global account data
+    event, `com.ramimaalouf.multiplexer.merges` (`{"merges": [{"id", "name", "rooms": [...], "default"}]}`), as
+    reminders and names are kept; the account's other devices have it, and no bridge reads it. Each network chat stays
+    its own room with its bridge; sending to a room is unchanged. A chat is in at most one merge.
+  - Shared by both ways below (MatrixCore `Merges.swift`, about a day): the list folds a merge's rooms into one row
+    (the newest message, every network's logo, the unread sum, the merge's name), and the filters and the network
+    rows count it once (it shows under each of its networks). Each chat action (Archive, Low Priority, Pin, Mute,
+    Mark as Read or Unread, Delete, Remind Me) acts on every room of the merge. The title menu's Merge Chats opens
+    a sheet that picks two or more DMs (search by name), then a name and a default network; the info page gets
+    "Manage" with Unmerge. No suggestions at first.
+  - Way A, a switchable chat (recommended first): the merged row opens the room of the newest incoming message (else
+    the default), and the chat bar shows the networks as a small segmented control to switch rooms. Every chat
+    feature keeps working as it is, since the open chat is still one room (`openRoom` is in about 115 places in 11
+    files). About a day more.
+  - Way B, Beeper's combined timeline: MatrixCore merges two live timelines by time and pages each back; every
+    message carries its room, and a reply, reaction, edit, delete, swipe to reply, read receipt, "Seen" line, search
+    in the chat, media grid, Send Later and the "New" line each act on the message's own room; replying to a message
+    switches the sending network to its own. Several days, and a risk to the chat's tested features.
 - Select chat: act on several chats at once (B7, B21).
 - Transcribe voice notes (B16): check whether the iPhone can do it on the phone, at no cost.
 - Communities as filters ("whatever is easiest"): after B4.
