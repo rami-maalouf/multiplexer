@@ -28,3 +28,7 @@ files that need the same change.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1346 (fixes part of it): the patch check compares paths through symlinks. A checkout at another depth still needs its own Cargo paths: a design question.

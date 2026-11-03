@@ -30,3 +30,7 @@ save it under `name`".
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, `agent ios`, with a held Files picker answered
 by `type @<id> <path>`.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1342 (fixes it): the guides say that the copy at `path` has another name, and to show or upload it under `name`.

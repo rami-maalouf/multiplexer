@@ -31,3 +31,7 @@ Cost: about 3 minutes and two test builds. The app uses `min(<role>, <cap>)`.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, `contract build` and `verify ios`.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1349 (fixes part of it): the refusal names the forms `font-size` takes, among them `min(<text style>, <px cap>)`. A `rem` cap inside `min()` would need a new kernel unit: a design question.

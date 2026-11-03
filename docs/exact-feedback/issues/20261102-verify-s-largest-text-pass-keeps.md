@@ -23,3 +23,7 @@ The largest-text pass saving a screenshot of each screen it checks, as the norma
 
 Seen on 2026-11-02 at exact2 `d165f8959f` (iOS 27.0 simulator). The test that showed it is not
 in the app; it was a longer version of a recipe's test.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1348 (fixes it): `verify` keeps a screenshot of each page its largest-text pass reads, named `<screen>-largest.png`.

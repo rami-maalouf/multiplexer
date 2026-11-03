@@ -33,3 +33,7 @@ names what it uses", which reads like a problem; it is the module-scope check pa
 The same two messages after updating from `1bc4c36cb7`: `update` removed one line from
 `Cargo.lock` and said it "does not match the app manifests; run `bun exact.mjs lock`", and
 `lock` said "current; no changes".
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1347 (fixes it): `lock` names a dependency that a package gained or lost. Replayed with this app's lock change from the update to `ed43ad09a0`: `origin/main` says no changes; the fix says "ibex2 0.1.0 (path) no longer depends on ring".
