@@ -109,7 +109,7 @@ component RichBalloon
         for r in runs key=r.id
           if r.href != ""
             text r.text color=(outgoing ? "AccentColorText" : "AccentColor") text-decoration-line="underline" press=open(r.href)
-              testId=`link-${identifier}-${r.id}`
+              role="link" testId=`link-${identifier}-${r.id}`
           else
             text r.text color=ink
 
