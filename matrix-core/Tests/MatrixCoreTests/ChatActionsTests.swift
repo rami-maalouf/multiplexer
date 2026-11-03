@@ -60,7 +60,8 @@ final class ChatActionsTests: XCTestCase {
     }
 
     /// Another device's archive changes no room, so the room list does not tell of it: the account
-    /// data watch does, within a few seconds, so the open list updates.
+    /// data watch does, within a few seconds, so the open list updates. (Other changes reach the
+    /// room list now and then, so the test listens to a watch of its own; a drive checks the app.)
     func testAnotherDevicesArchiveTellsTheList() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
         let owner = try await signIn(homeserver, user, password)
@@ -70,21 +71,15 @@ final class ChatActionsTests: XCTestCase {
         let second = try await signIn(homeserver, user, password)
         _ = try await summary(second, archived) { !$0.isArchived }
 
-        let heard = Heard()
-        second.onChange { if case .rooms = $0 { heard.add() } }
-        // the list settles: no change for 3 s.
-        var quiet = Date()
-        while Date().timeIntervalSince(quiet) < 3 {
-            let count = heard.count
-            try await Task.sleep(nanoseconds: 500_000_000)
-            if heard.count != count { quiet = Date() }
-            XCTAssertLessThan(Date().timeIntervalSince(quiet), 60)
-        }
-        let start = heard.count
+        let heard = Heard(), watch = AccountDataWatch()
+        watch.start(second.client, interval: 0.5) { heard.add() }
+        defer { watch.stop() }
+        try await Task.sleep(nanoseconds: 3_000_000_000)
+        XCTAssertEqual(heard.count, 0, "the watch heard a change before any")
         try await owner.archive(roomId: archived)
         let told = Date()
-        while heard.count == start, Date().timeIntervalSince(told) < 15 { try await Task.sleep(nanoseconds: 200_000_000) }
-        XCTAssertGreaterThan(heard.count, start, "the other device's list was not told of the archive")
+        while heard.count == 0, Date().timeIntervalSince(told) < 15 { try await Task.sleep(nanoseconds: 200_000_000) }
+        XCTAssertEqual(heard.count, 1, "the other device was not told of the archive")
         let shown = try await second.rooms().first { $0.id == archived }
         XCTAssertEqual(shown?.isArchived, true, "told, the list still shows the chat in the inbox")
         try await owner.unarchive(roomId: archived)
