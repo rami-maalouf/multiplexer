@@ -1,5 +1,6 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
 import { ClipboardItem, write } from '@exact/clipboard';
+import { closeNotification, notificationStatus, showNotification } from '@exact/notifications';
 import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
@@ -14,7 +15,8 @@ export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/camera', 'de
   'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
   'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
   'device.speech-recognition purpose.recognition', 'fs.read app:/data/transcripts.json', 'fs.write app:/data/transcripts.json',
-  'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs'].join('\n');
+  'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs',
+  'device.notifications purpose.notifications', 'fs.read app:/data/reminders', 'fs.write app:/data/reminders'].join('\n');
 
 // GIFs (gif.contract): the phone calls KLIPY itself, as KLIPY requires (D10). Its app key is set at
 // build from the Keychain (scripts/setup-klipy-key.sh); it ships in the app, as an app key does.
@@ -48,7 +50,47 @@ type RoomsAnswer = {
   unread: number;
   archiveUnread: number;
   lowPriorityUnread: number;
+  reminders: number;
 };
+
+// Remind Me: a reminder lives in the account's data (MatrixCore's Reminders.swift), and its
+// notification on this iPhone, tagged by the chat. What this iPhone scheduled is kept in a file, so
+// a reminder answered or cleared on another device has its notification taken away here.
+const REMINDERS = 'app:/data/reminders', SCHEDULED = `${REMINDERS}/scheduled.json`;
+export const reminderTag = (roomId: string) => `reminder-${roomId}`;
+type ReminderChat = { id: string; name: string; reminder: number; lastMessage: string; lastSender: string; lastIsOwn: boolean };
+let syncing: Promise<void> = Promise.resolve();
+const syncReminders = (rooms: ReminderChat[], storage: Storage) => (syncing = syncing.then(() => syncNow(rooms, storage), () => syncNow(rooms, storage)));
+async function syncNow(rooms: ReminderChat[], storage: Storage) {
+  const wanted = new Map(rooms.filter((r) => r.reminder > 0).map((r) => [r.id, r]));
+  let scheduled: Record<string, number> = {};
+  try { scheduled = JSON.parse(new TextDecoder().decode(await storage.fs.readFile(SCHEDULED))); } catch { /* none yet */ }
+  let changed = false;
+  for (const id of Object.keys(scheduled)) {
+    if (wanted.has(id)) continue;
+    await closeNotification({ tag: reminderTag(id) });
+    delete scheduled[id];
+    changed = true;
+  }
+  const missing = [...wanted.values()].filter((r) => scheduled[r.id] !== r.reminder);
+  // a post asks for the permission while it is not given yet: here only when it is, as the
+  // first reminder's press asks for it (app.contract's afterRemind).
+  if (missing.length && (await notificationStatus({})).state === 'granted') {
+    for (const r of missing) {
+      await showNotification(reminderNotice(r));
+      scheduled[r.id] = r.reminder;
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  await storage.fs.mkdir(REMINDERS).catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });
+  await storage.fs.atomicWriteFile(SCHEDULED, new TextEncoder().encode(JSON.stringify(scheduled)));
+}
+const reminderNotice = (r: ReminderChat) => ({
+  title: `Reply to ${r.name}`,
+  body: r.lastMessage === '' ? 'You asked to be reminded.' : `${r.lastIsOwn ? 'You' : r.lastSender}: ${r.lastMessage}`,
+  tag: reminderTag(r.id), data: r.id, showTrigger: r.reminder,
+});
 
 // a chat with no picture shows the first letters of its first two words, as Messages does.
 const initials = (name: string): string =>
@@ -233,16 +275,18 @@ const sources: Sources = {
   // matrixcore filters the list (list: inbox, archive or lowPriority; filter: all, unread,
   // unanswered, people or groups; network: one network's chats, or "" for every network); in the
   // inbox under all, the pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter, network, list], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+  loadRoomsByRecency: async ([userId, filter, network, list], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
     if (userId === '' || !native?.available) {
-      return { owner: userId, filter, network, list, rooms: [], pinned: [], networks: [], unread: 0, archiveUnread: 0, lowPriorityUnread: 0 };
+      return { owner: userId, filter, network, list, rooms: [], pinned: [], networks: [], unread: 0, archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
     }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
     const answer = (await native.later({ op: 'rooms', filter, network, list })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
+    // the reminders' notifications follow the account's reminders; a failure leaves the list as it is.
+    syncReminders(answer.rooms, storage).catch((e) => console.log(`reminders: ${e}`));
     return {
       owner: userId, filter, network, list, networks: answer.networks, unread: answer.unread,
-      archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread,
+      archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread, reminders: answer.reminders,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
         const r = byId.get(id);
@@ -260,6 +304,10 @@ const sources: Sources = {
   },
   // a chat's long-press actions: read, unread, mute, unmute, lowPriority, inbox (out of Low
   // Priority), archive, unarchive and delete (from this app only; the chat stays on its network).
+  // Remind Me (B7, B20): when is "tomorrow", "monday" or a picked time without a zone, as Send
+  // Later's; a time not ahead is refused with problem "past".
+  remindChat: async ([roomId, when], _store, _storage, native): Promise<Result<'remindChat'>> =>
+    (await native!.later({ op: 'chat', roomId, action: 'remind', when })) as { ok: boolean; at: number; problem: string },
   changeChat: async ([roomId, action], _store, _storage, native): Promise<Result<'changeChat'>> => {
     await native!.later({ op: 'chat', roomId, action });
     return { ok: true };

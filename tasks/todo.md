@@ -868,7 +868,10 @@ Mute, Label, Delete (red).
   (the playbook's setting), and with it on, mautrix-whatsapp leaves the WhatsApp group.
 - [x] Nothing of this reaches WhatsApp: Synapse sends a bridge no account data. Only Mark as Read
   (a read receipt) does.
-- [ ] Label, Remind Me, Select chat: "Later".
+- [ ] Label, Select chat: "Later".
+- [x] Remind Me (2026-11-03, with B20's): "Remind Me…" after Pin (an alarm clock), or "Clear Reminder" when the chat has
+  one. It opens Send Later's time sheet (`LaterSheet`) with Send Later's set times as rows: Tomorrow, 9:00 AM; Monday,
+  9:00 AM (not on a Sunday); or a picked time, then Set. See "Remind Me" below for where it is kept.
 - [x] Rami (2026-11-03), all as suggested (check what is built): a deleted chat that comes back shows only new messages (not its whole history);
   was: a deleted chat that comes back shows its whole history (or only new messages);
   your own message brings an archived chat back; a mention in a muted chat gives "@" but no push
@@ -1282,7 +1285,7 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
   says what everyone else sees; "Use the Chat's Own Name" takes it away).
 - [x] More: Pin, Mark as Read (or Unread, which leaves the chat as the chat bar's does), Mute,
   Delete (with the list's alert). Jump to Date: the SDK has none (jump to a message works), so it
-  is left out. Remind Me: "Later".
+  is left out. Remind Me: in More, "Remind Me…", or "Clear Reminder" with the reminder's time under it (2026-11-03).
 - [x] Bookmarks: a row under the four buttons with this chat's count; it opens the chat's own list
   (B14's), where a tap closes both pages and opens the chat at the message. (2026-11-03,
   `info.contract`.)
@@ -1329,7 +1332,26 @@ Rami wants these, after the tasks above (2026-11-02):
 - Labels: a named group of chats, shown as a filter in the sheet, with Create Label (the same
   tag way as Archive, B8). "Not a requirement."
 - Camera in the + panel: a built-in camera. Done 2026-11-03 for photos ("L1" below).
-- Remind Me: a reminder to answer a chat later (B7, B20; a Reminders row in the sheet).
+- Remind Me: a reminder to answer a chat later (B7, B20; a Reminders row in the sheet). Done 2026-11-03:
+  - Kept in the account's data (one global event, `com.ramimaalouf.multiplexer.reminders`, as Customize for Me's
+    names), so the account's other devices see the reminder and the Reminders row; no bridge reads it. MatrixCore's
+    `Reminders.swift`: `setReminder`, `clearReminder`, `reminderList`, and `RoomSummary.reminderAt`.
+  - The notification is this iPhone's (`@exact/notifications`): "Reply to <chat>" at the time, tag `reminder-<room>`;
+    a tap opens the chat (checked with a relaunch that hands the app the tap). The first Set asks for the permission.
+    On each list load, `app.ts` (`syncReminders`) posts the reminders this iPhone has not scheduled (when the
+    permission is given) and takes away the notifications of reminders that ended, even on another device; what it
+    scheduled is kept in `app:/data/reminders/scheduled.json`.
+  - Done: your own message in the chat, newer than the reminder (sent from any of the account's devices), takes the
+    reminder away; another person's message does not. Clear Reminder too.
+  - The filter sheet's Reminders row (after Archive, an alarm clock, the number of chats) shows the chats with a
+    reminder from every list; each row says "Reminder Tomorrow at 9:00 AM", in the accent once it is due.
+  - Driven as `@test1` (2026-11-03): set from the long-press menu and from More (Tomorrow, and a picked time: Nov 5,
+    2:30 PM gave `showTrigger` 1793907000000); the Reminders list held the chat; an answer in the chat emptied it
+    ("No Reminders"); Clear took the notification away. `check both` clean on the sheet, the filter sheet and the
+    list, at the default and the largest text sizes. `verify ios` clean.
+  - MatrixCore `RemindersTests` (as `@test1` and `@test2`, under the lock): 3 passed. A reminder shows at once, reaches
+    a second device of the account and not the other person; their message leaves it; your answer ends it on both
+    devices and in the account's data; Clear takes it away.
 - Merge Chats: one person on two networks as one chat (B21).
 - Select chat: act on several chats at once (B7, B21).
 - Transcribe voice notes (B16): check whether the iPhone can do it on the phone, at no cost.

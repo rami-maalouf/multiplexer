@@ -118,6 +118,12 @@ component InfoPage
     pin: action
     read: action
     mute: action
+    // the chat's reminder (ms since 1970; 0 for none), Remind Me's time sheet, and Clear Reminder.
+    reminder: number
+    remind: action
+    clearReminder: action
+    now: number
+    offset: number
     askDelete: action
     deleteChat: action
     edit: action
@@ -163,7 +169,7 @@ component InfoPage
         button press=customize popovertarget="info-edit" popovertargetaction="hide" testId="customize"
           image "symbol:person"
           text "Customize for Me"
-      // the info page's own actions, in Beeper's order; Remind Me and Jump to Date are not here yet.
+      // the info page's own actions, in Beeper's order; Jump to Date is not here (the SDK has none).
       column id="info-more" popover="auto" role="menu"
         button press=pin popovertarget="info-more" popovertargetaction="hide" testId="info-more-pin"
           image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
@@ -174,6 +180,15 @@ component InfoPage
         button press=mute popovertarget="info-more" popovertargetaction="hide" testId="info-more-mute"
           image (muted ? "symbol:notifications" : "symbol:icon.bell-slash")
           text (muted ? "Unmute" : "Mute")
+        if reminder > 0
+          button press=clearReminder popovertarget="info-more" popovertargetaction="hide" testId="info-more-clear-reminder"
+            image "symbol:icon.bell-slash"
+            text "Clear Reminder"
+            text formatDay(reminder, now, offset, "day-time")
+        else
+          button press=remind popovertarget="info-more" popovertargetaction="hide" testId="info-more-remind"
+            image "symbol:icon.alarm"
+            text "Remind Me…"
         hr
         button press=askDelete destructive=true popovertarget="info-more" popovertargetaction="hide" testId="info-more-delete"
           image "symbol:delete"
