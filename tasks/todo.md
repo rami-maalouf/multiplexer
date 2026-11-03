@@ -420,9 +420,19 @@ with other Matrix users usually are.
 
 **Acceptance criteria:**
 - [ ] A decision in the log: end-to-bridge encryption on or off, and why. (Waits for T0.6.)
+  Proposed 2026-11-03 (Rami decides): keep it **off**, as it is now (`matrix_bridges_encryption_enabled: false`).
+  Why: the bridge runs on the same server and must read every message to pass it to WhatsApp, so its keys sit
+  on the same disk as the database: a breach of the server reads the chats either way. On, it would cost: Send
+  Later refuses encrypted chats (delayed events wait on the server unencrypted; `testAnEncryptedChatHasNoSendLater`),
+  the push extension would have to decrypt each message within its memory limit, and a new device would show
+  older bridged messages as "Waiting for this message" until it has the recovery key. Chats with other Matrix
+  people stay end-to-end encrypted, and the recovery key (below) now opens their older messages.
 - [x] In an encrypted room, messages sent after this device signed in show as text. (2026-10-27: the room "Multiplexer encrypted test", made by MatrixCore; another device's message shows as text at once; a message sent from the app is encrypted and shows as text.)
 - [x] Added: a message this device has no key for shows as "Waiting for this message", not nothing. Before, MatrixCore dropped it from the chat.
-- [ ] Older messages show after I enter the recovery key (key backup). (Waits for T0.5: the practice account has no recovery, and turning it on would add an encryption identity to an account Rami also uses in Element. Test it with a test user on our own server.)
+- [x] Older messages show after I enter the recovery key (key backup). (2026-11-03: Settings, Encryption: Off, On, or
+  Needs Your Key with a field and Unlock Older Messages; a wrong key is named. MatrixCore `recover`, and the SDK now
+  fetches a missing key from the backup (`afterDecryptionFailure`). Test `testAnOlderEncryptedMessageShowsAfterTheRecoveryKey`
+  as `@test1`, which resets recovery through the server's API; drives in light and dark: `apps/multiplexer/.exact/recovery/`.) (Waits for T0.5: the practice account has no recovery, and turning it on would add an encryption identity to an account Rami also uses in Element. Test it with a test user on our own server.)
 
 **Found on the way:**
 - A room whose newest message this device cannot read has no preview and no time in the chat list, so it sorts last.

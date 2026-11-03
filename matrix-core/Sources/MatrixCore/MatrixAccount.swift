@@ -95,6 +95,9 @@ public final class MatrixAccount: @unchecked Sendable {
             // every chat (`startSearchBackfill`), which needs automatic back-pagination.
             .withSearchIndexStore(path: search.path, key: searchIndexKey)
             .enableAutomaticBackPagination(enableAutomaticBackPagination: true)
+            // once the account's backup is open (`recover`), a message this device has no key
+            // for fetches its key from the backup, as Element X does.
+            .backupDownloadStrategy(backupDownloadStrategy: .afterDecryptionFailure)
     }
 
     public var userId: String {
@@ -175,6 +178,9 @@ public final class MatrixAccount: @unchecked Sendable {
         lookUpNames(roomId, live.items.names)
         return shown
     }
+
+    /// The chats whose timeline is open (or opening).
+    func openRoomIds() -> [String] { lock.withLock { Array(timelines.keys) } }
 
     /// The chat's live timeline, opened the first time with its last `limit` messages.
     func liveTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
@@ -364,7 +370,10 @@ public final class MatrixAccount: @unchecked Sendable {
         switch encryption.recoveryState() {
         case .enabled: return .enabled
         case .disabled: return .disabled
-        case .incomplete: return .incomplete
+        // the sdk says incomplete while the account's cross-signing secrets are missing here,
+        // even after the recovery key opened the backup: with the backup open, this device reads
+        // its older messages, which is what recovery is for.
+        case .incomplete: return encryption.backupState() == .enabled ? .enabled : .incomplete
         case .unknown: return .unknown
         }
     }
