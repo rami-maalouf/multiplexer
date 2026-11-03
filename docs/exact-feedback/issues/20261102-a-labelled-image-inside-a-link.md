@@ -34,3 +34,10 @@ Cost: about 10 minutes; left as it is, with the label on the image.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0` (iOS Simulator).
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1407 (fixes it): a link's spoken name joins each
+descendant's own label in place of its content, as accname's name from content does. In a drive of
+a minimal app: before, `link "AL Ada Lovelace You: see you soon"`; after, `link "AL WhatsApp Ada
+Lovelace You: see you soon"`. The words a node shows (bar titles, segments) are unchanged.

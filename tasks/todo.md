@@ -459,7 +459,9 @@ message, and keeps the reader's place.
 - [x] Scrolling up near the top of a chat loads 20 older messages. (2026-10-27: the count goes from 20 to 40.)
 - [x] The rows I read do not move when older ones are added above. (`tree --ax`: 9 visible rows at the same place before and after.)
 - [x] At the room's first message, loading stops. (The test room's 58 messages, from "Multiplexer test 48643855…".)
-- [ ] A sign that older messages are loading, and that the chat has reached its start. (Not possible yet in Exact's virtualized list: finding 20.)
+- [ ] A sign that older messages are loading, and that the chat has reached its start. (Possible now: a marker item put first by a `derive`,
+  `[marker].concat(messages)`, drawn by its key in the `for`'s one root; `reachstart` still fires. Checked in a minimal Exact app;
+  Exact PR #1411 (open) documents it. Finding 20.)
 
 **Verification:**
 - [x] MatrixCore test `testOlderMessagesLoadUntilTheStart`.
@@ -648,7 +650,7 @@ types), so prove that first.
 - [x] Logos for WhatsApp, Instagram, Messenger, Telegram, Signal, Discord and LinkedIn are in the
   app (`assets/networks/`, sources and licences in `SOURCES.md`).
 - [ ] VoiceOver: the row's spoken label leaves the network out (Exact finding 32). A hand-written
-  `aria-label` on the row would fix it.
+  `aria-label` on the row would fix it. Exact PR #1407 (open) fixes it in Exact: a labelled image counts in its link's name.
 
 **Verification:**
 - [x] MatrixCore test `testABridgedRoomShowsItsNetworkOnANewDevice`: `@test1` sets the state a
@@ -716,7 +718,7 @@ appears when its feature exists: the capsule's Archive with B8, search with B18.
 - [x] The bar floats over the list, the list scrolls under it, and its last row can scroll above
   the bar. (2026-11-02, `inbox.contract`, `BottomBar`.)
 - [ ] The iOS edge effect under the bar: Exact gives a floating bar over a large-title list none,
-  and a route has no bottom toolbar (Exact finding 35).
+  and a route has no bottom toolbar (Exact finding 35; no PR: a design question for the Exact team, LLP 1131).
 - [x] The capsule holds Inbox (selected; a tap scrolls to the top); the left button opens the
   filter menu (B5). The up-down button comes with B4.
 - [x] `check both` clean in dark, light and the largest text size; VoiceOver reads "Filter" (or
@@ -744,7 +746,8 @@ Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and com
 - [x] The choice is kept across launches; a new sign-in starts at Inbox.
 - [x] MatrixCore filters the list itself (`NetworkFilter.swift`, `NetworkFilterTests`).
 - [ ] After a network change in a list scrolled down, the large title stays collapsed (Exact
-  finding 50); a short line shows above the pinned grid (finding 49).
+  finding 50; no PR: exact2's own tests say a scroll to the top after a collapse keeps the title collapsed, a design
+  question for the Exact team); a short line shows above the pinned grid (finding 49).
 - [x] Rami (2026-11-03): keep the Matrix row first; count unread chats; the title shows the network's name.
 
 **Dependencies:** B1, B3. **Scope:** M
@@ -887,7 +890,8 @@ chat info page, B20), and "..." on the right.
 - [x] Picture (with its network logo) and name in a glass capsule; not pressable until B20.
   "..." offers Pin, Mark as Unread (it goes back to the list) and Mute.
 - [x] The app's own bar fixes T2.13's sharp bar: the long-press blur now covers it, in dark and light.
-- [ ] Not driven: a real edge swipe back (Exact finding 56); `back` works.
+- [ ] Not driven: a real edge swipe back (Exact finding 56); `back` works. It can be driven now:
+  `tap root drag 320 0 from 2 <y> over 400` under `--touch platform --timing platform` (Exact PR #1406, open, makes the refusal name it).
 - [x] Rami (2026-11-03): Mark as Unread inside a chat goes back to the list; Back leaves out muted,
   archived and Low Priority chats.
 
@@ -1218,7 +1222,7 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
   clean in dark, light and the largest text size (`apps/multiplexer/.exact/b21/`, gitignored).
   `verify ios` clean.
 - [ ] After Sign Out, the sign-in screen's title shows small until the next launch (Exact
-  finding "a large title comes back inline").
+  finding "a large title comes back inline"). Exact PR #1410 (open) fixes the sign-out path (the pop, then the reply).
 - [x] A picture on the account: `@test1` has none, so only the initials were seen. (2026-11-03: `@test1` has a
   picture now; Settings shows it in its circle, `check both` clean: `apps/multiplexer/.exact/b21/account-picture.png`.)
 
