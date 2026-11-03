@@ -896,7 +896,7 @@ Mute, Label, Delete (red).
   only the newest video. A sync with a gap resets the media timeline to its newest events, and the
   "reached the start" flag from an earlier page back stopped any new one; the flag now holds only
   until the next reset (`MediaTimeline`, 5 runs of 5 pass). The chat's own timeline (`LiveTimeline`)
-  keeps the same flag: not changed, as B15 works there; check it with B15.
+  had the same flag, so a reset chat could stop loading older messages; it gets the same rule.
 - [ ] Seen 2026-11-03 under load from parallel threads: a new device's first sync of `@test1` took
   near the 30 s limit, so `testANameOnlyYouSeeShowsOnYourOtherDeviceNotTheOthers` timed out twice
   ("the first sync") and passed alone (53 s). A failed run leaves its own name on the info test
