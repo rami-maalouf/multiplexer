@@ -12,6 +12,7 @@ use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.co
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, seenText from "./details.contract"
 use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
+use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
 
 shape Session
   userId: string
@@ -25,6 +26,8 @@ shape Session
 shape Room
   id: string
   name: string
+  // the chat's own name, which everyone sees; name is yours when you gave it one (B20).
+  roomName: string
   isDirect: bool
   lastMessage: string
   lastSender: string
@@ -192,6 +195,10 @@ routes nav
       video "/room/:id/video/:message"
       reactions "/room/:id/reactions/:message"
       forward "/room/:id/forward/:message"
+      info "/room/:id/info"
+        editInfo "/room/:id/info/edit"
+        customName "/room/:id/info/name"
+        addMember "/room/:id/info/add"
     inboxes "/inboxes"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
@@ -307,6 +314,7 @@ component Multiplexer
   resource photo = loadPhoto(openRoom, shownPhoto) as shape Photo else empty()
   derive openRoomInfo = first(roomList.rooms.filter(r => r.id == openRoom))
   derive openName = match openRoomInfo { case some(r) => r.name, case none => "" }
+  derive openRoomName = match openRoomInfo { case some(r) => r.roomName, case none => "" }
   derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
   derive openNetwork = match openRoomInfo { case some(r) => r.network, case none => "matrix" }
   derive openPinned = roomList.pinned.map(p => p.id).includes(openRoom)
@@ -314,7 +322,7 @@ component Multiplexer
   // Back's count: the inbox's unread chats on every network (the filter sheet's Inbox row), but this one.
   derive otherUnread = max(0, roomList.unread - (match openRoomInfo { case some(r) => inboxUnread(r) ? 1 : 0, case none => 0 }))
   // the day a message is on is the reader's, so the zone's offset groups them.
-  resource thread = loadMessages(openRoom, openIsDirect, openName, time.utcOffset) as shape Thread else empty()
+  resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset) as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
   resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
   derive composer = composerOf(composers, openRoom, savedDraft)
@@ -357,6 +365,7 @@ component Multiplexer
   // chat screen marks a chat read.
   derive aimedRoom = first(roomList.rooms.filter(r => r.id == aimed))
   derive aimedName = match aimedRoom { case some(r) => r.name, case none => "" }
+  derive aimedRoomName = match aimedRoom { case some(r) => r.roomName, case none => "" }
   derive aimedIsDirect = match aimedRoom { case some(r) => r.isDirect, case none => false }
   derive aimedPinned = roomList.pinned.map(p => p.id).includes(aimed)
   derive aimedUnread = match aimedRoom { case some(r) => r.unread > 0 or r.markedUnread, case none => false }
@@ -364,7 +373,7 @@ component Multiplexer
   derive aimedLowPriority = match aimedRoom { case some(r) => r.lowPriority, case none => false }
   derive aimedArchived = match aimedRoom { case some(r) => r.archived, case none => false }
   derive aimedNetwork = match aimedRoom { case some(r) => r.network, case none => "matrix" }
-  resource peek = loadMessages(aimed, aimedIsDirect, aimedName, time.utcOffset) as shape Thread else empty()
+  resource peek = loadMessages(aimed, aimedIsDirect, aimedRoomName, time.utcOffset) as shape Thread else empty()
   derive peekShown = peek.room == aimed and aimed != ""
   // the chat is in front, not behind its photo viewer, and the app is too.
   derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
@@ -384,6 +393,7 @@ component Multiplexer
     after(1, keepDraftNow)
   members "./details-members.contract"
   members "./voice-members.contract"
+  members "./info-members.contract"
 
   action step
     now = performanceNow()
@@ -951,15 +961,14 @@ component Multiplexer
             header display="flex" align-items="center"
               button id="back" press=back aria-label="Close" testId="close-photo"
                 image "symbol:close"
-              text (match shownPhotoMessage { case some(m) => m.isOwn ? "You" : m.senderName, case none => "Photo" }) role="heading" aria-level=2
-              text (match shownPhotoMessage { case some(m) => formatDay(m.time, shown, time.utcOffset, "day-time"), case none => "" })
+              text viewedPhoto.sender role="heading" aria-level=2
+              text (viewedPhoto.found ? formatDay(viewedPhoto.time, shown, time.utcOffset, "day-time") : "")
             // the thumbnail shows at once; the full picture replaces it when it is here.
-            match shownPhotoMessage
-              case some(m)
-                image (photo.message == m.id and photo.path != "" ? photo.path : m.image) flex=1 min-height=0 width="100%"
-                  object-fit="contain" aria-label=(m.body != "" ? m.body : "Photo") testId="photo-full"
-              case none
-                column flex=1
+            if viewedPhoto.found
+              image (photo.message == shownPhoto and photo.path != "" ? photo.path : viewedPhoto.image) flex=1 min-height=0 width="100%"
+                object-fit="contain" aria-label=viewedPhoto.label testId="photo-full"
+            else
+              column flex=1
         // a video, full screen: the system's player, zoomed out of its poster.
         if e.name == "video"
           column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`video-${e.params.message}`
@@ -967,13 +976,29 @@ component Multiplexer
             header display="flex" align-items="center"
               button id="back" press=back aria-label="Close" testId="close-video"
                 image "symbol:close"
-              text (match shownVideoMessage { case some(m) => m.isOwn ? "You" : m.senderName, case none => "Video" }) role="heading" aria-level=2
-              text (match shownVideoMessage { case some(m) => formatDay(m.time, shown, time.utcOffset, "day-time"), case none => "" })
-            match shownVideoMessage
-              case some(m)
-                VideoPlayer(path=(video.message == m.id ? video.path : ""), poster=m.image, label=(m.body != "" ? m.body : "Video"))
-              case none
-                column flex=1
+              text viewedVideo.sender role="heading" aria-level=2
+              text (viewedVideo.found ? formatDay(viewedVideo.time, shown, time.utcOffset, "day-time") : "")
+            if viewedVideo.found
+              VideoPlayer(path=(video.message == shownVideo ? video.path : ""), poster=viewedVideo.image, label=viewedVideo.label)
+            else
+              column flex=1
+        // the chat's info page (info.contract), full screen, zoomed out of the chat bar's picture and name.
+        if e.name == "info"
+          InfoPage(route=`${e.id}`, info=infoShown, loaded=infoLoaded, members=chatMembers.members, total=chatMembers.total,
+            media=chatMedia.items, moreMedia=allMedia, pinned=openPinned, archived=openArchived, lowPriority=openLowPriority,
+            muted=openMuted, unread=(openUnread > 0), close=closeInfo, archive=archiveOpen, moveLowPriority=lowPriorityOpen,
+            pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
+            customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,
+            largeText=viewport.accessibilityTextSize)
+        if e.name == "editInfo"
+          EditGroupSheet(route=`${e.id}`, info=infoShown, draft=infoDraft, picked=(match first(infoPicked) { case some(f) => f.path, case none => "" }),
+            saving=infoSaving, refused=groupRefused, type=typeInfoName, choose=choosePicture, pick=picturePicked, close=back, save=saveGroup)
+        if e.name == "customName"
+          CustomNameSheet(route=`${e.id}`, info=infoShown, draft=customDraft, saving=infoSaving, refused=customRefused, type=typeCustomName,
+            reset=resetCustomName, close=back, save=saveCustomName)
+        if e.name == "addMember"
+          AddMemberSheet(route=`${e.id}`, draft=inviteDraft, saving=infoSaving, refused=inviteRefused, type=typeInvite, close=back,
+            save=invite)
         if e.name == "room"
           // the chat draws its own bar (chat.contract), so a held message's blur covers it.
           column navigationKey=`${e.id}` navigationBar="none" navigationScroll="transcript" position="absolute" inset=0
@@ -1186,7 +1211,7 @@ component Multiplexer
             ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
               initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork,
               unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, muted=openMuted, mute=toggleMuteOpen,
-              markUnread=markUnreadOpen, covered=(held != ""), largeText=viewport.accessibilityTextSize)
+              markUnread=markUnreadOpen, info=openInfo, covered=(held != ""), largeText=viewport.accessibilityTextSize)
             // the chat's one player of voice messages: no box of its own; each bubble is its button.
             if voiceSrc != ""
               audio voiceSrc id="voice-player" paused=voicePaused playbackRate=voiceSpeed preservesPitch=true timeupdate=voiceTimed

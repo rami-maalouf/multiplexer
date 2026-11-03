@@ -811,7 +811,7 @@ func mediaKey(_ url: String) -> String {
     SHA256.hash(data: Data(url.utf8)).prefix(16).map { String(format: "%02x", $0) }.joined()
 }
 
-private func avatarFileName(_ url: String) -> String { "\(mediaKey(url))-avatar.jpg" }
+func avatarFileName(_ url: String) -> String { "\(mediaKey(url))-avatar.jpg" }
 
 extension MessageImage {
     init(_ content: ImageMessageContent) {

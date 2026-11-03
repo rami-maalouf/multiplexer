@@ -329,3 +329,8 @@ extension ChatMedia {
         }
     }
 }
+
+extension ChatMember {
+    /// The file name `MatrixAccount.pictureFile` gives their picture; "" when they have none.
+    public var pictureName: String { pictureUrl.isEmpty ? "" : avatarFileName(pictureUrl) }
+}
