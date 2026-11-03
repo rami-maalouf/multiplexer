@@ -271,20 +271,8 @@ final class ChatInfoTests: XCTestCase {
         FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)", isDirectory: true)
     }
 
-    /// Signs in as a new device that the test signs out at its end, even when it fails. The server
-    /// limits sign-ins, and other tests sign in as the same users: a refusal waits and tries again.
+    /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        for attempt in 1... {
-            do {
-                let account = try await MatrixAccount.signIn(
-                    homeserver: homeserver, user: user, password: password, deviceName: "Multiplexer test",
-                    storeDirectory: freshDirectory())
-                addTeardownBlock { try? await account.signOut() }
-                return account
-            } catch SignInError.rateLimited where attempt < 4 {
-                try await Task.sleep(nanoseconds: 20_000_000_000)
-            }
-        }
-        fatalError("unreachable")
+        try await signInTestDevice(homeserver, user, password)
     }
 }
