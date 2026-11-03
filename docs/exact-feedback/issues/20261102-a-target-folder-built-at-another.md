@@ -70,3 +70,7 @@ build.)
 ### Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1355 fixes it: the build error names the path the `target/` folder was built at, and says to delete it and build again.
