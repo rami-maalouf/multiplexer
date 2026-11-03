@@ -27,6 +27,8 @@ fn seenText(status: string, t: number, now: number, offset: number): string = st
 fn twoDigits(n: number): string = n < 10 ? `0${n}` : `${n}`
 // a video's length as a player shows it: "0:42", "1:05:03".
 fn lengthText(s: number): string = s >= 3600 ? `${floor(s / 3600)}:${twoDigits(floor(s / 60) % 60)}:${twoDigits(s % 60)}` : `${floor(s / 60)}:${twoDigits(s % 60)}`
+// what VoiceOver says for a video in the chat.
+fn videoLabel(s: number): string = s > 0 ? `Video, ${lengthText(s)}` : "Video"
 fn unreadCount(n: number): string = n > 99 ? "99+" : n.toString()
 
 // the day and the time above the first message of a day, and above a message that comes more
@@ -113,16 +115,37 @@ component RichBalloon
           else
             text r.text color=ink
 
-// a sticker: its picture at its ratio, with no bubble; a long press holds it.
+// a photo, a video, a sticker or a file in the chat: a tap opens it, a long press holds it, and a
+// swipe right answers it, as a text's bubble (it follows the finger and springs back, and the
+// reply arrow grows in at its left). The three are on this one node: a press below a swipe keeps
+// the touch, so a swipe from a picture that was its own button never began. Its children only
+// draw. identifier: its id, which the viewer's zoom and the held copy find it by.
+component SwipeReply
+  props
+    reply: action
+    open: action
+    hold: action
+    label: string
+    identifier: string
+  slot
+  view
+    button appearance="none" press=open contextmenu=hold swiperight=reply id=identifier testId=identifier aria-label=label
+      position="relative" display="flex" max-width="100%" user-select="none" touch-action="pan-y" text-align="start"
+      transition="translate -exact-spring(300, 30, 1)"
+      view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
+        display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
+        transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
+        image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
+      children
+
+// a sticker: its picture at its ratio, with no bubble (in a SwipeReply, which holds it).
 component Sticker
   props
     picture: string
     width: number
     ratio: string
-    hold: action
-    identifier: string
   view
-    view id=identifier contextmenu=hold width=`${width}rem` max-width="100%" aspect-ratio=ratio role="img" aria-label="Sticker" testId=identifier
+    view width=`${width}rem` max-width="100%" aspect-ratio=ratio
       if picture != ""
         image picture width="100%" height="100%" object-fit="contain" aria-label="Sticker"
 
@@ -135,13 +158,9 @@ component VideoPoster
     ratio: string
     seconds: number
     dimmed: bool
-    open: action
-    hold: action
-    identifier: string
   view
-    button appearance="none" press=open contextmenu=hold id=identifier testId=identifier width=`${width}rem` max-width="100%" aspect-ratio=ratio
+    view width=`${width}rem` max-width="100%" aspect-ratio=ratio
       border-radius=18 overflow="hidden" background-color="media.backdrop" position="relative" opacity=(dimmed ? 0.6 : 1)
-      aria-label=(seconds > 0 ? `Video, ${lengthText(seconds)}` : "Video")
       if poster != ""
         image poster width="100%" height="100%" object-fit="cover" aria-label=""
       view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"

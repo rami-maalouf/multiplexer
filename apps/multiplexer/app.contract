@@ -1,16 +1,17 @@
 // Multiplexer: the view. app.ts answers what it asks for, through the native module
 // (modules/apple/Matrix.swift), which calls MatrixCore.
+use ClipboardItem from "@exact/clipboard"
 use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
-use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText from "./attach.contract"
+use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage from "./inbox.contract"
 use NetworkBadge, networkName from "./network.contract"
 use InboxSheet, NetworkCount from "./sheet.contract"
 use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
-use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, seenText from "./details.contract"
+use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, SwipeReply, seenText, videoLabel from "./details.contract"
 use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
 use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
@@ -305,6 +306,8 @@ component Multiplexer
   mutation discarded as shape Reply
   mutation older as shape Reply
   mutation reacted as shape Reply refreshes frequentEmojis
+  // a held photo's Copy: data code writes the picture (@exact/clipboard).
+  mutation copiedPhoto as shape Reply
   mutation edited as shape Reply
   mutation deletedMessage as shape Reply
   mutation forwarded as shape Reply
@@ -339,16 +342,18 @@ component Multiplexer
   derive lastId = match thread.messages.at(-1) { case some(m) => m.id, case none => "" }
   // the reactions a long press offers first, as Beeper does.
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
-  // the held message, and what its menu offers: Forward once the server has it, Copy for a text or
-  // a caption, Edit and Delete on your own while its network still takes them.
+  // the held message, and what its menu offers: Forward once the server has it, Copy for a text, a
+  // caption or a photo (the picture, as Messages copies it), Edit and Delete on your own while its
+  // network still takes them.
   derive heldMessage = first(thread.messages.filter(m => m.id == held))
   derive heldText = match heldMessage { case some(m) => m.body, case none => "" }
   derive heldCanForward = match heldMessage { case some(m) => m.state == "sent" and not m.isSticker, case none => false }
   derive heldCanShare = heldKind != "sticker"
+  derive heldCanCopy = heldKind == "photo" or heldText != ""
   derive heldBig = match heldMessage { case some(m) => m.bigEmoji, case none => false }
   derive heldCanEdit = match heldMessage { case some(m) => m.isEditable and within(m.editUntil, shown), case none => false }
   derive heldCanDelete = heldOwn and (match heldMessage { case some(m) => within(m.deleteUntil, shown), case none => true })
-  derive heldRows = 2 + (heldCanShare ? 1 : 0) + (heldCanForward ? 1 : 0) + (heldText != "" ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldCanDelete ? 1 : 0)
+  derive heldRows = 2 + (heldCanShare ? 1 : 0) + (heldCanForward ? 1 : 0) + (heldCanCopy ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldCanDelete ? 1 : 0)
   // the menu's height, so a message low on the screen moves up and the menu fits under it.
   derive heldMenuHeight = heldRows * (viewport.accessibilityTextSize ? 64 : 44) + 12 + (heldCanEdit or heldCanDelete ? 13 : 0)
   // at the largest text sizes the lifted copy is shorter (a photo shrinks to fit), so the menu
@@ -609,7 +614,10 @@ component Multiplexer
   action toggleReaction(id: string, key: string)
     send reacted = react(openRoom, id, key)
   action copyHeld
-    copyText(heldText)
+    if heldKind == "photo"
+      send copiedPhoto = copyPhoto(openRoom, held)
+    else
+      copyText(heldText)
     letGo()
   // a text goes to the share sheet as it is; a photo or a file is downloaded first (shareFetched).
   action shareHeld
@@ -1076,32 +1084,39 @@ component Multiplexer
                           view position="absolute" left=0 bottom=(m.balloon ? 6.65 : 0)
                             Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
                         column align-items=(m.isOwn ? "flex-end" : "flex-start") gap=2 min-width=0
-                          // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box.
+                          // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box. A swipe
+                          // right answers a photo, a video, a sticker or a file, as a text's bubble (SwipeReply).
                           if m.isImage
-                            button appearance="none" press=showPhoto(m.id) contextmenu=holdMedia(m.id, "photo", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m))
-                              opacity=(held == m.id ? 0 : 1) id=`photo-${m.id}` width=`${m.photoWidth}rem` max-width="100%"
-                              aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
-                              border-radius=18 overflow="hidden" background-color="-exact-secondary-background" position="relative"
-                              aria-label=(m.body != "" ? m.body : "Photo") testId=`photo-${m.id}`
-                              if m.image != ""
-                                image m.image width="100%" height="100%" object-fit="cover" opacity=(m.state == "sending" ? 0.6 : 1)
-                              // a photo on its way: its upload's ring over a dark disc, at its middle.
-                              if m.state == "sending"
-                                view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
-                                  view width=44 height=44 border-radius=22 background-color="media.scrim" display="flex"
-                                    align-items="center" justify-content="center" testId=`upload-${m.id}`
-                                    UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
+                            SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=showPhoto(m.id),
+                              hold=holdMedia(m.id, "photo", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=(m.body != "" ? m.body : "Photo"),
+                              identifier=`photo-${m.id}`)
+                              view opacity=(held == m.id ? 0 : 1) width=`${m.photoWidth}rem` max-width="100%"
+                                aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
+                                border-radius=18 overflow="hidden" background-color="-exact-secondary-background" position="relative"
+                                if m.image != ""
+                                  image m.image width="100%" height="100%" object-fit="cover" opacity=(m.state == "sending" ? 0.6 : 1) aria-label=""
+                                // a photo on its way: its upload's ring over a dark disc, at its middle.
+                                if m.state == "sending"
+                                  view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+                                    view width=44 height=44 border-radius=22 background-color="media.scrim" display="flex"
+                                      align-items="center" justify-content="center" testId=`upload-${m.id}`
+                                      UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
                           if m.isVideo
-                            VideoPoster(poster=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "16 / 9"),
-                              seconds=m.seconds, dimmed=(m.state == "sending"), open=showVideo(m.id),
-                              hold=holdMedia(m.id, "video", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), identifier=`video-${m.id}`)
+                            SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=showVideo(m.id),
+                              hold=holdMedia(m.id, "video", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=videoLabel(m.seconds), identifier=`video-${m.id}`)
+                              VideoPoster(poster=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "16 / 9"),
+                                seconds=m.seconds, dimmed=(m.state == "sending"))
+                          // a sticker opens nothing: its tap lets go of nothing held.
                           if m.isSticker
-                            Sticker(picture=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "1 / 1"),
-                              hold=holdMedia(m.id, "sticker", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), identifier=`sticker-${m.id}`)
+                            SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=letGo,
+                              hold=holdMedia(m.id, "sticker", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label="Sticker", identifier=`sticker-${m.id}`)
+                              Sticker(picture=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "1 / 1"))
                           if m.isFile
-                            FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
-                              opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize, open=openFile(m.id),
-                              hold=holdMedia(m.id, "file", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), identifier=`file-${m.id}`)
+                            SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=openFile(m.id),
+                              hold=holdMedia(m.id, "file", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=`${m.fileName}, ${fileDetail(m.fileName, m.fileSize)}`,
+                              identifier=`file-${m.id}`)
+                              FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
+                                opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize)
                           // a voice message plays here; a swipe right answers it and a long press holds it, as a text's bubble.
                           if m.isAudio
                             box position="relative" max-width="100%" user-select="none" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
@@ -1309,7 +1324,7 @@ component Multiplexer
                       match heldMessage
                         case some(m)
                           FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=-1, opening=false,
-                            stacked=viewport.accessibilityTextSize, open=letGo, hold=letGo, identifier="held-file-bubble")
+                            stacked=viewport.accessibilityTextSize)
                         case none
                           view
                   else if heldKind == "voice"
@@ -1331,7 +1346,7 @@ component Multiplexer
                       Balloon(body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
                   // the emoji sheet hides the actions, as Beeper's does: they would show through it.
                   if top(nav).name != "reactions"
-                    MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=(heldText != ""), canEdit=heldCanEdit, canDelete=heldCanDelete,
+                    MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=heldCanCopy, canEdit=heldCanEdit, canDelete=heldCanDelete,
                       reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
                       markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
       dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"

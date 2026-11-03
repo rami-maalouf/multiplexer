@@ -89,7 +89,7 @@ component UploadRing
       path d="M 16 3 A 13 13 0 1 1 15.99 3" fill="none" stroke=color stroke-width=3 stroke-linecap="round" pathLength=1
         stroke-dasharray=`${max(0.001, fraction)} 1`
 
-// a file message: its icon, name, kind and size in a bubble; a tap opens it, a long press holds it. While it uploads
+// a file message: its icon, name, kind and size in a bubble (in a SwipeReply, which opens and holds it). While it uploads
 // it is dimmed and its icon is the upload's ring; while it downloads to open, a spinner. At the
 // accessibility text sizes (stacked) the icon sits above the name, as UIKit stacks its rows.
 component FileBubble
@@ -100,16 +100,12 @@ component FileBubble
     progress: number
     opening: bool
     stacked: bool
-    open: action
-    hold: action
-    identifier: string
   derive ink = outgoing ? "AccentColorText" : "-exact-label"
   view
-    button appearance="none" press=open contextmenu=hold id=identifier testId=identifier aria-label=`${name}, ${fileDetail(name, size)}`
-      display="flex" flex-direction=(stacked ? "column" : "row") align-items=(stacked ? "flex-start" : "center") gap=10 min-width=44
+    view display="flex" flex-direction=(stacked ? "column" : "row") align-items=(stacked ? "flex-start" : "center") gap=10 min-width=44
       max-width="100%" box-sizing="border-box"
       padding="10px 16px 10px 10px" border-radius=20 background-color=(outgoing ? "AccentColor" : "bubble.incoming")
-      opacity=(progress >= 0 ? 0.6 : 1) text-align="start"
+      opacity=(progress >= 0 ? 0.6 : 1)
       view width=40 height=40 border-radius=20 flex-shrink=0 display="flex" align-items="center" justify-content="center"
         background-color=(outgoing ? "bubble.outgoing-disc" : "-exact-tertiary-fill")
         if progress >= 0
