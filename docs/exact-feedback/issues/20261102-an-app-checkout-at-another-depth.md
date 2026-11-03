@@ -35,6 +35,14 @@ https://github.com/ccheever/exact2/pull/1346 (fixes part of it): the patch check
 
 ## More evidence (2026-11-03)
 
+Seen again in a new worktree of the app: `exact.mjs` stopped at "no exact2 at …", and with
+`EXACT2` set the build stopped on the workspace's patches, then on `apple/Cargo.toml`. A symlink at
+the expected place passed the patch check but failed later: "compiler input has no captured source
+identity: <symlinked path>/packages/child-process/exact.json". The app's `package.json` names the
+framework's packages by the same relative path, so `bun install` cannot install them there either.
+Absolute paths in the three `Cargo.toml` files, kept out of git, worked. About 10 minutes and
+three builds. Seen at exact2 `ed43ad09a0`.
+
 A git worktree made by a desktop tool under `~/.t3/worktrees/<project>/<name>/` (not a sibling
 of the main checkout) failed before the Cargo check: `bun install --frozen-lockfile` cannot find
 the four `file:../../../exact/exact2/packages/...` packages in `package.json`, so `contract

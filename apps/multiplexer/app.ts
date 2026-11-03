@@ -10,9 +10,10 @@ export const appId = 'com.ramimaalouf.multiplexer';
 // picked photos and files are read from the picker's copies; a photo is made smaller beside them
 // before it goes; a file message's file is shared from where the module downloaded it. A voice
 // message is recorded from the microphone into app:/tmp/voice.
-export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
+export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/camera', 'device.camera purpose.camera', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
   'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
+  'device.speech-recognition purpose.recognition', 'fs.read app:/data/transcripts.json', 'fs.write app:/data/transcripts.json',
   'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs'].join('\n');
 
 // GIFs (gif.contract): the phone calls KLIPY itself, as KLIPY requires (D10). Its app key is set at
@@ -24,6 +25,13 @@ const GIFS_PER_PAGE = 30;
 const GIF_SEND_BYTES = 4_000_000;
 type KlipyFile = { url: string; width: number; height: number; size: number };
 type KlipyItem = { slug: string; title?: string; type: string; file: Record<string, Partial<Record<'gif' | 'webp' | 'mp4' | 'jpg', KlipyFile>>> };
+// voice messages' transcripts, by account (transcribe-members.contract).
+const TRANSCRIPTS = 'app:/data/transcripts.json';
+type Transcript = { key: string; text: string; problem: string };
+const readTranscripts = (storage: Storage): Promise<Record<string, Transcript[]>> => storage.fs.readFile(TRANSCRIPTS).then(
+  (bytes) => JSON.parse(new TextDecoder().decode(bytes)) as Record<string, Transcript[]>,
+  (e: { code?: string }) => { if (e?.code === 'ENOENT') return {}; throw e; });
+
 // the GIFs the grid shows, by slug, so a tap sends the one it shows.
 const shownGifs = new Map<string, KlipyItem>();
 
@@ -73,7 +81,7 @@ type MessagesAnswer = {
     // a video's poster once it is downloaded, else "".
     poster: string;
     // empty when the message is no voice message or audio file; duration in milliseconds, waveform from 0 to 1.
-    audio: { isVoice?: boolean; duration?: number; waveform?: number[] };
+    audio: { isVoice?: boolean; duration?: number; waveform?: number[]; key?: string };
     // who has read the chat up to it, besides its sender and you; name "" until it is known, time 0 when unknown.
     readers: { name: string; time: number }[];
   }[];
@@ -176,12 +184,13 @@ const PHOTO_BYTES = 4_000_000;
 const THUMBNAIL_SIDE = 800;
 const THUMBNAIL_BYTES = 120_000;
 
-type Picked = { path: string; name: string; type: string; size: number; width: number | null; height: number | null };
+// a photo or file chosen to send (attach.contract's Chosen): its size in pixels is 0 where it is not known.
+type Chosen = { path: string; name: string; type: string; size: number; width: number; height: number };
 // each photo gets its own folder, so it keeps its name ("IMG_0001.jpg") for the others.
 let uploads = 0;
 // each picked photo's preparation, started when it is picked, so Send finds it done.
 const preparing = new Map<string, ReturnType<typeof prepare>>();
-const prepared = (f: Picked, photo: boolean, storage: Storage) => {
+const prepared = (f: Chosen, photo: boolean, storage: Storage) => {
   const key = `${photo}:${f.size}:${f.path}`;
   if (!preparing.has(key)) preparing.set(key, prepare(f, photo, storage));
   const ready = preparing.get(key)!;
@@ -192,10 +201,10 @@ const prepared = (f: Picked, photo: boolean, storage: Storage) => {
 
 /** What the module sends for a picked photo or file. A photo becomes an upright JPEG with its
  * thumbnail; an animated GIF goes as it is, and so does a file. */
-async function prepare(f: Picked, photo: boolean, storage: Storage) {
+async function prepare(f: Chosen, photo: boolean, storage: Storage) {
   // the picker's copy has a name of its own ("1-3.pdf"): the others see the one picked.
   if (!photo) return { path: f.path, name: f.name, mimetype: f.type || 'application/octet-stream', size: f.size, photo: false, width: 0, height: 0 };
-  const asIs = { path: f.path, name: f.name, mimetype: f.type, size: f.size, photo: true, width: f.width ?? 0, height: f.height ?? 0 };
+  const asIs = { path: f.path, name: f.name, mimetype: f.type, size: f.size, photo: true, width: f.width, height: f.height };
   if (f.type === 'image/gif') return asIs;
   const folder = `app:/tmp/upload/${++uploads}`;
   await storage.fs.mkdir(folder).catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });
@@ -352,7 +361,7 @@ const sources: Sources = {
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
         isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),
-        isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [],
+        isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [], audioKey: m.audio.key ?? '',
         balloon: !m.waitingForKey && !m.isDeleted && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
         isDeleted: m.isDeleted, isEditable: m.isEditable,
@@ -474,6 +483,26 @@ const sources: Sources = {
   forwardMessage: async ([roomId, messageId, to], _store, _storage, native): Promise<Result<'forwardMessage'>> => {
     await native!.later({ op: 'forward', roomId, messageId, to });
     return { ok: true };
+  },
+  // Settings' Encryption: the account's recovery (on, off, key: this iPhone needs the recovery
+  // key), and the key entered to read older encrypted messages.
+  loadRecovery: async ([userId], _store, _storage, native): Promise<Result<'loadRecovery'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, status: '' };
+    const answer = (await native.later({ op: 'recovery' })) as { status: string };
+    return { owner: userId, status: answer.status };
+  },
+  recover: async ([key], _store, _storage, native): Promise<Result<'recover'>> =>
+    (await native!.later({ op: 'recover', key })) as { ok: boolean; problem: string },
+  // voice messages' transcripts, kept in a file on this iPhone, by account and by the sound file's
+  // name, newest first, at most 500 (transcribe-members.contract).
+  loadTranscripts: async ([userId], _store, storage): Promise<Result<'loadTranscripts'>> =>
+    userId === '' ? [] : ((await readTranscripts(storage))[userId] ?? []),
+  saveTranscript: async ([userId, key, text, problem], _store, storage): Promise<Result<'saveTranscript'>> => {
+    const all = await readTranscripts(storage);
+    const mine = [{ key, text, problem }, ...(all[userId] ?? []).filter((t) => t.key !== key)].slice(0, 500);
+    all[userId] = mine;
+    await storage.fs.writeFile(TRANSCRIPTS, new TextEncoder().encode(JSON.stringify(all)));
+    return mine;
   },
   // a held photo's Copy: its original (downloaded once), as a PNG on the clipboard, which takes
   // PNG only; a large photo is made smaller to fit the clipboard's 2 MB.

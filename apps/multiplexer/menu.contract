@@ -41,6 +41,8 @@ component MessageActions
     canShare: bool
     canForward: bool
     canCopy: bool
+    // a voice message with no transcript yet: Transcribe turns it into text, on this iPhone.
+    canTranscribe: bool
     canEdit: bool
     canDelete: bool
     canBookmark: bool
@@ -49,6 +51,7 @@ component MessageActions
     share: action
     forward: action
     copy: action
+    transcribe: action
     markUnread: action
     bookmark: action
     edit: action
@@ -63,6 +66,8 @@ component MessageActions
         MenuRow(label="Forward", symbol="symbol:icon.arrowshape-turn-up-right", press=forward, destructive=false, identifier="menu-forward")
       if canCopy
         MenuRow(label="Copy", symbol="symbol:copy", press=copy, destructive=false, identifier="menu-copy")
+      if canTranscribe
+        MenuRow(label="Transcribe", symbol="symbol:icon.transcribe", press=transcribe, destructive=false, identifier="menu-transcribe")
       MenuRow(label="Mark as Unread", symbol="symbol:icon.mark-unread", press=markUnread, destructive=false, identifier="menu-unread")
       if canBookmark
         MenuRow(label=(bookmarked ? "Remove Bookmark" : "Bookmark"), symbol=(bookmarked ? "symbol:icon.bookmark-slash" : "symbol:bookmark"),

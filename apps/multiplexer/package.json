@@ -2,9 +2,11 @@
   "name": "multiplexer",
   "private": true,
   "dependencies": {
+    "@exact/camera": "file:../../../exact/exact2/packages/camera",
     "@exact/clipboard": "file:../../../exact/exact2/packages/clipboard",
     "@exact/in-app-browser": "file:../../../exact/exact2/packages/in-app-browser",
     "@exact/media-capture": "file:../../../exact/exact2/packages/media-capture",
-    "@exact/recording": "file:../../../exact/exact2/packages/recording"
+    "@exact/recording": "file:../../../exact/exact2/packages/recording",
+    "@exact/speech-recognition": "file:../../../exact/exact2/packages/speech-recognition"
   }
 }

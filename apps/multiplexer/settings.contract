@@ -11,6 +11,21 @@ shape Profile
   initials: string
   version: string
 
+// the account's recovery (encryption-members.contract), for owner: status is on (this iPhone reads
+// the backup of the account's message keys), off (the account has none), key (the account has
+// one, and this iPhone needs its recovery key), or "" while it is not known.
+shape Recovery
+  owner: string
+  status: string
+
+// what entering a recovery key did: problem is "" when it worked, "wrongKey" for a key that is
+// not this account's, else "failed".
+shape RecoveryReply
+  ok: bool
+  problem: string
+
+fn recoveryText(status: string): string = status == "on" ? "On" : (status == "off" ? "Off" : (status == "key" ? "Needs Your Key" : ""))
+
 // the voice note speeds, in the speed chip's order.
 fn speeds(): number[] = [1, 1.5, 2]
 
@@ -24,6 +39,13 @@ component SettingsScreen
     speed: number
     chooseSpeed: action
     signOut: action
+    // the account's recovery, the key typed, and what entering it did.
+    recovery: Recovery
+    recoveryDraft: string
+    unlocking: bool
+    refused: string
+    typeKey: action
+    unlock: action
     largeText: bool
   derive side = largeText ? 72 : 60
   derive shown = profile.userId == userId
@@ -59,6 +81,32 @@ component SettingsScreen
                   text `${s}x`
           footer
             text "Every voice message plays at this speed. The speed button on a voice message changes it too."
+        // older encrypted messages: this iPhone reads them once it has the account's recovery key.
+        if userId != "" and recovery.owner == userId and recovery.status != ""
+          section testId="encryption"
+            header
+              text "Encryption"
+            row gap=12 align-items="center" flex-wrap="wrap"
+              text "Recovery" flex=1
+              // the one state that asks something of the reader stands out by weight, not a pale colour.
+              text recoveryText(recovery.status) color=(recovery.status == "key" ? "-exact-label" : "-exact-secondary-label")
+                font-weight=(recovery.status == "key" ? 600 : 400)
+                testId="recovery-status"
+            if recovery.status == "key"
+              row
+                input type="password" value=recoveryDraft input=typeKey submit=unlock placeholder="Recovery Key" aria-label="Recovery Key"
+                  autocomplete="off" autocapitalize="none" enterkeyhint="done" disabled=unlocking flex=1 min-width=0 testId="recovery-key"
+              row
+                button press=unlock disabled=(unlocking or recoveryDraft.trim() == "") testId="unlock" flex=1
+                  text (unlocking ? "Unlocking…" : "Unlock Older Messages")
+            footer
+              text (recovery.status == "key"
+                ? (refused == "wrongKey" ? "That recovery key is not this account’s. Check it and try again."
+                  : (refused != "" ? "Couldn’t unlock. Check the connection and try again."
+                    : "Enter the recovery key you saved when you set up recovery, in Element or another app. This iPhone then reads your older encrypted messages."))
+                : (recovery.status == "on" ? "This iPhone reads your encrypted messages, older ones too."
+                  : "Recovery is off for this account: messages sent before this iPhone signed in stay unreadable in encrypted chats."))
+                color=(refused != "" and recovery.status == "key" ? "-exact-system-red" : "-exact-secondary-label") testId="recovery-footer"
         if userId != ""
           section
             row

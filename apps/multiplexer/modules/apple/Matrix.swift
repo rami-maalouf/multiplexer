@@ -107,7 +107,7 @@ final class Matrix: ExactModule {
                          "progress": $0.uploadProgress ?? -1, "isSticker": $0.isSticker,
                          "video": $0.video.map { ["width": $0.width, "height": $0.height, "duration": $0.duration] } ?? [:],
                          "poster": poster(account, roomId: roomId, message: $0),
-                         "audio": $0.audio.map { ["isVoice": $0.isVoice, "duration": $0.duration, "waveform": $0.waveform] } ?? [:],
+                         "audio": $0.audio.map { ["isVoice": $0.isVoice, "duration": $0.duration, "waveform": $0.waveform, "key": $0.fileName] } ?? [:],
                          "readers": $0.readBy.map { ["name": $0.name, "time": Double($0.timestamp ?? 0)] }]
                     }])
                 case "markRead":
@@ -164,6 +164,24 @@ final class Matrix: ExactModule {
                                                                  messageId: request["messageId"] as? String ?? "", directory: files)
                     let folder = file.deletingLastPathComponent().lastPathComponent
                     reply.send(["path": "app:/cache/matrix-files/\(folder)/\(file.lastPathComponent)", "name": file.lastPathComponent])
+                case "recovery":
+                    // Settings: on, off, or key (this device needs the account's recovery key).
+                    let account = try await signedIn()
+                    let status = await account.recoveryStatus()
+                    reply.send(["status": status == .enabled ? "on" : status == .disabled ? "off" : status == .incomplete ? "key" : ""])
+                case "recover":
+                    // the recovery key opens the account's backup; a drive does it only as a test user.
+                    let account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive unlocks recovery only as a test user") }
+                    do {
+                        try await account.recover(recoveryKey: request["key"] as? String ?? "")
+                        reply.send(["ok": true, "problem": ""])
+                    } catch RecoveryKeyError.wrongKey {
+                        reply.send(["ok": false, "problem": "wrongKey"])
+                    } catch {
+                        print("matrix: recovery failed: \(error)")
+                        reply.send(["ok": false, "problem": "failed"])
+                    }
                 case "maxUploadSize":
                     reply.send(["bytes": try await signedIn().maxUploadSize()])
                 case "react":
@@ -209,7 +227,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))

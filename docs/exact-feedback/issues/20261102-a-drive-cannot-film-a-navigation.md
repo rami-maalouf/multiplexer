@@ -46,3 +46,9 @@ Seen again on 2026-11-03 at `ed43ad09a0`, with a profile page zoomed out of a ch
 (`navigationSource="chat-title"`): `screenshot … over 600 every 100` showed the chat unchanged in
 all 7 frames. A Simulator recording under `--timing platform` filmed the zoom open and closed;
 the frames came from `ffmpeg`, outside Exact (about 4 minutes).
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+After a real edge swipe back (`--touch platform --timing platform`), `screenshot … over 1200 every 100
+window` was refused: "film is the agent clock's, and --timing platform leaves UIKit's motion on its
+own". The frames after the swipe could not be checked; the navigation log stood in. About 2 minutes.

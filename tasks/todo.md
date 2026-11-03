@@ -129,13 +129,64 @@ WhatsApp account. Messages must flow in both directions.
 
 ### Checkpoint M0: server proof
 
-Run it after 48 hours of use.
+Run it after 48 hours of use. (2026-10-28, Rami: closed early, without the 48-hour wait. He uses WhatsApp through the server daily, so he sees a disconnect himself; the bridge also warns in its bot chat after 12 days without the phone.)
 
-- [ ] Messages flow in both directions. No bridge disconnects in 48 hours.
-- [ ] Memory and CPU use noted. Compare them with Oracle's 20% reclaim rule.
-- [ ] PostgreSQL backup method chosen.
-- [ ] Rami reviews. Decision: continue to Phase 1, or change the server plan.
-- [ ] Update **Status** and the **Decision log** in `plan.md`.
+- [x] Messages flow in both directions. No bridge disconnects in 48 hours. (Both directions and double puppeting work, T0.6. No 48-hour watch, see above.)
+- [x] Memory and CPU use noted. Compare them with Oracle's 20% reclaim rule. (Idle: 1.8 GiB of 23 GiB, load 0.06. History sync: 2.4 GiB, load 2.35. Below 20%, but the account is Pay As You Go, so idle reclaim should not apply. Open: the cost of 4 OCPUs and 24 GB, Q5; 2 OCPUs and 12 GB would be enough.)
+- [x] PostgreSQL backup method chosen. (The playbook's `postgres-backup`: a daily dump of each database on the server, 7 daily and 2 weekly kept, no monthly; first dump 42 MB, checked intact. An off-server copy is a later step, for Rami's yes. `server/README.md`, Backups.)
+- [x] Rami reviews. Decision: continue to Phase 1, or change the server plan. (Rami: check M0 off. The server plan stays.)
+- [x] Update **Status** and the **Decision log** in `plan.md`.
+
+**Recheck, 2026-11-03** (read only; the window is 2026-10-27 23:00 to 2026-11-03 19:50 UTC, 7 days;
+branch `server/m0-checkpoint`). Rami's decision of 2026-10-28 stands; nothing below changes it.
+- **Both directions.** WhatsApp to Matrix: 1,900 messages from WhatsApp contacts from 2026-10-28
+  on; 99.6% arrived within 10 s of their WhatsApp time (median 0.7 to 0.9 s each day; Synapse's
+  `received_ts` minus `origin_server_ts`). 7 arrived more than 5 minutes late, each one alone, not
+  in a batch as after a reconnect; their cause is not known. Matrix to WhatsApp: 6 messages sent
+  from a Matrix client in WhatsApp rooms (4 on 10-28 with a photo; on 11-03 the app's GIF at
+  18:13 UTC and its Send Later message at 18:14 UTC). Each has a WhatsApp message id in the
+  bridge's database within 2 s.
+- **Disconnects.** No logout: the bridge's WhatsApp login dates from 2026-10-27 22:42 UTC, and the
+  bot sent no message or notice in the window (only room setup events). The bridge's warn-level
+  log is in journald (`sudo journalctl -u matrix-mautrix-whatsapp`; `docker logs` has nothing):
+  24 websocket drops ("failed to read frame header: EOF", once "connection reset by peer"); 10 of
+  them came with a "503 stream error" from WhatsApp's server in the same minute ("assuming
+  automatic reconnect will handle it").
+  The reconnect logs at info, so it is not in the log, but no drop shows as a gap: the 8 longest
+  pauses between incoming messages (2.2 to 3.4 h) are in the night, Eastern time, except one
+  (11-02, 07:30 to 09:50). The bridge restarted 5 times, each in a playbook run (10-28 backup,
+  10-31 twice for Instagram, 11-02 LinkedIn, 11-03 delayed events), 5 to 15 s each; systemd
+  counts no crash (`NRestarts=0`).
+- **Memory and CPU** (sysstat, 977 ten-minute samples, 10-28 to 11-03): CPU p95 4.0%, median
+  0.9%; memory used p95 14%, max 23%; network p95 40 kB/s (max 12 MB/s). Now: the Matrix
+  containers use about 1.6 GiB (PostgreSQL 933 MiB, Synapse 360 MiB, WhatsApp bridge 96 MiB),
+  load 0.2. The only peaks (94 to 99% CPU, 11-02 20:20 to 20:50 and 22:40 to 22:50 UTC) were all
+  "nice" time; the Matrix containers run at nice 0, while two other services on this machine run
+  niced: `flowback-engine` (nice 10, 1.6 GB) and Syncthing (nice 11). Disk: 62 of 96 GB (Docker
+  22 GB, media 1.6 GB, PostgreSQL 1.1 GB, backups 379 MB).
+- **Oracle's rule** (its page, read 2026-11-03): an *Always Free* instance is idle when, over 7
+  days, CPU p95, network and memory (A1 shapes) are all below 20%. Ours meets all three. The page
+  does not say whether the rule applies to a Pay As You Go account; the plan's reading (it does
+  not) is still not confirmed (Q5).
+- **Backup** (chosen 2026-10-28, local, no cost): the playbook's `postgres-backup` runs: 7 daily
+  and 2 weekly dumps of the 4 databases (Synapse 50 MB gzip on 11-03). The 11-03 dumps pass
+  `gzip -t` and end with "dump complete"; the Synapse dump has 174 tables. Limits: the dumps are
+  on the server's only disk, and they hold no media. If Oracle reclaims the instance, they go
+  with it.
+- **For Rami (questions, nothing applied):** (1) an off-server copy, at no cost: a daily pull of
+  the newest dumps (about 55 MB) to the Mac over `ssh oracle`, with or without the media (1.6
+  GB). The dumps hold the WhatsApp, Instagram and LinkedIn sessions, so the copy stays out of git
+  and synced folders. (2) The Instagram bridge still logs at debug (274 debug lines in the last
+  hour, with chat data); `config.yml` says to delete that line after the login. Deleting it
+  restarts the bridges for about 10 s. (3) The two unused Instagram images and Docker's build
+  cache (a deletion: `server/notes/install.md`, 2026-10-31).
+- **Rami's answers (2026-11-03): "do whatever you think is best".** Applied the same day
+  (`server/notes/install.md`, 2026-11-03): (1) a daily pull to the Mac with the media and
+  Synapse's signing key (`server/pull-backup.sh`, launchd at 21:30, `~/Backups/multiplexer-server`;
+  first pull 1.9 GB, file counts equal to the server's); (2) the Instagram debug line deleted
+  through the playbook (0 debug lines after); (3) the two images and our build's cache deleted
+  by hand (1.17 GB), because the playbook's prune tools would also delete other projects'
+  stopped containers; the other project's Caddy cache stays.
 
 ## Phase 1: first own screen (M1)
 
@@ -150,7 +201,7 @@ Run it after 48 hours of use.
 - [x] `bun exact.mjs feedback status` has run, and the diary follows its answer. (Answer: `ask`. The diary is in `apps/multiplexer/.exact/diary/`. Nothing is sent without Rami's yes.)
 
 **Verification:**
-- [ ] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app.
+- [x] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app. (2026-11-03: the sign-in screen, 402×874.)
 
 **Dependencies:** None (Q2 answered)
 **Files:** `apps/multiplexer/` (generated)
@@ -186,12 +237,14 @@ call it. No network and no UI design. Try A first, then B.
 
 **Acceptance criteria:**
 - [x] An XCTest in the iOS Simulator signs in to the practice account on matrix.org (D8) and lists its rooms. (2026-10-27: `scripts/test-matrix-core.sh`, 1 passed in 8.7 s. One device sends; a second device with an empty store sees the room and reads the message from the server. Both devices sign out.)
-- [ ] After T0.6: the same test against our server lists the WhatsApp chat.
+- [x] After T0.6: the same test against our server lists the WhatsApp chat. (2026-11-03: `scripts/test-matrix-core.sh` runs
+  against our server as `@test1`/`@test2` by default; a read-only drive as `@rami` listed his 185 rooms, WhatsApp ones
+  with the network `whatsapp`, and a GIF reached WhatsApp through the bridge.)
 - [x] It returns the last 20 messages of a room, in order, with sender, text and time. (The test checks the newest message and that it is our own.)
 - [x] No matrix-rust-sdk type is in MatrixCore's public API. (Public types: `MatrixAccount`, `SavedSession`, `RoomSummary`, `Message`, `MatrixCoreError`. The same files compile in the Exact app.)
 
 **Verification:**
-- [ ] `xcodebuild test` on an iOS Simulator destination passes.
+- [x] `xcodebuild test` on an iOS Simulator destination passes. (2026-11-03: the whole suite, 52 tests, 1 skipped.)
 
 **Dependencies:** T1.2, the practice account (D8). The WhatsApp check needs T0.6.
 **Files:** `matrix-core/Package.swift`, `matrix-core/Sources/MatrixCore/*.swift`, `matrix-core/Tests/*`
@@ -338,8 +391,10 @@ marks it read on the server, so Element and my other devices agree.
 - [x] Never sent from a test on `@rami`: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp. (In a drive, the module sends receipts only for a user whose id starts with `@test`.)
 
 **Verification:**
-- [ ] A MatrixCore test with `@test1` and `@test2` on our server.
-- [ ] A drive with a send from another person, before and after opening the chat.
+- [x] A MatrixCore test with `@test1` and `@test2` on our server. (`testUnreadMessagesCountUntilRead`,
+  `testMarkedUnreadClearsOnReadAndAMutedChatStillCountsMentions`, `testANewLineFurtherBackThanTheChatLoads`.)
+- [x] A drive with a send from another person, before and after opening the chat. (2026-11-03, B15: 30 messages
+  from `@test2`; the count at open, while scrolling, and 0 once the newest message is in view.)
 
 **Dependencies:** T2.2, the test users (done in T0.5)
 **Scope:** S
@@ -372,9 +427,19 @@ with other Matrix users usually are.
 
 **Acceptance criteria:**
 - [ ] A decision in the log: end-to-bridge encryption on or off, and why. (Waits for T0.6.)
+  Proposed 2026-11-03 (Rami decides): keep it **off**, as it is now (`matrix_bridges_encryption_enabled: false`).
+  Why: the bridge runs on the same server and must read every message to pass it to WhatsApp, so its keys sit
+  on the same disk as the database: a breach of the server reads the chats either way. On, it would cost: Send
+  Later refuses encrypted chats (delayed events wait on the server unencrypted; `testAnEncryptedChatHasNoSendLater`),
+  the push extension would have to decrypt each message within its memory limit, and a new device would show
+  older bridged messages as "Waiting for this message" until it has the recovery key. Chats with other Matrix
+  people stay end-to-end encrypted, and the recovery key (below) now opens their older messages.
 - [x] In an encrypted room, messages sent after this device signed in show as text. (2026-10-27: the room "Multiplexer encrypted test", made by MatrixCore; another device's message shows as text at once; a message sent from the app is encrypted and shows as text.)
 - [x] Added: a message this device has no key for shows as "Waiting for this message", not nothing. Before, MatrixCore dropped it from the chat.
-- [ ] Older messages show after I enter the recovery key (key backup). (Waits for T0.5: the practice account has no recovery, and turning it on would add an encryption identity to an account Rami also uses in Element. Test it with a test user on our own server.)
+- [x] Older messages show after I enter the recovery key (key backup). (2026-11-03: Settings, Encryption: Off, On, or
+  Needs Your Key with a field and Unlock Older Messages; a wrong key is named. MatrixCore `recover`, and the SDK now
+  fetches a missing key from the backup (`afterDecryptionFailure`). Test `testAnOlderEncryptedMessageShowsAfterTheRecoveryKey`
+  as `@test1`, which resets recovery through the server's API; drives in light and dark: `apps/multiplexer/.exact/recovery/`.) (Waits for T0.5: the practice account has no recovery, and turning it on would add an encryption identity to an account Rami also uses in Element. Test it with a test user on our own server.)
 
 **Found on the way:**
 - A room whose newest message this device cannot read has no preview and no time in the chat list, so it sorts last.
@@ -411,7 +476,15 @@ message, and keeps the reader's place.
 - [x] Scrolling up near the top of a chat loads 20 older messages. (2026-10-27: the count goes from 20 to 40.)
 - [x] The rows I read do not move when older ones are added above. (`tree --ax`: 9 visible rows at the same place before and after.)
 - [x] At the room's first message, loading stops. (The test room's 58 messages, from "Multiplexer test 48643855…".)
-- [ ] A sign that older messages are loading, and that the chat has reached its start. (Not possible yet in Exact's virtualized list: finding 20.)
+- [x] A sign that older messages are loading, and that the chat has reached its start. (2026-11-03: a row above the oldest
+  loaded message, `OlderLine`: a small spinner while older ones load, then "Start of the chat" in the footnote's grey. It is
+  one more row of the transcript's list, `[Message(f, id="~older")].concat(thread.messages)`, so `reachstart` still sees the
+  top; Exact finding 20, PR #1411. As `@test1` in "Multiplexer search test history": 20 messages to 50, then "Start of the
+  chat" above "History 1"; `check` clean in light, dark and the largest text size.)
+- [x] A chat that opens at its "New" line loads older messages too. (2026-11-03: `reachstart` fired once while the chat moved
+  to the line, `loadOlder` held it back, and the list never asked again: the chat stayed at its last 20 messages (seen
+  before this change). Now the held load is made when the line is placed (`olderWanted`, `donePlacing`), and the line stays
+  in view.)
 
 **Verification:**
 - [x] MatrixCore test `testOlderMessagesLoadUntilTheStart`.
@@ -472,12 +545,17 @@ sends (read only, on `@rami`), then build them in this order: voice notes (play)
 files (name and size, open), stickers (as a picture), "Edited" and "Message deleted".
 
 **Acceptance criteria:**
-- [ ] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size.
-- [ ] A voice note plays and shows its length (B16).
+- [x] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size. (2026-11-03: two
+  test chats holding text, links, a reply, reactions, photos, an animated GIF, a video, a sticker, a large emoji, a
+  file and a voice message, in light, dark and the largest size; `check` finds only text scrolled under the glass
+  bar. Fixed on the way: at the largest size a file's long name ran past the screen; it wraps now.)
+- [x] A voice note plays and shows its length (B16).
 - [x] A video shows its poster at its ratio with a play mark and its length, and plays full screen
   in the system player (2026-11-03, B15; `testAVideoReachesTheOtherWithItsSizeLengthAndPoster`).
   Sound with the ring switch on silent (`audio_session: "playback"`) waits for a check on the iPhone.
-- [ ] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API).
+- [x] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API). (Text,
+  photo and file, video, sticker, voice note and audio file, reply and reactions, edit and delete, forward: see
+  `MatrixCoreTests`, `ChatDetailsTests`, `VoiceTests`, `MessageActionsTests`.)
 
 **Dependencies:** T2.10 (to see real examples)
 **Scope:** L (one commit per kind)
@@ -513,8 +591,8 @@ swipe to reply", "Hold a message").
 - [x] Long press: the chat blurs, the bubble lifts in place, Beeper's six quick reactions above it, Reply and Copy under it.
 - [x] Reactions as pills under the bubble, with a count; yours outlined in the accent; a tap adds or takes back yours.
 - [x] "Edited" under an edited message. (Not seen: no edited message in the test rooms.)
-- [ ] The rest of Beeper's long-press menu: Forward, Share, Mark as Unread, Bookmark, Edit and Delete on your own, and the + for all emojis.
-- [ ] Long press on a photo (only text bubbles have it now).
+- [x] The rest of Beeper's long-press menu: Forward, Share, Mark as Unread, Bookmark, Edit and Delete on your own, and the + for all emojis. (B14; Bookmark is built in the Bookmarks thread.)
+- [x] Long press on a photo (only text bubbles have it now). (B11 and B14: photos, videos, stickers, files and voice messages.)
 
 **Verification:**
 - [x] MatrixCore test `testAReplyQuotesItsMessageAndReactionsCount` (`@test1` and `@test2`): both see the quote; a reaction counts and is marked as yours; a second tap takes it back. The whole suite passes (12, 1 skipped).
@@ -595,7 +673,7 @@ types), so prove that first.
 - [x] Logos for WhatsApp, Instagram, Messenger, Telegram, Signal, Discord and LinkedIn are in the
   app (`assets/networks/`, sources and licences in `SOURCES.md`).
 - [ ] VoiceOver: the row's spoken label leaves the network out (Exact finding 32). A hand-written
-  `aria-label` on the row would fix it.
+  `aria-label` on the row would fix it. Exact PR #1407 (open) fixes it in Exact: a labelled image counts in its link's name.
 
 **Verification:**
 - [x] MatrixCore test `testABridgedRoomShowsItsNetworkOnANewDevice`: `@test1` sets the state a
@@ -615,8 +693,59 @@ types), so prove that first.
 from the bridge's display name template on the server.
 
 **Acceptance criteria:**
-- [ ] **Rami's OK at that time** before any server change (the plan's rule 7).
-- [ ] The template changes through the playbook (invariant 6), and names update in the app.
+- [x] **Rami's OK at that time** before any server change (the plan's rule 7). (2026-11-03:
+  "do whatever you think is best"; all three suffixes, so no network repeats its logo.)
+- [x] The template changes through the playbook (invariant 6), and names update in the app.
+  (2026-11-03: applied through the playbook, all three; `!wa sync contacts` sent. Read-only
+  drive on `@rami`, new device, signed out after: of 189 chats loaded, 0 names show " (WA)";
+  2 direct chats and 1 group show their names in the bar without a suffix. Instagram senders
+  still show " (IG)" (7 in previews; 705 of 708 Instagram ghosts on the server) until each
+  contact's next update.)
+
+**Found in that drive (app, not B2's server change; for the app lane):**
+- **A group opens empty.** A WhatsApp group with messages (its inbox row shows the last one)
+  opened as "No Messages Yet", still after 20 s, on a new device. On the server, 182 of the
+  room's newest 200 events are member events (167 from the rename at 22:50 UTC: each name
+  change is one). So the first page holds only hidden events, and the chat does not page back
+  to a message. 54 of 279 WhatsApp rooms have no message in their newest 20 events (43 none in
+  50). Fix in the app: page back until a shown message or the room's start.
+- **A raw ID as sender.** 4 inbox previews show the sender as `@whatsapp_lid-…:ramimaalouf.com`
+  on a new device, while the server has that person's name (profile and member event). The
+  preview falls back to the user ID when the sender's member event is not loaded.
+
+**Prepared (2026-11-03, branch `server/b2-names`, not merged, not applied).** `config.yml` adds
+three lines, the playbook's defaults at the pinned commit without the suffix:
+
+```yaml
+matrix_bridge_mautrix_whatsapp_network_displayname_template: '{% raw %}{{or .BusinessName .PushName .Phone}}{% endraw %}'
+matrix_bridge_mautrix_meta_instagram_bridge_displayname_suffix: ''
+matrix_bridge_mautrix_linkedin_network_displayname_template: "{% raw %}{{ with .Organization }}{{ . }}{{ else }}{{ .FirstName }} {{ .LastName }}{{ end }}{% endraw %}"
+```
+
+Today the names end in " (WA)", " (IG)" and " (LinkedIn)" (the server's bridge configs).
+Rendered with Ansible on the Mac, each template comes out without its suffix.
+
+**How names update** (from the bridges' code at the server's versions; not tested yet): a new
+template changes no name at once. A contact's Matrix name changes when the bridge next updates
+that contact, and each DM room's name follows (`private_chat_portal_meta: true`). Group names
+have no suffix.
+- WhatsApp: `!wa sync contacts` in the WhatsApp bot chat renames every contact the bridge has
+  stored, at once (a message from `@rami` to the bot only; it reaches no contact). Others change
+  when they change their WhatsApp name, or when they send a message and their info is more than
+  7 days old (the bridge's queue runs every 4 hours).
+- Instagram (mautrix-meta `4a7ebd9`): when Meta's sync sends that contact's info again.
+- LinkedIn (`6cc6a89`): when that person's info comes with a message.
+- The app: names come from the server through the SDK; no app change. The search index stores no
+  names.
+
+**To apply, after Rami's OK:** merge `server/b2-names` into `main`;
+`./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start` (the three bridges
+restart, about 10 s); `!wa sync contacts` in the WhatsApp bot chat; a read-only drive on `@rami`.
+
+**Applied 2026-11-03** (`server/notes/install.md`). The bot does not answer `!wa sync contacts`,
+but it renamed in the background (about 900 a minute): 14,529 names with " (WA)" became 2,250 by
+23:03 UTC. The rest are people with no contact info (26 DM rooms of 279 keep " (WA)" for now);
+each changes on that person's next update.
 
 **Dependencies:** B1 (so each chat still shows its network). **Scope:** S (server conversation)
 
@@ -632,7 +761,7 @@ appears when its feature exists: the capsule's Archive with B8, search with B18.
 - [x] The bar floats over the list, the list scrolls under it, and its last row can scroll above
   the bar. (2026-11-02, `inbox.contract`, `BottomBar`.)
 - [ ] The iOS edge effect under the bar: Exact gives a floating bar over a large-title list none,
-  and a route has no bottom toolbar (Exact finding 35).
+  and a route has no bottom toolbar (Exact finding 35; no PR: a design question for the Exact team, LLP 1131).
 - [x] The capsule holds Inbox (selected; a tap scrolls to the top); the left button opens the
   filter menu (B5). The up-down button comes with B4.
 - [x] `check both` clean in dark, light and the largest text size; VoiceOver reads "Filter" (or
@@ -660,7 +789,8 @@ Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and com
 - [x] The choice is kept across launches; a new sign-in starts at Inbox.
 - [x] MatrixCore filters the list itself (`NetworkFilter.swift`, `NetworkFilterTests`).
 - [ ] After a network change in a list scrolled down, the large title stays collapsed (Exact
-  finding 50); a short line shows above the pinned grid (finding 49).
+  finding 50; no PR: exact2's own tests say a scroll to the top after a collapse keeps the title collapsed, a design
+  question for the Exact team); a short line shows above the pinned grid (finding 49).
 - [x] Rami (2026-11-03): keep the Matrix row first; count unread chats; the title shows the network's name.
 
 **Dependencies:** B1, B3. **Scope:** M
@@ -700,8 +830,19 @@ messages shows a dot on its picture (Rami: a dot, as in Messages).
   from the server once per pinned chat.
 - [x] The grid is the list's first row and scrolls away with it.
 - [x] An unread pinned chat shows a dot, which clears when the chat is read.
-- [ ] Rami (2026-11-03): a pin stays in our app, never in WhatsApp. Check the bridge does not pass it before any pin on `@rami`: the bridge may pass a pin to WhatsApp (which allows
-  3). His real account has no pinned chats today.
+- [x] Rami (2026-11-03): a pin stays in our app, never in WhatsApp. Check the bridge does not pass it before any pin on `@rami`: the bridge may pass a pin to WhatsApp (which allows
+  3). His real account has no pinned chats today. (2026-11-03, read only, at the server's
+  versions: **a pin in our app cannot reach WhatsApp.** The app pins with the room tag
+  `m.favourite` (`Pinned.swift`, `setIsFavourite`), which is room account data. mautrix-whatsapp
+  v0.2610.0 does have code that pins in WhatsApp when it sees that tag (`HandleRoomTag` in
+  `pkg/connector/handlematrix.go`; mautrix-go v0.32.0 calls it for `m.tag`), but a bridge sees
+  account data only if the homeserver puts it in an appservice transaction. Synapse v1.164.0
+  sends appservices only typing, receipts, presence, to-device and device-list events
+  (`synapse/handlers/appservice.py`, `notify_interested_services_ephemeral`), never account data.
+  The same holds for any other room account data the app writes, such as `m.marked_unread`. The
+  other direction is off too: the bridge's `pinned_tag` and `archive_tag` are not set, so a
+  WhatsApp pin does not tag the Matrix room. `@rami` has no room tags today. Recheck after a
+  Synapse update: this depends on what Synapse sends to appservices, not on our app.)
 
 **Dependencies:** none (B7 adds the rest of the menu). **Scope:** M
 
@@ -740,7 +881,23 @@ Mute, Label, Delete (red).
   from the app and from another device; now it brings a muted one back too, and the answer does
   not archive it again (`testYourOwnMessageBringsAnArchivedChatBack`, `.exact/choices/archive-back.png`).
   The "@" with no push and the bell for WhatsApp mutes were built with B7.
-- [ ] Another device's archive or delete shows only at the next list change.
+- [x] Another device's archive or delete shows only at the next list change. (2026-11-03, branch
+  `work/list-freshness`: reproduced in the app first, an unarchive from another device not shown
+  45 s later. The SDK observes only its own account data types, so MatrixCore reads the chats'
+  marks and own names from its store every 2 s while it syncs (no request) and tells the list when
+  one changed (`AccountDataWatch`, `testAnotherDevicesArchiveTellsTheList`). The same drive with
+  the fix shows the chat back at the next read. `scripts/mark-chat-as-test-user.sh` archives or
+  unarchives as a test user from a short-lived device; `send-test-message.sh --delete-last` deletes
+  a test user's newest message.)
+- [x] Fixed on the way (2026-11-03): `testRecentMediaIsTheNewestPhotosAndVideos` failed 1 run in 3 with
+  only the newest video. A sync with a gap resets the media timeline to its newest events, and the
+  "reached the start" flag from an earlier page back stopped any new one; the flag now holds only
+  until the next reset (`MediaTimeline`, 5 runs of 5 pass). The chat's own timeline (`LiveTimeline`)
+  keeps the same flag: not changed, as B15 works there; check it with B15.
+- [ ] Seen 2026-11-03 under load from parallel threads: a new device's first sync of `@test1` took
+  near the 30 s limit, so `testANameOnlyYouSeeShowsOnYourOtherDeviceNotTheOthers` timed out twice
+  ("the first sync") and passed alone (53 s). A failed run leaves its own name on the info test
+  room, which then fails `testInfoNamesItsMembersAndWhatYouMayChange`.
 
 **Dependencies:** B6 (the menu exists). **Scope:** M
 
@@ -776,7 +933,10 @@ chat info page, B20), and "..." on the right.
 - [x] Picture (with its network logo) and name in a glass capsule; not pressable until B20.
   "..." offers Pin, Mark as Unread (it goes back to the list) and Mute.
 - [x] The app's own bar fixes T2.13's sharp bar: the long-press blur now covers it, in dark and light.
-- [ ] Not driven: a real edge swipe back (Exact finding 56); `back` works.
+- [x] A real edge swipe back over the messages (2026-11-03, `--touch platform --timing platform`, as `@test1`):
+  `tap root drag 320 0 from 2 276 over 400`, at the height of a bubble that a swipe right answers, went back to the inbox
+  ("willShow 0, by the edge swipe", then the drawn Back pressed), and no reply started (`composers` empty). Four runs; in the
+  first, the log also showed the chat pushed again and popped a moment later, not seen in the other three.
 - [x] Rami (2026-11-03): Mark as Unread inside a chat goes back to the list; Back leaves out muted,
   archived and Low Priority chats.
 
@@ -910,7 +1070,8 @@ emoji, a search and "Frequently used".
   (`apps/multiplexer/.exact/bookmarks/`, gitignored).
 - [ ] Bookmarks' limits: a bookmark keeps the message as it was saved (an edit or a delete later
   does not change it); another device's new bookmark shows within a minute (the sdk tells no
-  listener of custom account data); a message further back than 1,000 events opens the chat at its
+  listener of custom account data; follow-up: add `Bookmarks.type` to `AccountDataWatch`, which
+  reads the store every 2 s, and drop the minute's reload); a message further back than 1,000 events opens the chat at its
   newest with B18's note. Each bookmark is about 0.5 KB of one event: fine for hundreds.
 - [x] Fixed on the way: a new device's store has no account data in its first seconds, not even
   after the first sync. The list read then was empty (seen in a drive right after sign-in: a saved
@@ -935,8 +1096,14 @@ emoji, a search and "Frequently used".
   a press inside a swipe; the media components only draw. Copy writes the original photo as a PNG with
   `@exact/clipboard` (Exact's image clipboard, from data code; no native code). Drives with real touches:
   each kind swipes to a reply with its quote, and still opens and holds.)
-- [ ] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
-  messages out of a room's latest event).
+- [x] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
+  messages out of a room's latest event). (2026-11-03, branch `work/list-freshness`: MatrixCore keeps
+  the newest message each row showed (`latest-messages.json` in the account's store folder); a
+  latest event older than it means it was deleted, so the row says "Message deleted" with its
+  sender, the chat never opened, and still after a relaunch (`testTheListSaysMessageDeletedWithTheChatNotOpened`,
+  which fails without the fix). The time stays the message before's, as the SDK orders the list by
+  it. Not caught: a message that arrived and was deleted while the app never showed it. Drive,
+  dark: `.exact/fresh/delete-before-dark.png`, `delete-after-dark.png`.)
 - [x] Rami (2026-11-03) ok to all; to build: hide Edit and Delete after the limits. Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
   hide Edit and Delete after WhatsApp's limits (about 15 minutes, about 2 days); skin tones.
   Done 2026-11-03 (branch `work/choices-followup`): in a WhatsApp chat, Edit shows for 15 minutes
@@ -992,7 +1159,12 @@ user setting". Beeper keeps the speed per note; ours keeps one speed for the who
   for a received waveform). (2026-11-03, `voice.contract`.)
 - [x] Changing the speed on any note changes it on every note, and the app remembers it. Videos
   keep their own normal speed (Rami). (`state voiceSpeed = 1 persist`.)
-- [ ] Transcribe: "Later".
+- [x] Transcribe (2026-11-03, from "Later"): a held voice message offers Transcribe; Apple's on-device recognizer
+  (`@exact/speech-recognition`, `processLocally`, no cost, nothing leaves the iPhone) turns it into text in the
+  iPhone's language, shown under it and kept across launches by its sound file's name (`transcribe-members.contract`).
+  Under a drive the package hears nothing, so the app was driven to "No speech in this voice message."; on this
+  Mac the same engine transcribed a spoken Ogg Opus clip correctly. Left for Rami's iPhone: one real voice note
+  (and whether Arabic notes need the language chosen).
 
 **Dependencies:** T2.13. **Scope:** M
 
@@ -1145,8 +1317,9 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
   clean in dark, light and the largest text size (`apps/multiplexer/.exact/b21/`, gitignored).
   `verify ios` clean.
 - [ ] After Sign Out, the sign-in screen's title shows small until the next launch (Exact
-  finding "a large title comes back inline").
-- [ ] A picture on the account: `@test1` has none, so only the initials were seen.
+  finding "a large title comes back inline"). Exact PR #1410 (open) fixes the sign-out path (the pop, then the reply).
+- [x] A picture on the account: `@test1` has none, so only the initials were seen. (2026-11-03: `@test1` has a
+  picture now; Settings shows it in its circle, `check both` clean: `apps/multiplexer/.exact/b21/account-picture.png`.)
 
 **Dependencies:** none. **Scope:** S
 
@@ -1155,7 +1328,7 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
 Rami wants these, after the tasks above (2026-11-02):
 - Labels: a named group of chats, shown as a filter in the sheet, with Create Label (the same
   tag way as Archive, B8). "Not a requirement."
-- Camera in the + panel: a built-in camera.
+- Camera in the + panel: a built-in camera. Done 2026-11-03 for photos ("L1" below).
 - Remind Me: a reminder to answer a chat later (B7, B20; a Reminders row in the sheet).
 - Merge Chats: one person on two networks as one chat (B21).
 - Select chat: act on several chats at once (B7, B21).
@@ -1165,6 +1338,42 @@ Rami wants these, after the tasks above (2026-11-02):
 - Message expiry (B20): the very last.
 
 Not wanted for now: Poll.
+
+### L1 Camera in the + panel
+
+**Description:** Beeper's + panel has "Camera" (report, topic 14). The panel's second row opens
+the camera full screen over the chat (`camera.contract`, `camera-members.contract`), with
+`@exact/camera`'s viewfinder over `@exact/media-capture`'s track. The shutter's photo joins the
+composer's tray as a photo from the library does (the same `attachPhotos` path: made smaller and
+upright while the caption is typed, sent with Send). Photos only: Exact's camera takes stills,
+and `@exact/recording` records sound only, so a video needs a native module of our own (not
+built; ask Rami if wanted).
+
+**Acceptance criteria:**
+- [x] The panel shows Camera where the device has a camera (`cameraStatus().available`).
+- [x] The camera opens on the back camera; Switch Camera (where there is a front one) and Flash
+  (where the camera has a torch; hidden on the front camera); a tap focuses, a pinch zooms.
+- [x] The shutter adds "Photo N.jpg" to the tray, stops the camera, and brings the keyboard back;
+  Close stops it too. The camera screen is dark in both appearances, as the phone's.
+- [x] Camera refused in Settings: "Camera Access Is Off" with Open Settings, and no request.
+- [x] The app's own shape `Chosen` holds a picked file or a camera photo (a `Picked` cannot be
+  built in Contract; Exact finding 103).
+
+**Verification (2026-11-03, Simulator "MX media", the agent's camera, `@test1`):**
+- [x] A drive in "Multiplexer two-person test": + panel, Camera, flip, shutter, a caption, Send:
+  the message is a photo (1280×960) with its caption, state "sent".
+- [x] Dark, light, and the largest text size: `check` clean on the panel and the camera screens
+  (the chat's own overlap findings under the floating bars are known); the refused screen
+  scrolls at the largest size.
+- [x] `verify ios` clean. No MatrixCore change (sending uses B11's `sendMedia`).
+- [ ] **On Rami's iPhone** (the Simulator has no camera; the agent's camera is a still card): the
+  permission dialog shows "Takes the photos you send."; the back camera's preview is upright in
+  portrait and fills the space between the bars; the front camera is mirrored in the preview and
+  not in the photo; the flash fires; tap to focus and pinch to zoom work; the shutter sound
+  plays; the green dot goes out after Close and after the shutter; a photo from the camera sends
+  to WhatsApp as a photo.
+
+**Dependencies:** B10, B11. **Scope:** S
 
 ## Phase 3: push notifications (M3)
 
@@ -1265,7 +1474,8 @@ the extension builds it reads `@test2`'s message in a plain and an encrypted roo
 ### P3.3 Server: Sygnal (server conversation)
 
 **Acceptance criteria:**
-- [ ] Rami's OK, and the DNS record from P3.0.
+- [ ] Rami's OK, and the DNS record from P3.0. (Rami's OK, 2026-11-03: install it when P3.0's
+  APNs key is in the Keychain and the DNS record exists. Neither exists yet.)
 - [ ] Through the playbook (invariant 6): `matrix_sygnal_enabled: true`; two APNs apps,
   `com.ramimaalouf.multiplexer.ios.dev` (`platform: sandbox`) and `com.ramimaalouf.multiplexer.ios`
   (production), both with team `3V2UU7RRK9` and topic `com.ramimaalouf.multiplexer`; the key from
@@ -1273,6 +1483,22 @@ the extension builds it reads `@test2`'s message in a plain and an encrypted roo
   (`aux_file_definitions`). Keep the default host name; no path prefix.
 - [ ] Sygnal answers from the Mac, and a test POST with the phone's pushkey reaches the phone.
 - [ ] No key in git; `server/README.md` names the Keychain item, never the key.
+
+**Prepared (2026-11-03, branch `server/p3.3-sygnal`, not merged, not applied).** `config.yml`
+turns Sygnal on with the two APNs apps above (`keyfile: /data/apns-key.p8`, the Key ID from
+`vars.yml`) and `aux_file_definitions_custom` writes the key to `/matrix/sygnal/data/apns-key.p8`
+(mode 0600, user `matrix`). `server/setup.sh` copies the key and its Key ID from the Keychain
+(`multiplexer-apns`, accounts `key` and `key-id`) into `vars.yml` when they are there; without
+them the playbook stops on an undefined variable, so it cannot install a Sygnal with no key.
+`server/README.md` has a "Push (Sygnal)" section and the Keychain row. Checked on the Mac with a
+throwaway key (not Apple's): the apps render as above, and the key file comes out identical.
+Note: the playbook keeps a copy of `vars.yml` on the server (`/matrix/vars.yml`, mode 0660, user
+`matrix`), so the key is there too, as the other secrets are.
+
+**To apply, after P3.0 and Rami's OK:** `./server/setup.sh` (the note about a missing key must not
+show); merge `server/p3.3-sygnal` into `main`; install; then
+`curl -s https://sygnal.ramimaalouf.com/health` from the Mac. The last check needs the phone's
+token from P3.1.
 
 **Dependencies:** P3.0; the phone's token from P3.1 for the last check. Can run beside P3.1 and P3.2.
 **Scope:** S

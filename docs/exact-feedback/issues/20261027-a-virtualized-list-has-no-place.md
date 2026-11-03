@@ -29,3 +29,13 @@ Cost: about 3 minutes to decide, and a chat that gives no sign that it is loadin
 ## Evidence
 
 Seen on 2026-10-27 at exact2 `cee509ac82`, on iOS.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1411: the list has a place. The line is one more item of
+the `for`'s list, put first by a `derive`:
+`derive rows = [Message(id="older", body=(atStart ? "Start of the chat" : "Loading…"))].concat(thread)`,
+and the `for`'s one root (a `column` around an `if`) draws it by its key. In a drive of a minimal
+app, `reachstart` kept firing with the marker first, loaded every older row, and the marker then
+read "This is the start of the chat." The pull request adds that paragraph to `docs/reference.md`,
+"Intersection visibility". Shape construction takes `id=value`, not `id: value`.

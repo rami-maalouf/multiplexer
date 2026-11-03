@@ -1,0 +1,30 @@
+// Settings' Encryption section (settings.contract): the account's recovery, and the recovery key
+// that lets this iPhone read the older encrypted messages it has no key for (T2.6).
+use Recovery, RecoveryReply from "./settings.contract"
+
+members Multiplexer
+  state recoveryDraft = ""
+  // the key was entered on this visit: its refusal shows under it.
+  state recoveryAsked = false
+  // by account only, as the profile is: a launch keeps the last answer for the same account.
+  resource recovery = loadRecovery(session.userId) as shape Recovery else empty()
+  mutation unlocked as shape RecoveryReply refreshes recovery then afterUnlock
+  derive recoveryRefused = (match unlocked { case some(r) => (recoveryAsked and not r.ok ? r.problem : ""), case none => "" })
+
+  action typeRecoveryKey(v: string)
+    recoveryDraft = v
+    recoveryAsked = false
+  action unlockRecovery
+    if recoveryDraft.trim() != "" and not pending(unlocked)
+      recoveryAsked = true
+      send unlocked = recover(recoveryDraft)
+      blur()
+  // the key leaves the field once it worked; a refused one stays, to correct.
+  action afterUnlock
+    match unlocked
+      case some(r)
+        if r.ok
+          recoveryDraft = ""
+          haptic("success")
+      case none
+        recoveryAsked = true

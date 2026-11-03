@@ -10,6 +10,8 @@ goes through the playbook or a playbook in this folder; manual commands there on
 | `setup.sh` | Installs Ansible (uv), gets the playbook at its pinned commit and its roles, and writes `vars.yml` from the Keychain. Safe to run again. |
 | `playbook.sh` | Runs the playbook's `setup.yml` against our inventory. Takes the usual `ansible-playbook` flags. |
 | `register-user.sh` | Registers a Matrix user with a random password that only the Keychain keeps. |
+| `pull-backup.sh` | Copies the server's dumps, media and signing key to the Mac (`~/Backups/multiplexer-server`). Only reads on the server. |
+| `install-backup-pull.sh` | Runs `pull-backup.sh` every day at 21:30 with launchd. Run it again after a change to `pull-backup.sh`. |
 | `remove-unused-sessions.py` | Signs out a user's sessions that have no name and were never used (`uv run`). |
 | `inventory/hosts` | The server: `matrix.ramimaalouf.com`, reached through `Host oracle` in `~/.ssh/config`. |
 | `inventory/host_vars/matrix.ramimaalouf.com/config.yml` | All settings. In git, no secrets. |
@@ -55,6 +57,30 @@ All in the Mac's login Keychain. Never in git, chat or logs.
 
 To paste a password on the iPhone (Universal Clipboard):
 `security find-generic-password -s multiplexer-matrix -a @rami:ramimaalouf.com -w | pbcopy`.
+
+## Backups
+
+- **What:** a gzip dump of each database (Synapse and each bridge) every day at 00:00 UTC,
+  and at each start of the `matrix-postgres-backup` container. The playbook's `postgres-backup`
+  role, set in `config.yml`.
+- **Where:** on the server, in `/matrix/postgres-backup/data/{last,daily,weekly}/`. It keeps 7
+  daily dumps and 2 weekly ones, no monthly. The files of one dump are hard links, so they use
+  its space once. First dump (2026-10-28): 42 MB in total.
+- **Secret:** the bridges' dumps hold their login sessions (the WhatsApp link, an Instagram
+  session). The folder is readable only by the `matrix` user and root; never copy a dump to
+  git or chat.
+- **Off the server** (since 2026-11-03): `pull-backup.sh` copies the dump folder, the media
+  store (photos, videos; 1.5 GB) and Synapse's signing key to `~/Backups/multiplexer-server`
+  on the Mac, every day at 21:30 (launchd, `install-backup-pull.sh`; at wake when the Mac
+  slept). The copy holds the same secrets, so it stays out of git and synced folders; Time
+  Machine copies it. Log: `~/Library/Logs/multiplexer-server-backup.log`. A failed pull shows a
+  macOS notification. Run it now: `launchctl kickstart gui/$(id -u)/com.ramimaalouf.multiplexer.server-backup`.
+- **Restore** (not tested): on a new server, the playbook with the Keychain's secrets; Synapse's
+  signing key into `/matrix/synapse/config/` and the media store into
+  `/matrix/synapse/storage/media-store/` before Synapse starts; then the dumps with the
+  playbook's `docs/importing-postgres.md`. After restoring a dump older than
+  the server's state, truncate Synapse's `e2e_one_time_keys_json` table before Synapse starts
+  (the playbook's `docs/maintenance-postgres.md`).
 
 ## Network
 

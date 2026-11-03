@@ -65,6 +65,9 @@ Test MatrixCore (about 10 s after the first build):
 Two MatrixCore runs at once (two conversations, the same test users) time out on "the first
 sync". Hold the shared lock around every run, on your own simulator:
 `until mkdir /tmp/mx-matrixcore.lock 2>/dev/null; do sleep 10; done; <run>; rmdir /tmp/mx-matrixcore.lock`.
+The SDK's start on a new device is CPU-bound: with many Simulators and builds at once, a test's first
+sync misses its limit. Keep at most one Simulator booted per conversation, and shut it down
+(`xcrun simctl shutdown <udid>`) whenever you are not driving or testing.
 
 ```sh
 ./scripts/test-matrix-core.sh
@@ -133,11 +136,11 @@ you down is feedback, and recording it is part of each task, not optional. Start
 ## Test accounts
 
 **Safety rule.** `@rami:ramimaalouf.com` is Rami's real account: it holds his real
-WhatsApp, so a message sent in one of its rooms reaches a real person. Tests and drives
+WhatsApp and Instagram, so a message sent in one of its rooms reaches a real person. Tests and drives
 send, react, delete and mark as read only as `@test1:ramimaalouf.com` or
 `@test2:ramimaalouf.com` (Keychain service `multiplexer-test-account`). On `@rami`: read-only
 drives, and only with Rami's OK; sign out at the end. A read receipt there also marks the
-chat read in WhatsApp (double puppeting).
+chat read in WhatsApp or Instagram (double puppeting).
 
 
 - Practice: `@rami-m-test:matrix.org`. Its password is in the Keychain. Its room "Multiplexer test" is for tests.

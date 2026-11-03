@@ -5,14 +5,18 @@
     "": {
       "name": "multiplexer",
       "dependencies": {
+        "@exact/camera": "file:../../../exact/exact2/packages/camera",
         "@exact/clipboard": "file:../../../exact/exact2/packages/clipboard",
         "@exact/in-app-browser": "file:../../../exact/exact2/packages/in-app-browser",
         "@exact/media-capture": "file:../../../exact/exact2/packages/media-capture",
         "@exact/recording": "file:../../../exact/exact2/packages/recording",
+        "@exact/speech-recognition": "file:../../../exact/exact2/packages/speech-recognition",
       },
     },
   },
   "packages": {
+    "@exact/camera": ["@exact/camera@file:../../../exact/exact2/packages/camera", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
+
     "@exact/clipboard": ["@exact/clipboard@file:../../../exact/exact2/packages/clipboard", {}],
 
     "@exact/in-app-browser": ["@exact/in-app-browser@file:../../../exact/exact2/packages/in-app-browser", {}],
@@ -20,5 +24,7 @@
     "@exact/media-capture": ["@exact/media-capture@file:../../../exact/exact2/packages/media-capture", {}],
 
     "@exact/recording": ["@exact/recording@file:../../../exact/exact2/packages/recording", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
+
+    "@exact/speech-recognition": ["@exact/speech-recognition@file:../../../exact/exact2/packages/speech-recognition", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
   }
 }
