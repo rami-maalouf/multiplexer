@@ -21,3 +21,7 @@ Cost: about 3 minutes, and one more line to cut than planned.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `880d4f8652`.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1365 (fixes it): caps no longer counts the empty string after a final newline, with tests at 1,500 and 1,501 lines.
