@@ -899,9 +899,13 @@ emoji, a search and "Frequently used".
   name. A tap opens the chat at the message, marked (B18's jump; Back returns to the list). A long
   press offers Copy and Remove Bookmark; a swipe removes it. Kept in the account's global account
   data (`com.ramimaalouf.multiplexer.bookmarks`; plan.md's decision log, 2026-11-03), so every
-  device has them and nothing reaches the chat or WhatsApp. MatrixCore `BookmarksTests` (2 passed):
+  device has them and nothing reaches the chat or WhatsApp. MatrixCore `BookmarksTests` (3 passed):
   a bookmark of each user, on the account's second device, opened there at the message; the other
-  person has none and no new event. Drives as `@test1` in dark, light and the largest text size,
+  person has none and no new event; a new device lists the ones saved before at once and keeps them.
+  The whole suite (60 tests, 2026-11-03, a busy hour on the Mac after a restart): 6 failed on
+  waits for the server ("the first sync", a message within 15 s, reactions on the server); the 6
+  run again alone all passed. `test ios` 6 passed (new: `bookmarks.test.contract`), `verify ios`
+  clean, `bun test` 7 passed. Drives as `@test1` in dark, light and the largest text size,
   with real touches for the menus and the swipe; `check both` clean
   (`apps/multiplexer/.exact/bookmarks/`, gitignored).
 - [ ] Bookmarks' limits: a bookmark keeps the message as it was saved (an edit or a delete later
@@ -1080,7 +1084,7 @@ crashed in the sdk's room list (`RoomList.entriesWithDynamicAdapters`, `EXC_BAD_
 launches of two: `startSync` checked `syncService == nil` and then awaited, so the list, Send
 Later and Bookmarks, which all ask for the rooms at launch, could each start a sync service and a
 room list. The start is now one shared task (`MatrixAccount.syncStart`). Three launches after the
-fix, no crash; the whole MatrixCore suite ran after it.
+fix, no crash in any drive since.
 
 ### B20 The chat info page
 
