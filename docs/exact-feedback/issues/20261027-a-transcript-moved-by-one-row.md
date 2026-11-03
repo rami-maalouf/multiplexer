@@ -40,3 +40,10 @@ messages and the line was out of view. The app now holds back `reachstart`'s loa
 is placed. About 15 minutes and four builds. A list that keeps the rows in view in place when
 rows are added above them would remove both this and the one-row move.
 
+## Not reproduced (2026-11-03, `574720f370`)
+
+A minimal app (a `list virtualized=true scroll-start="end"` of 100 rows in memory, `reachstart`
+adding 20 older ones each time): `scrollIntoView("transcript", "105", block="center")`, plain and
+with `behavior="smooth"`, made `reachstart` add rows above, and row 105 stayed at the middle of the
+port (`tree --ax`: y 460 to 478). So no pull request. The app's case had rows from a slower,
+asynchronous source.

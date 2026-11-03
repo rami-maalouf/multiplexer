@@ -26,3 +26,8 @@ https://github.com/ccheever/exact2/pull/1325.
 ## Pull request (2026-11-02)
 
 https://github.com/ccheever/exact2/pull/1345 (fixes it): under `bun test`, `ensureBun` names the pinned Bun to run the test file with.
+
+## Seen again (2026-11-03, `574720f370`)
+
+`bun test ./scripts/agent-keys.test.mjs` in exact2 with Bun 1.4.3 on PATH: "Cannot use test outside
+of the test runner". `~/.bun-1.4.2/bin/bun test …` ran it. About 3 minutes.
