@@ -932,8 +932,14 @@ emoji, a search and "Frequently used".
   (`testAStickerIsShownNotDropped`).
 - [x] Links you can tap, in Safari's in-app view.
 - [x] Fixed: a reply's quote showed its sender's raw id (`testAReplysQuoteNamesItsSender`).
-- [ ] The jump count is the chat's whole unread count, not exactly the messages below the view;
-  no "New" line when the first unread message is older than the 20 loaded.
+- [x] The jump count is the chat's whole unread count, not exactly the messages below the view;
+  no "New" line when the first unread message is older than the 20 loaded. (2026-11-03: the count
+  is the unread messages below the "New" line not yet in view (each row's `intersect`); it falls
+  as you scroll down, reaching the newest message clears it, and new ones that come while you read
+  older ones add to it. With more unread messages than the first page, MatrixCore pages back once
+  to the read receipt, at most 300 events, and the chat opens at the line with 8 read messages
+  above it; older messages do not load until the line is placed. Test
+  `testANewLineFurtherBackThanTheChatLoads`.)
 - [x] Stickers and large emoji have no swipe to reply or long press (B14's area). (2026-11-03: a sticker
   swipes and holds through `SwipeReply`; a large emoji already did, in the text bubble's box.)
 - [x] Rami (2026-11-03): keep the "New" line, in-app Safari, one header per gap, typing later; to build: "Sent" instead of "Delivered". Was: open at the "New" line (built) or at the newest; "Delivered" means our server

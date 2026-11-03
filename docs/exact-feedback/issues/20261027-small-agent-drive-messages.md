@@ -91,3 +91,10 @@ https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eig
    only. To wait for a state to take any value, a drive needs a fixed `clock +N` and a `state`
    after it. `!=` (or "until it changes") would remove the guess. About 1 minute.
 
+## One more (2026-11-03, a jump count task, `ed43ad09a0`)
+
+13. A chat row that new messages had moved down a virtualized list: `tap room-<id>` answered "its
+   middle is outside the viewport; scroll it into view first", and `tap room-list into
+   room-<id>` answered the same. The refusal could show the `tap <list> into <key>` form with the
+   list's own key for that row (its `key`, not its `testId`). About 3 minutes.
+

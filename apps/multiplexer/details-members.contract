@@ -14,9 +14,19 @@ members Multiplexer
   derive shownVideo = top(nav).name == "video" ? top(nav).params.message : ""
   derive shownVideoMessage = first(thread.messages.filter(m => m.id == shownVideo))
   resource video = loadVideo(openRoom, shownVideo) as shape VideoFile else empty()
-  // the unread messages the jump to the newest passes: the chat's unread count, as the chat is
-  // read only once its newest message has been in view.
-  derive belowUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
+  // the unread messages (others', from the "New" line on) that have been in view since the chat
+  // opened: a row says so as it comes into view (sawMessage).
+  state seenUnread: string[] = []
+  derive newLineAt = newLine != "" and newLineRoom == openRoom ? thread.messages.map(m => m.id).indexOf(newLine) : -1
+  // the chat's unread count, which reading its newest message clears.
+  derive roomUnread = match openRoomInfo { case some(r) => r.unread, case none => 0 }
+  // the unread messages the jump to the newest passes, as Beeper counts them: those below the
+  // "New" line not yet in view, which scrolling down lowers (reaching the newest message sees
+  // them all: app.contract's scrolled); with no line (none unread when the chat opened, or the
+  // first further back than the chat pages), the chat's unread count.
+  derive belowUnread = (newLineAt >= 0
+    ? thread.messages.slice(newLineAt).filter(m => not m.isOwn and not seenUnread.includes(m.id)).length
+    : roomUnread)
   // a link's page opens over the chat on iOS (Safari's view, Done comes back), else in the browser.
   resource browser = inAppBrowserStatus() as shape InAppBrowserStatus else empty(available=false, overApp=false)
   mutation browsed as shape BrowserResult
@@ -32,6 +42,7 @@ members Multiplexer
   action keepNewLine
     newLine = thread.firstUnread
     newLineRoom = openRoom
+    seenUnread = []
     // a chat opened at a found message moves there instead (search-members.contract).
     if thread.firstUnread != "" and (jumpEvent == "" or jumpRoom != openRoom)
       placing = true
@@ -39,6 +50,11 @@ members Multiplexer
   action forgetNewLine
     newLine = ""
     newLineRoom = ""
+    seenUnread = []
+  // a message's row came into view: below the "New" line, it is no longer below the reader.
+  action sawMessage(id: string, e: IntersectionObserverEntry)
+    if e.isIntersecting and newLineAt >= 0 and not seenUnread.includes(id)
+      seenUnread = seenUnread.concat([id])
   action donePlacing
     placing = false
   action jumpToEnd

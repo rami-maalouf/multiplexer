@@ -456,6 +456,9 @@ component Multiplexer
     if isAway != away
       if isAway and reading and openUnread > 0 and not placing
         send markedRead = markRead(openRoom)
+      // at the newest message, every message loaded has been passed: none counts below.
+      if not isAway
+        seenUnread = thread.messages.map(m => m.id)
       away = isAway
 
   action editServer(v: string)
@@ -720,8 +723,11 @@ component Multiplexer
     nav = push(nav, path("photo", openRoom, id))
   action retry(id: string)
     send retried = retryMessage(openRoom, id)
+  // not before or while the chat moves to its "New" line: the list's first render and that move can
+  // reach the top of what is loaded, and older messages added above then move the line out of view.
   action loadOlder
-    if threadShown and not thread.atStart and not pending(older)
+    let placingLine = placing or (thread.firstUnread != "" and newLineRoom != openRoom)
+    if threadShown and not thread.atStart and not pending(older) and not placingLine
       send older = loadOlderMessages(openRoom)
   action discard(id: string)
     send discarded = discardMessage(openRoom, id)
@@ -1097,7 +1103,7 @@ component Multiplexer
                   testId="transcript"
                   for m in thread.messages key=m.id
                     // a found message the chat opened at is marked a moment (search-members.contract).
-                    column id=`row-${m.id}` align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
+                    column id=`row-${m.id}` intersect=sawMessage(m.id) align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
                       background-color=(m.id == jumpedTo ? "-exact-tertiary-fill" : "transparent") transition="background-color 600ms ease"
                       if m.startsGroup
                         DayHeader(time=m.time, now=shown, offset=time.utcOffset, identifier=`day-${m.id}`)
