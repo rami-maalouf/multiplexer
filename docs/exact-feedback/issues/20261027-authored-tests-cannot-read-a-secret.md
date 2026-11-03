@@ -20,6 +20,11 @@ largest text size. `verify ios` said "nothing spills". Only a drive at the simul
 own largest size (`xcrun simctl ui <udid> content_size
 accessibility-extra-extra-extra-large`) found it.
 
+New evidence (2026-11-03, `ed43ad09a0`): a settings screen shows the account, and Sign Out,
+only with a session. Its authored test opens it by its path while signed out (`at "/settings"`)
+and checks only the one setting that needs no account; the account's row and Sign Out are
+checked by drives.
+
 Workaround: drives that type the password from a shell variable
 (`pw="$(security find-generic-password …)"`, then `"type password $pw"`). The drive masks
 the field, but `state` does not (`20261027-agent-state-prints-a-password.md`).

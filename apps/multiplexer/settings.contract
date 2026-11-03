@@ -1,0 +1,68 @@
+// Settings, from the inbox's title menu, in the platform's grouped style: the signed-in account,
+// the one speed every voice message plays at (the speed chip on a voice message changes the same
+// setting), and Sign Out, which asks first.
+
+// the account as others see it. avatar: its picture once it is downloaded ("" until then, or
+// for none), else its initials show. version: the app's.
+shape Profile
+  userId: string
+  name: string
+  avatar: string
+  initials: string
+  version: string
+
+// the voice note speeds, in the speed chip's order.
+fn speeds(): number[] = [1, 1.5, 2]
+
+component SettingsScreen
+  props
+    // the screen's route (its stack entry's id).
+    route: string
+    // the signed-in account's id ("" while signed out), and its name and picture.
+    userId: string
+    profile: Profile
+    speed: number
+    chooseSpeed: action
+    signOut: action
+    largeText: bool
+  derive side = largeText ? 72 : 60
+  derive shown = profile.userId == userId
+  view
+    column navigationKey=route navigationScroll="settings" position="absolute" inset=0 display="flex" flex-direction="column"
+      testId="settings"
+      header display="flex" align-items="center"
+        text "Settings" role="heading" aria-level=1 flex=1
+      list id="settings" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        if userId != ""
+          section
+            // at the accessibility sizes the picture goes above, so the id has the row's width.
+            row gap=14 flex-direction=(largeText ? "column" : "row") align-items=(largeText ? "flex-start" : "center") testId="account"
+              view width=side height=side border-radius=(side / 2) overflow="hidden" flex-shrink=0
+                background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
+                if shown and profile.avatar != ""
+                  image profile.avatar width="100%" height="100%" object-fit="cover" aria-hidden=true testId="account-picture"
+                else
+                  text (shown ? profile.initials : "") font="-exact-title2" font-weight=600 color="-exact-secondary-label" aria-hidden=true
+              column flex=1 min-width=0 max-width="100%" align-self="stretch" gap=2
+                text (shown ? profile.name : "") font="-exact-title3" font-weight=600 testId="account-name"
+                // an id has no spaces: it may break after its colon and its dots.
+                text userId.replaceAll(":", ":\u200B").replaceAll(".", ".\u200B") font="-exact-subheadline" color="-exact-secondary-label" hyphens="none"
+                  testId="account-id"
+        section
+          header
+            text "Voice Messages"
+          row gap=12 align-items="center" flex-wrap="wrap"
+            text "Playback Speed" flex=1
+            row role="radiogroup" aria-label="Playback Speed" testId="speed"
+              for s in speeds() key=s
+                button role="radio" aria-checked=(speed == s) press=chooseSpeed(s) testId=`speed-${s}`
+                  text `${s}x`
+          footer
+            text "Every voice message plays at this speed. The speed button on a voice message changes it too."
+        if userId != ""
+          section
+            row
+              button press=signOut destructive=true testId="sign-out" flex=1
+                text "Sign Out"
+            footer
+              text (shown and profile.version != "" ? `Multiplexer ${profile.version}` : "") testId="version"

@@ -37,3 +37,6 @@ icons
   icon.arrowshape-turn-up-right = icon(sf "arrowshape.turn.up.right", svg "icons/arrowshape-turn-up-right.svg")
   // the chat's jump to its newest message, beside the count of unread messages below, as Beeper draws it.
   icon.arrow-down = icon(sf "arrow.down", svg "icons/arrow-down.svg")
+  // the inbox title menu's Merge Chats.
+  icon.merge = icon(sf "arrow.triangle.merge", svg "icons/merge.svg")
+  icon.chevron-down = icon(sf "chevron.down", svg "icons/chevron-down.svg")
