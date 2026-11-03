@@ -869,10 +869,14 @@ MatrixCore calls the Matrix API itself (to check).
   makes a new waiting message and cancels the old one, as the server cannot move one; if the
   old one already went, the new one is cancelled and the list says so. The list reads again
   each minute.)
-- [ ] A scheduled message reaches WhatsApp at its time with the phone off (checked with the test
-  users, then on `@rami` with his OK). Test users done (2026-11-03): a message scheduled for 3
-  minutes later arrived at exactly that minute while the app was not running; MatrixCore's
-  `ScheduledMessagesTests`. WhatsApp waits for Rami's OK to send one from `@rami`.
+- [x] A scheduled message reaches WhatsApp at its time with the phone off (checked with the test
+  users, then on `@rami` with his OK). Test users (2026-11-03): a message scheduled for 3 minutes
+  later arrived at exactly that minute while the app was not running; MatrixCore's
+  `ScheduledMessagesTests`. WhatsApp (Rami's OK, 2026-11-03, to his contact "Osama"): scheduled
+  in the app for 13:14, then the app signed out at 13:11:42; the message went at 13:14:00 and the
+  bridge sent it to WhatsApp (its database maps the event to a WhatsApp message id at 18:14:00
+  UTC). Signing a device out does not cancel its waiting messages; only deactivating the account
+  does (Synapse's `cancel_all_for_user`).
 
 **Dependencies:** B11. **Scope:** L
 
