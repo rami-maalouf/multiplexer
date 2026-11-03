@@ -80,7 +80,8 @@ shape RoomList
 // text, with its links apart. status: under the chat's newest message, "Sent", "Seen" or
 // "Seen by Ana, Ben" ("" for none); statusTime: when a direct chat's other person saw it, or 0.
 // isDeleted: deleted for everyone, so it has no text, picture or file (no balloon). isEditable:
-// your own text message, which an edit can change. A voice message or an audio file (isAudio) has its
+// your own text message, which an edit can change. editUntil, deleteUntil: when its network stops
+// taking an edit or a delete for everyone (0: no limit). A voice message or an audio file (isAudio) has its
 // length in seconds and its waveform's bars, each from 0 to 1.
 shape Message
   id: string
@@ -103,6 +104,8 @@ shape Message
   isEdited: bool
   isDeleted: bool
   isEditable: bool
+  editUntil: number
+  deleteUntil: number
   hasReply: bool
   replyName: string
   replyBody: string
@@ -210,6 +213,8 @@ fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
 // the inbox's unread count counts it (matrixcore's isInInbox and isLoudlyUnread): in the inbox,
 // unread and not muted, or with a mention.
 fn inboxUnread(r: Room): bool = not r.archived and not r.lowPriority and (loud(r) or r.mentions > 0)
+// a time limit not reached yet (0: none), as limits.ts's within.
+fn within(until: number, now: number): bool = until == 0 or now < until
 fn countText(n: number): string = n > 99 ? "99+" : n.toString()
 // a message in one line, for a reply bar or the forward sheet: its text, else "Photo" or its file's name.
 fn messageLine(m: Message): string = m.body != "" ? m.body : (m.isImage ? "Photo" : (m.isVideo ? "Video" : (m.isSticker ? "Sticker" : (m.isFile ? m.fileName : (m.isAudio ? "Voice message" : "")))))
@@ -325,7 +330,7 @@ component Multiplexer
   // Back's count: the inbox's unread chats on every network (the filter sheet's Inbox row), but this one.
   derive otherUnread = max(0, roomList.unread - (match openRoomInfo { case some(r) => inboxUnread(r) ? 1 : 0, case none => 0 }))
   // the day a message is on is the reader's, so the zone's offset groups them.
-  resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset) as shape Thread else empty()
+  resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset, openNetwork) as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
   resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
   derive composer = composerOf(composers, openRoom, savedDraft)
@@ -334,16 +339,17 @@ component Multiplexer
   // the reactions a long press offers first, as Beeper does.
   derive quickReactions = ["❤️", "👍", "💯", "😂", "😔", "👀"]
   // the held message, and what its menu offers: Forward once the server has it, Copy for a text or
-  // a caption, Edit and Delete on your own.
+  // a caption, Edit and Delete on your own while its network still takes them.
   derive heldMessage = first(thread.messages.filter(m => m.id == held))
   derive heldText = match heldMessage { case some(m) => m.body, case none => "" }
   derive heldCanForward = match heldMessage { case some(m) => m.state == "sent" and not m.isSticker, case none => false }
   derive heldCanShare = heldKind != "sticker"
   derive heldBig = match heldMessage { case some(m) => m.bigEmoji, case none => false }
-  derive heldCanEdit = match heldMessage { case some(m) => m.isEditable, case none => false }
-  derive heldRows = 2 + (heldCanShare ? 1 : 0) + (heldCanForward ? 1 : 0) + (heldText != "" ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldOwn ? 1 : 0)
+  derive heldCanEdit = match heldMessage { case some(m) => m.isEditable and within(m.editUntil, shown), case none => false }
+  derive heldCanDelete = heldOwn and (match heldMessage { case some(m) => within(m.deleteUntil, shown), case none => true })
+  derive heldRows = 2 + (heldCanShare ? 1 : 0) + (heldCanForward ? 1 : 0) + (heldText != "" ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldCanDelete ? 1 : 0)
   // the menu's height, so a message low on the screen moves up and the menu fits under it.
-  derive heldMenuHeight = heldRows * (viewport.accessibilityTextSize ? 64 : 44) + 12 + (heldOwn ? 13 : 0)
+  derive heldMenuHeight = heldRows * (viewport.accessibilityTextSize ? 64 : 44) + 12 + (heldCanEdit or heldCanDelete ? 13 : 0)
   // at the largest text sizes the lifted copy is shorter (a photo shrinks to fit), so the menu
   // has room under it; what it still lacks, it scrolls.
   derive heldCap = viewport.accessibilityTextSize ? 200 : 320
@@ -376,7 +382,7 @@ component Multiplexer
   derive aimedLowPriority = match aimedRoom { case some(r) => r.lowPriority, case none => false }
   derive aimedArchived = match aimedRoom { case some(r) => r.archived, case none => false }
   derive aimedNetwork = match aimedRoom { case some(r) => r.network, case none => "matrix" }
-  resource peek = loadMessages(aimed, aimedIsDirect, aimedRoomName, time.utcOffset) as shape Thread else empty()
+  resource peek = loadMessages(aimed, aimedIsDirect, aimedRoomName, time.utcOffset, aimedNetwork) as shape Thread else empty()
   derive peekShown = peek.room == aimed and aimed != ""
   // the chat is in front, not behind its photo viewer, and the app is too.
   derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
@@ -558,6 +564,8 @@ component Multiplexer
     unsaved = openRoom
   // a long press lifts the bubble where it is, with reactions above it and actions under it.
   action hold(id: string, body: string, name: string, own: bool, tail: bool)
+    // the clock moves once a minute: Edit and Delete read it fresh.
+    now = performanceNow()
     heldY = frame(`message-${id}`).y
     heldHeight = min(320, frame(`message-${id}`).height)
     heldWidth = frame(`message-${id}`).width
@@ -571,6 +579,8 @@ component Multiplexer
     haptic("impact-light")
   // a long press on a photo or a file lifts it the same way; body is what a reply quotes of it.
   action holdMedia(id: string, kind: string, name: string, own: bool, body: string)
+    // the clock moves once a minute: Edit and Delete read it fresh.
+    now = performanceNow()
     heldY = frame(`${kind}-${id}`).y
     heldHeight = min(320, frame(`${kind}-${id}`).height)
     heldWidth = frame(`${kind}-${id}`).width
@@ -1294,7 +1304,7 @@ component Multiplexer
                       Balloon(body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
                   // the emoji sheet hides the actions, as Beeper's does: they would show through it.
                   if top(nav).name != "reactions"
-                    MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=(heldText != ""), canEdit=heldCanEdit, canDelete=heldOwn,
+                    MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=(heldText != ""), canEdit=heldCanEdit, canDelete=heldCanDelete,
                       reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
                       markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
       dialog id="sign-in-failed" role="alertdialog" aria-label="Couldn’t Sign In"

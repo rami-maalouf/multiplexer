@@ -1,6 +1,7 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
 import { emojiRows } from './emoji-rows.ts';
 import { infoSources } from './info.ts';
+import { deleteUntil, editUntil } from './limits.ts';
 
 // app.json’s app.id: change the two together.
 export const appId = 'com.ramimaalouf.multiplexer';
@@ -237,8 +238,9 @@ const sources: Sources = {
     await native!.later({ op: 'chat', roomId, action });
     return { ok: true };
   },
-  // the messages of a day go together in the reader's zone (utcOffset, in minutes).
-  loadMessages: async ([roomId, isDirect, roomName, utcOffset], _store, _storage, native): Promise<Result<'loadMessages'>> => {
+  // the messages of a day go together in the reader's zone (utcOffset, in minutes); the chat's
+  // network sets how long your own can be edited and deleted (limits.ts).
+  loadMessages: async ([roomId, isDirect, roomName, utcOffset, network], _store, _storage, native): Promise<Result<'loadMessages'>> => {
     if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, firstUnread: '', messages: [] };
     native.watch(`thread:${roomId}`);
     const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
@@ -272,6 +274,7 @@ const sources: Sources = {
         balloon: !m.waitingForKey && !m.isDeleted && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
         isDeleted: m.isDeleted, isEditable: m.isEditable,
+        editUntil: editUntil(network, m.time), deleteUntil: deleteUntil(network, m.time),
         // a reply shows who wrote what it answers once that message is loaded; until then, or if
         // it cannot load, no quote shows rather than an empty one.
         hasReply: (m.reply.body ?? '') !== '',
