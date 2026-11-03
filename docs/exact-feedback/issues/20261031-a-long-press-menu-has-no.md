@@ -41,3 +41,18 @@ its look. The hand-drawn menu's blur is in the same route, so it covers that bar
 and dark, and the bar takes no tap while the menu is open (`inert`). The blur box reaches past
 the route's top and bottom (`top=-120`, `bottom=-60`) to cover the status bar's and the home
 indicator's areas. The palette request above stands: the menu is still about 40 lines by hand.
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+The app-drawn menu grew from two rows to seven (and a separator), which brought three costs a
+system menu would not have:
+
+- With `backgroundMaterial="glass"`, the menu's Liquid Glass bent the lifted bubble just above it
+  into a band of blue and squashed text along its top edge (on the display too). A UIKit blur
+  (`backgroundMaterial="material"`) removed it; a system menu keeps its preview apart.
+- At the accessibility text sizes the lifted copy and seven rows no longer fit: the app caps the
+  copy's height (a photo shrinks to fit), gives the menu the room left and makes it a `scroll`.
+- `check` now calls the overlay's full-screen dismiss layer "covered" (the menu covers its
+  middle), a design the system menu does not need.
+
+About 40 minutes over the three.

@@ -40,3 +40,12 @@ Cost: about 5 minutes, and a drive to find what View#408 was.
 Seen on 2026-11-03 at exact2 `ed43ad09a0` (iOS Simulator, iOS 26.5). Related: exact2's
 `QUEUE.md`, "`check` finds the grouped-form recipe's Quantity row covered on iOS" (the same
 hit-test rule, with a field's box over its label).
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+An app-drawn long-press overlay has a full-screen dismiss button under everything (a tap
+anywhere outside the menu closes it). With a seven-row menu, `check both` says: "covered
+close-menu [0,-58 402×958]: its middle is under menu-forward at rest, and nothing scrolls it
+clear". The layer is meant to be covered; only its uncovered parts take taps. Not fixed. A way to
+mark a backdrop (or `check` skipping a pressable that spans the whole viewport behind a modal
+layer) would remove it.

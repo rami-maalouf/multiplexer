@@ -52,3 +52,11 @@ It happens at the top edge too. A chat screen with `navigationBar="none"` draws 
 bar; with the system bar gone, the transcript's row above its frame showed in the status bar's
 area (a blue bubble's edge above y 62, where the list starts). The app covers it with its bar's
 fade: a box that starts at `top=-120` and is the page colour down to the route's top.
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+In a half-height sheet (`navigationDetent="medium large"`), a column holds a virtualized grid and a
+row of tabs under it. The route's box ends about 30 points above the sheet's visible bottom edge,
+and the grid drew its rows past its frame into that strip, below the tab row (seen on the
+display, not only in the driver's drawing). A negative `margin-bottom` with a matching
+`padding-bottom` on the tab row, in its background colour, covered the strip. About 10 minutes.

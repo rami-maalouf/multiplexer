@@ -66,3 +66,17 @@ The messages in items 1 and 2 are unchanged at `cee509ac82`.
 ## Pull request (2026-11-02)
 
 https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eight messages name the step to write (reload, `--scale` in a step, `prefer dark`, `state --json` in a step, a picked path with a space). The other three are design questions.
+
+## Seen again, and one more (2026-11-03, message menu task, `ed43ad09a0`)
+
+- Item 7 again, over an app-drawn long-press overlay and in sheets: `screenshot <png> window`
+  gave `pixels="app"` in almost every try ("the display changed while it was read", or "the app
+  named no points to check the display against"), also with `--timing platform`, `clock +3000`
+  and `clock settle` before it. Under `--timing platform`, `clock +15000` did not keep the app
+  up in real time: a display capture taken from a second shell during that step showed the home
+  screen. What worked: `clock until state <path> == "never" within 12000` (which waits in real
+  time, then fails the drive) and `xcrun simctl io <udid> screenshot` meanwhile. A `hold <ms>`
+  step, or a window screenshot that waits for a still display, would remove it. About 25
+  minutes over the task.
+10. `clock 600` after a `clock +2500` answered "the clock cannot go backwards (2500.0 → 600.0)".
+   Clear, but it could add that `clock +600` advances by 600. About 1 minute.

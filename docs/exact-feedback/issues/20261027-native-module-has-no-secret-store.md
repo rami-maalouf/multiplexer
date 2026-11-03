@@ -52,3 +52,10 @@ signed it out (as designed above). The next drive waited 30 s for a chat that ne
 ("thread.room was \"\" after 30001 ms") before `state session` showed it signed out. About 3
 minutes, and one more sign-in on a server that limits sign-ins. With a secret kept in Exact's
 store, a fresh store would start signed out with nothing left behind.
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+After `verify ios`, the next `agent ios` drive opened signed out. `verify`'s authored tests start
+with an empty store but the same Keychain item the drives use, so the native module found a
+session without its store and signed it out (as it must after a reinstall). The drive needed a
+new sign-in, and every id that came from the old store changed. About 5 minutes.
