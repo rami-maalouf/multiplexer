@@ -107,7 +107,7 @@ final class Matrix: ExactModule {
                     let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
                     let atStart = try await account.isAtStart(roomId: roomId)
                     reply.send(["atStart": atStart, "firstUnread": firstUnread ?? "", "messages": messages.map {
-                        ["id": $0.id, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
+                        ["id": $0.id, "event": $0.eventId, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
                          "waitingForKey": $0.waitingForKey, "isEdited": $0.isEdited,
                          "isDeleted": $0.isDeleted, "isEditable": $0.isEditable,
@@ -230,6 +230,9 @@ final class Matrix: ExactModule {
                                     _ = try await account.pictureFile(url: profile.avatarUrl, directory: self.media)
                                 },
                                 "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""])
+                case "bookmarks", "bookmark", "removeBookmark":
+                    // saved messages (Bookmarks.swift).
+                    reply.send(try await bookmarks(request))
                 case "chatInfo", "chatMembers", "chatMedia", "rename", "customName", "invite", "setPicture":
                     // a chat's info page (Info.swift).
                     reply.send(try await info(request))
@@ -237,7 +240,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -608,6 +611,7 @@ final class Matrix: ExactModule {
         case .profile: return "profile"
         case .info(let roomId): return "info:\(roomId)"
         case .scheduled: return "scheduled"
+        case .bookmarks: return "bookmarks"
         case .search: return "search"
         }
     }

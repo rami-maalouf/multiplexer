@@ -65,6 +65,8 @@ component InboxSheet
     // messages waiting on the server, and the list of them (Send Later).
     scheduled: number
     openScheduled: action
+    // the saved messages (Bookmarks).
+    openBookmarks: action
     largeText: bool
   view
     scroll id="inboxes" flex=1 min-height=0 testId="inboxes"
@@ -73,12 +75,15 @@ component InboxSheet
           value="inbox", choose=chooseList, largeText=largeText, identifier="inboxes-inbox")
         SheetRow(picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, noun="unread", chosen=(list == "archive"),
           value="archive", choose=chooseList, largeText=largeText, identifier="inboxes-archive")
-        // Create Label and the labels come here with their task, then Reminders and Send Later;
-        // Bookmarks and Requests after them.
+        // Create Label and the labels come here with their task, then Reminders, Send Later and
+        // Bookmarks; Requests after them.
         SheetRow(picture="symbol:icon.alarm", logo=false, name="Reminders", unread=reminders, noun="chats", chosen=(list == "reminders"),
           value="reminders", choose=chooseList, largeText=largeText, identifier="inboxes-reminders")
         SheetRow(picture="symbol:icon.clock", logo=false, name="Send Later", unread=scheduled, noun="scheduled", chosen=false,
           value="scheduled", choose=openScheduled, largeText=largeText, identifier="inboxes-send-later")
+        // no count: the sheet's numbers are for what waits (unread chats, scheduled messages).
+        SheetRow(picture="symbol:bookmark", logo=false, name="Bookmarks", unread=0, noun="", chosen=false,
+          value="bookmarks", choose=openBookmarks, largeText=largeText, identifier="inboxes-bookmarks")
         SheetRow(picture="symbol:icon.arrow-down-circle", logo=false, name="Low Priority", unread=lowPriorityUnread, noun="unread",
           chosen=(list == "lowPriority"), value="lowPriority", choose=chooseList, largeText=largeText, identifier="inboxes-low-priority")
         for n in networks key=n.network

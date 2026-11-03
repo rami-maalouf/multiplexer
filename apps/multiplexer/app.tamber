@@ -61,3 +61,5 @@ icons
   // the inbox title menu's Merge Chats.
   icon.merge = icon(sf "arrow.triangle.merge", svg "icons/merge.svg")
   icon.chevron-down = icon(sf "chevron.down", svg "icons/chevron-down.svg")
+  // a saved message's Remove Bookmark, in its menu and the list's.
+  icon.bookmark-slash = icon(sf "bookmark.slash", svg "icons/bookmark-slash.svg")

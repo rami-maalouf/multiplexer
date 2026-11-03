@@ -31,9 +31,9 @@ component MenuRow
       text label color=(destructive ? "-exact-system-red" : "-exact-label") flex=1 min-width=0
       image symbol color=(destructive ? "-exact-system-red" : "-exact-label") aria-hidden=true
 
-// Beeper's order: Reply, Share, Forward, Copy, Mark as Unread; then Edit and Delete on your own
-// messages, apart. Forward needs a message the server has; Copy, a text or a caption; a sticker
-// has neither Share nor Forward.
+// Beeper's order: Reply, Share, Forward, Copy, Mark as Unread, Bookmark; then Edit and Delete on
+// your own messages, apart. Forward and Bookmark need a message the server has; Copy, a text or a
+// caption; a sticker has neither Share nor Forward. A saved message offers Remove Bookmark.
 component MessageActions
   props
     // the room under the held message: past it, the actions scroll (the largest text sizes).
@@ -45,12 +45,15 @@ component MessageActions
     canTranscribe: bool
     canEdit: bool
     canDelete: bool
+    canBookmark: bool
+    bookmarked: bool
     reply: action
     share: action
     forward: action
     copy: action
     transcribe: action
     markUnread: action
+    bookmark: action
     edit: action
     delete: action
   view
@@ -66,6 +69,9 @@ component MessageActions
       if canTranscribe
         MenuRow(label="Transcribe", symbol="symbol:icon.transcribe", press=transcribe, destructive=false, identifier="menu-transcribe")
       MenuRow(label="Mark as Unread", symbol="symbol:icon.mark-unread", press=markUnread, destructive=false, identifier="menu-unread")
+      if canBookmark
+        MenuRow(label=(bookmarked ? "Remove Bookmark" : "Bookmark"), symbol=(bookmarked ? "symbol:icon.bookmark-slash" : "symbol:bookmark"),
+          press=bookmark, destructive=false, identifier="menu-bookmark")
       if canEdit or canDelete
         view height=1 margin="6px 0" background-color="-exact-separator" aria-hidden=true
       if canEdit

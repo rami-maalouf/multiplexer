@@ -129,6 +129,9 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 108 | Adding a package to an app has no app verb (`bun exact.mjs add`), and the framework's `add` writes an absolute `file:` path. | About 4 min | P3 | [adding-a-package-to-an-app](issues/20261103-adding-a-package-to-an-app.md) |
 | 109 | An action in a members file the component does not name is reported as missing, with no word of the file. | About 2 min | P3 | [an-action-in-a-members-file](issues/20261103-an-action-in-a-members-file.md) |
 | 110 | A drive cannot tap a row of an open menu that runs past the screen ("scroll it into view first"). | About 5 min | P3 | [a-drive-cannot-tap-a-row](issues/20261103-a-drive-cannot-tap-a-row.md) |
+| 111 | A page opened from a sheet with `go` stays in the sheet, and a chat opened from it opens inside the half-height sheet too, with no warning. | About 5 min | P3 | [a-page-opened-from-a-sheet](issues/20261103-a-page-opened-from-a-sheet.md) |
+| 112 | A data source's answer refused for its shape shows only in `logs`; a drive's `state` shows the old value with no word. | About 3 min | P3 | [a-refused-resource-answer-shows-only](issues/20261103-a-refused-resource-answer-shows-only.md) |
+| 113 | A large title shows inline over a list with rows and large over an empty state, on the same page (not isolated). | About 3 min | P3 | [a-large-title-shows-inline-over](issues/20261103-a-large-title-shows-inline-over.md) |
 
 ## What worked well
 

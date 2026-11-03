@@ -298,6 +298,42 @@ takes no part: matrix-rust-sdk keeps a message index on the device.
 - The tests: `SearchTests` (rooms "Multiplexer search test" and "... history", the second with 40
   numbered messages from its first run).
 
+## Bookmarks
+
+A held message's Bookmark (`Bookmarks.swift`). Matrix has no bookmarks, and the sdk cannot write
+custom room account data, so they are one global account data event,
+`com.ramimaalouf.multiplexer.bookmarks`, as the names only you see are (`ChatInfo.swift`):
+`{"bookmarks": [{"room", "event", "sender", "senderName", "body", "kind", "fileName", "ts",
+"savedAt"}]}`, the last saved first. Other keys are kept as they are.
+
+- **No one else sees them, and no network does.** Account data goes to the account's own
+  devices only. Synapse sends a bridge room events, ephemeral events (receipts, typing),
+  to-device messages, key counts and device list changes, never account data (checked on our
+  server, Synapse 1.164.0, `synapse/appservice/api.py` `push_bulk`, 2026-11-03).
+  `BookmarksTests` checks that the other person gets no bookmark and no event in the chat.
+- **What a bookmark keeps.** The chat, the event (the chat opens at it with `showMessage`), the
+  sender and their name, the text (at most 500 characters; a photo's, video's or file's caption),
+  what it is (text, image, video, voice, audio, file, sticker), a file's name, and when it was
+  sent. So the list shows without opening any chat. A later edit or delete of the message does
+  not change the copy. A message on its way has no event yet and cannot be saved
+  (`MatrixCoreError.notBookmarkable`). `Message.eventId` says which messages of a chat are saved.
+- **Shown at once.** A change shows before the server confirms it (`BookmarkStates`, 30 s), and
+  changes go one at a time from the newest list this device knows, so two in a row both stay.
+- **A new device's store has no account data at first**, not even after the first sync (seen
+  2026-11-03: `Client.accountData` answered nil after `startSync`, and the event came some seconds
+  later). A list read then was empty, and a change made from it would have replaced every
+  bookmark on the server. So while the store has no bookmarks event, MatrixCore reads it from the
+  server (`GET /user/{userId}/account_data/{type}`, kept 30 s); if that read fails, a change
+  throws instead of writing (`testANewDeviceKeepsTheBookmarksSavedBefore`). The bookmark calls start
+  the sync first, as `rooms()` does: on a new device, a store read before the first sync made that
+  sync time out (three runs of three; none with the sync started first). The other account
+  data events (`com.ramimaalouf.multiplexer.names`, `.chats`, `io.element.recent_emoji`) still
+  read only the store, so a change made in a new device's first seconds could replace them too.
+- **Limit: another device's bookmark** reaches this one's store with the sync, but the sdk tells
+  no listener of a custom global account data event. The app reads the list again each minute.
+- **Size.** Each bookmark is about 0.5 KB, and the whole event goes to every device at each
+  change. A few hundred bookmarks are fine; thousands would want a cap or one event per chat.
+
 ## Proof (2026-10-27)
 
 - The iPhone 17 Pro Simulator shows `14a0ada4fc`, which `sdkGitSha()` returned. The

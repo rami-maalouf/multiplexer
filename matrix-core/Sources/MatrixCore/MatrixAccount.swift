@@ -17,12 +17,17 @@ public final class MatrixAccount: @unchecked Sendable {
     let search = SearchState()
     /// The chats' media timelines and own names (ChatInfo.swift).
     let infoStates = ChatInfoStates()
+    /// The bookmarks this device wrote and the server has not confirmed (Bookmarks.swift).
+    let bookmarkStates = BookmarkStates()
     let reminderStates = ReminderStates()
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
     let accountDataWatch = AccountDataWatch()
     private var syncService: SyncService?
+    /// The sync's start, shared: callers at launch (the list, Send Later, Bookmarks) ask at once,
+    /// and a second sync service with its own room list crashed the sdk.
+    private var syncStart: Task<Void, Error>?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
     /// The room list's listener, kept so that it keeps listening, and the rooms in its order.
@@ -391,15 +396,35 @@ public final class MatrixAccount: @unchecked Sendable {
         }
         search.stop()
         accountDataWatch.stop()
-        await syncService?.stop()
-        syncService = nil
+        let service = lock.withLock {
+            syncStart = nil
+            return syncService
+        }
+        await service?.stop()
+        lock.withLock { syncService = nil }
         try await client.logout()
     }
 
-    private func startSync(timeout: TimeInterval) async throws {
-        guard syncService == nil else { return }
+    /// Starts the sync once, for every caller; a start that failed is tried again at the next call.
+    func startSync(timeout: TimeInterval) async throws {
+        let start: Task<Void, Error> = lock.withLock {
+            if let started = syncStart { return started }
+            let task = Task { try await self.openSync(timeout: timeout) }
+            syncStart = task
+            return task
+        }
+        do {
+            try await start.value
+        } catch {
+            lock.withLock { if syncStart == start { syncStart = nil } }
+            throw error
+        }
+    }
+
+    private func openSync(timeout: TimeInterval) async throws {
+        if lock.withLock({ syncService != nil }) { return }
         let service = try await client.syncService().finish()
-        syncService = service
+        lock.withLock { syncService = service }
         let state = RoomListState()
         let handle = service.roomListService().state(listener: state)
         defer { handle.cancel() }

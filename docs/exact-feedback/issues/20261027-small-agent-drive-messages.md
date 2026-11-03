@@ -109,3 +109,9 @@ https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eig
   or --json`. `state roomList.rooms --json` printed the same summary again, not the value; only
   `--full` did. If `--json` is the drive's own flag (`agent ios --json`), the hint could say so
   ("or the drive's `--json`"). About 2 minutes and one more drive.
+
+## More evidence (2026-11-03)
+
+`bun exact.mjs check` answers with the list of verbs only. `check` is a drive step
+(`agent ios … "check both"`, as start-here shows it), and the message could say so: "check is a
+drive step: `bun exact.mjs agent ios "check both"`". About 1 minute.
