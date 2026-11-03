@@ -83,7 +83,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. Fixed in PR #1366 (open). | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
 | 63 | `formatDay` has no style for a chat's day label. | About 5 min | P3 | [formatday-has-no-style-for](issues/20261103-formatday-has-no-style-for.md) |
 | 64 | A search field in a sheet's content draws its magnifier over its text at the accessibility sizes. | About 15 min | P3 | [a-search-field-in-a-sheet](issues/20261103-a-search-field-in-a-sheet.md) |
-| 65 | A sheet's bar search field hides the bar and its Send while searching, and the search card does not say so. | About 10 min | P3 | [a-sheet-s-bar-search-field](issues/20261103-a-sheet-s-bar-search-field.md) |
+| 65 | A sheet's bar search field hides the bar and its Send while searching, and the search card does not say so. Fixed in PR #1367 (open). | About 10 min | P3 | [a-sheet-s-bar-search-field](issues/20261103-a-sheet-s-bar-search-field.md) |
 | 66 | The edit-sheet recipe nests a sheet's header as `lower-header-nested` warns against. Fixed in PR #1361 (open). | About 5 min | P3 | [the-edit-sheet-recipe-nests-a](issues/20261103-the-edit-sheet-recipe-nests-a.md) |
 | 67 | The theme recipe shows an SF-only icon token, which the build refuses. Fixed in PR #1362 (open). | About 2 min | P3 | [the-theme-recipe-shows-an-sf](issues/20261103-the-theme-recipe-shows-an-sf.md) |
 | 68 | A drag on a virtualized list in a half-height sheet aims under the row after the list. | About 6 min | P3 | [a-drag-on-a-virtualized-list](issues/20261103-a-drag-on-a-virtualized-list.md) |
@@ -193,3 +193,4 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1364](https://github.com/ccheever/exact2/pull/1364): `contract vocab` answers `members`, and the grammar says what a members file may declare | 61 | Open |
 | 2026-11-03 | [#1365](https://github.com/ccheever/exact2/pull/1365): `caps` counts a file's lines as `wc -l` does | 59 | Open |
 | 2026-11-03 | [#1366](https://github.com/ccheever/exact2/pull/1366): the agent's help and the guide name `state media` and what a drive cannot show of a video | 62 | Open |
+| 2026-11-03 | [#1367](https://github.com/ccheever/exact2/pull/1367): the search card says the bar hides while the person searches | 65 | Open |
