@@ -1008,10 +1008,12 @@ component Multiplexer
         // the saved messages: every chat's (the filter sheet's row), or the open chat's (its info page's).
         if e.name == "bookmarks"
           BookmarksScreen(route=`${e.id}`, items=bookmarksShown, loaded=bookmarksLoaded, inChat=false, now=shown, offset=time.utcOffset,
-            aimedText=aimedBookmarkText, close=back, open=openBookmark, aim=aimBookmark, copy=copyBookmark, remove=removeAimedBookmark)
+            aimedText=aimedBookmarkText, close=back, open=openBookmark, aim=aimBookmark, copy=copyBookmark, remove=removeAimedBookmark,
+            removeOne=removeBookmarkOf)
         if e.name == "chatBookmarks"
           BookmarksScreen(route=`${e.id}`, items=chatBookmarks, loaded=bookmarksLoaded, inChat=true, now=shown, offset=time.utcOffset,
-            aimedText=aimedBookmarkText, close=back, open=openChatBookmark, aim=aimBookmark, copy=copyBookmark, remove=removeAimedBookmark)
+            aimedText=aimedBookmarkText, close=back, open=openChatBookmark, aim=aimBookmark, copy=copyBookmark, remove=removeAimedBookmark,
+            removeOne=removeBookmarkOf)
         if e.name == "later"
           LaterSheet(route=`${e.id}`, title="Send Later", body=composer.text.trim(), picked=laterWhen, saving=laterSaving,
             refused=laterRefused, pick=pickLater, close=closeLater, save=saveLater)
@@ -1083,7 +1085,7 @@ component Multiplexer
             // Bookmarks kind's rows have the list's long-press menu.
             BookmarkMenu(aimedText=aimedBookmarkText, copy=copyBookmark, remove=removeAimedBookmark)
             ChatSearchResults(found=chatFound, shown=chatFoundShown, loading=pending(chatFound), query=chatQuery, kind=chatKind,
-              bookmarks=chatBookmarks, bookmarksLoaded=bookmarksLoaded, aim=aimBookmark,
+              bookmarks=chatBookmarks, bookmarksLoaded=bookmarksLoaded, aim=aimBookmark, removeBookmark=removeBookmarkOf,
               now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion,
               chooseKind=chooseChatKind, openMessage=openChatFound, openLink=openChatLink)
             SearchBar(query=chatQuery, kind=chatKind, scope=infoShown.name, type=typeChatSearch, submit=submitChatSearch,

@@ -16,7 +16,7 @@ extension Matrix {
                 return ["room": b.roomId, "event": b.eventId, "chatName": chat.name, "network": chat.network,
                         "avatar": cached(chat.avatarName, topic: "bookmarks") { _ = try await account.avatarFile(roomId: chat.id, directory: self.media) },
                         "senderName": b.senderName, "isOwn": b.isOwn, "body": b.body, "kind": b.kind.rawValue,
-                        "fileName": b.fileName, "time": Double(b.timestamp), "savedAt": Double(b.savedAt)]
+                        "fileName": b.fileName, "time": Double(b.timestamp)]
             }]
         default:
             // the writes: a drive makes them only as a test user, as it reacts. Nothing of a

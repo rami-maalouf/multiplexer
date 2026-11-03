@@ -45,7 +45,7 @@ fn bookmarkLabel(b: BookmarkItem, inChat: bool): string = `${inChat ? "" : `${b.
 
 // one saved message: in the list of all, its chat's picture and name, the time, then who sent it
 // and its text; in one chat's (inChat), who sent it in the chat's place. A long press offers Copy
-// and Remove Bookmark.
+// and Remove Bookmark; a swipe removes it, as Mail's swipe does (it is saved again in a moment).
 component BookmarkRow
   props
     item: BookmarkItem
@@ -54,30 +54,31 @@ component BookmarkRow
     offset: number
     open: action
     aim: action
+    remove: action
     identifier: string
   derive symbol = bookmarkSymbol(item)
   view
-    button appearance="none" press=open(item.room, item.event) contextmenu=aim(item.event) contextPopover="bookmark-menu"
-      aria-label=bookmarkLabel(item, inChat) testId=identifier
-      display="flex" flex-direction="row" align-items="flex-start" gap=12 flex=1 min-width=0 text-align="start" padding="8px 0"
-      if not inChat
-        view position="relative" flex-shrink=0
-          Face(picture=item.avatar, initials=item.initials, size=40)
-          if item.network != "matrix"
-            NetworkBadge(network=item.network, identifier=`${identifier}-network`)
-      column flex=1 min-width=0 gap=2
-        // at large text sizes the time wraps under the name instead of narrowing it.
-        row flex-wrap="wrap" column-gap=6 align-items="baseline"
-          text (inChat ? bookmarkSender(item) : item.chatName) font="-exact-subheadline" font-weight=600 color="-exact-label"
-            flex="1 1 6rem" min-width=0 line-clamp=1
-          text formatDay(item.time, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label" margin-left="auto"
-        text font="-exact-subheadline" color="-exact-secondary-label" line-clamp=3 testId=`${identifier}-text`
-          if not inChat
-            text `${bookmarkSender(item)}: ` color="-exact-secondary-label"
-          if symbol != ""
-            image symbol width="1em" height="1em" vertical-align="-0.125em" color="-exact-secondary-label" aria-hidden=true
-            text " "
-          text bookmarkLine(item)
+    row delete=remove(item.room, item.event) contextmenu=aim(item.event) contextPopover="bookmark-menu" testId=`${identifier}-row`
+      button appearance="none" press=open(item.room, item.event) aria-label=bookmarkLabel(item, inChat) testId=identifier
+        display="flex" flex-direction="row" align-items="flex-start" gap=12 flex=1 min-width=0 text-align="start" padding="8px 0"
+        if not inChat
+          view position="relative" flex-shrink=0
+            Face(picture=item.avatar, initials=item.initials, size=40)
+            if item.network != "matrix"
+              NetworkBadge(network=item.network, identifier=`${identifier}-network`)
+        column flex=1 min-width=0 gap=2
+          // at large text sizes the time wraps under the name instead of narrowing it.
+          row flex-wrap="wrap" column-gap=6 align-items="baseline"
+            text (inChat ? bookmarkSender(item) : item.chatName) font="-exact-subheadline" font-weight=600 color="-exact-label"
+              flex="1 1 6rem" min-width=0 line-clamp=1
+            text formatDay(item.time, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label" margin-left="auto"
+          text font="-exact-subheadline" color="-exact-secondary-label" line-clamp=3 testId=`${identifier}-text`
+            if not inChat
+              text `${bookmarkSender(item)}: ` color="-exact-secondary-label"
+            if symbol != ""
+              image symbol width="1em" height="1em" vertical-align="-0.125em" color="-exact-secondary-label" aria-hidden=true
+              text " "
+            text bookmarkLine(item)
 
 // a saved message's long-press menu (BookmarkRow's), beside the list that holds the rows: a
 // popover inside a section would be its cells. Copy for a text or a caption.
@@ -123,13 +124,17 @@ component BookmarksScreen
     aim: action
     copy: action
     remove: action
+    // a row's swipe: its chat and event.
+    removeOne: action
   view
     column navigationKey=route navigationScroll="bookmarks" position="absolute" inset=0 display="flex" flex-direction="column"
       testId="bookmarks-screen"
       header display="flex" align-items="center"
         button id="back" press=close aria-label="Back" testId="bookmarks-back"
           image "symbol:back"
-        text "Bookmarks" role="heading" aria-level=1
+        // inline, as a page under the inbox: a large title showed inline over rows and large over
+        // the empty state.
+        text "Bookmarks" role="heading" aria-level=2
       BookmarkMenu(aimedText=aimedText, copy=copy, remove=remove)
       if items.length == 0
         if loaded
@@ -141,6 +146,6 @@ component BookmarksScreen
         list id="bookmarks" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="bookmarks-list"
           section
             for b in items key=b.event
-              BookmarkRow(item=b, inChat=inChat, now=now, offset=offset, open=open, aim=aim, identifier=`bookmark-${b.event}`)
+              BookmarkRow(item=b, inChat=inChat, now=now, offset=offset, open=open, aim=aim, remove=removeOne, identifier=`bookmark-${b.event}`)
             footer
               text "Bookmarks are kept on your server, on all your devices. No one in the chat sees them."

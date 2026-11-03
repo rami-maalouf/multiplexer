@@ -28,9 +28,10 @@ members Multiplexer
         send bookmarked = addBookmark(openRoom, held)
       haptic("success")
     letGo()
-  // the filter sheet's Bookmarks row passes its value.
+  // the filter sheet's Bookmarks row passes its value. The sheet closes and the list is a page
+  // of its own: a chat opened from it then opens full screen, not in the sheet.
   action chooseBookmarks(v: string)
-    nav = go(nav, path("bookmarks"))
+    nav = push(back(nav), path("bookmarks"))
   action openChatBookmarks
     nav = push(nav, path("chatBookmarks", openRoom))
   action aimBookmark(event: string)
@@ -44,6 +45,10 @@ members Multiplexer
         haptic("success")
       case none
         aimedBookmark = ""
+  // a row's swipe.
+  action removeBookmarkOf(room: string, event: string)
+    send bookmarked = removeBookmark(room, event)
+    haptic("success")
   // the list of all: the chat opens at the message.
   action openBookmark(room: string, event: string)
     jumpRoom = room

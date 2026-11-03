@@ -1,0 +1,9 @@
+// Bookmarks, opened by its path: a test starts signed out and cannot sign in, so it shows the
+// list with none saved (saving and opening one need a session; drives check those).
+test "Bookmarks with none saved says how to save a message"
+  at "/bookmarks"
+  clock data
+  expect tree has "bookmarks-screen"
+  expect tree has "bookmarks-empty"
+  expect tree missing "bookmarks-list"
+  expect tree missing "bookmarks-loading"
