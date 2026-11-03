@@ -387,7 +387,7 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// Starts the sync once, for every caller; a start that failed is tried again at the next call.
-    private func startSync(timeout: TimeInterval) async throws {
+    func startSync(timeout: TimeInterval) async throws {
         let start: Task<Void, Error> = lock.withLock {
             if let started = syncStart { return started }
             let task = Task { try await self.openSync(timeout: timeout) }

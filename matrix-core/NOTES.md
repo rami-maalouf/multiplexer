@@ -324,7 +324,9 @@ custom room account data, so they are one global account data event,
   later). A list read then was empty, and a change made from it would have replaced every
   bookmark on the server. So while the store has no bookmarks event, MatrixCore reads it from the
   server (`GET /user/{userId}/account_data/{type}`, kept 30 s); if that read fails, a change
-  throws instead of writing (`testANewDeviceKeepsTheBookmarksSavedBefore`). The other account
+  throws instead of writing (`testANewDeviceKeepsTheBookmarksSavedBefore`). The bookmark calls start
+  the sync first, as `rooms()` does: on a new device, a store read before the first sync made that
+  sync time out (three runs of three; none with the sync started first). The other account
   data events (`com.ramimaalouf.multiplexer.names`, `.chats`, `io.element.recent_emoji`) still
   read only the store, so a change made in a new device's first seconds could replace them too.
 - **Limit: another device's bookmark** reaches this one's store with the sync, but the sdk tells

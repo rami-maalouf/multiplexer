@@ -31,7 +31,10 @@ public struct Bookmark: Equatable, Sendable {
 extension MatrixAccount {
     /// The saved messages, the last saved first (empty when neither the store nor the server can
     /// say).
-    public func bookmarks() async -> [Bookmark] {
+    public func bookmarks(timeout: TimeInterval = 30) async -> [Bookmark] {
+        // the sync first, as the rooms start it: a device that read its store before its first
+        // sync timed out on that sync (seen in `BookmarksTests`).
+        guard (try? await startSync(timeout: timeout)) != nil else { return [] }
         let me = (try? client.userId()) ?? ""
         return ((try? await currentBookmarks()) ?? Bookmarks()).items.map { $0.bookmark(me: me) }
     }
@@ -40,6 +43,7 @@ extension MatrixAccount {
     /// does not have yet cannot be saved: it has no event to open the chat at.
     @discardableResult
     public func bookmark(roomId: String, messageId: String, timeout: TimeInterval = 30) async throws -> Bookmark {
+        try await startSync(timeout: timeout)
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         guard let event = live.items.event(of: messageId), case .eventId(let eventId) = event.eventOrTransactionId,
               let saved = SavedBookmark(event, roomId: roomId, eventId: eventId, savedAt: Self.now()) else {
@@ -53,7 +57,8 @@ extension MatrixAccount {
     }
 
     /// Forgets a saved message, on every device.
-    public func removeBookmark(roomId: String, eventId: String) async throws {
+    public func removeBookmark(roomId: String, eventId: String, timeout: TimeInterval = 30) async throws {
+        try await startSync(timeout: timeout)
         try await changeBookmarks { $0.items.removeAll { $0.roomId == roomId && $0.eventId == eventId } }
     }
 
