@@ -120,7 +120,7 @@ extension MatrixAccount {
     /// The chat's media timeline, opened once.
     func mediaTimeline(_ roomId: String, timeout: TimeInterval) async throws -> MediaTimeline {
         let opening = infoStates.timeline(roomId) {
-            try await self.openTimeline(roomId, types: [.image, .video], prefix: MediaTimeline.prefix, timeout: timeout)
+            try await self.openTimeline(roomId, types: [.image, .video], prefix: MediaTimeline.prefix, change: .info(roomId), timeout: timeout)
         }
         do {
             return try await opening.value
@@ -131,14 +131,15 @@ extension MatrixAccount {
     }
 
     /// A live timeline of the chat with only messages of `types`, its items' ids starting with
-    /// `prefix`. A change tells the info page (`MatrixChange.info`), and the search in the chat on it.
-    func openTimeline(_ roomId: String, types: [RoomMessageEventMessageType], prefix: String, timeout: TimeInterval) async throws -> MediaTimeline {
+    /// `prefix`; a change of its items tells `change`.
+    func openTimeline(_ roomId: String, types: [RoomMessageEventMessageType], prefix: String, change: MatrixChange,
+                      timeout: TimeInterval) async throws -> MediaTimeline {
         let timeline = try await room(roomId, timeout: timeout).timelineWithConfiguration(configuration: TimelineConfiguration(
             focus: .live(hideThreadedEvents: false), filter: .onlyMessage(types: types),
             internalIdPrefix: prefix, dateDividerMode: .monthly, trackReadReceipts: .disabled, reportUtds: false))
         let items = TimelineItems(me: (try? client.userId()) ?? "")
         let handle = await timeline.addListener(listener: items)
-        items.onChange = { [weak self] in self?.notify(.info(roomId)) }
+        items.onChange = { [weak self] in self?.notify(change) }
         return MediaTimeline(timeline: timeline, items: items, handle: handle)
     }
 

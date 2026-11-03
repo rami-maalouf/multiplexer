@@ -340,7 +340,7 @@ extension MatrixAccount {
     private func kindTimeline(_ kind: SearchKind, _ roomId: String, timeout: TimeInterval) async throws -> MediaTimeline {
         if kind == .images || kind == .videos { return try await mediaTimeline(roomId, timeout: timeout) }
         let opening = search.timeline(kind, roomId) {
-            try await self.openTimeline(roomId, types: kind.messageTypes, prefix: "search-\(kind.rawValue)-", timeout: timeout)
+            try await self.openTimeline(roomId, types: kind.messageTypes, prefix: "search-\(kind.rawValue)-", change: .search, timeout: timeout)
         }
         do {
             return try await opening.value

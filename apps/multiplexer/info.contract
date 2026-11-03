@@ -6,6 +6,10 @@ use Face from "./bubble.contract"
 use networkName from "./network.contract"
 use deleteMessage from "./inbox.contract"
 
+// the page comes back as the search in it closes.
+keyframes fade-back
+  from opacity=0
+
 // what the page shows of the chat. name: the one it shows (yours, when you gave it one); roomName:
 // the one everyone sees; customName: yours, or "". picture: its picture once downloaded (""),
 // else initials. memberCount: the people who have joined, its bridge's bot left out. isOneToOne:
@@ -90,7 +94,8 @@ component InfoButton
       image symbol font-size="min(-exact-title3, 24px)" color="AccentColor" aria-hidden=true
       text label font="-exact-caption1" font-size="min(-exact-caption1, 20px)" color="-exact-label" text-align="center"
 
-// the page. The Search button waits for search in one chat (B19).
+// the page. Search turns it into the search in this chat, which the caller puts in its slot
+// (app.contract): the bar names the chat, Edit goes, and X turns it back.
 component InfoPage
   props
     route: string
@@ -121,18 +126,32 @@ component InfoPage
     seeMembers: action
     seeMedia: action
     open: action
+    // the search in this chat is open; it was closed on this visit (the page fades back in).
+    searching: bool
+    returned: bool
+    search: action
+    closeSearch: action
     largeText: bool
+    reduced: bool
+  slot
   derive canEditGroup = not info.isOneToOne and (info.canRename or info.canChangePicture)
   view
-    column navigationKey=route navigationPresentation="fullscreen" navigationSource="chat-title" navigationScroll="info"
+    column navigationKey=route navigationPresentation="fullscreen" navigationSource="chat-title"
+      navigationScroll=(searching ? "chat-search-results" : "info")
       position="absolute" inset=0 display="flex" flex-direction="column" testId="info-page"
       header display="flex" align-items="center"
-        button id="back" press=close aria-label="Close" testId="close-info"
-          image "symbol:close"
-        // the bar has no title, as Beeper's: the name is the page's own, under the picture.
-        text "" role="heading" aria-level=2
-        button popovertarget="info-edit" testId="info-edit"
-          text "Edit"
+        if searching
+          button id="back" press=closeSearch aria-label="Close Search" testId="close-chat-search"
+            image "symbol:close"
+        else
+          button id="back" press=close aria-label="Close" testId="close-info"
+            image "symbol:close"
+        // the bar has no title, as Beeper's: the name is the page's own, under the picture. The
+        // search names the chat it searches.
+        text (searching ? info.name : "") role="heading" aria-level=2
+        if not searching
+          button popovertarget="info-edit" testId="info-edit"
+            text "Edit"
       column id="info-edit" popover="auto" role="menu"
         if canEditGroup
           button press=edit popovertarget="info-edit" popovertargetaction="hide" testId="edit-group"
@@ -156,90 +175,94 @@ component InfoPage
         button press=askDelete destructive=true popovertarget="info-more" popovertargetaction="hide" testId="info-more-delete"
           image "symbol:delete"
           text "Delete"
-      list id="info" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="info-list"
-        // the header: the picture, the name and what the chat is, with no card.
-        section background-color="transparent"
-          column align-items="center" gap=4 width="100%" padding-bottom=4
-            Face(picture=info.picture, initials=info.initials, size=(largeText ? 120 : 96))
-            text info.name role="heading" aria-level=1 font="-exact-title2" font-weight=700 text-align="center" margin-top=8
-              testId="info-name"
-            if loaded
-              text infoSubtitle(info.network, info.isOneToOne, info.memberCount) font="-exact-subheadline" color="-exact-secondary-label"
-                text-align="center" testId="info-subtitle"
-            if info.customName != ""
-              text `Everyone else sees “${info.roomName}”` font="-exact-footnote" color="-exact-tertiary-label" text-align="center"
-                testId="info-room-name"
-        // Beeper's four: a pinned chat offers Unpin where another offers Archive.
-        section background-color="transparent"
-          row gap=8 width="100%" flex-wrap=(largeText ? "wrap" : "nowrap")
-            InfoButton(label="Search", symbol="symbol:search", press=close, disabled=true, identifier="info-search", largeText=largeText)
-            if pinned
-              InfoButton(label="Low Priority", symbol="symbol:icon.low-priority", press=moveLowPriority, disabled=false, identifier="info-low-priority", largeText=largeText)
-              InfoButton(label="Unpin", symbol="symbol:icon.pin-slash", press=pin, disabled=false, identifier="info-pin", largeText=largeText)
+      if searching
+        children
+      else
+        list id="info" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="info-list"
+          animation=(returned and not reduced ? "fade-back 220ms ease both" : "none")
+          // the header: the picture, the name and what the chat is, with no card.
+          section background-color="transparent"
+            column align-items="center" gap=4 width="100%" padding-bottom=4
+              Face(picture=info.picture, initials=info.initials, size=(largeText ? 120 : 96))
+              text info.name role="heading" aria-level=1 font="-exact-title2" font-weight=700 text-align="center" margin-top=8
+                testId="info-name"
+              if loaded
+                text infoSubtitle(info.network, info.isOneToOne, info.memberCount) font="-exact-subheadline" color="-exact-secondary-label"
+                  text-align="center" testId="info-subtitle"
+              if info.customName != ""
+                text `Everyone else sees “${info.roomName}”` font="-exact-footnote" color="-exact-tertiary-label" text-align="center"
+                  testId="info-room-name"
+          // Beeper's four: a pinned chat offers Unpin where another offers Archive.
+          section background-color="transparent"
+            row gap=8 width="100%" flex-wrap=(largeText ? "wrap" : "nowrap")
+              InfoButton(label="Search", symbol="symbol:search", press=search, disabled=false, identifier="info-search", largeText=largeText)
+              if pinned
+                InfoButton(label="Low Priority", symbol="symbol:icon.low-priority", press=moveLowPriority, disabled=false, identifier="info-low-priority", largeText=largeText)
+                InfoButton(label="Unpin", symbol="symbol:icon.pin-slash", press=pin, disabled=false, identifier="info-pin", largeText=largeText)
+              else
+                InfoButton(label=(archived ? "Unarchive" : "Archive"), symbol=(archived ? "symbol:icon.unarchive" : "symbol:icon.archive"),
+                  press=archive, disabled=false, identifier="info-archive", largeText=largeText)
+                InfoButton(label=(lowPriority ? "Inbox" : "Low Priority"), symbol=(lowPriority ? "symbol:icon.tray" : "symbol:icon.low-priority"),
+                  press=moveLowPriority, disabled=false, identifier="info-low-priority", largeText=largeText)
+              button appearance="none" popovertarget="info-more" testId="info-more" aria-label="More" flex=(largeText ? "1 1 40%" : "1 1 0") min-width=0
+                display="flex" flex-direction="column" align-items="center" justify-content="center" gap=4 padding="10px 4px" min-height=64
+                border-radius=14 background-color="-exact-secondary-grouped-background"
+                image "symbol:more" font-size="min(-exact-title3, 24px)" color="AccentColor" aria-hidden=true
+                text "More" font="-exact-caption1" font-size="min(-exact-caption1, 20px)" color="-exact-label"
+          if info.topic != ""
+            section
+              header
+                text "About"
+              row
+                text info.topic white-space="pre-wrap" overflow-wrap="break-word" min-width=0 testId="info-topic"
+          // the newest photos and videos: a row of four, or more once asked; a tap opens the viewer,
+          // which zooms out of the tile.
+          section
+            header
+              text "Media"
+            if media.length == 0
+              row
+                text (mediaLoaded ? "No photos or videos yet." : "Loading…") color="-exact-secondary-label" testId="info-no-media"
             else
-              InfoButton(label=(archived ? "Unarchive" : "Archive"), symbol=(archived ? "symbol:icon.unarchive" : "symbol:icon.archive"),
-                press=archive, disabled=false, identifier="info-archive", largeText=largeText)
-              InfoButton(label=(lowPriority ? "Inbox" : "Low Priority"), symbol=(lowPriority ? "symbol:icon.tray" : "symbol:icon.low-priority"),
-                press=moveLowPriority, disabled=false, identifier="info-low-priority", largeText=largeText)
-            button appearance="none" popovertarget="info-more" testId="info-more" aria-label="More" flex=(largeText ? "1 1 40%" : "1 1 0") min-width=0
-              display="flex" flex-direction="column" align-items="center" justify-content="center" gap=4 padding="10px 4px" min-height=64
-              border-radius=14 background-color="-exact-secondary-grouped-background"
-              image "symbol:more" font-size="min(-exact-title3, 24px)" color="AccentColor" aria-hidden=true
-              text "More" font="-exact-caption1" font-size="min(-exact-caption1, 20px)" color="-exact-label"
-        if info.topic != ""
-          section
-            header
-              text "About"
-            row
-              text info.topic white-space="pre-wrap" overflow-wrap="break-word" min-width=0 testId="info-topic"
-        // the newest photos and videos: a row of four, or more once asked; a tap opens the viewer,
-        // which zooms out of the tile.
-        section
-          header
-            text "Media"
-          if media.length == 0
-            row
-              text (mediaLoaded ? "No photos or videos yet." : "Loading…") color="-exact-secondary-label" testId="info-no-media"
-          else
-            view display="grid" grid-template-columns=(largeText ? "repeat(3, 1fr)" : "repeat(4, 1fr)") gap=6 width="100%" padding=10 box-sizing="border-box"
-              testId="info-media"
-              for m in media key=m.id
-                button appearance="none" press=open(m.id, m.isVideo) id=(m.isVideo ? `video-${m.id}` : `photo-${m.id}`)
-                  testId=`info-media-${m.id}` aria-label=(m.caption != "" ? m.caption : (m.isVideo ? "Video" : "Photo"))
-                  aspect-ratio="1 / 1" border-radius=10 overflow="hidden" background-color="-exact-tertiary-fill" position="relative"
-                  if m.image != ""
-                    image m.image width="100%" height="100%" object-fit="cover" aria-label=""
-                  if m.isVideo
-                    row position="absolute" left=4 bottom=4 gap=2 align-items="center" padding="1px 5px" border-radius=8
-                      background-color="media.scrim" aria-hidden=true
-                      image "symbol:play-fill" font-size="min(-exact-caption2, 14px)" color="media.ink"
-                      if m.seconds > 0
-                        text clipLength(m.seconds) font-size="min(-exact-caption2, 14px)" color="media.ink" font-variant-numeric="tabular-nums"
-            if not moreMedia and media.length >= 4
-              button press=seeMedia testId="info-see-media"
-                text "See More"
-                image "symbol:forward-chevron"
-        // the members, by name. A bridged group gets its people on its network: Matrix cannot add one there.
-        if not info.isOneToOne and loaded
-          section
-            header
-              text `${total} ${total == 1 ? "Member" : "Members"}`
-            if info.canInvite and info.network == "matrix"
-              button press=addMember testId="info-add-member"
-                image "symbol:follow"
-                text "Add Member"
-            for m in members key=m.id
-              row gap=12 align-items="center" testId=`info-member-${m.id}`
-                Face(picture=m.picture, initials=m.initials, size=32)
-                text m.name flex=1 min-width=0
-                if m.isOwn
-                  text "You" color="-exact-secondary-label"
-            if total > members.length
-              button press=seeMembers testId="info-see-members"
-                text "See All"
-                image "symbol:forward-chevron"
-            footer
-              text (info.network != "matrix" ? `People join this group on ${networkName(info.network)}.` : "")
+              view display="grid" grid-template-columns=(largeText ? "repeat(3, 1fr)" : "repeat(4, 1fr)") gap=6 width="100%" padding=10 box-sizing="border-box"
+                testId="info-media"
+                for m in media key=m.id
+                  button appearance="none" press=open(m.id, m.isVideo) id=(m.isVideo ? `video-${m.id}` : `photo-${m.id}`)
+                    testId=`info-media-${m.id}` aria-label=(m.caption != "" ? m.caption : (m.isVideo ? "Video" : "Photo"))
+                    aspect-ratio="1 / 1" border-radius=10 overflow="hidden" background-color="-exact-tertiary-fill" position="relative"
+                    if m.image != ""
+                      image m.image width="100%" height="100%" object-fit="cover" aria-label=""
+                    if m.isVideo
+                      row position="absolute" left=4 bottom=4 gap=2 align-items="center" padding="1px 5px" border-radius=8
+                        background-color="media.scrim" aria-hidden=true
+                        image "symbol:play-fill" font-size="min(-exact-caption2, 14px)" color="media.ink"
+                        if m.seconds > 0
+                          text clipLength(m.seconds) font-size="min(-exact-caption2, 14px)" color="media.ink" font-variant-numeric="tabular-nums"
+              if not moreMedia and media.length >= 4
+                button press=seeMedia testId="info-see-media"
+                  text "See More"
+                  image "symbol:forward-chevron"
+          // the members, by name. A bridged group gets its people on its network: Matrix cannot add one there.
+          if not info.isOneToOne and loaded
+            section
+              header
+                text `${total} ${total == 1 ? "Member" : "Members"}`
+              if info.canInvite and info.network == "matrix"
+                button press=addMember testId="info-add-member"
+                  image "symbol:follow"
+                  text "Add Member"
+              for m in members key=m.id
+                row gap=12 align-items="center" testId=`info-member-${m.id}`
+                  Face(picture=m.picture, initials=m.initials, size=32)
+                  text m.name flex=1 min-width=0
+                  if m.isOwn
+                    text "You" color="-exact-secondary-label"
+              if total > members.length
+                button press=seeMembers testId="info-see-members"
+                  text "See All"
+                  image "symbol:forward-chevron"
+              footer
+                text (info.network != "matrix" ? `People join this group on ${networkName(info.network)}.` : "")
       dialog id="info-delete" role="alertdialog" aria-label=`Delete “${info.name}”?`
         text deleteMessage(info.network)
         button press=deleteChat destructive=true commandfor="info-delete" command="close" testId="info-delete-confirm"

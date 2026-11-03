@@ -80,3 +80,14 @@ https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eig
   minutes over the task.
 10. `clock 600` after a `clock +2500` answered "the clock cannot go backwards (2500.0 → 600.0)".
    Clear, but it could add that `clock +600` advances by 600. About 1 minute.
+
+## Two more (2026-11-03, one chat's search task, `ed43ad09a0`)
+
+11. `key Enter` (to press the keyboard's Search key) answered "unknown op: key". The help reads
+   `type <target> <text>|key <Name>`, so `key` is a form of `type`, but the refusal lists only
+   the ops. It could say "`key` goes after `type <target>`: `type search-field key Enter`".
+   About 1 minute.
+12. `clock until state jumpedTo != "" within 20000` answered with the grammar, `== <literal>`
+   only. To wait for a state to take any value, a drive needs a fixed `clock +N` and a `state`
+   after it. `!=` (or "until it changes") would remove the guess. About 1 minute.
+

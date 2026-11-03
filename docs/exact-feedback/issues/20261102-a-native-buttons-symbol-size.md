@@ -49,6 +49,16 @@ Both grow the same way at the accessibility sizes. With the sizes in a `derive`,
 clean. So the fixed-type check treats two equal forms differently, and still names no capped
 form it accepts. About 2 minutes.
 
+Seen again on 2026-11-03 at `ed43ad09a0`, in a search screen's symbols (a kind's round
+button, a file row's and an audio row's fixed boxes, and a bar's field and close button): at
+the largest text size, symbols sized in `rem` grew past their circles, and `check` found one
+2 points past the screen's edge. `font-size="min(1.0625rem, 22px)"` on the image is still
+refused ("expected number"). `(largeText ? "22px" : "1.0625rem")` builds, and `verify ios`
+flags it as fixed type and names only a role or a `rem` size. A role with a cap,
+`font-size="min(-exact-title3, 22px)"`, builds and passes `verify`: it is the form this
+finding asked for, but no message or doc names it; I found it in the same file's search
+field, which caps its text that way. About 6 minutes and three builds.
+
 ## Pull request (2026-11-02)
 
 https://github.com/ccheever/exact2/pull/1343 (fixes part of it): verify's finding names a role with a cap (part d). Pull request https://github.com/ccheever/exact2/pull/1349 makes the native button's refusal say that `font-size` on the `image` sizes the symbol (part a).

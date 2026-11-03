@@ -524,6 +524,7 @@ final class Matrix: ExactModule {
         case .room(let roomId): return "thread:\(roomId)"
         case .profile: return "profile"
         case .info(let roomId): return "info:\(roomId)"
+        case .search: return "search"
         }
     }
 

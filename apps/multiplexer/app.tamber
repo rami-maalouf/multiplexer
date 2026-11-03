@@ -41,6 +41,8 @@ icons
   icon.video = icon(sf "video", svg "icons/video.svg")
   icon.clock = icon(sf "clock", svg "icons/clock.svg")
   icon.safari = icon(sf "safari", svg "icons/safari.svg")
+  // a chat search's Audio kind and a found voice message, as Beeper draws them.
+  icon.waveform = icon(sf "waveform", svg "icons/waveform.svg")
   // the inbox title menu's Merge Chats.
   icon.merge = icon(sf "arrow.triangle.merge", svg "icons/merge.svg")
   icon.chevron-down = icon(sf "chevron.down", svg "icons/chevron-down.svg")

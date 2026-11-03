@@ -54,6 +54,8 @@ members Multiplexer
     panel = false
     allMembers = false
     allMedia = false
+    chatSearching = false
+    chatSearchClosed = false
     blur("composer")
     nav = push(nav, path("info", openRoom))
   action closeInfo

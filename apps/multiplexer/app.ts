@@ -241,13 +241,18 @@ const sources: Sources = {
   },
   // the search screen's results (search.ts): a kind's messages, the chats opened last (recent,
   // newest first) before any word, or chats by name, messages and links. Nothing while it is closed.
-  loadSearch: async ([userId, searching, query, kind, recent], _store, _storage, native): Promise<Result<'loadSearch'>> => {
-    if (userId === '' || !searching || !native?.available) return { owner: userId, query, kind, chats: [], messages: [], links: [] };
-    // a found photo's picture, once downloaded; the recent chats' last messages as they change.
+  // With room, the search in that chat (its info page's): its messages and links, or a kind's.
+  loadSearch: async ([userId, searching, query, kind, recent, room], _store, _storage, native): Promise<Result<'loadSearch'>> => {
+    const none = { owner: userId, room, query, kind, chats: [], messages: [], links: [] };
+    if (userId === '' || !searching || !native?.available || (room !== '' && query === '' && kind === '')) return none;
+    // a found photo's or sender's picture, once downloaded, and a chat's new file, link or voice
+    // message on a kind's page; a chat's new photo or video (the info page's); the recent chats'
+    // last messages as they change.
     native.watch('search');
-    if (query === '' && kind === '') native.watch('rooms');
-    const answer = (await native.later({ op: 'search', query, kind, recent })) as SearchAnswer;
-    return { owner: userId, query, kind, ...searchFound(answer, query, initials) };
+    if (room !== '' && (kind === 'images' || kind === 'videos')) native.watch(`info:${room}`);
+    if (room === '' && query === '' && kind === '') native.watch('rooms');
+    const answer = (await native.later({ op: 'search', query, kind, recent, room })) as SearchAnswer;
+    return { owner: userId, room, query, kind, ...searchFound(answer, query, initials, room !== '') };
   },
   // a found message's chat pages back to it: its id there, or "" when it is further back.
   showMessage: async ([roomId, eventId], _store, _storage, native): Promise<Result<'showMessage'>> =>
