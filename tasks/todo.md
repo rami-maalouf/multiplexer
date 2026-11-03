@@ -730,7 +730,9 @@ have no suffix.
 restart, about 10 s); `!wa sync contacts` in the WhatsApp bot chat; a read-only drive on `@rami`.
 
 **Applied 2026-11-03** (`server/notes/install.md`). The bot does not answer `!wa sync contacts`,
-but it renames in the background, about 800 contacts a minute.
+but it renamed in the background (about 900 a minute): 14,529 names with " (WA)" became 2,250 by
+23:03 UTC. The rest are people with no contact info (26 DM rooms of 279 keep " (WA)" for now);
+each changes on that person's next update.
 
 **Dependencies:** B1 (so each chat still shows its network). **Scope:** S (server conversation)
 
