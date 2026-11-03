@@ -109,8 +109,11 @@ extension MatrixAccount {
         let live = try await mediaTimeline(roomId, timeout: timeout)
         try await live.pageBackMedia(until: limit)
         let me = (try? client.userId()) ?? ""
+        // a deleted chat's older photos went with it.
+        let cut = await chatMarks().cleared[roomId] ?? 0
         return live.items.read { items, _ in
-            items.reversed().compactMap { ChatMedia($0, me: me) }.prefix(limit).map { $0 }
+            items.reversed().filter { ($0.asEvent()?.timestamp ?? 0) > cut }
+                .compactMap { ChatMedia($0, me: me) }.prefix(limit).map { $0 }
         }
     }
 

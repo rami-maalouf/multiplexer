@@ -151,6 +151,8 @@ public final class MatrixAccount: @unchecked Sendable {
     /// new message never pushes one the reader has loaded out of the chat.
     public func messages(roomId: String, limit: Int, timeout: TimeInterval = 30) async throws -> [Message] {
         let live = try await liveTimeline(roomId, limit: limit, timeout: timeout)
+        // a chat deleted here or on another device shows only what came after.
+        live.items.since = await chatMarks().cleared[roomId] ?? 0
         let shown = live.shown(limit: limit)
         // a quote's sender or a reader whose name no message carries: from the room's members.
         lookUpNames(roomId, live.items.names)
@@ -176,6 +178,7 @@ public final class MatrixAccount: @unchecked Sendable {
     private func openTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
         let timeline = try await room(roomId, timeout: timeout).timeline()
         let items = TimelineItems(me: (try? client.userId()) ?? "")
+        items.since = await chatMarks().cleared[roomId] ?? 0
         let handle = await timeline.addListener(listener: items)
         let live = LiveTimeline(timeline: timeline, items: items, handle: handle)
         try await live.pageBack(until: limit)
@@ -193,6 +196,9 @@ public final class MatrixAccount: @unchecked Sendable {
         lock.withLock { readyTimelines[roomId] = live }
         return live
     }
+
+    /// The chat's live timeline if it is open, else nil.
+    func readyTimeline(_ roomId: String) -> LiveTimeline? { lock.withLock { readyTimelines[roomId] } }
 
     /// Shows `count` older messages in an open chat: those the timeline has, then pages
     /// back from the server.
@@ -481,9 +487,14 @@ final class LiveTimeline: @unchecked Sendable {
         for eventId in asks { Task { try? await timeline.fetchDetailsForEvent(eventId: eventId) } }
     }
 
+    /// True once the chat shows its first message, or the first after its delete.
     var atStart: Bool {
-        let all = items.messages()
-        return lock.withLock { reachedStart && (all.first == nil || all.first?.id == firstShown) }
+        let all = items.messages(), cut = items.reachesCut
+        return lock.withLock {
+            // the first one shown can be from before the delete, which hides it.
+            let hidden = cut && !all.contains { $0.id == firstShown }
+            return (reachedStart || cut) && (all.first == nil || all.first?.id == firstShown || hidden)
+        }
     }
 
     func show(last count: Int) {
@@ -498,7 +509,7 @@ final class LiveTimeline: @unchecked Sendable {
         for _ in 0..<5 {
             // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
             await items.settle()
-            if lock.withLock({ reachedStart }) || olderThanShown() >= count { return }
+            if lock.withLock({ reachedStart }) || items.reachesCut || olderThanShown() >= count { return }
             let start = try await timeline.paginateBackwards(numEvents: UInt16(clamping: count))
             lock.withLock { reachedStart = start }
         }
@@ -530,6 +541,9 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     let names = MemberNames()
     private let lock = NSLock()
     private var items: [TimelineItem] = []
+    /// The time of the chat's newest message when it was deleted (`ChatMarks.cleared`): messages
+    /// up to it do not show. 0 for none.
+    private var cut: UInt64 = 0
     private var lastUpdate = Date()
     private var changed: (@Sendable () -> Void)?
 
@@ -577,8 +591,18 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
         }
     }
 
+    var since: UInt64 {
+        get { lock.withLock { cut } }
+        set { lock.withLock { cut = newValue } }
+    }
+
     func messages() -> [Message] {
-        lock.withLock { chatMessages(items, me: me, names: names) }
+        lock.withLock { chatMessages(items, me: me, names: names).filter { $0.timestamp > cut } }
+    }
+
+    /// The timeline holds an event from before the chat's delete: nothing older shows.
+    var reachesCut: Bool {
+        lock.withLock { cut > 0 && items.contains { ($0.asEvent()?.timestamp ?? .max) <= cut } }
     }
 
     /// Reads the items as they are now.

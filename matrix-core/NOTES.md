@@ -209,8 +209,8 @@ bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a Wha
   `m.lowpriority`. Tags would need one request per chat at each launch. One global account data
   event instead: the sdk writes it (`Client.setAccountData`) and reads it from its store
   (`Client.accountData`), which the sync fills. Its content: `{"archived": {"<room id>": {"ts":
-  <ms>}}, "hidden": {...}}`, `ts` being the time of the chat's newest message when it was marked.
-  Other keys (a later version's labels) are kept as they are.
+  <ms>}}, "hidden": {...}, "cleared": {...}}`, `ts` being the time of the chat's newest message
+  when it was marked. Other keys (a later version's labels) are kept as they are.
 - **A new message brings a chat back** (Rami: an archived chat comes back unless it is muted;
   a deleted one comes back too). Nothing is written then: a chat is archived while it is muted or
   its newest message (`RoomSummary.lastTimestamp`: a message, a call, a poll, a sticker or our own
@@ -220,7 +220,11 @@ bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a Wha
 - **Delete does not leave the room.** bridgev2 drops our own leave unless `bridge_matrix_leave`
   is on (the playbook writes `false` for the WhatsApp and Instagram bridges); with it on, mautrix-
   whatsapp's `HandleMatrixMembership` leaves the WhatsApp group (`UpdateGroupParticipants`,
-  remove). A deleted chat stays joined and keeps its history, which shows again when it comes back.
+  remove). A deleted chat stays joined and keeps its history on the server. When it comes back it
+  shows only the messages after the delete (Rami, 2026-11-03): Delete also writes the chat's
+  `cleared` time, which stays after the chat comes back. The chat's timeline leaves out messages
+  up to it (`TimelineItems.since`), stops paging back there and counts as at its start; the info
+  page's photos and videos leave them out too. A delete on another device cuts at the next load.
 - **Shown at once.** Each action shows in the list before the server confirms it (`ChatStates`,
   as `Pins` does for a pin); an answer the server never confirms is dropped after 30 s. Changes of
   the marks go one at a time from the newest content this device knows.

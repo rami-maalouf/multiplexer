@@ -86,11 +86,16 @@ extension MatrixAccount {
     }
 
     /// Deletes a chat from this app only: it shows nowhere, on any of the account's devices, until
-    /// a newer message comes. The room stays joined, so the chat stays on its network: a bridge
-    /// that is told the account left can leave the group there (`NOTES.md`).
+    /// a newer message comes, and then only the messages after the delete. The room stays joined,
+    /// so the chat stays on its network: a bridge that is told the account left can leave the
+    /// group there (`NOTES.md`).
     public func hide(roomId: String, timeout: TimeInterval = 30) async throws {
         let newest = await newestTimestamp(try await room(roomId, timeout: timeout))
-        try await changeMarks { $0.hidden[roomId] = newest }
+        try await changeMarks {
+            $0.hidden[roomId] = newest
+            $0.cleared[roomId] = newest
+        }
+        readyTimeline(roomId)?.items.since = newest
     }
 
     /// The archive and delete marks: those this device just wrote until the server has them,
@@ -207,15 +212,20 @@ struct ChatMarks: Equatable, Sendable {
 
     var archived: [String: UInt64] = [:]
     var hidden: [String: UInt64] = [:]
+    /// The time of each deleted chat's newest message at its delete, kept after it comes back:
+    /// the chat shows only the messages after it.
+    var cleared: [String: UInt64] = [:]
     /// The content's other keys, from a later version of the app, kept as they are.
     private var other: String = "{}"
 
-    init(archived: [String: UInt64] = [:], hidden: [String: UInt64] = [:]) {
+    init(archived: [String: UInt64] = [:], hidden: [String: UInt64] = [:], cleared: [String: UInt64] = [:]) {
         self.archived = archived
         self.hidden = hidden
+        self.cleared = cleared
     }
 
-    /// From the event's content (`{"archived": {"<room id>": {"ts": <ms>}}, "hidden": {...}}`);
+    /// From the event's content (`{"archived": {"<room id>": {"ts": <ms>}}, "hidden": {...},
+    /// "cleared": {...}}`);
     /// empty for none.
     init(json: String?) {
         guard let data = json?.data(using: .utf8),
@@ -227,6 +237,7 @@ struct ChatMarks: Equatable, Sendable {
         }
         archived = times("archived")
         hidden = times("hidden")
+        cleared = times("cleared")
         other = (try? JSONSerialization.data(withJSONObject: content)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
     }
 
@@ -234,11 +245,13 @@ struct ChatMarks: Equatable, Sendable {
         var content = (other.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
         content["archived"] = archived.mapValues { ["ts": $0] }
         content["hidden"] = hidden.mapValues { ["ts": $0] }
+        content["cleared"] = cleared.mapValues { ["ts": $0] }
         let data = (try? JSONSerialization.data(withJSONObject: content, options: [.sortedKeys])) ?? Data("{}".utf8)
         return String(decoding: data, as: UTF8.self)
     }
 
     /// Drops the marks of chats a newer message brought back; a chat not in `rooms` keeps its mark.
+    /// A delete's cut stays.
     mutating func dropReturned(_ rooms: [RoomSummary]) {
         for room in rooms {
             if let ts = archived[room.id], !room.isMuted, room.lastTimestamp > ts { archived[room.id] = nil }
@@ -246,7 +259,7 @@ struct ChatMarks: Equatable, Sendable {
         }
     }
 
-    static func == (a: ChatMarks, b: ChatMarks) -> Bool { a.archived == b.archived && a.hidden == b.hidden }
+    static func == (a: ChatMarks, b: ChatMarks) -> Bool { a.archived == b.archived && a.hidden == b.hidden && a.cleared == b.cleared }
 }
 
 /// What this device asked for and the server has not confirmed yet, so the list shows it at once.

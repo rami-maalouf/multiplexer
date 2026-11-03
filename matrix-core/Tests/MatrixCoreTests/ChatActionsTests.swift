@@ -10,6 +10,11 @@ final class ChatActionsTests: XCTestCase {
     /// A chat whose bridge bot is a service member (`io.element.functional_members`), as a mautrix
     /// bridge marks its bot: a WhatsApp chat. The bot is not invited.
     private let bridgedName = "Multiplexer hold test WhatsApp"
+    /// Rami's choices of 2026-11-03: a deleted chat comes back with only its new messages, and
+    /// our own message brings an archived chat back. The WhatsApp one is for the app's drives.
+    private let choicesDeleteName = "Multiplexer choices test delete"
+    private let choicesArchiveName = "Multiplexer choices test archive"
+    private let choicesWhatsAppName = "Multiplexer choices test WhatsApp"
 
     func testMarkedUnreadClearsOnReadAndAMutedChatStillCountsMentions() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
@@ -146,6 +151,48 @@ final class ChatActionsTests: XCTestCase {
         try await owner.markRead(roomId: archived)
     }
 
+    func testADeletedChatComesBackWithOnlyItsNewMessages() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let deleted = try await testRooms(owner, sender, user2: user2)[choicesDeleteName]!
+        if try await summary(owner, deleted, { _ in true }).isHidden {
+            try await say("Back \(UUID().uuidString)", in: deleted, as: sender)
+            _ = try await summary(owner, deleted) { !$0.isHidden }
+        }
+        let old = "Old \(UUID().uuidString)"
+        try await say(old, in: deleted, as: sender)
+        _ = try await bodies(owner, deleted) { $0.contains(old) }
+
+        // deleted, the open chat no longer shows its messages.
+        try await owner.hide(roomId: deleted)
+        try await assertListed(owner, deleted, in: nil)
+        let empty = try await owner.messages(roomId: deleted, limit: 20).map(\.body)
+        XCTAssertFalse(empty.contains(old), "a deleted chat still shows its old messages")
+
+        // a new message brings it back with that message only.
+        let new = "New \(UUID().uuidString)"
+        try await say(new, in: deleted, as: sender)
+        try await listed(owner, deleted, in: .inbox)
+        let back = try await bodies(owner, deleted) { $0.contains(new) }
+        XCTAssertFalse(back.contains(old), "the chat that came back shows its old messages")
+        let atStart = try await owner.isAtStart(roomId: deleted)
+        XCTAssertTrue(atStart, "older messages can still be loaded")
+
+        // a device that opens the chat for the first time pages back to the delete, not past it.
+        let second = try await signIn(homeserver, user, password)
+        try await listed(second, deleted, in: .inbox)
+        let fresh = try await bodies(second, deleted) { $0.contains(new) }
+        XCTAssertFalse(fresh.contains(old), "another device shows the old messages")
+        XCTAssertEqual(fresh.last, new)
+        try await second.loadOlder(roomId: deleted)
+        let older = try await second.messages(roomId: deleted, limit: 20).map(\.body)
+        XCTAssertFalse(older.contains(old), "loading older messages shows those before the delete")
+        let secondAtStart = try await second.isAtStart(roomId: deleted)
+        XCTAssertTrue(secondAtStart)
+        try await owner.markRead(roomId: deleted)
+    }
+
     /// The rules without a server: which list each chat is in, when a mark holds, and the
     /// marks' content.
     func testListAndMarkRules() {
@@ -188,11 +235,13 @@ final class ChatActionsTests: XCTestCase {
         XCTAssertEqual(inbox.networks, [NetworkCount(network: "matrix", unread: 4)])
 
         // the content keeps another version's keys, and drops the marks of chats that came back.
-        var read = ChatMarks(json: #"{"archived":{"a":{"ts":10}},"hidden":{"g":{"ts":5}},"labels":{"x":["a"]}}"#)
-        XCTAssertEqual(read, ChatMarks(archived: ["a": 10], hidden: ["g": 5]))
+        var read = ChatMarks(json: #"{"archived":{"a":{"ts":10}},"hidden":{"g":{"ts":5}},"cleared":{"g":{"ts":5}},"labels":{"x":["a"]}}"#)
+        XCTAssertEqual(read, ChatMarks(archived: ["a": 10], hidden: ["g": 5], cleared: ["g": 5]))
         read.dropReturned(rooms)
-        XCTAssertEqual(read, ChatMarks(archived: ["a": 10]))
-        XCTAssertEqual(read.json(), #"{"archived":{"a":{"ts":10}},"hidden":{},"labels":{"x":["a"]}}"#)
+        // a deleted chat that came back keeps its cut.
+        XCTAssertEqual(read, ChatMarks(archived: ["a": 10], cleared: ["g": 5]))
+        XCTAssertEqual(read.json(), #"{"archived":{"a":{"ts":10}},"cleared":{"g":{"ts":5}},"hidden":{},"labels":{"x":["a"]}}"#)
+
         XCTAssertEqual(ChatMarks(json: nil), ChatMarks())
         XCTAssertEqual(ChatMarks(json: "not json"), ChatMarks())
     }
@@ -214,13 +263,13 @@ final class ChatActionsTests: XCTestCase {
         let known = try await owner.rooms()
         var ids: [String: String] = [:]
         let server = String(session.userId.split(separator: ":").last ?? "")
-        for name in [heldName, archiveName, deleteName, bridgedName] {
+        for name in [heldName, archiveName, deleteName, bridgedName, choicesDeleteName, choicesArchiveName, choicesWhatsAppName] {
             if let id = known.first(where: { $0.name == name })?.id {
                 ids[name] = id
                 continue
             }
             var body: [String: Any] = ["name": name, "preset": "private_chat", "invite": [user2]]
-            if name == bridgedName {
+            if name == bridgedName || name == choicesWhatsAppName {
                 body["initial_state"] = [["type": "io.element.functional_members", "state_key": "",
                                           "content": ["service_members": ["@whatsappbot:\(server)"]]]]
             }
@@ -269,6 +318,20 @@ final class ChatActionsTests: XCTestCase {
             if Date().timeIntervalSince(start) > 20 {
                 XCTFail("the chat did not change as expected: \(found)")
                 return found
+            }
+            try await Task.sleep(nanoseconds: 300_000_000)
+        }
+    }
+
+    /// The chat's message bodies once they match `done`, or the last ones after 20 s.
+    private func bodies(_ account: MatrixAccount, _ roomId: String, _ done: ([String]) -> Bool) async throws -> [String] {
+        let start = Date()
+        while true {
+            let shown = try await account.messages(roomId: roomId, limit: 20).map(\.body)
+            if done(shown) { return shown }
+            if Date().timeIntervalSince(start) > 20 {
+                XCTFail("the chat did not show the message: \(shown)")
+                return shown
             }
             try await Task.sleep(nanoseconds: 300_000_000)
         }
