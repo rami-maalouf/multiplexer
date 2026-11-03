@@ -29,3 +29,14 @@ After the app changed to stop removing rows, an append alone kept every row in p
 
 Seen once, on 2026-10-27 at exact2 `cee509ac82`, on the iOS Simulator. Not isolated
 further: the update that moved the rows both removed and appended.
+
+## Seen again, larger (2026-11-03, `ed43ad09a0`)
+
+A chat transcript (`list virtualized=true scroll-start="end"`) was placed at its "New" line with
+`scrollIntoView(list, key, block="center")`. The line was near the top of what was loaded, so
+`reachstart` (one screen ahead, by design) loaded about 20 older messages, which the data added
+above. The view kept its offset, not the rows in view: the next frame showed the older
+messages and the line was out of view. The app now holds back `reachstart`'s load until the line
+is placed. About 15 minutes and four builds. A list that keeps the rows in view in place when
+rows are added above them would remove both this and the one-row move.
+

@@ -160,9 +160,11 @@ extension MatrixAccount {
 
     /// The first unread message of an open chat, by its id: the first message from someone
     /// else after this account's read receipt (from any of its devices; a bridge's double
-    /// puppet sends one when the chat is read on its network). Nil when the room counts no
-    /// unread message, or the first unread one is older than what the chat has loaded.
-    public func firstUnread(roomId: String, timeout: TimeInterval = 30) async throws -> String? {
+    /// puppet sends one when the chat is read on its network). When it is older than what the
+    /// chat shows, the chat pages back once to the receipt's message (at most `pageLimit`
+    /// events) and shows from a few messages before it, so the "New" line has its place. Nil
+    /// when the room counts no unread message, or the first unread one is further back.
+    public func firstUnread(roomId: String, pageLimit: Int = 300, timeout: TimeInterval = 30) async throws -> String? {
         let target = try await room(roomId, timeout: timeout)
         guard let info = try? await target.roomInfo(), info.numUnreadMessages > 0 else { return nil }
         let me = try client.userId()
@@ -174,10 +176,19 @@ extension MatrixAccount {
             }
         }
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        let found = live.items.read { items, me in firstUnreadItem(items, me: me, receipt: latest) }
-        // one the chat does not show yet (older than its first shown message) has no line.
-        guard let found, live.shown(limit: 20).contains(where: { $0.id == found }) else { return nil }
-        return found
+        func shownFirstUnread() -> String? {
+            let found = live.items.read { items, me in firstUnreadItem(items, me: me, receipt: latest) }
+            // one the chat does not show yet (older than its first shown message) has no line.
+            guard let found, live.shown(limit: 20).contains(where: { $0.id == found }) else { return nil }
+            return found
+        }
+        if let found = shownFirstUnread() { return found }
+        // a few read messages above the line, more than half a screen, so the chat placed at the
+        // line does not start at the top of what it shows.
+        guard let latest, try await live.pageBackOnce(toEvent: latest.eventId, context: 8, limit: pageLimit) else { return nil }
+        // the chat shows more now: no change of the timeline's says so.
+        notify(.room(roomId))
+        return shownFirstUnread()
     }
 
     /// A video message's poster (the sender's still of it) as a file in `directory`. Downloaded

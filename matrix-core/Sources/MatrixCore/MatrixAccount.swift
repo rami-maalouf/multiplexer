@@ -470,6 +470,8 @@ final class LiveTimeline: @unchecked Sendable {
     private var firstShown: String?
     /// The server has no older events: the timeline holds the room's first one.
     private var reachedStart = false
+    /// The read receipt's event the chat paged back to for its "New" line (`pageBackOnce`).
+    private var pagedToReceipt: String?
 
     init(timeline: Timeline, items: TimelineItems, handle: TaskHandle) {
         self.timeline = timeline
@@ -552,6 +554,19 @@ final class LiveTimeline: @unchecked Sendable {
             lock.withLock { reachedStart = start }
             await items.settle(quiet: 0.15, limit: 2)
         }
+    }
+
+    /// `show(event:)` for the read receipt's message, once per receipt: a chat whose receipt is
+    /// further back than `limit` events does not page again at each ask. False when it was done
+    /// before, or the message is not that far back.
+    func pageBackOnce(toEvent eventId: String, context: Int, limit: Int) async throws -> Bool {
+        let first = lock.withLock { () -> Bool in
+            if pagedToReceipt == eventId { return false }
+            pagedToReceipt = eventId
+            return true
+        }
+        guard first else { return false }
+        return try await show(event: eventId, context: context, limit: limit) != nil
     }
 
     func showOlder(_ count: Int) async throws {
