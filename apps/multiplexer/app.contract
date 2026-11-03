@@ -129,6 +129,8 @@ shape Message
   statusTime: number
   isAudio: bool
   bars: VoiceBar[]
+  // a voice message's sound file's name, the same on every launch: its transcript's key.
+  audioKey: string
 
 // isMine: this account reacted with it, so a tap takes it back.
 shape Reaction
@@ -423,6 +425,7 @@ component Multiplexer
   members "./gif-members.contract"
   members "./camera-members.contract"
   members "./encryption-members.contract"
+  members "./transcribe-members.contract"
 
   action step
     now = performanceNow()
@@ -1178,6 +1181,15 @@ component Multiplexer
                                 loading=(voicePlaying == m.id and voiceSrc == "" and not failed(voiceFile)), time=voiceTime, speed=voiceSpeed,
                                 dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, play=playVoice(m.id), speedUp=speedUp,
                                 identifier=`voice-${m.id}`)
+                            // its transcript under it (transcribe-members.contract): the words heard while it is
+                            // made, then the text, kept across launches by its sound file's name.
+                            if transcribing == m.id and transcribeRoom == openRoom
+                              text (heardSoFar != "" ? heardSoFar : "Transcribing…") font="-exact-footnote" color="-exact-secondary-label"
+                                max-width="100%" padding="2px 8px" testId=`transcribing-${m.id}`
+                            for t in transcripts.filter(x => x.key == m.audioKey and m.audioKey != "") key=t.key
+                              text (t.text != "" ? t.text : (t.problem == "noSpeech" ? "No speech in this voice message." : "Couldn’t transcribe this voice message on this iPhone."))
+                                font="-exact-subheadline" color=(t.text != "" ? "-exact-label" : "-exact-secondary-label") max-width="100%"
+                                padding="2px 8px" user-select="text" testId=`transcript-${m.id}`
                           // a message on its way is dimmed; one that failed says so, with a way to send it again.
                           if m.waitingForKey
                             text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
@@ -1415,7 +1427,7 @@ component Multiplexer
                   // the emoji sheet hides the actions, as Beeper's does: they would show through it.
                   if top(nav).name != "reactions"
                     MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=heldCanCopy, canEdit=heldCanEdit, canDelete=heldCanDelete,
-                      reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
+                      reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld, canTranscribe=heldCanTranscribe, transcribe=transcribeHeld,
                       markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
       // a choice of Send Later's menu the server refused.
       dialog id="later-refused" role="alertdialog" aria-label="Couldn’t Schedule"

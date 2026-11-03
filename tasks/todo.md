@@ -1091,7 +1091,12 @@ user setting". Beeper keeps the speed per note; ours keeps one speed for the who
   for a received waveform). (2026-11-03, `voice.contract`.)
 - [x] Changing the speed on any note changes it on every note, and the app remembers it. Videos
   keep their own normal speed (Rami). (`state voiceSpeed = 1 persist`.)
-- [ ] Transcribe: "Later".
+- [x] Transcribe (2026-11-03, from "Later"): a held voice message offers Transcribe; Apple's on-device recognizer
+  (`@exact/speech-recognition`, `processLocally`, no cost, nothing leaves the iPhone) turns it into text in the
+  iPhone's language, shown under it and kept across launches by its sound file's name (`transcribe-members.contract`).
+  Under a drive the package hears nothing, so the app was driven to "No speech in this voice message."; on this
+  Mac the same engine transcribed a spoken Ogg Opus clip correctly. Left for Rami's iPhone: one real voice note
+  (and whether Arabic notes need the language chosen).
 
 **Dependencies:** T2.13. **Scope:** M
 

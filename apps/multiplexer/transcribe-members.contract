@@ -1,0 +1,70 @@
+// a voice message's transcript (B16, "Later"): Transcribe in its long-press menu turns it into
+// text on this iPhone (@exact/speech-recognition, processLocally: Apple's on-device recognizer,
+// no cost, nothing leaves the phone), in the iPhone's language. The text shows under the voice
+// message and is kept across launches, by the sound file's name (`Message.audioKey`).
+use startSpeechRecognition, speechRecognitionState, SpeechRecognitionInfo, SpeechRecognitionState from "@exact/speech-recognition"
+use VoiceFile from "./voice.contract"
+
+// a voice message's transcript: key, its sound file's name; text "" with a problem when none came.
+shape VoiceTranscript
+  key: string
+  text: string
+  problem: string
+
+members Multiplexer
+  // kept in a file on this iPhone (app.ts's transcripts), newest first.
+  resource transcripts = loadTranscripts(session.userId) as shape VoiceTranscript[] else empty()
+  mutation savedTranscript as shape VoiceTranscript[] refreshes transcripts
+  // the voice message being transcribed: its id in the open chat, its key, and its chat.
+  state transcribing = ""
+  state transcribeKey = ""
+  state transcribeRoom = ""
+  state recognitionId = ""
+  resource transcribeFile = loadAudio(transcribeRoom, transcribing) as shape VoiceFile else empty()
+  resource heard = speechRecognitionState(recognition=recognitionId, interval=250) as shape SpeechRecognitionState else empty()
+  mutation recognized as shape SpeechRecognitionInfo then recognitionBegun
+  derive transcribedKeys = transcripts.filter(t => t.text != "").map(t => t.key)
+  derive heldCanTranscribe = heldKind == "voice" and (match heldMessage { case some(m) => m.audioKey != "" and not transcribedKeys.includes(m.audioKey), case none => false })
+  // the words heard so far, while it runs.
+  derive heardSoFar = (heard.id == recognitionId and recognitionId != ""
+    ? heard.results.map(r => r.alternatives.map(a => a.transcript).slice(0, 1).join("")).join(" ")
+    : "")
+  task startTranscribe when transcribing != "" and transcribeFile.message == transcribing and transcribeFile.path != "" and recognitionId == "" and not pending(recognized) key=transcribing
+    after(1, beginRecognition)
+  task endTranscribe when recognitionId != "" and heard.id == recognitionId and heard.state == "ended" key=recognitionId
+    after(1, keepTranscript)
+
+  action transcribeHeld
+    match heldMessage
+      case some(m)
+        transcribing = m.id
+        transcribeKey = m.audioKey
+        transcribeRoom = openRoom
+        recognitionId = ""
+      case none
+        transcribing = ""
+    letGo()
+  action beginRecognition
+    send recognized = startSpeechRecognition(path=transcribeFile.path, processLocally=true, continuous=true)
+  action recognitionBegun
+    match recognized
+      case some(r)
+        if r.error != none or r.id == ""
+          keepProblem("unavailable")
+        else
+          recognitionId = r.id
+      case none
+        keepProblem("unavailable")
+  action keepTranscript
+    let text = heard.results.map(r => r.alternatives.map(a => a.transcript).slice(0, 1).join("")).join(" ").trim()
+    if text != ""
+      send savedTranscript = saveTranscript(session.userId, transcribeKey, text, "")
+    else
+      // nothing heard and no error is a recording with no words in it.
+      keepProblem(heard.error == none or heard.error == some("no-speech") ? "noSpeech" : "unavailable")
+    transcribing = ""
+    recognitionId = ""
+  action keepProblem(problem: string)
+    send savedTranscript = saveTranscript(session.userId, transcribeKey, "", problem)
+    transcribing = ""
+    recognitionId = ""
