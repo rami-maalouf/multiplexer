@@ -49,6 +49,8 @@ final class ChatInfoTests: XCTestCase {
         let other = try await signIn(homeserver, user2, password2)
         let roomId = try await testRooms(owner, other, user2: user2)[renameName]!
 
+        // the room may have a picture from an earlier run: the new one is another.
+        let before = try await other.chatInfo(roomId: roomId).pictureUrl
         let name = "\(renameName) \(UUID().uuidString.prefix(8))"
         try await owner.setRoomName(roomId: roomId, name: name)
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("picture-\(UUID().uuidString).jpg")
@@ -57,13 +59,14 @@ final class ChatInfoTests: XCTestCase {
 
         let start = Date()
         var seen = try await other.chatInfo(roomId: roomId)
-        while (seen.roomName != name || seen.pictureUrl.isEmpty), Date().timeIntervalSince(start) < 20 {
+        while (seen.roomName != name || seen.pictureUrl.isEmpty || seen.pictureUrl == before), Date().timeIntervalSince(start) < 20 {
             try await Task.sleep(nanoseconds: 300_000_000)
             seen = try await other.chatInfo(roomId: roomId)
         }
         XCTAssertEqual(seen.roomName, name, "the other sees the new name")
         XCTAssertEqual(seen.name, name)
         XCTAssertFalse(seen.pictureUrl.isEmpty, "the other sees a picture")
+        XCTAssertNotEqual(seen.pictureUrl, before, "the other sees the new picture")
         let picture = try await other.chatPicture(roomId: roomId, directory: freshDirectory())
         let downloaded = try XCTUnwrap(picture.flatMap { UIImage(contentsOfFile: $0.path) }, "the picture did not download")
         XCTAssertEqual(downloaded.size.width, 300, accuracy: 1)
