@@ -137,6 +137,50 @@ Run it after 48 hours of use. (2026-10-28, Rami: closed early, without the 48-ho
 - [x] Rami reviews. Decision: continue to Phase 1, or change the server plan. (Rami: check M0 off. The server plan stays.)
 - [x] Update **Status** and the **Decision log** in `plan.md`.
 
+**Recheck, 2026-11-03** (read only; the window is 2026-10-27 23:00 to 2026-11-03 19:50 UTC, 7 days;
+branch `server/m0-checkpoint`). Rami's decision of 2026-10-28 stands; nothing below changes it.
+- **Both directions.** WhatsApp to Matrix: 1,900 messages from WhatsApp contacts from 2026-10-28
+  on; 99.6% arrived within 10 s of their WhatsApp time (median 0.7 to 0.9 s each day; Synapse's
+  `received_ts` minus `origin_server_ts`). 7 arrived more than 5 minutes late, each one alone, not
+  in a batch as after a reconnect; their cause is not known. Matrix to WhatsApp: 6 messages sent
+  from a Matrix client in WhatsApp rooms (4 on 10-28 with a photo; on 11-03 the app's GIF at
+  18:13 UTC and its Send Later message at 18:14 UTC). Each has a WhatsApp message id in the
+  bridge's database within 2 s.
+- **Disconnects.** No logout: the bridge's WhatsApp login dates from 2026-10-27 22:42 UTC, and the
+  bot sent no message or notice in the window (only room setup events). The bridge's warn-level
+  log is in journald (`sudo journalctl -u matrix-mautrix-whatsapp`; `docker logs` has nothing):
+  24 websocket drops ("failed to read frame header: EOF", once "connection reset by peer"); 10 of
+  them came with a "503 stream error" from WhatsApp's server in the same minute ("assuming
+  automatic reconnect will handle it").
+  The reconnect logs at info, so it is not in the log, but no drop shows as a gap: the 8 longest
+  pauses between incoming messages (2.2 to 3.4 h) are in the night, Eastern time, except one
+  (11-02, 07:30 to 09:50). The bridge restarted 5 times, each in a playbook run (10-28 backup,
+  10-31 twice for Instagram, 11-02 LinkedIn, 11-03 delayed events), 5 to 15 s each; systemd
+  counts no crash (`NRestarts=0`).
+- **Memory and CPU** (sysstat, 977 ten-minute samples, 10-28 to 11-03): CPU p95 4.0%, median
+  0.9%; memory used p95 14%, max 23%; network p95 40 kB/s (max 12 MB/s). Now: the Matrix
+  containers use about 1.6 GiB (PostgreSQL 933 MiB, Synapse 360 MiB, WhatsApp bridge 96 MiB),
+  load 0.2. The only peaks (94 to 99% CPU, 11-02 20:20 to 20:50 and 22:40 to 22:50 UTC) were all
+  "nice" time; the Matrix containers run at nice 0, while two other services on this machine run
+  niced: `flowback-engine` (nice 10, 1.6 GB) and Syncthing (nice 11). Disk: 62 of 96 GB (Docker
+  22 GB, media 1.6 GB, PostgreSQL 1.1 GB, backups 379 MB).
+- **Oracle's rule** (its page, read 2026-11-03): an *Always Free* instance is idle when, over 7
+  days, CPU p95, network and memory (A1 shapes) are all below 20%. Ours meets all three. The page
+  does not say whether the rule applies to a Pay As You Go account; the plan's reading (it does
+  not) is still not confirmed (Q5).
+- **Backup** (chosen 2026-10-28, local, no cost): the playbook's `postgres-backup` runs: 7 daily
+  and 2 weekly dumps of the 4 databases (Synapse 50 MB gzip on 11-03). The 11-03 dumps pass
+  `gzip -t` and end with "dump complete"; the Synapse dump has 174 tables. Limits: the dumps are
+  on the server's only disk, and they hold no media. If Oracle reclaims the instance, they go
+  with it.
+- **For Rami (questions, nothing applied):** (1) an off-server copy, at no cost: a daily pull of
+  the newest dumps (about 55 MB) to the Mac over `ssh oracle`, with or without the media (1.6
+  GB). The dumps hold the WhatsApp, Instagram and LinkedIn sessions, so the copy stays out of git
+  and synced folders. (2) The Instagram bridge still logs at debug (274 debug lines in the last
+  hour, with chat data); `config.yml` says to delete that line after the login. Deleting it
+  restarts the bridges for about 10 s. (3) The two unused Instagram images and Docker's build
+  cache (a deletion: `server/notes/install.md`, 2026-10-31).
+
 ## Phase 1: first own screen (M1)
 
 ### T1.1 Create the Exact app
@@ -618,6 +662,37 @@ from the bridge's display name template on the server.
 - [ ] **Rami's OK at that time** before any server change (the plan's rule 7).
 - [ ] The template changes through the playbook (invariant 6), and names update in the app.
 
+**Prepared (2026-11-03, branch `server/b2-names`, not merged, not applied).** `config.yml` adds
+three lines, the playbook's defaults at the pinned commit without the suffix:
+
+```yaml
+matrix_bridge_mautrix_whatsapp_network_displayname_template: '{% raw %}{{or .BusinessName .PushName .Phone}}{% endraw %}'
+matrix_bridge_mautrix_meta_instagram_bridge_displayname_suffix: ''
+matrix_bridge_mautrix_linkedin_network_displayname_template: "{% raw %}{{ with .Organization }}{{ . }}{{ else }}{{ .FirstName }} {{ .LastName }}{{ end }}{% endraw %}"
+```
+
+Today the names end in " (WA)", " (IG)" and " (LinkedIn)" (the server's bridge configs).
+Rendered with Ansible on the Mac, each template comes out without its suffix.
+
+**How names update** (from the bridges' code at the server's versions; not tested yet): a new
+template changes no name at once. A contact's Matrix name changes when the bridge next updates
+that contact, and each DM room's name follows (`private_chat_portal_meta: true`). Group names
+have no suffix.
+- WhatsApp: `!wa sync contacts` in the WhatsApp bot chat renames every contact the bridge has
+  stored, at once (a message from `@rami` to the bot only; it reaches no contact). Others change
+  when they change their WhatsApp name, or when they send a message and their info is more than
+  7 days old (the bridge's queue runs every 4 hours).
+- Instagram (mautrix-meta `4a7ebd9`): when Meta's sync sends that contact's info again.
+- LinkedIn (`6cc6a89`): when that person's info comes with a message.
+- The app: names come from the server through the SDK; no app change. The search index stores no
+  names.
+
+**To apply, after Rami's OK:** merge `server/b2-names` into `main`;
+`./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start` (the three bridges
+restart, about 10 s); `!wa sync contacts` in the WhatsApp bot chat; a read-only drive on `@rami`.
+
+**Ask Rami:** remove " (WA)", " (IG)" and " (LinkedIn)" all three, as prepared, or only " (WA)"?
+
 **Dependencies:** B1 (so each chat still shows its network). **Scope:** S (server conversation)
 
 ### B3 The bottom bar
@@ -700,8 +775,19 @@ messages shows a dot on its picture (Rami: a dot, as in Messages).
   from the server once per pinned chat.
 - [x] The grid is the list's first row and scrolls away with it.
 - [x] An unread pinned chat shows a dot, which clears when the chat is read.
-- [ ] Rami (2026-11-03): a pin stays in our app, never in WhatsApp. Check the bridge does not pass it before any pin on `@rami`: the bridge may pass a pin to WhatsApp (which allows
-  3). His real account has no pinned chats today.
+- [x] Rami (2026-11-03): a pin stays in our app, never in WhatsApp. Check the bridge does not pass it before any pin on `@rami`: the bridge may pass a pin to WhatsApp (which allows
+  3). His real account has no pinned chats today. (2026-11-03, read only, at the server's
+  versions: **a pin in our app cannot reach WhatsApp.** The app pins with the room tag
+  `m.favourite` (`Pinned.swift`, `setIsFavourite`), which is room account data. mautrix-whatsapp
+  v0.2610.0 does have code that pins in WhatsApp when it sees that tag (`HandleRoomTag` in
+  `pkg/connector/handlematrix.go`; mautrix-go v0.32.0 calls it for `m.tag`), but a bridge sees
+  account data only if the homeserver puts it in an appservice transaction. Synapse v1.164.0
+  sends appservices only typing, receipts, presence, to-device and device-list events
+  (`synapse/handlers/appservice.py`, `notify_interested_services_ephemeral`), never account data.
+  The same holds for any other room account data the app writes, such as `m.marked_unread`. The
+  other direction is off too: the bridge's `pinned_tag` and `archive_tag` are not set, so a
+  WhatsApp pin does not tag the Matrix room. `@rami` has no room tags today. Recheck after a
+  Synapse update: this depends on what Synapse sends to appservices, not on our app.)
 
 **Dependencies:** none (B7 adds the rest of the menu). **Scope:** M
 
@@ -1229,6 +1315,22 @@ the extension builds it reads `@test2`'s message in a plain and an encrypted roo
   (`aux_file_definitions`). Keep the default host name; no path prefix.
 - [ ] Sygnal answers from the Mac, and a test POST with the phone's pushkey reaches the phone.
 - [ ] No key in git; `server/README.md` names the Keychain item, never the key.
+
+**Prepared (2026-11-03, branch `server/p3.3-sygnal`, not merged, not applied).** `config.yml`
+turns Sygnal on with the two APNs apps above (`keyfile: /data/apns-key.p8`, the Key ID from
+`vars.yml`) and `aux_file_definitions_custom` writes the key to `/matrix/sygnal/data/apns-key.p8`
+(mode 0600, user `matrix`). `server/setup.sh` copies the key and its Key ID from the Keychain
+(`multiplexer-apns`, accounts `key` and `key-id`) into `vars.yml` when they are there; without
+them the playbook stops on an undefined variable, so it cannot install a Sygnal with no key.
+`server/README.md` has a "Push (Sygnal)" section and the Keychain row. Checked on the Mac with a
+throwaway key (not Apple's): the apps render as above, and the key file comes out identical.
+Note: the playbook keeps a copy of `vars.yml` on the server (`/matrix/vars.yml`, mode 0660, user
+`matrix`), so the key is there too, as the other secrets are.
+
+**To apply, after P3.0 and Rami's OK:** `./server/setup.sh` (the note about a missing key must not
+show); merge `server/p3.3-sygnal` into `main`; install; then
+`curl -s https://sygnal.ramimaalouf.com/health` from the Mac. The last check needs the phone's
+token from P3.1.
 
 **Dependencies:** P3.0; the phone's token from P3.1 for the last check. Can run beside P3.1 and P3.2.
 **Scope:** S
