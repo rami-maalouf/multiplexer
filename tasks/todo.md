@@ -972,8 +972,26 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
 Settings holds Sign Out (it leaves the chat list's top bar) and the voice note speed.
 
 **Acceptance criteria:**
-- [ ] The menu and a Settings screen with Sign Out and the voice note speed.
-- [ ] Merge Chats and Select Chats: "Later".
+- [x] The title "Inbox" (with a chevron, at the top left, as Beeper's) opens UIKit's pull-down
+  menu: Select Chats, Merge Chats, Settings. (2026-11-03, `inbox.contract`, `TitleMenu`.) The
+  system bar's large title cannot open a menu in Exact (finding "a large title cannot open a
+  menu"), so the inbox draws its own title row (`navigationBar="none"`): it no longer collapses
+  on scroll. The inbox's title says "Inbox" instead of "Chats" (a network's name when the sheet
+  chose one, as before).
+- [x] Settings (`settings.contract`), in the grouped style: the account (picture or initials,
+  name, Matrix ID), Voice Messages' Playback Speed (1x, 1.5x, 2x: the same `voiceSpeed` as the
+  chip on a voice message), Sign Out in red with the existing confirmation, and the app's
+  version under it. Sign Out left the inbox's top bar. MatrixCore's `ownProfile()` reads the
+  name and picture (`Profile.swift`).
+- [x] Merge Chats and Select Chats: "Later"; they show greyed in the menu, as Beeper lists them.
+- [x] `settings.test.contract`: Settings opened by its path (a test cannot sign in) changes the
+  speed and keeps it across a reload. Drives as `@test1`: the menu, Settings, the speed shown on
+  every voice message in a chat after a relaunch, Sign Out back to the sign-in screen; `check`
+  clean in dark, light and the largest text size (`apps/multiplexer/.exact/b21/`, gitignored).
+  `verify ios` clean.
+- [ ] After Sign Out, the sign-in screen's title shows small until the next launch (Exact
+  finding "a large title comes back inline").
+- [ ] A picture on the account: `@test1` has none, so only the initials were seen.
 
 **Dependencies:** none. **Scope:** S
 
