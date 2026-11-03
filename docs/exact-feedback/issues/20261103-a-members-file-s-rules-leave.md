@@ -32,3 +32,7 @@ Both are pull request candidates.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`.
+
+## Pull request (2026-11-03)
+
+https://github.com/ccheever/exact2/pull/1364 (fixes it): a members file may declare shapes, `fn`s and components beside its block (its block calls them as they are; another file names them on a `use` line). The grammar says so, and `contract vocab members` answers with a two-file example.

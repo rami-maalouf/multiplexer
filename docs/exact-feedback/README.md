@@ -79,7 +79,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 58 | The host tests cannot run one test class: `--test` runs all 318 classes. | About 15 min | P3 | [the-host-tests-cannot-run-one](issues/20261103-the-host-tests-cannot-run-one.md) |
 | 59 | `caps` counts one more line than `wc -l`. | About 3 min | P3 | [caps-counts-one-more-line-than](issues/20261103-caps-counts-one-more-line-than.md) |
 | 60 | iOS adds a hyphen inside a link's address under `break-word`, and an inline run's `hyphens` is dropped. | About 15 min | P3 | [ios-hyphenates-a-link-inside-a](issues/20261103-ios-hyphenates-a-link-inside-a.md) |
-| 61 | A members file's rules do not say whether it may also hold components, and `contract vocab` does not know `members`. | About 5 min | P3 | [a-members-file-s-rules-leave](issues/20261103-a-members-file-s-rules-leave.md) |
+| 61 | A members file's rules do not say whether it may also hold components, and `contract vocab` does not know `members`. Fixed in PR #1364 (open). | About 5 min | P3 | [a-members-file-s-rules-leave](issues/20261103-a-members-file-s-rules-leave.md) |
 | 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
 | 63 | `formatDay` has no style for a chat's day label. | About 5 min | P3 | [formatday-has-no-style-for](issues/20261103-formatday-has-no-style-for.md) |
 | 64 | A search field in a sheet's content draws its magnifier over its text at the accessibility sizes. | About 15 min | P3 | [a-search-field-in-a-sheet](issues/20261103-a-search-field-in-a-sheet.md) |
@@ -190,3 +190,4 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1361](https://github.com/ccheever/exact2/pull/1361): the edit-sheet recipe's header is its sheet's bar on iOS | 66 | Open |
 | 2026-11-03 | [#1362](https://github.com/ccheever/exact2/pull/1362): the theme recipe's icon token has the `svg` source the web needs | 67 | Open |
 | 2026-11-03 | [#1363](https://github.com/ccheever/exact2/pull/1363): the permissions recipe says a refused request runs no `then` | 72 | Open |
+| 2026-11-03 | [#1364](https://github.com/ccheever/exact2/pull/1364): `contract vocab` answers `members`, and the grammar says what a members file may declare | 61 | Open |
