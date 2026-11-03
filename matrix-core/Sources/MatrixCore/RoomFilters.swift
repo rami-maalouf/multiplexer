@@ -60,8 +60,13 @@ extension RoomSummary {
     /// when nothing is filtered: with a filter on, the pinned chats do not show above it.
     public func matches(_ filter: RoomFilter, in list: ChatList = .inbox) -> Bool {
         guard self.list == list else { return false }
+        return filter == .all ? list != .inbox || !isPinned : passes(filter)
+    }
+
+    /// Whether the filter menu's choice keeps this chat, whatever its list.
+    public func passes(_ filter: RoomFilter) -> Bool {
         switch filter {
-        case .all: return list != .inbox || !isPinned
+        case .all: return true
         case .unread: return isUnread
         case .unanswered: return !lastMessage.isEmpty && !lastIsOwn
         case .people: return isOneToOne

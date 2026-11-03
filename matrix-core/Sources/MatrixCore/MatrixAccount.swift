@@ -17,6 +17,7 @@ public final class MatrixAccount: @unchecked Sendable {
     let search = SearchState()
     /// The chats' media timelines and own names (ChatInfo.swift).
     let infoStates = ChatInfoStates()
+    let reminderStates = ReminderStates()
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
@@ -163,6 +164,7 @@ public final class MatrixAccount: @unchecked Sendable {
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
+        await fillReminders(&rooms)
         return rooms
     }
 

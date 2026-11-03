@@ -1,4 +1,5 @@
 {
   "purpose.camera": "Takes the photos you send.",
-  "purpose.microphone": "Records the voice messages you send."
+  "purpose.microphone": "Records the voice messages you send.",
+  "purpose.notifications": "Reminds you to answer a chat at the time you pick."
 }

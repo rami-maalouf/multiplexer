@@ -1,6 +1,7 @@
 // Multiplexer: the view. app.ts answers what it asks for, through the native module
 // (modules/apple/Matrix.swift), which calls MatrixCore.
 use ClipboardItem from "@exact/clipboard"
+use notificationclick from "@exact/notifications"
 use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
@@ -49,6 +50,8 @@ shape Room
   mentions: number
   lowPriority: bool
   archived: bool
+  // when the account asked to be reminded to answer it (ms since 1970); 0 for none (Remind Me).
+  reminder: number
 
 // owner is the account the rooms belong to, so a list never shows under another account; filter
 // the filter menu's choice the list is for, network the filter sheet's ("": every network), list
@@ -67,6 +70,8 @@ shape RoomList
   unread: number
   archiveUnread: number
   lowPriorityUnread: number
+  // the chats with a reminder (the filter sheet's Reminders row).
+  reminders: number
 
 // state: "sending", "sent" or "failed". startsGroup: the day and time show above it (a new day, or
 // an hour after the message before). endsRun: the
@@ -215,6 +220,7 @@ routes nav
     settings "/settings"
     scheduled "/scheduled"
       laterChange "/scheduled/:delay/time"
+    remind "/remind/:id"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
@@ -426,6 +432,7 @@ component Multiplexer
   members "./gif-members.contract"
   members "./camera-members.contract"
   members "./encryption-members.contract"
+  members "./remind-members.contract"
 
   action step
     now = performanceNow()
@@ -819,7 +826,7 @@ component Multiplexer
     haptic("success")
 
   view
-    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content"
+    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow notificationclick=openReminder interactive-widget="resizes-content"
       width="100%" height="100%"
       for e in stack(nav) key=e.id
         if e.name == "home"
@@ -869,8 +876,8 @@ component Multiplexer
                       button press=chooseFilter("all") buttonStyle="bordered" testId="show-all"
                         text "Show All Chats"
                   else if roomList.list != "inbox"
-                    // an empty Archive or Low Priority: the capsule's Inbox is the way back.
-                    EmptyState(symbol=(roomList.list == "archive" ? "symbol:icon.archive" : "symbol:icon.arrow-down-circle"),
+                    // an empty Archive, Low Priority or Reminders: the capsule's Inbox is the way back.
+                    EmptyState(symbol=(roomList.list == "archive" ? "symbol:icon.archive" : (roomList.list == "reminders" ? "symbol:icon.alarm" : "symbol:icon.arrow-down-circle")),
                       title=listEmptyTitle(roomList.list), message=listEmptyMessage(roomList.list, roomList.network))
                       if roomList.network != ""
                         button press=chooseNetwork("") buttonStyle="bordered" testId="show-every-network"
@@ -933,6 +940,13 @@ component Multiplexer
                               else if r.markedUnread
                                 view width=12 height=12 border-radius=6 margin="4px 4px 0"
                                   background-color=(r.muted ? "-exact-tertiary-label" : "AccentColor") aria-label="Unread" testId=`marked-${r.id}`
+                            // a reminder to answer it: when, in the accent once it is due (Remind Me).
+                            if r.reminder > 0
+                              row gap=4 align-items="center" testId=`reminder-${r.id}`
+                                image "symbol:icon.alarm" width="0.9em" height="0.9em" font="-exact-footnote" aria-hidden=true
+                                  color=(r.reminder <= shown ? "AccentColor" : "-exact-secondary-label")
+                                text `Reminder ${formatDay(r.reminder, shown, time.utcOffset, "day-time")}` font="-exact-footnote"
+                                  color=(r.reminder <= shown ? "AccentColor" : "-exact-secondary-label")
               else if not searching
                 if failed(roomList) and not pending(roomList)
                   column flex=1 justify-content="center" align-items="center" gap=12 padding=24
@@ -1002,6 +1016,14 @@ component Multiplexer
                 button press=togglePin popovertarget="chat-menu" popovertargetaction="hide" testId="menu-pin"
                   image (aimedPinned ? "symbol:icon.pin-slash" : "symbol:pin")
                   text (aimedPinned ? "Unpin" : "Pin")
+                if aimedReminder > 0
+                  button press=clearAimedReminder popovertarget="chat-menu" popovertargetaction="hide" testId="menu-clear-reminder"
+                    image "symbol:icon.bell-slash"
+                    text "Clear Reminder"
+                else
+                  button press=remindAimed popovertarget="chat-menu" popovertargetaction="hide" testId="menu-remind"
+                    image "symbol:icon.alarm"
+                    text "Remind Me…"
                 button press=changeAimed(aimedUnread ? "read" : "unread") popovertarget="chat-menu" popovertargetaction="hide"
                   testId="menu-unread"
                   image (aimedUnread ? "symbol:messages" : "symbol:icon.mark-unread")
@@ -1020,12 +1042,20 @@ component Multiplexer
             busy=pending(scheduledChanged), refused=laterRefused, now=shown, offset=time.utcOffset, close=back,
             sendNow=sendScheduledNow, change=changeLaterTime, cancel=cancelScheduled)
         if e.name == "later"
-          LaterSheet(route=`${e.id}`, title="Send Later", body=composer.text.trim(), picked=laterWhen, saving=laterSaving,
-            refused=laterRefused, pick=pickLater, close=closeLater, save=saveLater)
+          LaterSheet(route=`${e.id}`, title="Send Later", body=composer.text.trim(), bodyLabel="Message", verb="Send", saveLabel="Schedule",
+            note=laterNote, picked=laterWhen, saving=laterSaving, refused=laterRefused, choices=false, monday=false, choose=pickLater,
+            pick=pickLater, close=closeLater, save=saveLater)
         if e.name == "laterChange"
           LaterSheet(route=`${e.id}`, title="Change Time",
             body=(match first(scheduledShown.filter(m => m.id == laterFor)) { case some(m) => m.body, case none => "" }),
-            picked=laterWhen, saving=laterSaving, refused=laterRefused, pick=pickLater, close=closeLater, save=saveLater)
+            bodyLabel="Message", verb="Send", saveLabel="Schedule", note=laterNote, picked=laterWhen, saving=laterSaving,
+            refused=laterRefused, choices=false, monday=false, choose=pickLater, pick=pickLater, close=closeLater, save=saveLater)
+        // Remind Me's time: Send Later's set times, or one picked.
+        if e.name == "remind"
+          LaterSheet(route=`${e.id}`, title="Remind Me", body=remindName, bodyLabel="Chat", verb="Remind", saveLabel="Set",
+            note="This iPhone reminds you at this time, and the chat stays under Reminders until you answer it.",
+            picked=laterWhen, saving=pending(reminded), refused=remindRefused, choices=true, monday=laterMonday, choose=remindAt,
+            pick=pickLater, close=closeLater, save=saveRemind)
         if e.name == "settings"
           SettingsScreen(route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
             signOut=askSignOut, recovery=recovery, recoveryDraft=recoveryDraft, unlocking=pending(unlocked), refused=recoveryRefused,
@@ -1036,7 +1066,8 @@ component Multiplexer
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
             InboxSheet(networks=roomList.networks, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
-              chooseList=chooseList, scheduled=scheduledShown.length, openScheduled=chooseSendLater, largeText=viewport.accessibilityTextSize)
+              chooseList=chooseList, reminders=roomList.reminders, scheduled=scheduledShown.length, openScheduled=chooseSendLater,
+              largeText=viewport.accessibilityTextSize)
         // a held message's sheets: every emoji, half height and pulled up to full; the chats to forward to.
         if e.name == "reactions"
           EmojiSheet(route=`${e.id}`, rows=emojiRows, query=emojiQuery, group=emojiGroup, columns=emojiColumns, search=searchEmoji,
@@ -1086,7 +1117,8 @@ component Multiplexer
           InfoPage(route=`${e.id}`, info=infoShown, loaded=infoLoaded, members=chatMembers.members, total=chatMembers.total,
             media=chatMedia.items, mediaLoaded=(chatMedia.room == openRoom), moreMedia=allMedia, pinned=openPinned, archived=openArchived, lowPriority=openLowPriority,
             muted=openMuted, unread=(openUnread > 0), close=closeInfo, archive=archiveOpen, moveLowPriority=lowPriorityOpen,
-            pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
+            pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, reminder=openReminderAt, remind=remindOpen,
+            clearReminder=clearOpenReminder, now=shown, offset=time.utcOffset, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
             customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,
             searching=chatSearching, returned=chatSearchClosed, search=openChatSearch, closeSearch=closeChatSearch,
             largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion)

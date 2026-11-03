@@ -47,7 +47,7 @@ component SheetRow
         text unread.toString() font="-exact-body" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
           testId=`${identifier}-unread`
 
-// the sheet's rows, in Beeper's order. list: the list shown (inbox, archive or lowPriority);
+// the sheet's rows, in Beeper's order. list: the list shown (inbox, archive, lowPriority or reminders);
 // chosen: the network it shows ("" for every network). A list's row shows that list on every
 // network (chooseList); a network's row shows its chats in the list shown (choose).
 component InboxSheet
@@ -60,6 +60,8 @@ component InboxSheet
     chosen: string
     choose: action
     chooseList: action
+    // the chats with a reminder (Remind Me).
+    reminders: number
     // messages waiting on the server, and the list of them (Send Later).
     scheduled: number
     openScheduled: action
@@ -71,8 +73,10 @@ component InboxSheet
           value="inbox", choose=chooseList, largeText=largeText, identifier="inboxes-inbox")
         SheetRow(picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, noun="unread", chosen=(list == "archive"),
           value="archive", choose=chooseList, largeText=largeText, identifier="inboxes-archive")
-        // Beeper's next rows come here with their tasks, in its order: Create Label and the
-        // labels, Reminders, then Send Later; Bookmarks and Requests after it.
+        // Create Label and the labels come here with their task, then Reminders and Send Later;
+        // Bookmarks and Requests after them.
+        SheetRow(picture="symbol:icon.alarm", logo=false, name="Reminders", unread=reminders, noun="chats", chosen=(list == "reminders"),
+          value="reminders", choose=chooseList, largeText=largeText, identifier="inboxes-reminders")
         SheetRow(picture="symbol:icon.clock", logo=false, name="Send Later", unread=scheduled, noun="scheduled", chosen=false,
           value="scheduled", choose=openScheduled, largeText=largeText, identifier="inboxes-send-later")
         SheetRow(picture="symbol:icon.arrow-down-circle", logo=false, name="Low Priority", unread=lowPriorityUnread, noun="unread",

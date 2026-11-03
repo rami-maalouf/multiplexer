@@ -81,6 +81,9 @@ public struct RoomSummary: Equatable, Sendable {
     public var isArchived: Bool = false
     /// Deleted from this app (`MatrixAccount.hide`), and no newer message since: shown nowhere.
     public var isHidden: Bool = false
+    /// When the account asked to be reminded to answer this chat (`setReminder`), in milliseconds
+    /// since 1970; nil for none, or once answered.
+    public var reminderAt: UInt64? = nil
 }
 
 public struct Message: Equatable, Sendable {

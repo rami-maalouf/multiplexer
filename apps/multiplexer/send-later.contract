@@ -34,6 +34,13 @@ shape Scheduled
   at: number
   problem: string
 
+// Remind Me's answer: when the reminder is due (ms since 1970), or why not (problem: "past" or
+// "failed"). Remind Me takes Send Later's times (remind-members.contract).
+shape Reminded
+  ok: bool
+  at: number
+  problem: string
+
 // Send Now or Cancel on a waiting message.
 shape LaterChange
   ok: bool
@@ -137,16 +144,26 @@ component EmptyLater
       text "No Scheduled Messages" font="-exact-title3" font-weight=600 color="-exact-label"
       text "In a chat, hold Send to send a message later." font="-exact-subheadline" color="-exact-secondary-label"
 
-// a time for a message, from the system's date and time picker: for one being written (the
-// composer's text) or one waiting (Change Time). picked: the picked time without a zone, "" before.
+// a time from the system's date and time picker: for a message being written (the composer's
+// text), one waiting (Change Time), or a reminder to answer a chat (Remind Me). picked: the picked
+// time without a zone, "" before. verb: the time row's name; saveLabel: the button's; note: what the
+// footer says; bodyLabel: the heading over body. With choices, Send Later's set times come first as
+// rows, each saving at once (choose("tomorrow") or choose("monday"); monday: it is offered).
 component LaterSheet
   props
     route: string
     title: string
     body: string
+    bodyLabel: string
+    verb: string
+    saveLabel: string
+    note: string
     picked: string
     saving: bool
     refused: string
+    choices: bool
+    monday: bool
+    choose: action
     pick: action
     close: action
     save: action
@@ -158,17 +175,26 @@ component LaterSheet
           text "Cancel"
         text title role="heading" aria-level=1 flex=1
         button press=save disabled=(picked == "" or saving) buttonStyle="filled" testId="later-save"
-          text "Schedule"
+          text saveLabel
       list id="later-sheet" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        if choices
+          section
+            button press=choose("tomorrow") disabled=saving testId="later-choice-tomorrow"
+              text "Tomorrow, 9:00 AM"
+            if monday
+              button press=choose("monday") disabled=saving testId="later-choice-monday"
+                text "Monday, 9:00 AM"
         section
-          row
-            text "Send" flex=1 min-width=0
-            input type="datetime-local" value=picked input=pick placeholder="Choose a time" aria-label="Send at" testId="later-when"
+          // at the largest text sizes the picker goes under its name, which never breaks inside a word.
+          row flex-wrap="wrap" column-gap=12 row-gap=8 align-items="center"
+            text verb flex="1 0 auto"
+            input type="datetime-local" value=picked input=pick placeholder="Choose a time" aria-label=`${verb} at` testId="later-when"
+              flex="0 1 auto" min-width=0
           footer
-            text (refused != "" ? laterProblem(refused) : "It waits on your server and goes at this time, even with the phone off.")
+            text (refused != "" ? laterProblem(refused) : note)
               color=(refused != "" ? "-exact-system-red" : "-exact-secondary-label") testId="later-note"
         if body != ""
           section
             header
-              text "Message"
+              text bodyLabel
             text body line-clamp=4 color="-exact-secondary-label" testId="later-body"

@@ -1,0 +1,62 @@
+// Remind Me (B7, B20): a reminder to answer a chat at a time. It lives in the account's data
+// (MatrixCore's Reminders.swift), so the account's other devices have it; this iPhone notifies at
+// its time ("Reply to <chat>"), and a tap on that opens the chat. The chat shows under the filter
+// sheet's Reminders until the account answers it there, or the reminder is cleared. app.ts keeps
+// the notifications in step with the reminders (syncReminders).
+use showNotification, closeNotification, NotificationEvent from "@exact/notifications"
+use Reminded from "./send-later.contract"
+
+members Multiplexer
+  // the chat whose reminder the time sheet sets, and why the last try failed ("" for none).
+  state remindFor = ""
+  state remindRefused = ""
+  mutation reminded as shape Reminded refreshes roomList then afterRemind
+  derive remindName = match first(roomList.rooms.filter(r => r.id == remindFor)) { case some(r) => r.name, case none => "" }
+  // when the held chat's and the open chat's reminders are due (ms since 1970; 0 for none).
+  derive aimedReminder = match aimedRoom { case some(r) => r.reminder, case none => 0 }
+  derive openReminderAt = match openRoomInfo { case some(r) => r.reminder, case none => 0 }
+
+  // the list's long-press menu and the info page's More open the time sheet.
+  action askRemind(id: string)
+    remindFor = id
+    remindRefused = ""
+    laterWhen = ""
+    nav = push(nav, path("remind", id))
+  action remindAimed
+    askRemind(aimed)
+  action remindOpen
+    askRemind(openRoom)
+  // a set time ("tomorrow", "monday"), or the picked one.
+  action remindAt(choice: string)
+    remindRefused = ""
+    send reminded = remindChat(remindFor, choice)
+  action saveRemind
+    remindRefused = ""
+    send reminded = remindChat(remindFor, laterWhen)
+  // set: this iPhone notifies at its time (the first asks for the permission), and the sheet closes.
+  action afterRemind
+    match reminded
+      case some(r)
+        remindRefused = r.ok ? "" : r.problem
+        if r.ok
+          haptic("success")
+          showNotification(title=`Reply to ${remindName}`, body="You asked to be reminded.", tag=`reminder-${remindFor}`,
+            data=remindFor, showTrigger=r.at)
+          if top(nav).name == "remind"
+            nav = back(nav)
+        else
+          haptic("error")
+      case none
+        remindRefused = "failed"
+  action clearReminder(id: string)
+    send changedChat = changeChat(id, "clearReminder")
+    closeNotification(tag=`reminder-${id}`)
+  action clearAimedReminder
+    clearReminder(aimed)
+  action clearOpenReminder
+    clearReminder(openRoom)
+  // a reminder's notification, tapped: its chat opens.
+  action openReminder(tag: string, e: NotificationEvent)
+    let id = match e.data { case some(d) => d, case none => "" }
+    if id != ""
+      openChat(id)

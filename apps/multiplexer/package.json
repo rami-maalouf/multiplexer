@@ -6,6 +6,7 @@
     "@exact/clipboard": "file:../../../exact/exact2/packages/clipboard",
     "@exact/in-app-browser": "file:../../../exact/exact2/packages/in-app-browser",
     "@exact/media-capture": "file:../../../exact/exact2/packages/media-capture",
-    "@exact/recording": "file:../../../exact/exact2/packages/recording"
+    "@exact/recording": "file:../../../exact/exact2/packages/recording",
+    "@exact/notifications": "file:../../../exact/exact2/packages/notifications"
   }
 }

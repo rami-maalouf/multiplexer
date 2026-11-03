@@ -18,12 +18,12 @@ fn filterName(f: string): string = f == "unread" ? "Unread" : (f == "unanswered"
 fn emptyTitle(f: string): string = f == "unread" ? "No Unread Chats" : (f == "unanswered" ? "No Unanswered Chats" : (f == "people" ? "No DMs" : "No Groups"))
 fn emptyMessage(f: string): string = f == "unread" ? "You’ve read every chat." : (f == "unanswered" ? "You answered the last message in every chat." : (f == "people" ? "Chats with one other person show here." : "Chats with more than one other person show here."))
 // the lists besides the inbox: the filter sheet's rows and the screen's title.
-fn listName(l: string): string = l == "archive" ? "Archive" : (l == "lowPriority" ? "Low Priority" : "Inbox")
+fn listName(l: string): string = l == "archive" ? "Archive" : (l == "lowPriority" ? "Low Priority" : (l == "reminders" ? "Reminders" : "Inbox"))
 // the screen's title: the list, and the filter sheet's network ("": every network).
 fn listTitle(l: string, network: string): string = l == "inbox" ? (network == "" ? "Inbox" : networkName(network)) : (network == "" ? listName(l) : `${networkName(network)} ${listName(l)}`)
-// what an empty Archive or Low Priority says.
-fn listEmptyTitle(l: string): string = l == "archive" ? "No Archived Chats" : "No Low Priority Chats"
-fn listEmptyMessage(l: string, network: string): string = `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${network == "" ? "" : ` from ${networkName(network)}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
+// what an empty Archive, Low Priority or Reminders says.
+fn listEmptyTitle(l: string): string = l == "archive" ? "No Archived Chats" : (l == "reminders" ? "No Reminders" : "No Low Priority Chats")
+fn listEmptyMessage(l: string, network: string): string = l == "reminders" ? `Chats you ask to be reminded about${network == "" ? "" : ` from ${networkName(network)}`} show here until you answer them.` : `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${network == "" ? "" : ` from ${networkName(network)}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
 // what Delete's alert says: the chat leaves this app only.
 fn deleteMessage(network: string): string = `It leaves Multiplexer on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
 
