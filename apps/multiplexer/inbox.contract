@@ -20,7 +20,7 @@ fn emptyMessage(f: string): string = f == "unread" ? "You’ve read every chat."
 // the lists besides the inbox: the filter sheet's rows and the screen's title.
 fn listName(l: string): string = l == "archive" ? "Archive" : (l == "lowPriority" ? "Low Priority" : "Inbox")
 // the screen's title: the list, and the filter sheet's network ("": every network).
-fn listTitle(l: string, network: string): string = l == "inbox" ? (network == "" ? "Chats" : networkName(network)) : (network == "" ? listName(l) : `${networkName(network)} ${listName(l)}`)
+fn listTitle(l: string, network: string): string = l == "inbox" ? (network == "" ? "Inbox" : networkName(network)) : (network == "" ? listName(l) : `${networkName(network)} ${listName(l)}`)
 // what an empty Archive or Low Priority says.
 fn listEmptyTitle(l: string): string = l == "archive" ? "No Archived Chats" : "No Low Priority Chats"
 fn listEmptyMessage(l: string, network: string): string = `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${network == "" ? "" : ` from ${networkName(network)}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
@@ -105,3 +105,31 @@ component PinnedGrid
               view position="absolute" left=0 top=2 width=18 height=18 border-radius=9 background-color="AccentColor"
                 border="3px solid -exact-background" box-sizing="border-box" testId=`pinned-unread-${r.id}`
           text r.shortName font="-exact-subheadline" color="-exact-secondary-label" line-clamp=1 max-width="100%"
+
+// the inbox's title, as Beeper's: its words and a chevron at the top left, which open a menu.
+// Select Chats and Merge Chats come later, so they show greyed. The route draws this row in
+// place of the system bar, whose large title cannot open a menu.
+component TitleMenu
+  props
+    title: string
+    settings: action
+    largeText: bool
+  view
+    row padding="6px 16px 10px" align-items="center" testId="title-bar"
+      button popovertarget="title-menu" appearance="none" aria-label=`${title}, menu` testId="title-button"
+        display="flex" align-items="center" gap=6 max-width="100%"
+        text title role="heading" aria-level=1 font="-exact-title1" font-weight=700 color="-exact-label" testId="title"
+        image "symbol:icon.chevron-down" font=(largeText ? "-exact-title3" : "-exact-headline") font-weight=600 color="-exact-label"
+          aria-hidden=true
+      // a row with no press is a break between sections on iOS, so the greyed rows name one,
+      // which a disabled row never runs.
+      column id="title-menu" popover="auto" role="menu"
+        button press=settings disabled=true testId="menu-select-chats"
+          image "symbol:select"
+          text "Select Chats"
+        button press=settings disabled=true testId="menu-merge-chats"
+          image "symbol:icon.merge"
+          text "Merge Chats"
+        button press=settings popovertarget="title-menu" popovertargetaction="hide" testId="menu-settings"
+          image "symbol:settings"
+          text "Settings"

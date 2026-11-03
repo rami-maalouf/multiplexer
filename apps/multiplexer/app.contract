@@ -4,7 +4,7 @@ use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
 use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText from "./attach.contract"
-use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage from "./inbox.contract"
+use BottomBar, PinnedGrid, PinnedChat, TitleMenu, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage from "./inbox.contract"
 use NetworkBadge, networkName from "./network.contract"
 use InboxSheet, NetworkCount from "./sheet.contract"
 use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
@@ -12,6 +12,7 @@ use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.co
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, seenText from "./details.contract"
 use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
+use SettingsScreen, Profile from "./settings.contract"
 
 shape Session
   userId: string
@@ -193,6 +194,7 @@ routes nav
       reactions "/room/:id/reactions/:message"
       forward "/room/:id/forward/:message"
     inboxes "/inboxes"
+    settings "/settings"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
@@ -277,6 +279,7 @@ component Multiplexer
   resource roomList = loadRoomsByRecency(session.userId, filter, network, chatList) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
+  resource profile = loadProfile(session.userId) as shape Profile else empty()
   mutation pinned as shape Reply refreshes roomList
   mutation changedChat as shape Reply queue refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
@@ -449,8 +452,10 @@ component Multiplexer
   action askSignOut
     showModal("sign-out")
   // drafts stay with the account that wrote them.
+  // Settings' Sign Out: the sign-in screen shows in the inbox's place.
   action signOut
     send signedOut = signOut()
+    nav = go(nav, path("home"))
     composers = []
     unsaved = ""
   action reloadRooms
@@ -684,6 +689,12 @@ component Multiplexer
     toTop()
   // the up-down button opens the filter sheet; a row chooses a network ("": every network) and
   // closes it.
+  // the title's menu: Settings; Select Chats and Merge Chats come later.
+  action showSettings
+    nav = push(nav, path("settings"))
+  action chooseSpeed(s: number)
+    voiceSpeed = s
+    haptic("selection")
   action openInboxes
     nav = push(nav, path("inboxes"))
   action chooseNetwork(n: string)
@@ -780,13 +791,10 @@ component Multiplexer
                       progress aria-label="Signing in"
                       text "Signing In…" color="-exact-secondary-label"
           else
-            column navigationKey=`${e.id}` navigationScroll="rooms" position="absolute" inset=0 display="flex" flex-direction="column"
-              // the title names the network the filter sheet chose.
-              header display="flex" align-items="center"
-                text listTitle(chatList, network) role="heading" aria-level=1 flex=1 testId="title"
-                text session.userId
-                button press=askSignOut testId="sign-out"
-                  text "Sign Out"
+            column navigationKey=`${e.id}` navigationScroll="rooms" navigationBar="none" position="absolute" inset=0
+              display="flex" flex-direction="column"
+              // the title names the network the filter sheet chose, and opens Beeper's menu.
+              TitleMenu(title=listTitle(chatList, network), settings=showSettings, largeText=viewport.accessibilityTextSize)
               if roomsShown
                 if listedRooms.length == 0 and not gridShown
                   if roomList.filter != "all"
@@ -930,6 +938,9 @@ component Multiplexer
                 button press=askDelete destructive=true popovertarget="chat-menu" popovertargetaction="hide" testId="menu-delete"
                   image "symbol:delete"
                   text "Delete"
+        if e.name == "settings"
+          SettingsScreen(route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
+            signOut=askSignOut, largeText=viewport.accessibilityTextSize)
         // the filter sheet, from the bottom: half height, pulled up to full; UIKit's glass below full.
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
