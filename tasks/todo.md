@@ -901,10 +901,10 @@ the length and a speed chip (1x, 1.5x, 2x). Rami: "it should be consistent every
 user setting". Beeper keeps the speed per note; ours keeps one speed for the whole app.
 
 **Acceptance criteria:**
-- [ ] A voice note plays; the waveform shows progress (the app draws the bars: Exact has no view
-  for a received waveform).
-- [ ] Changing the speed on any note changes it on every note, and the app remembers it. Videos
-  keep their own normal speed (Rami).
+- [x] A voice note plays; the waveform shows progress (the app draws the bars: Exact has no view
+  for a received waveform). (2026-11-03, `voice.contract`.)
+- [x] Changing the speed on any note changes it on every note, and the app remembers it. Videos
+  keep their own normal speed (Rami). (`state voiceSpeed = 1 persist`.)
 - [ ] Transcribe: "Later".
 
 **Dependencies:** T2.13. **Scope:** M
@@ -916,9 +916,11 @@ to finish, then listen to it and send it. No pause. It goes out as a voice messa
 shows a voice note.
 
 **Acceptance criteria:**
-- [ ] Tap the voice button to start, tap to finish (`@exact/recording`; the microphone permission).
-- [ ] Before sending: play the draft, then send it or delete it.
-- [ ] A voice note sent from the app plays as a voice note in WhatsApp.
+- [x] Tap the voice button to start, tap to finish (`@exact/recording`; the microphone permission).
+  (2026-11-03.)
+- [x] Before sending: play the draft, then send it or delete it.
+- [x] A voice note sent from the app is an `m.audio` voice event (`audio/ogg` Opus, waveform), so
+  WhatsApp's bridge shows a voice note (`testAVoiceNoteSentByOneReachesTheOther`).
 
 **Dependencies:** B10, B16. **Scope:** M
 

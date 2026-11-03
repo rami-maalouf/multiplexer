@@ -15,7 +15,7 @@ Exact team as they are.
 
 ## Findings
 
-Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip.
+Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
@@ -87,6 +87,10 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 66 | The edit-sheet recipe nests a sheet's header as `lower-header-nested` warns against. | About 5 min | P3 | [the-edit-sheet-recipe-nests-a](issues/20261103-the-edit-sheet-recipe-nests-a.md) |
 | 67 | The theme recipe shows an SF-only icon token, which the build refuses. | About 2 min | P3 | [the-theme-recipe-shows-an-sf](issues/20261103-the-theme-recipe-shows-an-sf.md) |
 | 68 | A drag on a virtualized list in a half-height sheet aims under the row after the list. | About 6 min | P3 | [a-drag-on-a-virtualized-list](issues/20261103-a-drag-on-a-virtualized-list.md) |
+| 69 | A list of plain numbers warns `lower-key-position` for its only key. | About 12 min | P3 | [a-list-of-plain-numbers-warns](issues/20261103-a-list-of-plain-numbers-warns.md) |
+| 70 | `audio-waveform`'s `tint` takes only a hex colour. | About 3 min | P3 | [audio-waveform-s-tint-takes-only](issues/20261103-audio-waveform-s-tint-takes-only.md) |
+| 71 | `@exact/recording` cannot write Ogg Opus, the voice note format of chat networks. | About 45 min | P3 | [exact-recording-cannot-write-ogg-opus](issues/20261103-exact-recording-cannot-write-ogg-opus.md) |
+| 72 | The permissions recipe does not say that a refused request runs no `then`. | About 10 min | P3 | [the-permissions-recipe-does-not-say](issues/20261103-the-permissions-recipe-does-not-say.md) |
 
 ## What worked well
 
