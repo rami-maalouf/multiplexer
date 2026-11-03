@@ -5,6 +5,7 @@
     "": {
       "name": "multiplexer",
       "dependencies": {
+        "@exact/camera": "file:../../../exact/exact2/packages/camera",
         "@exact/clipboard": "file:../../../exact/exact2/packages/clipboard",
         "@exact/in-app-browser": "file:../../../exact/exact2/packages/in-app-browser",
         "@exact/media-capture": "file:../../../exact/exact2/packages/media-capture",
@@ -13,6 +14,8 @@
     },
   },
   "packages": {
+    "@exact/camera": ["@exact/camera@file:../../../exact/exact2/packages/camera", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
+
     "@exact/clipboard": ["@exact/clipboard@file:../../../exact/exact2/packages/clipboard", {}],
 
     "@exact/in-app-browser": ["@exact/in-app-browser@file:../../../exact/exact2/packages/in-app-browser", {}],

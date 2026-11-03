@@ -62,3 +62,12 @@ field, which caps its text that way. About 6 minutes and three builds.
 ## Pull request (2026-11-02)
 
 https://github.com/ccheever/exact2/pull/1343 (fixes part of it): verify's finding names a role with a cap (part d). Pull request https://github.com/ccheever/exact2/pull/1349 makes the native button's refusal say that `font-size` on the `image` sizes the symbol (part a).
+
+## More evidence (2026-11-03, a camera screen)
+
+Colour, not size, this time: a glass button's symbol in another colour (a flash on and off).
+`color=` on the `image` was refused: "a native button's symbol is coloured with
+`-exact-tint-color`, not `color`". `-exact-tint-color=` on the button was then refused: "a native
+button draws its own `-exact-tint-color`: write a custom `button`". Each message sends to the
+other. The app showed the flash's state with two symbols instead. About 3 minutes. Seen at exact2
+`ed43ad09a0`.
