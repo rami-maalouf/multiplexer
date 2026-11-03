@@ -62,3 +62,7 @@ The messages in items 1 and 2 are unchanged at `cee509ac82`.
 9. `pick pick-photos <path>` before the picker was open answered "no held device request
    answers at that node or has that capability (held: none)". True, but it could name the next
    step: "open the picker first (the press that calls `showPicker`), then `pick`". About 2 minutes.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eight messages name the step to write (reload, `--scale` in a step, `prefer dark`, `state --json` in a step, a picked path with a space). The other three are design questions.

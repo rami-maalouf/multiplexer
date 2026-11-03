@@ -31,3 +31,7 @@ route did not change).
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, on an iOS 27.0 simulator. Related: finding 26
 (a real touch on a `link` row misses).
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1340 (fixes part of it): a tap at a point scrolls its view in before it refuses the point, and the refusal names where the point lands. "tapped" for a tap that opened nothing is a design question.

@@ -27,3 +27,7 @@ whether it is opaque), and one page that lists every role.
 
 Seen on 2026-10-31 at exact2 `1bc4c36cb7`. Related: finding "vocab gives no attributes or
 values" (2026-10-27).
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1342 (fixes part of it): the theme recipe says that `contract vocab color` lists the roles. A lookup of a role's colour per host is a design question.

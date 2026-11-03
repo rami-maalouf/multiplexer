@@ -48,3 +48,7 @@ fixed type ("stays 30 pt as Dynamic Type grows"), while the same app's bar write
 Both grow the same way at the accessibility sizes. With the sizes in a `derive`, `verify` was
 clean. So the fixed-type check treats two equal forms differently, and still names no capped
 form it accepts. About 2 minutes.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1343 (fixes part of it): verify's finding names a role with a cap (part d). Pull request https://github.com/ccheever/exact2/pull/1349 makes the native button's refusal say that `font-size` on the `image` sizes the symbol (part a).

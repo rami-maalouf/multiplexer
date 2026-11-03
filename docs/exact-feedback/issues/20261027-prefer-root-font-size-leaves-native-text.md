@@ -23,3 +23,7 @@ docs saying that `root-font-size` reaches only the text that Exact draws.
 ## Evidence
 
 Seen at exact2 `65577096ed` on the iOS simulator.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1342 (fixes it): the guide says that `prefer root-font-size` sets only the text Exact draws, and gives the simulator's content size setting that `verify` uses.

@@ -40,3 +40,7 @@ Cost: about 10 minutes and two drives. The app now lists its image types without
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, `agent ios` on an iOS 26.5 Simulator. A HEIC
 of 42 KB showed; one of 455 KB did not; a JPEG in the same tray showed.
+
+## Pull request (2026-11-02)
+
+https://github.com/ccheever/exact2/pull/1337 (fixes it): a HEIC larger than 256 KiB is sized from its `meta` box. Reproduced in a drive of the sample chat app at `origin/main`: a 2.8 MB HEIC tile stayed empty and the drive's `logs` said "image deferred: no image size in its first 262144 bytes"; with the fix it shows.
