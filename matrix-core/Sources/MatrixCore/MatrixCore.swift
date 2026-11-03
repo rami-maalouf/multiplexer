@@ -88,6 +88,10 @@ public struct Message: Equatable, Sendable {
     public var waitingForKey: Bool = false
     /// The sender changed the text after sending it.
     public var isEdited: Bool = false
+    /// Deleted for everyone (`MatrixAccount.delete`): `body` is "", and it has no picture or file.
+    public var isDeleted: Bool = false
+    /// Your own text message, which `MatrixAccount.edit` can change.
+    public var isEditable: Bool = false
     /// The message this one answers; nil when it answers none.
     public var reply: QuotedMessage?
     /// Each emoji someone reacted with, in the order the first reaction came.
@@ -226,6 +230,10 @@ public enum MatrixCoreError: Error, Equatable {
     case noImage(String)
     /// The message is not a file message, or not in the open chat.
     case noFile(String)
+    /// The message is not your own text message, or not in the open chat.
+    case notEditable(String)
+    /// The message has no content to send again (a deleted one), or is not in the open chat.
+    case notForwardable(String)
     /// A Keychain call failed with this `OSStatus`.
     case keychain(Int32)
 }

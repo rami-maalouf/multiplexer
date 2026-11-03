@@ -11,6 +11,8 @@ public final class MatrixAccount: @unchecked Sendable {
     let pins = Pins()
     /// The chat actions this device asked for and the server has not confirmed (ChatActions.swift).
     let chats = ChatStates()
+    /// The emojis this device counted and the server has not confirmed (MessageActions.swift).
+    let emojiUses = EmojiUseStates()
     private var syncService: SyncService?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -19,6 +21,8 @@ public final class MatrixAccount: @unchecked Sendable {
     private var roomOrder: RoomEntries?
     /// One live timeline for each chat that was opened, so a chat opened again does not page back.
     private var timelines: [String: Task<LiveTimeline, Error>] = [:]
+    /// The open chats' timelines once they are ready, which `rooms()` reads without waiting.
+    private var readyTimelines: [String: LiveTimeline] = [:]
 
     private init(client: Client) {
         self.client = client
@@ -131,6 +135,7 @@ public final class MatrixAccount: @unchecked Sendable {
             case .none, .remoteInvite:
                 break
             }
+            if let live = lock.withLock({ readyTimelines[summary.id] }) { summary.fillDeleted(live.items.messages()) }
             rooms.append(summary)
         }
         await fillPinOrders(&rooms)
@@ -173,6 +178,7 @@ public final class MatrixAccount: @unchecked Sendable {
         // a sender's name comes with the room's members; until they load, a message shows the
         // sender's id. Their profiles arrive as timeline changes.
         Task { await timeline.fetchMembers() }
+        lock.withLock { readyTimelines[roomId] = live }
         return live
     }
 
@@ -204,11 +210,14 @@ public final class MatrixAccount: @unchecked Sendable {
     }
 
     /// Adds this account's reaction `key` (an emoji) to a message, or takes it back when it
-    /// is there.
+    /// is there. An added one counts among the frequent emojis (`frequentEmojis`).
     public func toggleReaction(roomId: String, messageId: String, key: String, timeout: TimeInterval = 30) async throws {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        guard let itemId = live.items.eventOrTransactionId(of: messageId) else { return }
-        _ = try await live.timeline.toggleReaction(itemId: itemId, key: key)
+        guard let event = live.items.event(of: messageId) else { return }
+        let me = (try? client.userId()) ?? ""
+        let had = event.reactions.contains { $0.key == key && $0.senders.contains { $0.senderId == me } }
+        _ = try await live.timeline.toggleReaction(itemId: event.eventOrTransactionId, key: key)
+        if !had { await countReaction(key) }
     }
 
     /// Sends a text message and returns once the server has accepted it.
@@ -327,6 +336,7 @@ public final class MatrixAccount: @unchecked Sendable {
             roomEntries = nil
             roomOrder = nil
             timelines = [:]
+            readyTimelines = [:]
         }
         await syncService?.stop()
         syncService = nil
@@ -693,6 +703,10 @@ extension Message {
                       isOwn: event.isOwn, sendState: .sent, image: nil, waitingForKey: true, senderPicture: picture)
             return
         }
+        if case .redacted = content.kind {
+            self.init(deleted: event, id: id, senderName: name, senderPicture: picture)
+            return
+        }
         guard case .message(let message) = content.kind else { return nil }
         let sendState: SendState
         var uploaded: Double?
@@ -722,6 +736,7 @@ extension Message {
                   senderPicture: picture)
         self.file = file
         uploadProgress = uploaded
+        isEditable = Message.isEditable(event, message)
     }
 }
 
