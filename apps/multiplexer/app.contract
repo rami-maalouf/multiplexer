@@ -7,7 +7,7 @@ use Attachment, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText from
 use BottomBar, PinnedGrid, PinnedChat, emptyTitle, emptyMessage from "./inbox.contract"
 use NetworkBadge, networkName from "./network.contract"
 use InboxSheet, NetworkCount from "./sheet.contract"
-use ChatBar from "./chat.contract"
+use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 
 shape Session
   userId: string
@@ -769,9 +769,14 @@ component Multiplexer
                       text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
                         font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
                     // the field's own padding makes it a 44-point target; the row adds none above or below.
+                    // a bridged chat's network logo at the field's start says where the message goes, as
+                    // the placeholder does ("Reply on WhatsApp").
                     row align-items="flex-end" padding="0 4px 0 12px"
+                      if openNetwork != "matrix" and not viewport.accessibilityTextSize
+                        ComposerNetwork(network=openNetwork)
                       textarea id="composer" value=composer.text input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
-                        placeholder=(composer.attachments.length > 0 ? "Add a caption" : "Message") aria-label="Message" testId="composer" flex=1 min-width=0 padding="12px 0"
+                        placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
+                        aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="12px 0"
                         border="none" background-color="transparent"
                       button press=post disabled=((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia))
                         buttonStyle="filled" margin="4px 0" retainFocus=true aria-label="Send" testId="send"

@@ -1,9 +1,15 @@
-// the chat screen's own top bar, after Beeper's. The screen has no
+// the chat screen's own top bar, after Beeper's, and the composer's network. The screen has no
 // system bar: this one floats over the transcript, which scrolls under it, so a held message's
 // blur covers it too (the system bar stayed sharp above it).
 use Face from "./bubble.contract"
-use NetworkBadge from "./network.contract"
+use NetworkBadge, networkName from "./network.contract"
 
+// the composer says where a message goes: "Reply on WhatsApp"; a plain Matrix chat, "Message".
+fn replyPlaceholder(network: string): string = network == "matrix" ? "Message" : `Reply on ${networkName(network)}`
+// what the empty field shows: "Add a caption" under picked photos and files. At the accessibility
+// text sizes a network's name is wider than the field, so it says "Message" (and the logo leaves it,
+// or "Message" breaks too: the bar's picture still shows the network).
+fn composerPlaceholder(network: string, attached: bool, largeText: bool): string = attached ? "Add a caption" : (largeText ? "Message" : replyPlaceholder(network))
 // the count on Back: "12", or "999+" past that.
 fn unreadText(n: number): string = n > 999 ? "999+" : n.toString()
 
@@ -67,3 +73,12 @@ component ChatBar
             image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
             text (pinned ? "Unpin" : "Pin")
 
+// a bridged chat's network logo at the start of the composer's field. It sits in a box one line of
+// the field's text tall, so it stays on the field's last line as the text grows.
+component ComposerNetwork
+  props
+    network: string
+  view
+    row align-items="center" flex-shrink=0 margin="0 8px 12px 0" aria-hidden=true testId="composer-network"
+      text "M" font="-exact-body" width=0 overflow="hidden" visibility="hidden"
+      image `assets/networks/${network}.svg` width=20 height=20
