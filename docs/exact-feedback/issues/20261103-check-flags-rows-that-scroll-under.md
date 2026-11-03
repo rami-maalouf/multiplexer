@@ -39,3 +39,8 @@ Seen on 2026-11-03 at exact2 `ed43ad09a0` (iOS Simulator, iOS 26.5): the top bar
 light, and at the largest text size. The bottom bar: seen on 2026-11-02 at `ed43ad09a0` on a long
 list. Related: finding "A floating bottom bar gets no scroll edge effect, and a
 route has no bottom toolbar".
+
+Seen again on 2026-11-03 at `ed43ad09a0`: `check both` on a chat opened at its first unread
+message called a video's poster, scrolled under the app's top bar, an overlap with the bar's
+title and Back ("video-14 [48,-106 172x306]: overlaps chat-name"). After the next scroll, `check`
+was clean in both schemes. About 2 minutes.
