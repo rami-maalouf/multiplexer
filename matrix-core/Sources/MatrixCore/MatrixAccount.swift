@@ -51,7 +51,14 @@ public final class MatrixAccount: @unchecked Sendable {
             let client = try await builder(storeDirectory, role: .app(searchIndexKey: searchIndexKey), sessionStorage: sessionStorage)
                 .serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
             try await client.login(username: user, password: password, initialDeviceName: deviceName, deviceId: nil)
-            return MatrixAccount(client: client, storeDirectory: storeDirectory)
+            let account = MatrixAccount(client: client, storeDirectory: storeDirectory)
+            // the sdk reads the session back from the storage (the cross-process lock): it must
+            // hold the new one. the app's Keychain storage saves only into an item it already has;
+            // the app writes its item right after.
+            if let saved = try? account.savedSession(), sessionStorage.load()?.accessToken != saved.accessToken {
+                sessionStorage.save(saved)
+            }
+            return account
         } catch {
             throw SignInError(error)
         }
