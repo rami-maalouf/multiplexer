@@ -32,3 +32,16 @@ Seen on 2026-11-02 at exact2 `ed43ad09a0`.
 ## Pull request (2026-11-02)
 
 https://github.com/ccheever/exact2/pull/1346 (fixes part of it): the patch check compares paths through symlinks. A checkout at another depth still needs its own Cargo paths: a design question.
+
+## More evidence (2026-11-03)
+
+A git worktree made by a desktop tool under `~/.t3/worktrees/<project>/<name>/` (not a sibling
+of the main checkout) failed before the Cargo check: `bun install --frozen-lockfile` cannot find
+the four `file:../../../exact/exact2/packages/...` packages in `package.json`, so `contract
+build` refuses `use … from "@exact/clipboard"` as not installed. `EXACT2` does not change those
+paths. A symlink to the framework's parent folder beside the worktrees fixed the install, then
+`ios` refused the app: the patch check wants the path from the real folder
+(`../../../../../../Documents/code/...`), with `EXACT2` set to the symlinked path too (PR #1346,
+open, is not in `ed43ad09a0`). The branch moved to a worktree beside the main checkout and built
+there from scratch. About 15 minutes and a cold build. The `package.json` paths are not covered
+by PR #1346.

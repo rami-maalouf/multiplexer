@@ -91,3 +91,9 @@ https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eig
    only. To wait for a state to take any value, a drive needs a fixed `clock +N` and a `state`
    after it. `!=` (or "until it changes") would remove the guess. About 1 minute.
 
+
+## More evidence (2026-11-03)
+
+`bun exact.mjs check` answers with the list of verbs only. `check` is a drive step
+(`agent ios … "check both"`, as start-here shows it), and the message could say so: "check is a
+drive step: `bun exact.mjs agent ios "check both"`". About 1 minute.

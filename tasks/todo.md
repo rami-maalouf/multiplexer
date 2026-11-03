@@ -890,6 +890,24 @@ emoji, a search and "Frequently used".
 **Acceptance criteria:**
 - [x] The menu in Beeper's order: Reply, Share, Forward, Copy, Mark as Unread, then Edit and a red
   Delete on your own messages. (2026-11-03, `menu.contract`.) Bookmark comes with its list later.
+- [x] Bookmark, after Mark as Unread (Beeper's place); "Remove Bookmark" on a saved message.
+  (2026-11-03, branch `work/bookmarks`: `menu.contract`, `bookmarks.contract`,
+  `bookmarks-members.contract`, MatrixCore `Bookmarks.swift`.) A message on its way has no Bookmark
+  until the server has it. The list of all: the filter sheet's "Bookmarks" row (after Send Later,
+  no count) closes the sheet and opens a page. Each row: the chat's picture and network, its name,
+  the message's time, the sender and the text, or "Photo", "Video", "Voice message", a file's
+  name. A tap opens the chat at the message, marked (B18's jump; Back returns to the list). A long
+  press offers Copy and Remove Bookmark; a swipe removes it. Kept in the account's global account
+  data (`com.ramimaalouf.multiplexer.bookmarks`; plan.md's decision log, 2026-11-03), so every
+  device has them and nothing reaches the chat or WhatsApp. MatrixCore `BookmarksTests` (2 passed):
+  a bookmark of each user, on the account's second device, opened there at the message; the other
+  person has none and no new event. Drives as `@test1` in dark, light and the largest text size,
+  with real touches for the menus and the swipe; `check both` clean
+  (`apps/multiplexer/.exact/bookmarks/`, gitignored).
+- [ ] Bookmarks' limits: a bookmark keeps the message as it was saved (an edit or a delete later
+  does not change it); another device's new bookmark shows within a minute (the sdk tells no
+  listener of custom account data); a message further back than 1,000 events opens the chat at its
+  newest with B18's note. Each bookmark is about 0.5 KB of one event: fine for hundreds.
 - [x] Share a text, photo, file or video (media downloaded first, under its file name).
 - [x] Forward a text, photo, file or video to one or more chats from a sheet with search; media is
   not uploaded again (`testAForwardedTextPhotoAndFileArriveInAnotherChat`).
@@ -1010,7 +1028,10 @@ Videos, Links, Files, Audio and Bookmarks.
   50 events, from this device's cache and then the server). So a photo or file is found by its
   type, not by its file name as across chats, and a voice message too, which the index does not
   know. Words typed on a kind's page narrow it by the start of a word (text, file name, link).
-- [ ] Bookmarks: not built, as B14 has no bookmarks yet.
+- [x] Bookmarks: a sixth kind, the chat's saved messages (B14's list, the same rows without the
+  chat's picture); words narrow them by the start of a word (text, file name, sender). The six
+  kinds' names are a size smaller, and three to a row at the accessibility text sizes. A tap
+  closes the page and opens the chat at the message. (2026-11-03, `search.contract`.)
 - [x] Gate: MatrixCore `SearchTests` 7 passed (new: `testOneChatsMessagesAndKinds`), `ChatInfoTests` 5 passed, the
   whole suite passed but for `testFrequentEmojisCountReactionsAndReset`, which failed on `main` too (see
   "Known failing test" below, now fixed); `bun test` 7
@@ -1038,6 +1059,13 @@ holds a lock around each run (agreed 2026-11-03): `until mkdir /tmp/mx-matrixcor
 10; done; <the run>; rmdir /tmp/mx-matrixcore.lock`. Do not wait with `pgrep`: two waiters see a quiet moment
 at once, and `pgrep -f "xcodebuild test -scheme MatrixCore"` in a shell loop matches the loop's own command line.
 
+**Fixed on the way (2026-11-03, during Bookmarks): a crash at launch.** A relaunch, signed in,
+crashed in the sdk's room list (`RoomList.entriesWithDynamicAdapters`, `EXC_BAD_ACCESS`) two
+launches of two: `startSync` checked `syncService == nil` and then awaited, so the list, Send
+Later and Bookmarks, which all ask for the rooms at launch, could each start a sync service and a
+room list. The start is now one shared task (`MatrixAccount.syncStart`). Three launches after the
+fix, no crash; the whole MatrixCore suite ran after it.
+
 ### B20 The chat info page
 
 **Description:** Topic 11: "I love the animation of it opening and I love all the things that
@@ -1063,7 +1091,9 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
 - [x] More: Pin, Mark as Read (or Unread, which leaves the chat as the chat bar's does), Mute,
   Delete (with the list's alert). Jump to Date: the SDK has none (jump to a message works), so it
   is left out. Remind Me: "Later".
-- [ ] Bookmarks: this chat's saved messages (B14). Not built: B14 has no bookmarks yet.
+- [x] Bookmarks: a row under the four buttons with this chat's count; it opens the chat's own list
+  (B14's), where a tap closes both pages and opens the chat at the message. (2026-11-03,
+  `info.contract`.)
 - [ ] Message expiry: last of all (Rami: keep it, "not urgent"); see "Later".
 - [x] Gate: MatrixCore `ChatInfoTests` 5 passed and the whole suite 43 passed (1 skipped);
   drives as `@test1` in dark, light and the largest text size, `check both` clean on the page and

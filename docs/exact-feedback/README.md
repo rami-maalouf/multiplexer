@@ -114,6 +114,9 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 93 | `contract vocab` does not know an input's `type` values, so `datetime-local` (the date and time picker) reads as missing. | About 4 min | P3 | [contract-vocab-does-not-know-an](issues/20261103-contract-vocab-does-not-know-an.md) |
 | 94 | A drive without real touches draws a menu as bare rows, without the system's menu, even in a window screenshot. | About 12 min | P3 | [a-drive-without-real-touches-draws](issues/20261103-a-drive-without-real-touches-draws.md) |
 | 95 | A popover menu inside a list section draws as the section's cells, with no warning. | About 5 min | P3 | [a-popover-menu-inside-a-list](issues/20261103-a-popover-menu-inside-a-list.md) |
+| 96 | A page opened from a sheet with `go` stays in the sheet, and a chat opened from it opens inside the half-height sheet too, with no warning. | About 5 min | P3 | [a-page-opened-from-a-sheet](issues/20261103-a-page-opened-from-a-sheet.md) |
+| 97 | A data source's answer refused for its shape shows only in `logs`; a drive's `state` shows the old value with no word. | About 3 min | P3 | [a-refused-resource-answer-shows-only](issues/20261103-a-refused-resource-answer-shows-only.md) |
+| 98 | A large title shows inline over a list with rows and large over an empty state, on the same page (not isolated). | About 3 min | P3 | [a-large-title-shows-inline-over](issues/20261103-a-large-title-shows-inline-over.md) |
 
 ## What worked well
 
