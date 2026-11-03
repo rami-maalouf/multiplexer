@@ -27,6 +27,8 @@ public enum MatrixChange: Hashable, Sendable {
     /// A kind's page of the search in a chat has a message more or less: its files, links or
     /// audio (Search.swift; its photos and videos are the info page's).
     case search
+    /// The messages waiting on the server changed (Send Later, ScheduledMessages.swift).
+    case scheduled
 }
 
 /// What the app keeps (in the Keychain) to sign in again without a password.
@@ -261,6 +263,14 @@ public enum MatrixCoreError: Error, Equatable {
     case noAudio(String)
     /// A Keychain call failed with this `OSStatus`.
     case keychain(Int32)
+    /// Send Later: the chat is end-to-end encrypted, and a message that waits on the server
+    /// cannot be (ScheduledMessages.swift).
+    case scheduleEncrypted(String)
+    /// Send Later: the time is past, or further than the server keeps a message (its
+    /// `max_event_delay_duration`).
+    case scheduleRefused(String)
+    /// Send Later: the scheduled message is no longer waiting: it went, or was cancelled.
+    case scheduleGone(String)
 }
 
 /// Why `MatrixAccount.signIn` failed.

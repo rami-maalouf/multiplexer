@@ -1,0 +1,174 @@
+// Send Later (B13), as Rami asked: hold Send, as in Slack, and pick a time. The message waits on
+// our server and goes at its time with the phone off. The chat shows a bar while one of its
+// messages waits; the filter sheet's Send Later row opens the list of all of them, where each can
+// be sent now, moved or cancelled. Its state and actions: send-later-members.contract.
+use Face from "./bubble.contract"
+use NetworkBadge from "./network.contract"
+
+// whether the open chat can have Send Later: not end-to-end encrypted.
+shape LaterInfo
+  room: string
+  can: bool
+
+// a message waiting on the server: its chat, its text, and when it goes (at, ms since 1970).
+// isReply: it answers a message.
+shape ScheduledItem
+  id: string
+  room: string
+  chatName: string
+  network: string
+  avatar: string
+  initials: string
+  body: string
+  at: number
+  isReply: bool
+
+// the waiting messages of owner's account, the soonest first.
+shape ScheduledList
+  owner: string
+  messages: ScheduledItem[]
+
+// a message made to wait (or moved): its id and time, or why not (problem, "" when it waits).
+shape Scheduled
+  id: string
+  at: number
+  problem: string
+
+// Send Now or Cancel on a waiting message.
+shape LaterChange
+  ok: bool
+  problem: string
+
+// why a message could not wait, in the reader's words; the module names the cause.
+fn laterProblem(p: string): string = p == "past" ? "Choose a time later than now." : (p == "far" ? "A message can wait for at most a year." : (p == "encrypted" ? "This chat is end-to-end encrypted, and a message that waits on the server cannot be." : (p == "gone" ? "That message already went, or was cancelled." : "Couldn’t schedule the message. Check the connection and try again.")))
+// the day of the week of a time in the reader's zone: 0 for Sunday (1 January 1970 was a Thursday).
+fn weekdayOf(t: number, offset: number): number = (floor((t + offset * 60000) / 86400000) + 4) % 7
+fn messagesText(n: number): string = n == 1 ? "1 message" : `${n} messages`
+
+// over the composer while messages of this chat wait, in the reply bar's look: how many, and when
+// the first goes; a tap opens the list.
+component ScheduledBar
+  props
+    count: number
+    first: number
+    now: number
+    offset: number
+    open: action
+  view
+    button appearance="none" press=open testId="scheduled-bar"
+      aria-label=`${messagesText(count)} scheduled. The first goes ${formatDay(first, now, offset, "day-time")}`
+      display="flex" flex-direction="row" align-items="center" gap=8 margin="6px 12px 0" padding="2px 0 2px 12px"
+      border-left="2px solid AccentColor" text-align="start"
+      column flex=1 min-width=0
+        text `${messagesText(count)} scheduled` font="-exact-caption1" font-weight=600 color="AccentColor"
+        text `Sends ${formatDay(first, now, offset, "day-time")}` font="-exact-footnote" color="-exact-secondary-label" line-clamp=1
+      image "symbol:forward-chevron" font="-exact-footnote" color="-exact-tertiary-label" aria-hidden=true
+
+// every waiting message, the soonest first, in its chat's look; a tap on one offers Send Now,
+// Change Time and Cancel.
+component ScheduledScreen
+  props
+    route: string
+    messages: ScheduledItem[]
+    loaded: bool
+    busy: bool
+    refused: string
+    now: number
+    offset: number
+    close: action
+    sendNow: action
+    change: action
+    cancel: action
+  view
+    column navigationKey=route navigationScroll="scheduled" position="absolute" inset=0 display="flex" flex-direction="column"
+      testId="scheduled-screen"
+      header display="flex" align-items="center"
+        button id="back" press=close aria-label="Back" testId="scheduled-back"
+          image "symbol:back"
+        text "Send Later" role="heading" aria-level=1
+      if messages.length == 0
+        if loaded
+          EmptyLater()
+        else
+          column flex=1 justify-content="center" align-items="center"
+            progress aria-label="Loading scheduled messages" testId="scheduled-loading"
+      else
+        // each row's menu, beside the list: a popover inside a section would be its cells.
+        for m in messages key=m.id
+          column id=`scheduled-menu-${m.id}` popover="auto" role="menu"
+            button press=sendNow(m.id) popovertarget=`scheduled-menu-${m.id}` popovertargetaction="hide" testId=`scheduled-send-${m.id}`
+              image "symbol:send"
+              text "Send Now"
+            button press=change(m.id) popovertarget=`scheduled-menu-${m.id}` popovertargetaction="hide" testId=`scheduled-change-${m.id}`
+              image "symbol:icon.clock"
+              text "Change Time"
+            hr
+            button press=cancel(m.id) destructive=true popovertarget=`scheduled-menu-${m.id}` popovertargetaction="hide"
+              testId=`scheduled-cancel-${m.id}`
+              image "symbol:delete"
+              text "Cancel Message"
+        list id="scheduled" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="scheduled-list"
+          if refused != ""
+            section
+              text laterProblem(refused) color="-exact-system-red" testId="scheduled-refused"
+          section
+            for m in messages key=m.id
+              button appearance="none" popovertarget=`scheduled-menu-${m.id}` disabled=busy testId=`scheduled-${m.id}`
+                aria-label=`${m.chatName}. ${m.body}. Sends ${formatDay(m.at, now, offset, "day-time")}`
+                display="flex" flex-direction="row" align-items="flex-start" gap=12 flex=1 min-width=0 text-align="start" padding="8px 16px"
+                view position="relative" flex-shrink=0
+                  Face(picture=m.avatar, initials=m.initials, size=40)
+                  if m.network != "matrix"
+                    NetworkBadge(network=m.network, identifier=`scheduled-network-${m.id}`)
+                column flex=1 min-width=0 gap=2
+                  row flex-wrap="wrap" column-gap=6 align-items="baseline"
+                    text m.chatName font="-exact-subheadline" font-weight=600 color="-exact-label" flex="1 1 6rem" min-width=0 line-clamp=1
+                    text formatDay(m.at, now, offset, "day-time") font="-exact-footnote" color="AccentColor" margin-left="auto"
+                      flex-shrink=0
+                  text (m.isReply ? `↩ ${m.body}` : m.body) font="-exact-subheadline" color="-exact-secondary-label" line-clamp=3
+            footer
+              text "Each message waits on your server and goes at its time, even with the phone off."
+
+// no message waits: what Send Later is, and how to start one.
+component EmptyLater
+  view
+    column flex=1 justify-content="center" align-items="center" gap=8 padding=32 text-align="center" testId="scheduled-empty"
+      image "symbol:icon.clock" font-size="min(-exact-title1, 44px)" color="-exact-tertiary-label" aria-hidden=true
+      text "No Scheduled Messages" font="-exact-title3" font-weight=600 color="-exact-label"
+      text "In a chat, hold Send to send a message later." font="-exact-subheadline" color="-exact-secondary-label"
+
+// a time for a message, from the system's date and time picker: for one being written (the
+// composer's text) or one waiting (Change Time). picked: the picked time without a zone, "" before.
+component LaterSheet
+  props
+    route: string
+    title: string
+    body: string
+    picked: string
+    saving: bool
+    refused: string
+    pick: action
+    close: action
+    save: action
+  view
+    column navigationKey=route navigationPresentation="modal" navigationScroll="later-sheet" position="absolute" inset=0
+      display="flex" flex-direction="column" testId="later-sheet"
+      header display="flex" align-items="center"
+        button id="back" press=close testId="later-cancel"
+          text "Cancel"
+        text title role="heading" aria-level=1 flex=1
+        button press=save disabled=(picked == "" or saving) buttonStyle="filled" testId="later-save"
+          text "Schedule"
+      list id="later-sheet" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        section
+          row
+            text "Send" flex=1 min-width=0
+            input type="datetime-local" value=picked input=pick placeholder="Choose a time" aria-label="Send at" testId="later-when"
+          footer
+            text (refused != "" ? laterProblem(refused) : "It waits on your server and goes at this time, even with the phone off.")
+              color=(refused != "" ? "-exact-system-red" : "-exact-secondary-label") testId="later-note"
+        if body != ""
+          section
+            header
+              text "Message"
+            text body line-clamp=4 color="-exact-secondary-label" testId="later-body"

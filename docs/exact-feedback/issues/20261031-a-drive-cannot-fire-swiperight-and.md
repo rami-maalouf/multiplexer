@@ -57,3 +57,8 @@ landed on node #542, not on node #45 the aim hit-tested", so a drive that swipes
 could not open the chat from the list. It opened the chat through a search result's `button`
 instead. About 3 minutes.
 
+Seen again on 2026-11-03 (a third task): under `--touch platform`, `tap found-chat-<id>` on a
+search result's `button` missed twice right after the screen opened ("the touch landed on node
+#713, not on node #711"); after a real 2-second wait, `tap room-<id>` on the list worked. About
+5 minutes.
+

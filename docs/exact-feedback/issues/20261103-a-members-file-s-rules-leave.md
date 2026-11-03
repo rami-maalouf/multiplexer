@@ -43,3 +43,9 @@ named a shape of the root, and `contract-use-missing` said "`Reply` is declared 
 can use". Moving a shape that 20 of the root's mutations use would touch a file other agents
 edit, so the feature's file declared a second `ok: bool` shape. A members file sees its root's
 state; seeing its root's shapes too would remove the copy. About 2 minutes.
+
+More evidence on 2026-11-03 at `ed43ad09a0`: a members file (a chat app's Send Later) had to
+empty the composer, which the root keeps with its `Composer` shape and `withComposer` function.
+Naming them gave the same "would make a cycle" refusal, so the root got an action
+(`clearComposer`) only for the members file to call. About 2 minutes.
+
