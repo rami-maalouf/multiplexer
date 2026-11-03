@@ -228,7 +228,17 @@ bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a Wha
   message in any chat) or launch: the sdk tells no listener of a custom global account data event,
   and that change alone moves nothing in the room list. A timer reading `Client.accountData` would
   close the gap.
-- The tests: `ChatActionsTests` (rooms "Multiplexer hold test", "... archive", "... delete").
+- **The lists.** Each chat is in one `ChatList`: the inbox, the Archive or Low Priority (an
+  archived chat in Low Priority is in the Archive), or none when deleted (`RoomSummary.list`).
+  `inbox(filter:list:network:)` shows one list, narrowed by the filter menu's choice and the
+  filter sheet's network, so they combine: the Archive on WhatsApp, Unread in Low Priority. The
+  pinned grid shows the inbox's pinned chats only.
+- **The sheet's counts.** Each list's and each network's rows count the chats that show an
+  unread mark in the accent (`isLoudlyUnread`: unread and not muted, or a mention), so a muted
+  chat's grey count does not count. A network's row counts its chats in the inbox, whatever the
+  list shown; the Archive's and Low Priority's rows count every network.
+- The tests: `ChatActionsTests` (rooms "Multiplexer hold test", "... archive", "... delete", and
+  "... WhatsApp", whose bridge bot is a service member and is not invited).
 
 ## Proof (2026-10-27)
 
