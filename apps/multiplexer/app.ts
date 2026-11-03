@@ -54,7 +54,8 @@ type MessagesAnswer = {
   // the first message after this account's read receipt, or "".
   firstUnread: string;
   messages: {
-    id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
+    // event: its event id once the server has it, else "".
+    id: string; event: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
     isImage: boolean; image: string; imageWidth: number; imageHeight: number; waitingForKey: boolean;
     isEdited: boolean; senderPicture: string;
     // deleted for everyone (body ""); your own text message, which an edit can change.
@@ -259,7 +260,8 @@ const sources: Sources = {
   // With room, the search in that chat (its info page's): its messages and links, or a kind's.
   loadSearch: async ([userId, searching, query, kind, recent, room], _store, _storage, native): Promise<Result<'loadSearch'>> => {
     const none = { owner: userId, room, query, kind, chats: [], messages: [], links: [] };
-    if (userId === '' || !searching || !native?.available || (room !== '' && query === '' && kind === '')) return none;
+    // a chat's Bookmarks kind shows its saved messages (loadBookmarks), which no search finds.
+    if (userId === '' || !searching || !native?.available || (room !== '' && query === '' && kind === '') || kind === 'bookmarks') return none;
     // a found photo's or sender's picture, once downloaded, and a chat's new file, link or voice
     // message on a kind's page; a chat's new photo or video (the info page's); the recent chats'
     // last messages as they change.
@@ -296,6 +298,25 @@ const sources: Sources = {
     const answer = (await native!.later({ op: 'scheduledAction', id, action })) as { ok: boolean; problem?: string };
     return { ok: answer.ok, problem: answer.problem ?? '' };
   },
+  // the saved messages, the last saved first, each with its chat; read again each minute (minute),
+  // as another device's reach the store with no word, and when one is saved or removed.
+  loadBookmarks: async ([userId, _minute], _store, _storage, native): Promise<Result<'loadBookmarks'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, bookmarks: [] };
+    native.watch('bookmarks');
+    const answer = (await native.later({ op: 'bookmarks' })) as {
+      bookmarks: Omit<Result<'loadBookmarks'>['bookmarks'][number], 'initials'>[];
+    };
+    return { owner: userId, bookmarks: answer.bookmarks.map((b) => ({ ...b, initials: initials(b.chatName) })) };
+  },
+  // a message of the open chat (its id there) saved, or a saved one (its event) removed.
+  addBookmark: async ([roomId, messageId], _store, _storage, native): Promise<Result<'addBookmark'>> => {
+    await native!.later({ op: 'bookmark', roomId, messageId });
+    return { ok: true };
+  },
+  removeBookmark: async ([roomId, eventId], _store, _storage, native): Promise<Result<'removeBookmark'>> => {
+    await native!.later({ op: 'removeBookmark', roomId, eventId });
+    return { ok: true };
+  },
   // a found message's chat pages back to it: its id there, or "" when it is further back.
   showMessage: async ([roomId, eventId], _store, _storage, native): Promise<Result<'showMessage'>> =>
     (await native!.later({ op: 'showMessage', roomId, eventId })) as { id: string },
@@ -327,7 +348,7 @@ const sources: Sources = {
       const bigEmoji = !media && !m.waitingForKey && isBigEmoji(m.body);
       const status = i === answer.messages.length - 1 ? statusOf(m, group) : { status: '', statusTime: 0 };
       return {
-        id: m.id, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
+        id: m.id, event: m.event, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
         isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),

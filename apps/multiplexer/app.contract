@@ -17,6 +17,7 @@ use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contrac
 use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
 use ScheduledBar, ScheduledScreen, LaterSheet, laterProblem, weekdayOf from "./send-later.contract"
+use BookmarksScreen, BookmarkMenu from "./bookmarks.contract"
 use GifSheet from "./gif.contract"
 
 shape Session
@@ -89,6 +90,8 @@ shape RoomList
 // length in seconds and its waveform's bars, each from 0 to 1.
 shape Message
   id: string
+  // its event once the server has it ("" before): a bookmark keeps it.
+  event: string
   senderName: string
   senderInitials: string
   senderPicture: string
@@ -209,8 +212,10 @@ routes nav
         editInfo "/room/:id/info/edit"
         customName "/room/:id/info/name"
         addMember "/room/:id/info/add"
+        chatBookmarks "/room/:id/info/bookmarks"
     inboxes "/inboxes"
     settings "/settings"
+    bookmarks "/bookmarks"
     scheduled "/scheduled"
       laterChange "/scheduled/:delay/time"
 
@@ -359,7 +364,7 @@ component Multiplexer
   derive heldBig = match heldMessage { case some(m) => m.bigEmoji, case none => false }
   derive heldCanEdit = match heldMessage { case some(m) => m.isEditable and within(m.editUntil, shown), case none => false }
   derive heldCanDelete = heldOwn and (match heldMessage { case some(m) => within(m.deleteUntil, shown), case none => true })
-  derive heldRows = 2 + (heldCanShare ? 1 : 0) + (heldCanForward ? 1 : 0) + (heldCanCopy ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldCanDelete ? 1 : 0)
+  derive heldRows = 2 + (heldEvent != "" ? 1 : 0) + (heldCanShare ? 1 : 0) + (heldCanForward ? 1 : 0) + (heldCanCopy ? 1 : 0) + (heldCanEdit ? 1 : 0) + (heldCanDelete ? 1 : 0)
   // the menu's height, so a message low on the screen moves up and the menu fits under it.
   derive heldMenuHeight = heldRows * (viewport.accessibilityTextSize ? 64 : 44) + 12 + (heldCanEdit or heldCanDelete ? 13 : 0)
   // at the largest text sizes the lifted copy is shorter (a photo shrinks to fit), so the menu
@@ -419,6 +424,7 @@ component Multiplexer
   members "./chat-search-members.contract"
   members "./send-later-members.contract"
   members "./gif-members.contract"
+  members "./bookmarks-members.contract"
 
   action step
     now = performanceNow()
@@ -999,6 +1005,13 @@ component Multiplexer
           ScheduledScreen(route=`${e.id}`, messages=scheduledShown, loaded=(scheduledList.owner == session.userId),
             busy=pending(scheduledChanged), refused=laterRefused, now=shown, offset=time.utcOffset, close=back,
             sendNow=sendScheduledNow, change=changeLaterTime, cancel=cancelScheduled)
+        // the saved messages: every chat's (the filter sheet's row), or the open chat's (its info page's).
+        if e.name == "bookmarks"
+          BookmarksScreen(route=`${e.id}`, items=bookmarksShown, loaded=bookmarksLoaded, inChat=false, now=shown, offset=time.utcOffset,
+            aimedText=aimedBookmarkText, close=back, open=openBookmark, aim=aimBookmark, copy=copyBookmark, remove=removeAimedBookmark)
+        if e.name == "chatBookmarks"
+          BookmarksScreen(route=`${e.id}`, items=chatBookmarks, loaded=bookmarksLoaded, inChat=true, now=shown, offset=time.utcOffset,
+            aimedText=aimedBookmarkText, close=back, open=openChatBookmark, aim=aimBookmark, copy=copyBookmark, remove=removeAimedBookmark)
         if e.name == "later"
           LaterSheet(route=`${e.id}`, title="Send Later", body=composer.text.trim(), picked=laterWhen, saving=laterSaving,
             refused=laterRefused, pick=pickLater, close=closeLater, save=saveLater)
@@ -1015,7 +1028,8 @@ component Multiplexer
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
             InboxSheet(networks=roomList.networks, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
-              chooseList=chooseList, scheduled=scheduledShown.length, openScheduled=chooseSendLater, largeText=viewport.accessibilityTextSize)
+              chooseList=chooseList, scheduled=scheduledShown.length, openScheduled=chooseSendLater, openBookmarks=chooseBookmarks,
+              largeText=viewport.accessibilityTextSize)
         // a held message's sheets: every emoji, half height and pulled up to full; the chats to forward to.
         if e.name == "reactions"
           EmojiSheet(route=`${e.id}`, rows=emojiRows, query=emojiQuery, group=emojiGroup, columns=emojiColumns, search=searchEmoji,
@@ -1063,9 +1077,13 @@ component Multiplexer
             pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
             customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,
             searching=chatSearching, returned=chatSearchClosed, search=openChatSearch, closeSearch=closeChatSearch,
+            bookmarkCount=chatBookmarks.length, bookmarks=openChatBookmarks,
             largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion)
-            // the search in this chat, in the page's place (chat-search-members.contract).
+            // the search in this chat, in the page's place (chat-search-members.contract); its
+            // Bookmarks kind's rows have the list's long-press menu.
+            BookmarkMenu(aimedText=aimedBookmarkText, copy=copyBookmark, remove=removeAimedBookmark)
             ChatSearchResults(found=chatFound, shown=chatFoundShown, loading=pending(chatFound), query=chatQuery, kind=chatKind,
+              bookmarks=chatBookmarks, bookmarksLoaded=bookmarksLoaded, aim=aimBookmark,
               now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion,
               chooseKind=chooseChatKind, openMessage=openChatFound, openLink=openChatLink)
             SearchBar(query=chatQuery, kind=chatKind, scope=infoShown.name, type=typeChatSearch, submit=submitChatSearch,
@@ -1396,8 +1414,9 @@ component Multiplexer
                   // the emoji sheet hides the actions, as Beeper's does: they would show through it.
                   if top(nav).name != "reactions"
                     MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=heldCanCopy, canEdit=heldCanEdit, canDelete=heldCanDelete,
+                      canBookmark=(heldEvent != ""), bookmarked=heldBookmarked,
                       reply=startReply(held, heldName, heldBody), share=shareHeld, forward=forwardHeld, copy=copyHeld,
-                      markUnread=markUnreadOpen, edit=startEdit, delete=askDeleteMessage)
+                      markUnread=markUnreadOpen, bookmark=toggleBookmarkHeld, edit=startEdit, delete=askDeleteMessage)
       // a choice of Send Later's menu the server refused.
       dialog id="later-refused" role="alertdialog" aria-label="Couldn’t Schedule"
         text laterProblem(laterRefused)

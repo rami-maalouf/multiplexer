@@ -130,6 +130,9 @@ component InfoPage
     searching: bool
     returned: bool
     search: action
+    // this chat's saved messages, and their list.
+    bookmarkCount: number
+    bookmarks: action
     closeSearch: action
     largeText: bool
     reduced: bool
@@ -215,6 +218,14 @@ component InfoPage
                 text "About"
               row
                 text info.topic white-space="pre-wrap" overflow-wrap="break-word" min-width=0 testId="info-topic"
+          // the chat's saved messages (Bookmarks): their own list over the page.
+          section
+            button press=bookmarks testId="info-bookmarks" aria-label=(bookmarkCount > 0 ? `Bookmarks, ${bookmarkCount}` : "Bookmarks")
+              image "symbol:bookmark"
+              text "Bookmarks" flex=1
+              if bookmarkCount > 0
+                text bookmarkCount.toString() color="-exact-secondary-label" font-variant-numeric="tabular-nums" testId="info-bookmarks-count"
+              image "symbol:forward-chevron"
           // the newest photos and videos: a row of four, or more once asked; a tap opens the viewer,
           // which zooms out of the tile.
           section

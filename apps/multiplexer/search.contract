@@ -7,6 +7,7 @@
 use Badge from "exact:content"
 use Face from "./bubble.contract"
 use NetworkBadge from "./network.contract"
+use BookmarkItem, BookmarkRow, bookmarkHas from "./bookmarks.contract"
 
 // the field grows out of the search button's place at the right, as Beeper's does, and the
 // results come in under it.
@@ -81,8 +82,8 @@ shape Jump
   id: string
 
 // the kinds above the results, as Beeper names them: Audio in one chat only.
-fn kindName(k: string): string = k == "images" ? "Images" : (k == "videos" ? "Videos" : (k == "links" ? "Links" : (k == "files" ? "Files" : "Audio")))
-fn kindSymbol(k: string): string = k == "images" ? "symbol:photo" : (k == "videos" ? "symbol:icon.video" : (k == "links" ? "symbol:link" : (k == "files" ? "symbol:document" : "symbol:icon.waveform")))
+fn kindName(k: string): string = k == "images" ? "Images" : (k == "videos" ? "Videos" : (k == "links" ? "Links" : (k == "files" ? "Files" : (k == "bookmarks" ? "Bookmarks" : "Audio"))))
+fn kindSymbol(k: string): string = k == "images" ? "symbol:photo" : (k == "videos" ? "symbol:icon.video" : (k == "links" ? "symbol:link" : (k == "files" ? "symbol:document" : (k == "bookmarks" ? "symbol:bookmark" : "symbol:icon.waveform"))))
 // the field's placeholder: the chats searched (scope: one chat's name, "" for all), or the kind chosen.
 fn searchPlaceholder(kind: string, scope: string): string = kind != "" ? `Search ${kindName(kind)}` : (scope == "" ? "All Chats" : `Search in ${scope}`)
 // what a found photo, video or file is called when it has no caption.
@@ -415,22 +416,29 @@ component ChatSearchResults
     chooseKind: action
     openMessage: action
     openLink: action
+    // the chat's saved messages, for the Bookmarks kind; words narrow them by the start of a word.
+    bookmarks: BookmarkItem[]
+    bookmarksLoaded: bool
+    aim: action
   derive typed = query.trim() != ""
-  derive empty = shown and not loading and found.messages.length == 0 and found.links.length == 0
+  derive words = query.trim().toLowerCase().split(" ").filter(w => w != "")
+  derive marked = bookmarks.filter(b => bookmarkHas(b, words))
+  derive empty = kind == "bookmarks" ? bookmarksLoaded and marked.length == 0 : shown and not loading and found.messages.length == 0 and found.links.length == 0
   derive pictures = kind == "images" or kind == "videos"
   view
     list id="chat-search-results" appearance="auto" listStyle="plain" keyboardDismissMode="on-drag" flex=1 min-height=0 padding-bottom=72
       animation=(reduced ? "none" : "appear 220ms ease both") testId="chat-search-results"
       section
         row padding="8px 0 10px" gap=2 testId="chat-kinds"
-          for k in ["images", "videos", "links", "files", "audio"] key=k
+          for k in ["images", "videos", "links", "files", "audio", "bookmarks"] key=k
             KindButton(kind=k, chosen=(kind == k), choose=chooseKind, largeText=largeText)
       if empty and (typed or kind != "")
         section
           column align-items="center" gap=8 padding="48px 0" text-align="center" width="100%" testId="chat-no-results"
             image (typed ? "symbol:search" : kindSymbol(kind)) font-size="2.25rem" color="-exact-tertiary-label" aria-hidden=true
             text (typed ? `No Results for “${query.trim()}”` : `No ${kindName(kind)}`) font="-exact-title3" font-weight=600 color="-exact-label"
-            text (kind != "" ? "A kind shows from about this chat’s last 1,000 messages." : "Search finds whole words in the messages this iPhone has from about the last 3 months.")
+            text (kind == "bookmarks" ? (typed ? "No saved message in this chat has those words." : "Hold a message and choose Bookmark to find it here later.")
+              : (kind != "" ? "A kind shows from about this chat’s last 1,000 messages." : "Search finds whole words in the messages this iPhone has from about the last 3 months."))
               font="-exact-subheadline" color="-exact-secondary-label"
       else if kind != ""
         section testId=`chat-found-${kind}`
@@ -446,6 +454,9 @@ component ChatSearchResults
           else if kind == "audio"
             for m in found.messages key=m.id
               AudioResult(message=m, open=openMessage, now=now, offset=offset)
+          else if kind == "bookmarks"
+            for b in marked key=b.event
+              BookmarkRow(item=b, inChat=true, now=now, offset=offset, open=openMessage, aim=aim, identifier=`chat-bookmark-${b.event}`)
           else
             for m in found.messages key=m.id
               MessageResult(message=m, open=openMessage, openLink=openLink, showLink=true, inChat=true, now=now, offset=offset)
@@ -462,7 +473,7 @@ component ChatSearchResults
               text "Links"
             for m in found.links key=m.id
               MessageResult(message=m, open=openMessage, openLink=openLink, showLink=true, inChat=true, now=now, offset=offset)
-      if loading and (typed or kind != "")
+      if loading and (typed or kind != "") and kind != "bookmarks"
         section
           row justify-content="center" padding="12px 0" testId="chat-search-loading"
             progress aria-label="Searching"
