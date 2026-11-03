@@ -1145,7 +1145,7 @@ component Multiplexer
                   if recording == "draft"
                     view flex=1 min-width=0
                       DraftBar(bars=restingBars(draftBars), seconds=draftSeconds, current=(voicePlaying == "draft"),
-                        playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, preparing=(not draftReady),
+                        playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, preparing=pending(voicePrepared),
                         remove=cancelVoice, play=playVoice("draft"), send=sendVoiceDraft)
                   else if recording != "idle"
                     view flex=1 min-width=0
@@ -1281,6 +1281,10 @@ component Multiplexer
           text "Open Settings"
         button commandfor="microphone-off" command="close" testId="microphone-cancel"
           text "Cancel"
+      dialog id="voice-failed" role="alertdialog" aria-label="Couldn’t Record"
+        text "The voice message could not be recorded. Try again." testId="voice-failed-text"
+        button commandfor="voice-failed" command="close" testId="voice-failed-ok"
+          text "OK"
       dialog id="sign-out" role="alertdialog" aria-label="Sign Out?"
         text "This iPhone forgets your session. Your chats stay on the server."
         button press=signOut destructive=true commandfor="sign-out" command="close" testId="sign-out-confirm"

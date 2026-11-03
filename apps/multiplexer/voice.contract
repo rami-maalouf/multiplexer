@@ -161,9 +161,9 @@ component RecordingBar
     row align-items="center" gap=8 min-height=44 padding="0 4px" border-radius=22 border="1px solid -exact-system-red"
       background-color="voice.recording" testId="recording-bar"
       button press=cancel aria-label="Cancel Recording" testId="voice-cancel"
-        image "symbol:close" color="-exact-secondary-label"
+        image "symbol:close" font-size="min(-exact-title3, 24px)" color="-exact-secondary-label"
       view width=10 height=10 border-radius=5 background-color="-exact-system-red" flex-shrink=0 aria-hidden=true
-      text lengthText(floor(milliseconds / 1000)) font="-exact-body" color="-exact-system-red" font-variant-numeric="tabular-nums"
+      text lengthText(floor(milliseconds / 1000)) font="-exact-body" font-size="min(-exact-body, 24px)" color="-exact-system-red" font-variant-numeric="tabular-nums"
         flex-shrink=0 testId="voice-elapsed" aria-label=`Recording, ${lengthText(floor(milliseconds / 1000))}`
       if starting
         view flex=1
@@ -193,12 +193,12 @@ component DraftBar
   view
     row align-items="center" gap=6 min-height=44 padding="0 4px 0 2px" border-radius=22 border="1px solid -exact-separator" testId="voice-draft"
       button press=remove aria-label="Delete Recording" testId="voice-delete" destructive=true
-        image "symbol:delete"
+        image "symbol:delete" font-size="min(-exact-title3, 24px)"
       button appearance="none" press=play aria-label=(playing ? "Pause" : "Play") testId="voice-draft-play" min-width=36 min-height=44
         display="flex" align-items="center" justify-content="center" flex-shrink=0
         VoicePlayMark(playing=playing, loading=false, ink="AccentColor", fill="-exact-background", size=28)
       VoiceBars(bars=bars, played=played, ink="AccentColor")
-      text lengthText(shown) font="-exact-footnote" color="-exact-secondary-label" font-variant-numeric="tabular-nums" flex-shrink=0
-        testId="voice-draft-time"
+      text lengthText(shown) font="-exact-footnote" font-size="min(-exact-footnote, 20px)" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
+        flex-shrink=0 testId="voice-draft-time"
       button press=send disabled=preparing buttonStyle="filled" margin="4px 0" aria-label="Send Voice Message" testId="voice-send"
-        image "symbol:send"
+        image "symbol:send" font-size="min(-exact-body, 22px)"

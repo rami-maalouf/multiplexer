@@ -14,8 +14,9 @@ members Multiplexer
   state voiceRoom = ""
   state voicePaused = true
   state voiceTime = 0
-  // a voice message on its way in: "idle", "starting" (the microphone opens), "recording",
-  // "stopping", or "draft" (recorded, not sent yet), in recordingRoom.
+  // a voice message on its way in: "idle", "opening" (the microphone; the system may ask first),
+  // "starting" (the recorder), "recording", "stopping", or "draft" (recorded, not sent yet), in
+  // recordingRoom. Each step sends one request, whose failure ends it (voiceFailed).
   state recording = "idle"
   state recordingRoom = ""
   // the microphone's track and the recorder while it records; takes names each recording's file.
@@ -41,6 +42,11 @@ members Multiplexer
   derive draftReady = match voicePrepared { case some(d) => d.recording == draftRecording and draftRecording != "", case none => false }
   derive draftBars = match voicePrepared { case some(d) => d.recording == draftRecording ? d.bars : [], case none => [] }
   derive draftSeconds = draftMilliseconds > 0 ? max(1, round(draftMilliseconds / 1000)) : 0
+  // the failure of the request the recording waits on: a refused microphone, a recorder that did not
+  // start or stop. A refused request runs no `then`, so a task ends the recording.
+  derive voiceFailure = recording == "opening" ? failure(micOpened) : (recording == "starting" ? failure(recordStarted) : (recording == "stopping" ? failure(recordSaved) : none))
+  derive voiceFailed = match voiceFailure { case some(f) => true, case none => false }
+  derive voiceRefused = match voiceFailure { case some(f) => f.code == "NotAllowedError", case none => false }
   // the voice button shows while the field is empty and nothing is picked; Send shows otherwise.
   derive voiceOffered = editing == "" and composer.text.trim() == "" and composer.attachments.length == 0
   // leaving the chat stops its voice message, and throws away a recording made there.
@@ -48,6 +54,8 @@ members Multiplexer
     after(1, stopVoiceNow)
   task dropRecording when recording != "idle" and recordingRoom != openRoom
     after(1, cancelVoice)
+  task endFailedRecording when voiceFailed key=recording
+    after(1, recordingFailed)
 
   // a tap on a voice message plays it from its start, or pauses or resumes it when it is the one in the player.
   action playVoice(id: string)
@@ -82,7 +90,7 @@ members Multiplexer
     if microphone.state == "denied"
       showModal("microphone-off")
     else if recording == "idle"
-      recording = "starting"
+      recording = "opening"
       recordingRoom = openRoom
       panel = false
       blur("composer")
@@ -92,7 +100,8 @@ members Multiplexer
     match micOpened
       case some(s)
         let track = match s.tracks.at(0) { case some(t) => t.id, case none => "" }
-        if recording == "starting"
+        if recording == "opening"
+          recording = "starting"
           recordTrack = track
           let take = takes + 1
           takes = take
@@ -101,14 +110,7 @@ members Multiplexer
           // dropped while the microphone opened.
           send micClosed = stopTrack(track=track)
       case none
-        recording = "idle"
-        recordingRoom = ""
-        match failure(micOpened)
-          case some(f)
-            if f.code == "NotAllowedError"
-              showModal("microphone-off")
-          case none
-            recording = "idle"
+        recording = recording
   action recordBegun
     match recordStarted
       case some(r)
@@ -120,9 +122,7 @@ members Multiplexer
           send recordDropped = stopMediaRecorder(recorder=r.id)
           closeMicrophone()
       case none
-        recording = "idle"
-        recordingRoom = ""
-        closeMicrophone()
+        recording = recording
   // stop keeps the recording as a draft, and makes it ready to go while it is listened to.
   action stopVoice
     if recording == "recording"
@@ -137,15 +137,23 @@ members Multiplexer
           recording = "draft"
           send voicePrepared = prepareVoice(m.path)
       case none
-        if recording == "stopping"
-          recording = "idle"
-          recordingRoom = ""
+        recording = recording
     recorder = ""
     closeMicrophone()
   action closeMicrophone
     if recordTrack != ""
       send micClosed = stopTrack(track=recordTrack)
       recordTrack = ""
+  // a refused microphone says how to allow it; another failure says the voice message was not recorded.
+  action recordingFailed
+    if voiceRefused
+      showModal("microphone-off")
+    else
+      showModal("voice-failed")
+    closeMicrophone()
+    recorder = ""
+    recording = "idle"
+    recordingRoom = ""
   // X while it records, Delete on the draft, or leaving the chat: the recording is thrown away.
   action cancelVoice
     if recording == "recording"
@@ -160,6 +168,9 @@ members Multiplexer
     draftMilliseconds = 0
   // Send: the voice message goes as the chat's reply, if it has one, and shows in the chat at once.
   action sendVoiceDraft
+    // a draft that could not be made ready tries again.
+    if not draftReady and failed(voicePrepared) and not pending(voicePrepared)
+      send voicePrepared = prepareVoice(draftRecording)
     match voicePrepared
       case some(d)
         if draftReady and not pending(sentVoice)
