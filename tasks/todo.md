@@ -194,7 +194,7 @@ branch `server/m0-checkpoint`). Rami's decision of 2026-10-28 stands; nothing be
 - [x] `bun exact.mjs feedback status` has run, and the diary follows its answer. (Answer: `ask`. The diary is in `apps/multiplexer/.exact/diary/`. Nothing is sent without Rami's yes.)
 
 **Verification:**
-- [ ] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app.
+- [x] `bun exact.mjs agent ios "screenshot .exact/first.png"` shows the app. (2026-11-03: the sign-in screen, 402×874.)
 
 **Dependencies:** None (Q2 answered)
 **Files:** `apps/multiplexer/` (generated)
@@ -230,12 +230,14 @@ call it. No network and no UI design. Try A first, then B.
 
 **Acceptance criteria:**
 - [x] An XCTest in the iOS Simulator signs in to the practice account on matrix.org (D8) and lists its rooms. (2026-10-27: `scripts/test-matrix-core.sh`, 1 passed in 8.7 s. One device sends; a second device with an empty store sees the room and reads the message from the server. Both devices sign out.)
-- [ ] After T0.6: the same test against our server lists the WhatsApp chat.
+- [x] After T0.6: the same test against our server lists the WhatsApp chat. (2026-11-03: `scripts/test-matrix-core.sh` runs
+  against our server as `@test1`/`@test2` by default; a read-only drive as `@rami` listed his 185 rooms, WhatsApp ones
+  with the network `whatsapp`, and a GIF reached WhatsApp through the bridge.)
 - [x] It returns the last 20 messages of a room, in order, with sender, text and time. (The test checks the newest message and that it is our own.)
 - [x] No matrix-rust-sdk type is in MatrixCore's public API. (Public types: `MatrixAccount`, `SavedSession`, `RoomSummary`, `Message`, `MatrixCoreError`. The same files compile in the Exact app.)
 
 **Verification:**
-- [ ] `xcodebuild test` on an iOS Simulator destination passes.
+- [x] `xcodebuild test` on an iOS Simulator destination passes. (2026-11-03: the whole suite, 52 tests, 1 skipped.)
 
 **Dependencies:** T1.2, the practice account (D8). The WhatsApp check needs T0.6.
 **Files:** `matrix-core/Package.swift`, `matrix-core/Sources/MatrixCore/*.swift`, `matrix-core/Tests/*`
@@ -382,8 +384,10 @@ marks it read on the server, so Element and my other devices agree.
 - [x] Never sent from a test on `@rami`: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp. (In a drive, the module sends receipts only for a user whose id starts with `@test`.)
 
 **Verification:**
-- [ ] A MatrixCore test with `@test1` and `@test2` on our server.
-- [ ] A drive with a send from another person, before and after opening the chat.
+- [x] A MatrixCore test with `@test1` and `@test2` on our server. (`testUnreadMessagesCountUntilRead`,
+  `testMarkedUnreadClearsOnReadAndAMutedChatStillCountsMentions`, `testANewLineFurtherBackThanTheChatLoads`.)
+- [x] A drive with a send from another person, before and after opening the chat. (2026-11-03, B15: 30 messages
+  from `@test2`; the count at open, while scrolling, and 0 once the newest message is in view.)
 
 **Dependencies:** T2.2, the test users (done in T0.5)
 **Scope:** S
@@ -516,12 +520,17 @@ sends (read only, on `@rami`), then build them in this order: voice notes (play)
 files (name and size, open), stickers (as a picture), "Edited" and "Message deleted".
 
 **Acceptance criteria:**
-- [ ] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size.
-- [ ] A voice note plays and shows its length (B16).
+- [x] Each kind shows as Messages or WhatsApp shows it, in light, dark and the largest text size. (2026-11-03: two
+  test chats holding text, links, a reply, reactions, photos, an animated GIF, a video, a sticker, a large emoji, a
+  file and a voice message, in light, dark and the largest size; `check` finds only text scrolled under the glass
+  bar. Fixed on the way: at the largest size a file's long name ran past the screen; it wraps now.)
+- [x] A voice note plays and shows its length (B16).
 - [x] A video shows its poster at its ratio with a play mark and its length, and plays full screen
   in the system player (2026-11-03, B15; `testAVideoReachesTheOtherWithItsSizeLengthAndPoster`).
   Sound with the ring switch on silent (`audio_session: "playback"`) waits for a check on the iPhone.
-- [ ] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API).
+- [x] Every kind is tested with `@test1` and `@test2` (a MatrixCore test that sends it through the API). (Text,
+  photo and file, video, sticker, voice note and audio file, reply and reactions, edit and delete, forward: see
+  `MatrixCoreTests`, `ChatDetailsTests`, `VoiceTests`, `MessageActionsTests`.)
 
 **Dependencies:** T2.10 (to see real examples)
 **Scope:** L (one commit per kind)
@@ -557,8 +566,8 @@ swipe to reply", "Hold a message").
 - [x] Long press: the chat blurs, the bubble lifts in place, Beeper's six quick reactions above it, Reply and Copy under it.
 - [x] Reactions as pills under the bubble, with a count; yours outlined in the accent; a tap adds or takes back yours.
 - [x] "Edited" under an edited message. (Not seen: no edited message in the test rooms.)
-- [ ] The rest of Beeper's long-press menu: Forward, Share, Mark as Unread, Bookmark, Edit and Delete on your own, and the + for all emojis.
-- [ ] Long press on a photo (only text bubbles have it now).
+- [x] The rest of Beeper's long-press menu: Forward, Share, Mark as Unread, Bookmark, Edit and Delete on your own, and the + for all emojis. (B14; Bookmark is built in the Bookmarks thread.)
+- [x] Long press on a photo (only text bubbles have it now). (B11 and B14: photos, videos, stickers, files and voice messages.)
 
 **Verification:**
 - [x] MatrixCore test `testAReplyQuotesItsMessageAndReactionsCount` (`@test1` and `@test2`): both see the quote; a reaction counts and is marked as yours; a second tap takes it back. The whole suite passes (12, 1 skipped).
@@ -826,7 +835,23 @@ Mute, Label, Delete (red).
   from the app and from another device; now it brings a muted one back too, and the answer does
   not archive it again (`testYourOwnMessageBringsAnArchivedChatBack`, `.exact/choices/archive-back.png`).
   The "@" with no push and the bell for WhatsApp mutes were built with B7.
-- [ ] Another device's archive or delete shows only at the next list change.
+- [x] Another device's archive or delete shows only at the next list change. (2026-11-03, branch
+  `work/list-freshness`: reproduced in the app first, an unarchive from another device not shown
+  45 s later. The SDK observes only its own account data types, so MatrixCore reads the chats'
+  marks and own names from its store every 2 s while it syncs (no request) and tells the list when
+  one changed (`AccountDataWatch`, `testAnotherDevicesArchiveTellsTheList`). The same drive with
+  the fix shows the chat back at the next read. `scripts/mark-chat-as-test-user.sh` archives or
+  unarchives as a test user from a short-lived device; `send-test-message.sh --delete-last` deletes
+  a test user's newest message.)
+- [x] Fixed on the way (2026-11-03): `testRecentMediaIsTheNewestPhotosAndVideos` failed 1 run in 3 with
+  only the newest video. A sync with a gap resets the media timeline to its newest events, and the
+  "reached the start" flag from an earlier page back stopped any new one; the flag now holds only
+  until the next reset (`MediaTimeline`, 5 runs of 5 pass). The chat's own timeline (`LiveTimeline`)
+  keeps the same flag: not changed, as B15 works there; check it with B15.
+- [ ] Seen 2026-11-03 under load from parallel threads: a new device's first sync of `@test1` took
+  near the 30 s limit, so `testANameOnlyYouSeeShowsOnYourOtherDeviceNotTheOthers` timed out twice
+  ("the first sync") and passed alone (53 s). A failed run leaves its own name on the info test
+  room, which then fails `testInfoNamesItsMembersAndWhatYouMayChange`.
 
 **Dependencies:** B6 (the menu exists). **Scope:** M
 
@@ -989,8 +1014,14 @@ emoji, a search and "Frequently used".
   a press inside a swipe; the media components only draw. Copy writes the original photo as a PNG with
   `@exact/clipboard` (Exact's image clipboard, from data code; no native code). Drives with real touches:
   each kind swipes to a reply with its quote, and still opens and holds.)
-- [ ] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
-  messages out of a room's latest event).
+- [x] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
+  messages out of a room's latest event). (2026-11-03, branch `work/list-freshness`: MatrixCore keeps
+  the newest message each row showed (`latest-messages.json` in the account's store folder); a
+  latest event older than it means it was deleted, so the row says "Message deleted" with its
+  sender, the chat never opened, and still after a relaunch (`testTheListSaysMessageDeletedWithTheChatNotOpened`,
+  which fails without the fix). The time stays the message before's, as the SDK orders the list by
+  it. Not caught: a message that arrived and was deleted while the app never showed it. Drive,
+  dark: `.exact/fresh/delete-before-dark.png`, `delete-after-dark.png`.)
 - [x] Rami (2026-11-03) ok to all; to build: hide Edit and Delete after the limits. Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
   hide Edit and Delete after WhatsApp's limits (about 15 minutes, about 2 days); skin tones.
   Done 2026-11-03 (branch `work/choices-followup`): in a WhatsApp chat, Edit shows for 15 minutes
@@ -1188,7 +1219,8 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
   `verify ios` clean.
 - [ ] After Sign Out, the sign-in screen's title shows small until the next launch (Exact
   finding "a large title comes back inline").
-- [ ] A picture on the account: `@test1` has none, so only the initials were seen.
+- [x] A picture on the account: `@test1` has none, so only the initials were seen. (2026-11-03: `@test1` has a
+  picture now; Settings shows it in its circle, `check both` clean: `apps/multiplexer/.exact/b21/account-picture.png`.)
 
 **Dependencies:** none. **Scope:** S
 

@@ -296,13 +296,17 @@ final class MediaTimeline: @unchecked Sendable {
     let items: TimelineItems
     private let handle: TaskHandle
     private let lock = NSLock()
-    private var reachedStart = false
+    /// The items' reset count when a page back reached the room's start: a reset since (a sync
+    /// with a gap leaves only the newest events) makes the start unknown again.
+    private var startAtReset: Int?
 
     init(timeline: Timeline, items: TimelineItems, handle: TaskHandle) {
         self.timeline = timeline
         self.items = items
         self.handle = handle
     }
+
+    private var reachedStart: Bool { lock.withLock { startAtReset } == items.resetCount }
 
     /// Pages back until it holds `count` photos and videos or the room's start; at most 8 pages
     /// of 50 events, since most of a chat's events are no photo.
@@ -314,9 +318,10 @@ final class MediaTimeline: @unchecked Sendable {
     func pageBack(until count: Int, pages: Int, held: () -> Int) async throws {
         for _ in 0..<pages {
             await items.settle(quiet: 0.3)
-            if lock.withLock({ reachedStart }) || held() >= count { return }
+            if reachedStart || held() >= count { return }
+            let resets = items.resetCount
             let start = try await timeline.paginateBackwards(numEvents: 50)
-            lock.withLock { reachedStart = start }
+            lock.withLock { startAtReset = start ? resets : nil }
         }
         await items.settle(quiet: 0.3)
     }
