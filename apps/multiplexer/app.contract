@@ -16,6 +16,7 @@ use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from 
 use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
+use GifSheet from "./gif.contract"
 
 shape Session
   userId: string
@@ -200,6 +201,7 @@ routes nav
       photo "/room/:id/photo/:message"
       video "/room/:id/video/:message"
       reactions "/room/:id/reactions/:message"
+      gifs "/room/:id/gifs"
       forward "/room/:id/forward/:message"
       info "/room/:id/info"
         editInfo "/room/:id/info/edit"
@@ -411,6 +413,7 @@ component Multiplexer
   members "./search-members.contract"
   members "./info-members.contract"
   members "./chat-search-members.contract"
+  members "./gif-members.contract"
 
   action step
     now = performanceNow()
@@ -428,7 +431,7 @@ component Multiplexer
     if reading and not away and openUnread > 0
       send markedRead = markRead(openRoom)
     // closing a sheet over the chat keeps an edit; leaving the chat ends it.
-    let sheet = top(nav).name == "reactions" or top(nav).name == "forward"
+    let sheet = top(nav).name == "reactions" or top(nav).name == "forward" or top(nav).name == "gifs"
     keepDraftNow()
     nav = back(nav)
     held = ""
@@ -996,6 +999,10 @@ component Multiplexer
           EmojiSheet(route=`${e.id}`, rows=emojiRows, query=emojiQuery, group=emojiGroup, columns=emojiColumns, search=searchEmoji,
             pick=pickEmoji, reset=resetFrequent, choose=chooseEmojiGroup, scrolled=emojiScrolled, close=back,
             largeText=viewport.accessibilityTextSize)
+        // the + panel's GIFs from KLIPY (gif.contract), half height and pulled up to full.
+        if e.name == "gifs"
+          GifSheet(route=`${e.id}`, gifs=gifs, query=gifQuery, shown=gifsShown, loading=pending(gifs), search=typeGif, pick=pickGif,
+            close=back, largeText=viewport.accessibilityTextSize)
         if e.name == "forward"
           ForwardSheet(route=`${e.id}`, chats=forwardChats, query=forwardQuery, chosen=forwardTo, what=forwardWhat, search=searchForward,
             toggle=toggleForward, send=sendForward, cancel=back, largeText=viewport.accessibilityTextSize)
@@ -1268,7 +1275,7 @@ component Multiplexer
                             aria-label=(editing != "" ? "Save Edit" : "Send")
                             image (editing != "" ? "symbol:checkmark" : "symbol:send")
             if threadShown and panel
-              AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
+              AddPanel(photos=choosePhotos, files=chooseFiles, gifs=openGifs, reduced=viewport.prefersReducedMotion)
             if jumpMissed != "" and jumpMissed == openRoom
               JumpNote(largeText=viewport.accessibilityTextSize)
             ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),

@@ -12,7 +12,20 @@ export const appId = 'com.ramimaalouf.multiplexer';
 // message is recorded from the microphone into app:/tmp/voice.
 export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
-  'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy'].join('\n');
+  'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
+  'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs'].join('\n');
+
+// GIFs (gif.contract): the phone calls KLIPY itself, as KLIPY requires (D10). Its app key is set at
+// build from the Keychain (scripts/setup-klipy-key.sh); it ships in the app, as an app key does.
+const KLIPY_KEY: string = import.meta.env.KLIPY_KEY ?? '';
+const KLIPY = 'https://api.klipy.com/api/v1';
+const GIFS_PER_PAGE = 30;
+// the GIF sent is KLIPY's largest under this: a GIF of several seconds can be 6 MB at its medium size.
+const GIF_SEND_BYTES = 4_000_000;
+type KlipyFile = { url: string; width: number; height: number; size: number };
+type KlipyItem = { slug: string; title?: string; type: string; file: Record<string, Partial<Record<'gif' | 'webp' | 'mp4' | 'jpg', KlipyFile>>> };
+// the GIFs the grid shows, by slug, so a tap sends the one it shows.
+const shownGifs = new Map<string, KlipyItem>();
 
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
 // this module says it to the person.
@@ -421,6 +434,47 @@ const sources: Sources = {
     await storage.fs.mkdir('app:/tmp/copy').catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });
     const png = await storage.fs.compressImage(photo.path, 'app:/tmp/copy/photo.png', { maxDimension: 2048, maxBytes: 2_000_000, type: 'image/png' });
     await write([new ClipboardItem({ 'image/png': png.path })]);
+    return { ok: true };
+  },
+  // trending GIFs before any word, else KLIPY's search, in KLIPY's order; nothing while the sheet is
+  // closed. KLIPY's answer may hold other kinds (ads, when they are on): only GIFs show.
+  loadGifs: async ([open, query]): Promise<Result<'loadGifs'>> => {
+    if (!open) return { query, failed: false, items: [] };
+    if (KLIPY_KEY === '') return { query, failed: true, items: [] };
+    const words = query.trim();
+    const url = words === ''
+      ? `${KLIPY}/${KLIPY_KEY}/gifs/trending?page=1&per_page=${GIFS_PER_PAGE}`
+      : `${KLIPY}/${KLIPY_KEY}/gifs/search?page=1&per_page=${GIFS_PER_PAGE}&q=${encodeURIComponent(words)}`;
+    const response = await fetch(url).catch(() => null);
+    if (response === null || !response.ok) return { query, failed: true, items: [] };
+    const answer = (await response.json()) as { data?: { data?: KlipyItem[] } };
+    const items = (answer.data?.data ?? []).filter((g) => g.type === 'gif');
+    for (const g of items) shownGifs.set(g.slug, g);
+    return {
+      query, failed: false,
+      items: items.flatMap((g) => {
+        const preview = g.file.sm?.webp ?? g.file.sm?.gif ?? g.file.md?.webp;
+        return preview ? [{ id: g.slug, title: g.title ?? '', preview: preview.url, width: preview.width, height: preview.height }] : [];
+      }),
+    };
+  },
+  // a tapped GIF: KLIPY's largest GIF under GIF_SEND_BYTES, downloaded straight to a file (a large
+  // one copied through this module would pass its turn's budget), sent as an animated image through
+  // the photos' path, answering replyTo; the bridge sends it to WhatsApp as a GIF. KLIPY is told
+  // it was shared.
+  sendGif: async ([roomId, slug, replyTo], _store, storage, native): Promise<Result<'sendGif'>> => {
+    const g = shownGifs.get(slug);
+    const sizes = (['hd', 'md', 'sm', 'xs'] as const).flatMap((s) => (g?.file[s]?.gif ? [g.file[s]!.gif!] : []));
+    const file = sizes.find((f) => f.size > 0 && f.size <= GIF_SEND_BYTES) ?? sizes.at(-1);
+    if (!g || !file) throw new Error(`no GIF ${slug} in the grid`);
+    const name = `${slug}.gif`;
+    await storage.fs.mkdir('app:/tmp/gifs').catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });
+    const path = `app:/tmp/gifs/${name}`;
+    const response = await fetch(file.url, { exactBodyTo: path });
+    if (!response.ok) throw new Error(`KLIPY answered ${response.status} for ${slug}`);
+    await native!.later({ op: 'sendMedia', roomId, path, name, mimetype: 'image/gif', size: file.size, photo: true,
+      width: file.width, height: file.height, caption: '', replyTo });
+    await fetch(`${KLIPY}/${KLIPY_KEY}/gifs/share/${encodeURIComponent(slug)}`, { method: 'POST' }).catch(() => null);
     return { ok: true };
   },
   // a photo's or file's original, downloaded once into the cache under its own name, to share.

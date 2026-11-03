@@ -32,6 +32,7 @@ component AddPanel
   props
     photos: action
     files: action
+    gifs: action
     reduced: bool
   view
     column testId="add-panel" padding="12px 0" padding-bottom="calc(12px + env(safe-area-inset-bottom))"
@@ -45,6 +46,11 @@ component AddPanel
         gap=16 min-height=52 padding="0px 24px" text-align="start"
         image "symbol:icon.folder" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
         text "Send file" color="-exact-label"
+      // GIFs from KLIPY (gif.contract), named as Beeper names the row.
+      button appearance="none" press=gifs testId="panel-gifs" display="flex" flex-direction="row" align-items="center"
+        gap=16 min-height=52 padding="0px 24px" text-align="start"
+        image "symbol:icon.number" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
+        text "Search KLIPY" color="-exact-label"
 
 // what the next send takes, above the composer's text: a photo as itself, a file as its name and size.
 // at the accessibility text sizes (stacked) a file's tile drops its icon and widens, so its name fits.

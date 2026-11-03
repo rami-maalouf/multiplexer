@@ -1,0 +1,32 @@
+// the GIF sheet's state and actions (gif.contract). The words typed search once typing pauses
+// for 400 ms, so one search is one call to KLIPY (its test key allows 100 an hour).
+use GifResults, GifSent from "./gif.contract"
+
+members Multiplexer
+  // the words typed, and the words the grid searches for (they catch up after the pause).
+  state gifQuery = ""
+  state gifSearch = ""
+  derive gifsOpen = top(nav).name == "gifs"
+  resource gifs = loadGifs(gifsOpen, gifSearch) as shape GifResults else empty()
+  derive gifsShown = gifs.query == gifQuery.trim()
+  mutation sentGif as shape GifSent
+  task settleGifSearch when gifsOpen and gifQuery.trim() != gifSearch key=gifQuery
+    after(400, applyGifSearch)
+
+  // the + panel's "Search KLIPY": the panel goes, and the sheet opens on trending GIFs.
+  action openGifs
+    panel = false
+    gifQuery = ""
+    gifSearch = ""
+    blur("composer")
+    nav = push(nav, path("gifs", openRoom))
+  action typeGif(v: string)
+    gifQuery = v
+  action applyGifSearch
+    gifSearch = gifQuery.trim()
+  // a tap sends the GIF at once, answering the message the composer answers, and the sheet closes.
+  action pickGif(id: string)
+    send sentGif = sendGif(openRoom, id, composer.replyTo)
+    cancelReply()
+    haptic("selection")
+    nav = back(nav)

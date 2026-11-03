@@ -43,3 +43,11 @@ named a shape of the root, and `contract-use-missing` said "`Reply` is declared 
 can use". Moving a shape that 20 of the root's mutations use would touch a file other agents
 edit, so the feature's file declared a second `ok: bool` shape. A members file sees its root's
 state; seeing its root's shapes too would remove the copy. About 2 minutes.
+
+## Seen again (2026-11-03, a GIF picker task, `ed43ad09a0`)
+
+A members file could not name the root's `Reply` shape, nor `Composer` and `withComposer`
+("naming it here would make a cycle; move it to a file both can use"). The workaround again:
+a one-field shape of the feature's own, and a call to a root action in place of the root's
+function. About 2 minutes.
+

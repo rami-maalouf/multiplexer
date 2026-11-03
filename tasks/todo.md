@@ -821,11 +821,17 @@ one. KLIPY is what Beeper uses. The phone calls KLIPY directly: KLIPY requires i
 it the one exception to invariant 1.
 
 **Acceptance criteria:**
-- [ ] Rami makes the KLIPY account (partner panel); the key stays out of git (Keychain, like the
-  other secrets). The test key allows 100 calls an hour; then ask for a production key (KLIPY's
+- [x] Rami makes the KLIPY account (partner panel); the key stays out of git (Keychain, like the
+  other secrets). (2026-11-03: Keychain service `multiplexer-klipy`, account `test`;
+  `scripts/setup-klipy-key.sh` writes it into the gitignored `apps/multiplexer/.env.local`, which the
+  build reads through `app.json`'s `env`. It ships in the app, as KLIPY's app keys do.) The test key allows 100 calls an hour; then ask for a production key (KLIPY's
   form; it publishes no price: no cost without Rami's yes). Ads off.
-- [ ] KLIPY's required branding shows in the GIF panel.
-- [ ] Search waits for a pause in typing, so one search is one call.
+- [x] KLIPY's required branding shows in the GIF panel: the field says "Search KLIPY" (required),
+  and "Powered by KLIPY" sits under the grid (optional). Results keep KLIPY's order (2026-11-03).
+- [x] Search waits for a pause in typing, so one search is one call (400 ms; trending before any word).
+  A tap sends KLIPY's largest GIF under 4 MB as an animated image (`m.image`, `image/gif`,
+  `is_animated`), downloaded straight to a file; animated GIFs now play in the chat (the whole file,
+  not the server's still thumbnail). `gif.contract`, `gif-members.contract`, `app.ts` (2026-11-03).
 - [ ] A GIF sent from the app plays in WhatsApp (check how the bridge sends it: GIF or video).
 
 **Dependencies:** B11. **Scope:** M

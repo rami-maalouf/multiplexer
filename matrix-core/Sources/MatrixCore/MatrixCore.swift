@@ -233,6 +233,9 @@ public struct MessageImage: Equatable, Sendable {
     public var fullName: String
     /// A sticker's picture: its thumbnail is the picture itself.
     public var isSticker: Bool = false
+    /// An animated GIF (or an image its sender says is animated): its thumbnail is the picture
+    /// itself too, as a server's thumbnail of it is one still frame.
+    public var isAnimated: Bool = false
 }
 
 /// Where a message is on its way to the server. Others' messages are `sent`.
