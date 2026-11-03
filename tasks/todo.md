@@ -728,11 +728,18 @@ Mute, Label, Delete (red).
 - [x] Nothing of this reaches WhatsApp: Synapse sends a bridge no account data. Only Mark as Read
   (a read receipt) does.
 - [ ] Label, Remind Me, Select chat: "Later".
-- [ ] Rami (2026-11-03), all as suggested (check what is built): a deleted chat that comes back shows only new messages (not its whole history);
+- [x] Rami (2026-11-03), all as suggested (check what is built): a deleted chat that comes back shows only new messages (not its whole history);
   was: a deleted chat that comes back shows its whole history (or only new messages);
   your own message brings an archived chat back; a mention in a muted chat gives "@" but no push
   (WhatsApp pushes it; P3.6); WhatsApp mutes show the bell (the bridge copies them as
   mentions-only).
+  Done 2026-11-03 (branch `work/choices-followup`): it showed the whole history; now Delete also
+  keeps the delete's time (`cleared` in the same account data event), the chat shows only later
+  messages, on every device, and older ones do not load (`testADeletedChatComesBackWithOnlyItsNewMessages`,
+  drive `.exact/choices/delete-back.png`). Our own message already brought an unmuted chat back,
+  from the app and from another device; now it brings a muted one back too, and the answer does
+  not archive it again (`testYourOwnMessageBringsAnArchivedChatBack`, `.exact/choices/archive-back.png`).
+  The "@" with no push and the bell for WhatsApp mutes were built with B7.
 - [ ] Another device's archive or delete shows only at the next list change.
 
 **Dependencies:** B6 (the menu exists). **Scope:** M
@@ -864,8 +871,14 @@ emoji, a search and "Frequently used".
 - [ ] Swipe to reply on photos, files, videos and stickers; Copy for a photo (Exact copies text only).
 - [ ] The list says "Message deleted" only for a chat opened since launch (the SDK leaves deleted
   messages out of a room's latest event).
-- [ ] Rami (2026-11-03) ok to all; to build: hide Edit and Delete after the limits. Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
+- [x] Rami (2026-11-03) ok to all; to build: hide Edit and Delete after the limits. Mark as Unread marks the whole chat; no "Forwarded" label (Matrix has none);
   hide Edit and Delete after WhatsApp's limits (about 15 minutes, about 2 days); skin tones.
+  Done 2026-11-03 (branch `work/choices-followup`): in a WhatsApp chat, Edit shows for 15 minutes
+  and Delete for 48 hours, from the message's time and the app's clock (`limits.ts`,
+  `bun test ./limits.test.ts`; drives at +20 min and +49 h, `.exact/choices/menu-whatsapp-*.png`).
+  mautrix-whatsapp v0.2610.0 declares both (`EditMaxAge` 15 min, `DeleteMaxAge` 2 days) and
+  bridgev2 refuses an older edit. mautrix-meta (Instagram) declares an edit limit and 5 edits
+  at most but no delete limit; other networks keep no limit until checked. No skin tones.
 
 **Dependencies:** T2.13. **Scope:** M
 
@@ -888,9 +901,10 @@ emoji, a search and "Frequently used".
 - [ ] The jump count is the chat's whole unread count, not exactly the messages below the view;
   no "New" line when the first unread message is older than the 20 loaded.
 - [ ] Stickers and large emoji have no swipe to reply or long press (B14's area).
-- [ ] Rami (2026-11-03): keep the "New" line, in-app Safari, one header per gap, typing later; to build: "Sent" instead of "Delivered". Was: open at the "New" line (built) or at the newest; "Delivered" means our server
+- [x] Rami (2026-11-03): keep the "New" line, in-app Safari, one header per gap, typing later; to build: "Sent" instead of "Delivered". Was: open at the "New" line (built) or at the newest; "Delivered" means our server
   has it, not WhatsApp ("Sent" instead?); links in Safari's in-app view or the Safari app; one
   header per gap; the typing indicator now or later.
+  Done 2026-11-03 (branch `work/choices-followup`): "Sent" (`.exact/choices/sent-now.png`).
 
 **Dependencies:** T2.13. **Scope:** M
 
@@ -957,7 +971,7 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
 **Acceptance criteria:**
 - [x] It zooms out of the top bar's capsule and shrinks back on close. (A Simulator recording
   under `--timing platform`: `apps/multiplexer/.exact/b20/zoom-open.png` and `zoom-close.png`.)
-- [x] Picture, name, "WhatsApp Group - 7 members" (or the network for a DM); Search, Archive,
+- [x] Picture, name, "WhatsApp Group · 7 members" (Rami, 2026-11-03: "·") (or the network for a DM); Search, Archive,
   Low Priority (or Unpin) and More; Media; Members with Add member. (`info.contract`,
   `info-members.contract`, `info.ts`, `modules/apple/Info.swift`, MatrixCore `ChatInfo.swift`.
   The member count leaves out the bridge's bot. Media: the chat's newest photos and videos from

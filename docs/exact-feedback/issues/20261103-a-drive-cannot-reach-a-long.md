@@ -36,3 +36,11 @@ This is for the Exact team (the agent's behaviour), not a doc fix.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, on the iOS 26.5 Simulator.
+
+Seen again on 2026-11-03 at `ed43ad09a0`, at the default text size. `tap <row label> contextmenu`
+first scrolled the row into view (`scrolled={"from":[190,2586],"to":[190,645]}` in a 874-point
+window), which left it near the bottom; the menu opened under it, and `tap menu-archive` answered
+"tap #590: its middle is outside the viewport; scroll it into view first". So the drive's own
+scroll put the menu off screen. Workaround: make the row the list's first (a new message in
+that chat), then hold it. About 2 minutes. A scroll that leaves room for the row's menu, or a
+tap that scrolls the open menu, would remove it.
