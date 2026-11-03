@@ -12,6 +12,7 @@ use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.co
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, seenText from "./details.contract"
 use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
+use SearchBar, SearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
 
@@ -402,6 +403,7 @@ component Multiplexer
     after(1, keepDraftNow)
   members "./details-members.contract"
   members "./voice-members.contract"
+  members "./search-members.contract"
   members "./info-members.contract"
 
   action step
@@ -811,12 +813,15 @@ component Multiplexer
                       progress aria-label="Signing in"
                       text "Signing In…" color="-exact-secondary-label"
           else
-            column navigationKey=`${e.id}` navigationScroll="rooms" navigationBar="none" position="absolute" inset=0
-              display="flex" flex-direction="column"
+            // while searching, the search's results take the list's place, and the bar hides.
+            column navigationKey=`${e.id}` navigationScroll=(searching ? "search-results" : "rooms") navigationBar="none"
+              position="absolute" inset=0 display="flex" flex-direction="column"
               // the title names the network the filter sheet chose, and opens Beeper's menu.
-              TitleMenu(title=listTitle(chatList, network), settings=showSettings, largeText=viewport.accessibilityTextSize)
+              if not searching
+                TitleMenu(title=listTitle(chatList, network), settings=showSettings, largeText=viewport.accessibilityTextSize)
+              // the list stays under the search, covered, so closing the search finds it where it was.
               if roomsShown
-                if listedRooms.length == 0 and not gridShown
+                if listedRooms.length == 0 and not gridShown and not searching
                   if roomList.filter != "all"
                     EmptyState(symbol="symbol:filter", title=emptyTitle(roomList.filter), message=emptyMessage(roomList.filter))
                       button press=chooseFilter("all") buttonStyle="bordered" testId="show-all"
@@ -838,6 +843,7 @@ component Multiplexer
                 else
                   // the last row scrolls up above the floating bar.
                   list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=64 testId="room-list"
+                    inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=openChat, aim=aim, menu="chat-menu")
                     for r in listedRooms key=r.id
@@ -885,7 +891,7 @@ component Multiplexer
                               else if r.markedUnread
                                 view width=12 height=12 border-radius=6 margin="4px 4px 0"
                                   background-color=(r.muted ? "-exact-tertiary-label" : "AccentColor") aria-label="Unread" testId=`marked-${r.id}`
-              else
+              else if not searching
                 if failed(roomList) and not pending(roomList)
                   column flex=1 justify-content="center" align-items="center" gap=12 padding=24
                     text "Couldn’t load your chats." color="-exact-secondary-label" testId="rooms-error"
@@ -894,9 +900,17 @@ component Multiplexer
                 else
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
-              if roomsShown
+              if searching
+                SearchResults(found=found, shown=foundShown, loading=pending(found), query=searchQuery, kind=searchKind,
+                  recentSearches=recentSearches, now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize,
+                  reduced=viewport.prefersReducedMotion, chooseKind=chooseKind, openChat=openFoundChat, openMessage=openFoundMessage, openLink=openFoundLink,
+                  useSearch=useSearch, clearSearches=clearSearches)
+                SearchBar(query=searchQuery, kind=searchKind, type=typeSearch, submit=submitSearch, close=closeSearch,
+                  focused=searchFocused, focus=searchFocus, blur=searchBlur, largeText=viewport.accessibilityTextSize,
+                  reduced=viewport.prefersReducedMotion)
+              else if roomsShown
                 BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=chatList, network=network,
-                  sheet=openInboxes, largeText=viewport.accessibilityTextSize)
+                  sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize)
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
               // messages (a tap opens the chat), then its actions.
               column id="chat-menu" popover="auto" role="menu"
@@ -1036,7 +1050,9 @@ component Multiplexer
                   reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=(viewport.accessibilityTextSize ? 116 : 100)
                   testId="transcript"
                   for m in thread.messages key=m.id
+                    // a found message the chat opened at is marked a moment (search-members.contract).
                     column id=`row-${m.id}` align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
+                      background-color=(m.id == jumpedTo ? "-exact-tertiary-fill" : "transparent") transition="background-color 600ms ease"
                       if m.startsGroup
                         DayHeader(time=m.time, now=shown, offset=time.utcOffset, identifier=`day-${m.id}`)
                       if m.id == newLine and newLineRoom == openRoom
@@ -1229,6 +1245,8 @@ component Multiplexer
                             image (editing != "" ? "symbol:checkmark" : "symbol:send")
             if threadShown and panel
               AddPanel(photos=choosePhotos, files=chooseFiles, reduced=viewport.prefersReducedMotion)
+            if jumpMissed != "" and jumpMissed == openRoom
+              JumpNote(largeText=viewport.accessibilityTextSize)
             ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
               initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork,
               unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, muted=openMuted, mute=toggleMuteOpen,

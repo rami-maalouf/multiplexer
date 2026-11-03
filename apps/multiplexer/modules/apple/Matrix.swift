@@ -50,16 +50,8 @@ final class Matrix: ExactModule {
                                                         network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
-                    reply.send(["rooms": rooms.map { room in
-                        ["id": room.id, "name": room.name, "roomName": room.roomName, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
-                         "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
-                         "unread": room.unreadCount, "network": room.network, "markedUnread": room.isMarkedUnread,
-                         "oneToOne": room.isOneToOne, "listed": inbox.listed.contains(room.id),
-                         "muted": room.isMuted, "mentions": room.unreadMentions, "lowPriority": room.isLowPriority,
-                         "archived": room.isArchived,
-                         "avatar": cached(room.avatarName, then: .rooms) {
-                             _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
-                    }, "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
+                    reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
+                       "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
                        "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
                 case "pin", "unpin":
@@ -83,6 +75,14 @@ final class Matrix: ExactModule {
                     default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive and delete")
                     }
                     reply.send(["ok": true])
+                case "search":
+                    // what the search screen shows (MatrixCore's Search.swift): a kind's messages, the
+                    // recent chats before any word, or chats by name, messages and links.
+                    reply.send(try await search(request))
+                case "showMessage":
+                    // a found message's chat pages back to it; its id there, or "" when it is further back.
+                    let id = try await signedIn().showMessage(roomId: request["roomId"] as? String ?? "", eventId: request["eventId"] as? String ?? "")
+                    reply.send(["id": id ?? ""])
                 case "messages":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
@@ -202,7 +202,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -241,19 +241,20 @@ final class Matrix: ExactModule {
         account = nil
         shownThumbnails = [:]
         try? FileManager.default.removeItem(at: stores)
-        let store = UUID().uuidString
+        let store = UUID().uuidString, searchKey = SearchIndex.newKey()
         do {
             let signedIn = try await MatrixAccount.signIn(homeserver: server, user: user, password: password,
                                                           deviceName: context.agent ? "Multiplexer test" : "Multiplexer",
-                                                          storeDirectory: stores.appendingPathComponent(store))
+                                                          storeDirectory: stores.appendingPathComponent(store), searchIndexKey: searchKey)
             do {
-                try keychain.write(StoredSession(session: try signedIn.savedSession(), store: store))
+                try keychain.write(StoredSession(session: try signedIn.savedSession(), store: store, searchKey: searchKey))
             } catch {
                 // a session this device cannot keep must not stay on the server.
                 try? await signedIn.signOut()
                 throw error
             }
             tellChanges(signedIn)
+            logSearchIndex(signedIn)
             account = Task { signedIn }
             return ["ok": true, "problem": "", "detail": ""]
         } catch {
@@ -272,12 +273,20 @@ final class Matrix: ExactModule {
 
     @MainActor func signedIn() async throws -> MatrixAccount {
         if let account { return try await account.value }
-        guard let stored = try stored() else { throw ExactNativeRefusal("signed out") }
-        let restoring = Task { try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store)) }
+        guard var stored = try stored() else { throw ExactNativeRefusal("signed out") }
+        // a session kept before the search index gets its key now; its index starts empty.
+        if stored.searchKey == nil {
+            stored.searchKey = SearchIndex.newKey()
+            try keychain.write(stored)
+        }
+        let restoring = Task { [stored] in
+            try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store), searchIndexKey: stored.searchKey)
+        }
         account = restoring
         do {
             let restored = try await restoring.value
             tellChanges(restored)
+            logSearchIndex(restored)
             return restored
         } catch {
             account = nil
@@ -306,6 +315,62 @@ final class Matrix: ExactModule {
         case "forward":
             for target in request["to"] as? [String] ?? [] { try await account.forward(roomId: roomId, messageId: messageId, to: target) }
         default: try await account.resetFrequentEmojis()
+        }
+    }
+
+    /// A chat as app.ts takes it; `listed`: the list shows it. Its picture, once downloaded,
+    /// tells `topic`.
+    @MainActor private func roomRecord(_ room: RoomSummary, listed: Bool, _ account: MatrixAccount, topic: String) -> [String: Any] {
+        ["id": room.id, "name": room.name, "roomName": room.roomName, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
+         "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
+         "unread": room.unreadCount, "network": room.network, "markedUnread": room.isMarkedUnread,
+         "oneToOne": room.isOneToOne, "listed": listed,
+         "muted": room.isMuted, "mentions": room.unreadMentions, "lowPriority": room.isLowPriority,
+         "archived": room.isArchived,
+         "avatar": cached(room.avatarName, topic: topic) { _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
+    }
+
+    /// What the search screen shows for a query (`query`), a kind (`kind`: images, videos, links,
+    /// files or "") and the chats opened last (`recent`, newest first).
+    @MainActor private func search(_ request: [String: Any]) async throws -> [String: Any] {
+        let started = Date(), account = try await signedIn()
+        let query = request["query"] as? String ?? ""
+        var chats: [RoomSummary] = [], messages: [FoundMessage] = [], links: [FoundMessage] = []
+        if let kind = SearchKind(rawValue: request["kind"] as? String ?? "") {
+            messages = try await account.search(kind: kind, query)
+        } else if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            chats = try await account.chats(request["recent"] as? [String] ?? [])
+        } else {
+            let found = try await account.search(query)
+            (chats, messages, links) = (found.chats, found.messages, found.links)
+        }
+        print("matrix: search answered \(chats.count) chats, \(messages.count) messages and \(links.count) links in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+        func hit(_ m: FoundMessage) -> [String: Any] {
+            ["room": m.chat.id, "chatName": m.chat.name, "isDirect": m.chat.isDirect, "network": m.chat.network,
+             "avatar": cached(m.chat.avatarName, topic: "search") { _ = try await account.avatarFile(roomId: m.chat.id, directory: self.media) },
+             "event": m.eventId, "senderName": m.senderName, "isOwn": m.isOwn, "body": m.body, "time": Double(m.timestamp),
+             "kind": m.kind.rawValue, "links": m.links,
+             "picture": cached(m.image?.thumbnailName ?? m.video?.posterName ?? "", topic: "search") {
+                 _ = try await account.searchPicture(eventId: m.eventId, directory: self.media) },
+             "width": m.image?.width ?? m.video?.width ?? 0, "height": m.image?.height ?? m.video?.height ?? 0,
+             "seconds": (m.video?.duration ?? 0) / 1000, "fileName": m.file?.name ?? "", "fileSize": m.file?.size ?? 0]
+        }
+        return ["chats": chats.map { roomRecord($0, listed: true, account, topic: "search") },
+                "messages": messages.map(hit), "links": links.map(hit)]
+    }
+
+    /// Logs the search index's size and its backfill's time, for a large account's numbers: each
+    /// minute while the backfill runs, then once when it is done.
+    private func logSearchIndex(_ account: MatrixAccount) {
+        func mb(_ bytes: UInt64?) -> String { bytes.map { String(format: "%.1f MB", Double($0) / 1_000_000) } ?? "unknown" }
+        Task { [weak account] in
+            for _ in 0..<120 {
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                guard let account else { return }
+                let status = await account.searchIndexStatus()
+                print("matrix: search index \(mb(status.indexBytes)), event cache \(mb(status.eventCacheBytes)), backfill \(status.backfillDone ? "done" : "running") after \(Int(status.backfillSeconds)) s")
+                if status.backfillDone { return }
+            }
         }
     }
 
@@ -396,13 +461,18 @@ final class Matrix: ExactModule {
     /// A downloaded picture's `app:/` path once its file is here. Until then "": `fetch`
     /// starts (once), and when it ends app.ts is told `change`, so it asks again.
     @MainActor func cached(_ name: String, then change: MatrixChange, fetch: @escaping () async throws -> Void) -> String {
+        cached(name, topic: topic(change), fetch: fetch)
+    }
+
+    /// The same, telling app.ts's sources that watch `topic` (`rooms`, `thread:<room id>`, `search`, `info:<room id>`).
+    @MainActor func cached(_ name: String, topic: String, fetch: @escaping () async throws -> Void) -> String {
         guard !name.isEmpty else { return "" }
         if FileManager.default.fileExists(atPath: media.appendingPathComponent(name).path) { return "app:/cache/matrix-media/\(name)" }
         guard !failedDownloads.contains(name), downloading.insert(name).inserted else { return "" }
         Task { @MainActor in
             do {
                 try await fetch()
-                changed(change)
+                changed(topic: topic)
             } catch {
                 failedDownloads.insert(name)
             }
@@ -420,6 +490,10 @@ final class Matrix: ExactModule {
     }
 
     private func changed(_ change: MatrixChange) {
+        changed(topic: topic(change))
+    }
+
+    private func changed(topic: String) {
         if changedTopics.isEmpty {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
                 guard let self else { return }
@@ -428,11 +502,15 @@ final class Matrix: ExactModule {
                 topics.forEach(context.changed)
             }
         }
+        changedTopics.insert(topic)
+    }
+
+    private func topic(_ change: MatrixChange) -> String {
         switch change {
-        case .rooms: changedTopics.insert("rooms")
-        case .room(let roomId): changedTopics.insert("thread:\(roomId)")
-        case .profile: changedTopics.insert("profile")
-        case .info(let roomId): changedTopics.insert("info:\(roomId)")
+        case .rooms: return "rooms"
+        case .room(let roomId): return "thread:\(roomId)"
+        case .profile: return "profile"
+        case .info(let roomId): return "info:\(roomId)"
         }
     }
 
