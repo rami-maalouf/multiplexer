@@ -69,6 +69,9 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 48 | `check` measures a half-height sheet's rows at their drawn size (x0.96) and does not say why. | About 3 min | P3 | [check-measures-a-half-height-sheet](issues/20261102-check-measures-a-half-height-sheet.md) |
 | 49 | A plain list's first row has a top separator that the app cannot hide. | About 6 min | P3 | [a-plain-list-s-first-row](issues/20261102-a-plain-list-s-first-row.md) |
 | 50 | `scrollIntoView` cannot open a collapsed large title again. | About 10 min | P3 | [scrollintoview-cannot-open-a-collapsed-large](issues/20261102-scrollintoview-cannot-open-a-collapsed-large.md) |
+| 51 | The host tests refuse to run without the Metal toolchain, which a build does without. | About 10 min | P3 | [the-host-tests-refuse-to-run](issues/20261103-the-host-tests-refuse-to-run.md) |
+| 52 | The host tests cannot run one test class: `--test` runs all 318 classes. | About 15 min | P3 | [the-host-tests-cannot-run-one](issues/20261103-the-host-tests-cannot-run-one.md) |
+| 53 | `caps` counts one more line than `wc -l`. | About 3 min | P3 | [caps-counts-one-more-line-than](issues/20261103-caps-counts-one-more-line-than.md) |
 | 51 | A symbol inside a text with no width or height draws nothing, with no warning. | About 20 min | P3 | [a-symbol-inside-a-text-with](issues/20261103-a-symbol-inside-a-text-with.md) |
 | 52 | A drive cannot reach a long-press menu row below the fold at the largest text size. | About 6 min | P3 | [a-drive-cannot-reach-a-long](issues/20261103-a-drive-cannot-reach-a-long.md) |
 | 53 | A screen with its own top bar has no documented way to clear the status bar (a zero-height box works). | About 10 min | P3 | [a-screen-with-its-own-top](issues/20261103-a-screen-with-its-own-top.md) |
