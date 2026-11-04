@@ -39,3 +39,10 @@ Cost: about 6 minutes; left as it is.
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, iOS Simulator (iOS 26.5), dark and light; the
 same line is in screenshots of the same list taken earlier that day.
+
+## Resumed check (2026-11-04)
+
+The local experiment hides the top separator for the first item of the first plain section.
+A new build still shows the line above the pinned grid at the largest text size. The change
+is therefore not a verified fix. The local framework branch and experiment remain preserved,
+with before and after screenshots; no new feedback or pull request was published.

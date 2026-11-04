@@ -672,8 +672,12 @@ types), so prove that first.
   (`network.contract`, `NetworkBadge`.)
 - [x] Logos for WhatsApp, Instagram, Messenger, Telegram, Signal, Discord and LinkedIn are in the
   app (`assets/networks/`, sources and licences in `SOURCES.md`).
-- [ ] VoiceOver: the row's spoken label leaves the network out (Exact finding 32). A hand-written
-  `aria-label` on the row would fix it. Exact PR #1407 (open) fixes it in Exact: a labelled image counts in its link's name.
+- [x] VoiceOver: the row's spoken label has the network (2026-11-04). On main the chat row (`RoomFace` in a `link`)
+  is already read with it, so no hand-written label was needed there: `tree --ax` reads `link "Multiplexer network
+  test, WhatsApp, You: A chat from whatsapp, Monday"`. Select Chats' row was not: its `aria-label` was the name alone,
+  and at the accessibility sizes it draws no picture, so no logo; it now says the networks (`chooseLabel`):
+  `checkbox "Multiplexer network test, WhatsApp"` in light, dark and the largest text size. Left as it is: a pinned
+  picture is read by its name alone ("Bar Test Person"). Exact PR #1407 (open) is the Exact side of finding 32.
 
 **Verification:**
 - [x] MatrixCore test `testABridgedRoomShowsItsNetworkOnANewDevice`: `@test1` sets the state a
@@ -799,7 +803,12 @@ Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and com
   The inbox draws its own title row (no system bar since B21's title menu), which never collapses. Driven: scrolled
   down 600 points, then WhatsApp in the filter sheet: "WhatsApp" large, the list at its top, in light, dark and the
   largest text size (`.exact/ui/before/3-network-*.png`).
-- [ ] A short line shows above the pinned grid (finding 49). Not checked on 2026-11-04.
+- [ ] A short line shows above the pinned grid (finding 49). Seen on 2026-11-04 in light, dark and the largest text
+  size, above the pinned grid in the inbox and in Select Chats (`apps/multiplexer/.exact/ui2/before/49-top-*.png`).
+  Only Exact can hide it: it is UIKit's top separator above a plain list's first row, and the host hides a row's top
+  line only when the row before it wrote its edge, which the first row has none of. A local exact2 change
+  (`exact2-gaps`, branch `local/check-hidden-by`, not pushed: no top line above a plain list's first row) was not sufficient on resume: the largest-text screenshot still shows the line
+  (`.exact/ui2/after/49-top-largest.png`). Keep this open; the local experiment is not a shipped fix.
 - [x] Rami (2026-11-03): keep the Matrix row first; count unread chats; the title shows the network's name.
 
 **Dependencies:** B1, B3. **Scope:** M
@@ -1415,6 +1424,21 @@ until everything is done"). Act on several chats at once, as Messages' and Beepe
   verification evidence. Do not shut down another conversation's simulator.
 
 **Dependencies:** B7, B21. **Scope:** M
+
+### UI review as `@test1` (2026-11-04)
+
+The inbox, a chat, its info page, Settings, the filter sheet, Select Chats and a merged chat, each in light, dark
+and the largest text size, with `check` (`apps/multiplexer/.exact/ui2/survey/`, gitignored).
+- [x] Fixed in the app: Settings' "Notifications" broke into syllables at the largest size beside "Turn On" (the row
+  now wraps; `check` clean on Settings in all three); Select Chats' row said only the name (now its networks too);
+  a preview whose sender is a bare Matrix id spilled at the largest size (the wrapping patch was transferred
+  to the Later lane on resume, which owns its commit and integrated verification).
+- [ ] Only Exact can fix (feedback files): the line above a plain list's first row (finding 49); Select Chats' lines
+  start under the pictures, not at the names as the inbox's do (the host decides where a row's line starts; moving
+  the mark into the row's picture slot changed nothing); `check` calls the rows under the app's bars overlaps
+  (finding 55; the inbox's title over the rows under iOS's own soft edge too), and once read a bubble inside the
+  bar's fade as a card that does not show.
+- Otherwise clean: the info page, Settings and the filter sheet read "no findings" in all three; the inbox too.
 
 ### Later
 

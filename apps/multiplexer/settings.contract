@@ -75,8 +75,9 @@ component SettingsScreen
                   testId="account-id"
         if userId != "" and notifications != "unknown"
           section
-            row gap=12 align-items="center" testId="notifications"
-              text "Notifications" flex=1
+            // at the largest text sizes the button goes under the word, which never breaks inside it.
+            row column-gap=12 row-gap=4 align-items="center" flex-wrap="wrap" testId="notifications"
+              text "Notifications" flex="1 0 auto"
               if notifications == "prompt"
                 button press=allowNotifications testId="allow-notifications"
                   text "Turn On"
