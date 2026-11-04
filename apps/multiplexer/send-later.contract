@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // Send Later (B13), as Rami asked: hold Send, as in Slack, and pick a time. The message waits on
 // our server and goes at its time with the phone off. The chat shows a bar while one of its
 // messages waits; the filter sheet's Send Later row opens the list of all of them, where each can
@@ -151,6 +152,7 @@ component EmptyLater
 // rows, each saving at once (choose("tomorrow") or choose("monday"); monday: it is offered).
 component LaterSheet
   props
+    appearance: Appearance
     route: string
     title: string
     body: string
@@ -174,7 +176,7 @@ component LaterSheet
         button id="back" press=close testId="later-cancel"
           text "Cancel"
         text title role="heading" aria-level=1 flex=1
-        button press=save disabled=(picked == "" or saving) buttonStyle="filled" testId="later-save"
+        button press=save disabled=(picked == "" or saving) buttonStyle="filled" color=((picked == "" or saving) ? "-exact-label" : appearance.onTint) testId="later-save"
           text saveLabel
       list id="later-sheet" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
         if choices

@@ -3,7 +3,7 @@
 use ClipboardItem from "@exact/clipboard"
 use notificationclick, requestNotificationPermission, notificationStatus, NotificationStatus from "@exact/notifications"
 use EmptyState from "exact:content"
-use Badge from "exact:content"
+use Appearance, AccentBadge from "./appearance.contract"
 use Balloon, Face from "./bubble.contract"
 use Attachment, chosenOf, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, ChooseMark, SelectTitle, SelectBar, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage, deleteChatsTitle, deleteChatsMessage from "./inbox.contract"
@@ -476,6 +476,7 @@ component Multiplexer
     after(600, keepDraftNow)
   task keepDraftHidden when unsaved != "" and page.visibilityState == "hidden"
     after(1, keepDraftNow)
+  members "./appearance-members.contract"
   members "./details-members.contract"
   members "./voice-members.contract"
   members "./search-members.contract"
@@ -906,7 +907,7 @@ component Multiplexer
     haptic("success")
 
   view
-    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow notificationclick=openReminder interactive-widget="resizes-content"
+    main accent-color=appearance.tint testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow notificationclick=openReminder interactive-widget="resizes-content"
       width="100%" height="100%"
       for e in stack(nav) key=e.id
         if e.name == "home"
@@ -914,7 +915,7 @@ component Multiplexer
             column navigationKey=`${e.id}` navigationScroll="sign-in-form" position="absolute" inset=0 display="flex" flex-direction="column"
               header display="flex" align-items="center"
                 text "Multiplexer" role="heading" aria-level=1 flex=1
-                button press=signIn disabled=(not canSignIn) buttonStyle="filled" testId="sign-in"
+                button press=signIn disabled=(not canSignIn) buttonStyle="filled" color=((not canSignIn) ? "-exact-label" : appearance.onTint) testId="sign-in"
                   text "Sign In"
               list id="sign-in-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
                 section
@@ -995,10 +996,10 @@ component Multiplexer
                           // at the accessibility text sizes the mark takes the picture's place, so the name keeps its width.
                           view flex-shrink=0 margin=(viewport.accessibilityTextSize ? "8px 12px 8px 0" : "0 12px 0 0")
                             ChooseMark(on=selectedChats.includes(r.id), identifier=`room-mark-${r.id}`)
-                          RoomFace(r=r, now=shown, offset=time.utcOffset, chevron=false, picture=(not viewport.accessibilityTextSize))
+                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=false, picture=(not viewport.accessibilityTextSize))
                       else
                         link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
-                          RoomFace(r=r, now=shown, offset=time.utcOffset, chevron=true, picture=true)
+                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=true, picture=true)
               else if not searching
                 if failed(roomList) and not pending(roomList)
                   column flex=1 justify-content="center" align-items="center" gap=12 padding=24
@@ -1009,7 +1010,7 @@ component Multiplexer
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
               if searching
-                SearchResults(found=found, shown=foundShown, loading=pending(found), query=searchQuery, kind=searchKind,
+                SearchResults(appearance=appearance, found=found, shown=foundShown, loading=pending(found), query=searchQuery, kind=searchKind,
                   recentSearches=recentSearches, now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion, chooseKind=chooseKind, openChat=openFoundChat, openMessage=openFoundMessage, openLink=openFoundLink,
                   useSearch=useSearch, clearSearches=clearSearches)
@@ -1050,14 +1051,14 @@ component Multiplexer
                               image m.image width="100%" height="100%" object-fit=(m.isSticker ? "contain" : "cover") aria-label=(m.body != "" ? m.body : "Photo")
                         if m.isAudio
                           view max-width="80%"
-                            VoiceStill(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, speed=voiceSpeed, dimmed=(m.state == "sending"),
+                            VoiceStill(appearance=appearance, bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, speed=voiceSpeed, dimmed=(m.state == "sending"),
                               stacked=viewport.accessibilityTextSize, identifier=`peek-voice-${m.id}`)
                         if m.waitingForKey
                           text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
                             background-color="-exact-fill" color="-exact-secondary-label"
                         else if m.balloon or m.bigEmoji
                           view max-width="80%" padding-bottom=(m.endsRun ? 6.65 : 0)
-                            Balloon(body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`peek-${m.id}`)
+                            Balloon(appearance=appearance, body=m.body, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`peek-${m.id}`)
                   else
                     column flex=1 justify-content="center" align-items="center"
                       progress aria-label="Loading messages"
@@ -1104,7 +1105,7 @@ component Multiplexer
                   image "symbol:delete"
                   text "Delete"
         if e.name == "labelEdit"
-          LabelEditor(route=`${e.id}`, editing=(labelEditing != ""), draft=labelDraft, problem=labelEditError,
+          LabelEditor(appearance=appearance, route=`${e.id}`, editing=(labelEditing != ""), draft=labelDraft, problem=labelEditError,
             saving=pending(labelEdited), typeName=typeLabelName, save=saveLabel, close=closeLabelEditor)
         if e.name == "labelPick"
           LabelPicker(route=`${e.id}`, labels=labelsShown, rooms=labelRooms, chatCount=labelChatCount, loaded=(labelList.owner == session.userId),
@@ -1116,14 +1117,14 @@ component Multiplexer
             busy=pending(scheduledChanged), refused=laterRefused, now=shown, offset=time.utcOffset, close=back,
             sendNow=sendScheduledNow, change=changeLaterTime, cancel=cancelScheduled)
         if e.name == "newSpace"
-          NewSpaceSheet(route=`${e.id}`, name=spaceName, picture=spacePicture, saving=pending(spaceCreated),
+          NewSpaceSheet(appearance=appearance, route=`${e.id}`, name=spaceName, picture=spacePicture, saving=pending(spaceCreated),
             refused=(spaceAsked and failed(spaceCreated)), type=typeSpaceName, choose=chooseSpacePicture, pick=pickSpacePicture,
             close=back, save=saveNewSpace)
         if e.name == "addSpace"
           AddToSpaceSheet(route=`${e.id}`, spaces=spaceChoices.spaces, loaded=(spaceChoices.room == spaceRoom),
             saving=pending(spaceAdded), refused=(spaceAddAsked and failed(spaceAdded)), close=back, add=addChatToSpace, create=openNewSpace)
         if e.name == "requests"
-          RequestsScreen(route=`${e.id}`, requests=requestsShown, loaded=(requestList.owner == session.userId),
+          RequestsScreen(appearance=appearance, route=`${e.id}`, requests=requestsShown, loaded=(requestList.owner == session.userId),
             answering=answeringRequest, refused=requestRefused, close=back, accept=acceptRequest, decline=declineRequest,
             largeText=viewport.accessibilityTextSize)
         // the saved messages: every chat's (the filter sheet's row), or the open chat's (its info page's).
@@ -1136,27 +1137,27 @@ component Multiplexer
             aimedText=aimedBookmarkText, close=back, open=openChatBookmark, aim=aimBookmark, copy=copyBookmark, remove=removeAimedBookmark,
             removeOne=removeBookmarkOf)
         if e.name == "later"
-          LaterSheet(route=`${e.id}`, title="Send Later", body=composer.text.trim(), bodyLabel="Message", verb="Send", saveLabel="Schedule",
+          LaterSheet(appearance=appearance, route=`${e.id}`, title="Send Later", body=composer.text.trim(), bodyLabel="Message", verb="Send", saveLabel="Schedule",
             note=laterNote, picked=laterWhen, saving=laterSaving, refused=laterRefused, choices=false, monday=false, choose=pickLater,
             pick=pickLater, close=closeLater, save=saveLater)
         if e.name == "laterChange"
-          LaterSheet(route=`${e.id}`, title="Change Time",
+          LaterSheet(appearance=appearance, route=`${e.id}`, title="Change Time",
             body=(match first(scheduledShown.filter(m => m.id == laterFor)) { case some(m) => m.body, case none => "" }),
             bodyLabel="Message", verb="Send", saveLabel="Schedule", note=laterNote, picked=laterWhen, saving=laterSaving,
             refused=laterRefused, choices=false, monday=false, choose=pickLater, pick=pickLater, close=closeLater, save=saveLater)
         // Merge Chats' sheet (merge.contract).
         if e.name == "merge"
-          MergeSheet(route=`${e.id}`, chats=mergeCandidates, picked=mergePicked, name=mergeName, defaultRoom=mergeDefault,
+          MergeSheet(appearance=appearance, route=`${e.id}`, chats=mergeCandidates, picked=mergePicked, name=mergeName, defaultRoom=mergeDefault,
             query=mergeQuery, saving=pending(merged), typeName=typeMergeName, typeQuery=typeMergeQuery, toggle=toggleMergePick,
             chooseDefault=chooseMergeDefault, close=closeMergeSheet, save=saveMerge)
         // Remind Me's time: Send Later's set times, or one picked.
         if e.name == "remind"
-          LaterSheet(route=`${e.id}`, title="Remind Me", body=remindName, bodyLabel="Chat", verb="Remind", saveLabel="Set",
+          LaterSheet(appearance=appearance, route=`${e.id}`, title="Remind Me", body=remindName, bodyLabel="Chat", verb="Remind", saveLabel="Set",
             note="This iPhone reminds you at this time, and the chat stays under Reminders until you answer it.",
             picked=laterWhen, saving=pending(reminded), refused=remindRefused, choices=true, monday=laterMonday, choose=remindAt,
             pick=pickLater, close=closeLater, save=saveRemind)
         if e.name == "settings"
-          SettingsScreen(route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
+          SettingsScreen(chooseAccent=chooseAccent, resetAccent=resetAccent, appearance=appearance, route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
             signOut=askSignOut, recovery=recovery, recoveryDraft=recoveryDraft, unlocking=pending(unlocked), refused=recoveryRefused,
             typeKey=typeRecoveryKey, unlock=unlockRecovery, largeText=viewport.accessibilityTextSize,
             notifications=notifications.state, allowNotifications=allowNotifications)
@@ -1183,7 +1184,7 @@ component Multiplexer
             close=back, largeText=viewport.accessibilityTextSize)
         // the + panel's Camera (camera.contract), full screen over the chat.
         if e.name == "camera"
-          CameraScreen(route=`${e.id}`, track=cameraTrack, refused=cameraRefused, problem=cameraProblem, taking=pending(cameraShot),
+          CameraScreen(appearance=appearance, route=`${e.id}`, track=cameraTrack, refused=cameraRefused, problem=cameraProblem, taking=pending(cameraShot),
             canFlip=canFlipCamera, hasFlash=cameraHasFlash, flash=cameraFlash, close=closeCamera, shutter=shootPhoto, flip=flipCamera,
             toggleFlash=toggleCameraFlash, openSettings=openCameraSettings, largeText=viewport.accessibilityTextSize)
         if e.name == "forward"
@@ -1230,7 +1231,7 @@ component Multiplexer
             // the search in this chat, in the page's place (chat-search-members.contract); its
             // Bookmarks kind's rows have the list's long-press menu.
             BookmarkMenu(aimedText=aimedBookmarkText, copy=copyBookmark, remove=removeAimedBookmark)
-            ChatSearchResults(found=chatFound, shown=chatFoundShown, loading=pending(chatFound), query=chatQuery, kind=chatKind,
+            ChatSearchResults(appearance=appearance, found=chatFound, shown=chatFoundShown, loading=pending(chatFound), query=chatQuery, kind=chatKind,
               bookmarks=chatBookmarks, bookmarksLoaded=bookmarksLoaded, aim=aimBookmark, removeBookmark=removeBookmarkOf,
               now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion,
               chooseKind=chooseChatKind, openMessage=openChatFound, openLink=openChatLink)
@@ -1238,13 +1239,13 @@ component Multiplexer
               close=closeChatSearch, focused=chatSearchFocused, focus=chatSearchFocus, blur=chatSearchBlur,
               largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion)
         if e.name == "editInfo"
-          EditGroupSheet(route=`${e.id}`, info=infoShown, draft=infoDraft, picked=(match first(infoPicked) { case some(f) => f.path, case none => "" }),
+          EditGroupSheet(appearance=appearance, route=`${e.id}`, info=infoShown, draft=infoDraft, picked=(match first(infoPicked) { case some(f) => f.path, case none => "" }),
             saving=infoSaving, refused=groupRefused, type=typeInfoName, choose=choosePicture, pick=picturePicked, close=back, save=saveGroup)
         if e.name == "customName"
-          CustomNameSheet(route=`${e.id}`, info=infoShown, draft=customDraft, saving=infoSaving, refused=customRefused, type=typeCustomName,
+          CustomNameSheet(appearance=appearance, route=`${e.id}`, info=infoShown, draft=customDraft, saving=infoSaving, refused=customRefused, type=typeCustomName,
             reset=resetCustomName, close=back, save=saveCustomName)
         if e.name == "addMember"
-          AddMemberSheet(route=`${e.id}`, draft=inviteDraft, saving=infoSaving, refused=inviteRefused, type=typeInvite, close=back,
+          AddMemberSheet(appearance=appearance, route=`${e.id}`, draft=inviteDraft, saving=infoSaving, refused=inviteRefused, type=typeInvite, close=back,
             save=invite)
         if e.name == "room"
           // the chat draws its own bar (chat.contract), so a held message's blur covers it.
@@ -1313,7 +1314,7 @@ component Multiplexer
                               SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=openFile(m.id),
                                 hold=holdMedia(m.id, "file", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=`${m.fileName}, ${fileDetail(m.fileName, m.fileSize)}`,
                                 identifier=`file-${m.id}`)
-                                FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
+                                FileBubble(appearance=appearance, name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
                                   opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize)
                             // a voice message plays here; a swipe right answers it and a long press holds it, as a text's bubble.
                             if m.isAudio
@@ -1324,7 +1325,7 @@ component Multiplexer
                                   display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
                                   transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
                                   image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
-                                VoiceBubble(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=(voicePlaying == m.id and voiceRoom == openRoom),
+                                VoiceBubble(appearance=appearance, bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=(voicePlaying == m.id and voiceRoom == openRoom),
                                   playing=(voicePlaying == m.id and voiceRoom == openRoom and not voicePaused and voiceSrc != ""),
                                   loading=(voicePlaying == m.id and voiceSrc == "" and not failed(voiceFile)), time=voiceTime, speed=voiceSpeed,
                                   dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, play=playVoice(m.id), speedUp=speedUp,
@@ -1371,7 +1372,7 @@ component Multiplexer
                                 if m.bigEmoji
                                   BigEmoji(body=m.body, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
                                 else
-                                  RichBalloon(runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
+                                  RichBalloon(appearance=appearance, runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
                                     open=openLink)
                             if m.isEdited
                               text "Edited" font="-exact-caption2" color="-exact-secondary-label" padding="0 8px" testId=`edited-${m.id}`
@@ -1415,7 +1416,7 @@ component Multiplexer
                 // above the bar, at the right, while the newest message is out of view.
                 if away and thread.messages.length > 0
                   view position="absolute" bottom="calc(100% + 8px)" right=12
-                    JumpButton(count=belowUnread, press=jumpToEnd)
+                    JumpButton(appearance=appearance, count=belowUnread, press=jumpToEnd)
                 // this chat's messages waiting on the server (Send Later): how many, and when the first goes.
                 match first(openScheduled)
                   case some(m)
@@ -1447,7 +1448,7 @@ component Multiplexer
                   // a voice message takes the field's place while it records, then as a draft until it goes.
                   if recording == "draft"
                     view flex=1 min-width=0
-                      DraftBar(bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
+                      DraftBar(appearance=appearance, bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
                         playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, preparing=pending(voicePrepared),
                         remove=cancelVoice, play=playVoice("draft"), send=sendVoiceDraft)
                   else if recording != "idle"
@@ -1479,7 +1480,7 @@ component Multiplexer
                           // a long press offers Send Later's times (send-later-members.contract) where the chat can
                           // have it; it is on a view around Send, as a native button takes no long press.
                           view contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "") testId="send-hold"
-                            button press=post buttonStyle="filled" margin="4px 0" retainFocus=true testId="send"
+                            button press=post buttonStyle="filled" color=appearance.onTint margin="4px 0" retainFocus=true testId="send"
                               disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
                               aria-label=(editing != "" ? "Save Edit" : "Send")
                               image (editing != "" ? "symbol:checkmark" : "symbol:send")
@@ -1553,7 +1554,7 @@ component Multiplexer
                     column contextTarget=`file-${held}` contextMagnify=true width=heldWidth max-width="100%" margin-bottom=6 testId="held-file"
                       match heldMessage
                         case some(m)
-                          FileBubble(name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=-1, opening=false,
+                          FileBubble(appearance=appearance, name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=-1, opening=false,
                             stacked=viewport.accessibilityTextSize)
                         case none
                           view
@@ -1561,7 +1562,7 @@ component Multiplexer
                     column contextTarget=`voice-${held}` contextMagnify=true width=heldWidth max-width="100%" margin-bottom=6 testId="held-voice"
                       match heldMessage
                         case some(m)
-                          VoiceStill(bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, speed=voiceSpeed, dimmed=false,
+                          VoiceStill(appearance=appearance, bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, speed=voiceSpeed, dimmed=false,
                             stacked=viewport.accessibilityTextSize, identifier="held-voice-bubble")
                         case none
                           view
@@ -1573,7 +1574,7 @@ component Multiplexer
                     column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" max-height=heldCap overflow="hidden"
                       border-radius=(heldHeight > heldCap ? 20 : 0)
                       padding-bottom=6.65
-                      Balloon(body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
+                      Balloon(appearance=appearance, body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
                   // the emoji sheet hides the actions, as Beeper's does: they would show through it.
                   if top(nav).name != "reactions"
                     MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=heldCanCopy, canEdit=heldCanEdit, canDelete=heldCanDelete,
@@ -1636,6 +1637,7 @@ component Multiplexer
 // chats at the accessibility text sizes, where the mark takes its place.
 component RoomFace
   props
+    appearance: Appearance
     r: Room
     now: number
     offset: number
@@ -1682,10 +1684,10 @@ component RoomFace
             flex=1 min-width=0 testId=`room-preview-${r.id}`
           if r.mentions > 0
             view flex-shrink=0 testId=`count-${r.id}`
-              Badge(label=`@ ${countText(max(r.unread, r.mentions))}`, tint=some("AccentColor"))
+              AccentBadge(appearance=appearance, label=`@ ${countText(max(r.unread, r.mentions))}`, muted=false)
           else if r.unread > 0
             view flex-shrink=0 testId=`count-${r.id}`
-              Badge(label=countText(r.unread), tint=(r.muted ? none : some("AccentColor")))
+              AccentBadge(appearance=appearance, label=countText(r.unread), muted=r.muted)
           else if r.markedUnread
             view width=12 height=12 border-radius=6 margin="4px 4px 0"
               background-color=(r.muted ? "-exact-tertiary-label" : "AccentColor") aria-label="Unread" testId=`marked-${r.id}`

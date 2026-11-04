@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // photos and files in a chat: the composer's "+", the panel that takes the keyboard's place,
 // the tray of what is picked for the next send, a file's bubble, and an upload's ring.
 
@@ -122,20 +123,21 @@ component UploadRing
 // accessibility text sizes (stacked) the icon sits above the name, as UIKit stacks its rows.
 component FileBubble
   props
+    appearance: Appearance
     name: string
     size: number
     outgoing: bool
     progress: number
     opening: bool
     stacked: bool
-  derive ink = outgoing ? "AccentColorText" : "-exact-label"
+  derive ink = outgoing ? appearance.onFill : "-exact-label"
   view
     view display="flex" flex-direction=(stacked ? "column" : "row") align-items=(stacked ? "flex-start" : "center") gap=10 min-width=44
       max-width="100%" box-sizing="border-box"
-      padding="10px 16px 10px 10px" border-radius=20 background-color=(outgoing ? "AccentColor" : "bubble.incoming")
-      opacity=(progress >= 0 ? 0.6 : 1)
+      padding="10px 16px 10px 10px" border-radius=20 background-color=(outgoing ? appearance.fill : "bubble.incoming")
+      opacity=(progress >= 0 and not outgoing ? 0.6 : 1)
       view width=40 height=40 border-radius=20 flex-shrink=0 display="flex" align-items="center" justify-content="center"
-        background-color=(outgoing ? "bubble.outgoing-disc" : "-exact-tertiary-fill")
+        background-color=(outgoing ? "transparent" : "-exact-tertiary-fill")
         if progress >= 0
           UploadRing(fraction=progress, size=28, color=ink, track="rgba(255, 255, 255, 0.3)")
         else if opening

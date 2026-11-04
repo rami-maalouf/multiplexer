@@ -17,6 +17,21 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 - [ ] Outgoing list previews replace `You:` with subtle accessible receipt symbols tied to the
   exact preview event. Prove remote seen updates without opening that chat; keep unknown,
   pending and failed states truthful. Cover merged rows and supported list surfaces. Owner: Labels lane.
+- [x] Appearance settings: seven presets, a real native color picker with Cancel and Use Color,
+  exact local fill persisted across launch, reset to default blue, and computed readable foregrounds.
+  Outgoing bubbles and badges keep the chosen fill; links and controls use readable light/dark tints.
+  No Matrix account-data writes. Verified with native custom white/black, cancel-after-black-draft,
+  relaunch, reset, yellow, actual test-user chat/send-control captures and largest text size.
+- [ ] Appearance is not complete app-wide until Exact's dynamic navigation-root tint fix is
+  replayed: a prominent native header button can remain blue even when the palette and content
+  controls change. Framework owner and coordinator have the display evidence and reproduction.
+  The app's full native verify passes despite this visible defect. No app-only tint bridge.
+- Appearance verification (2026-11-04): 9 Bun tests passed; 12 native authored tests passed;
+  full verify clean, 14 screens at body 53 pt without spill. Numerical palette contrast is
+  independent of native glass/material contrast. Some captures fell back to app pixels, so they
+  establish app-render colors only. The device runner's remote color-picker AX watchdog and
+  coordinate offset required its documented screenshot-input fallback; no application defect
+  was inferred from those automation errors. Local proof artifacts stay gitignored.
 - [ ] Coordinator reviews and integrates tested commits, checks the combined native app,
   records remaining limits and retains all Exact feedback locally.
 - [ ] Settings provides accent presets and an arbitrary custom color picker, immediately

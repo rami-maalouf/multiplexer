@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // Requests, after Beeper's row of that name in the filter sheet: the chats this account is
 // invited to and has not answered (a person or a group asked it in). Each says who asked; Accept
 // joins the chat, which then shows in the list; Decline refuses it. (A network's own message
@@ -29,6 +30,7 @@ fn inviterLine(r: ChatRequest): string = r.inviterName != "" ? `${r.inviterName}
 
 component RequestsScreen
   props
+    appearance: Appearance
     route: string
     requests: ChatRequest[]
     loaded: bool
@@ -72,6 +74,6 @@ component RequestsScreen
                   button press=decline(r.id) buttonStyle="bordered" disabled=(answering != "") aria-label=`Decline ${r.name}`
                     testId=`request-decline-${r.id}`
                     text "Decline"
-                  button press=accept(r.id) buttonStyle="filled" disabled=(answering != "") aria-label=`Accept ${r.name}`
+                  button press=accept(r.id) buttonStyle="filled" color=((answering != "") ? "-exact-label" : appearance.onTint) disabled=(answering != "") aria-label=`Accept ${r.name}`
                     testId=`request-accept-${r.id}`
                     text "Accept"

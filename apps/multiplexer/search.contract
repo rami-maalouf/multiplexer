@@ -4,7 +4,7 @@
 // links (Rami, 2026-11-02). Its state and actions are the inbox's (search-members.contract); the
 // screen it searches from draws the bar and the list in its own place. The search in one chat
 // (ChatSearchResults) is the chat's info page's, with Audio too (chat-search-members.contract).
-use Badge from "exact:content"
+use Appearance, AccentBadge from "./appearance.contract"
 use Face from "./bubble.contract"
 use NetworkBadge from "./network.contract"
 use BookmarkItem, BookmarkRow, bookmarkHas from "./bookmarks.contract"
@@ -139,6 +139,7 @@ component SearchBar
 // the accent while it is chosen (a second press clears it).
 component KindButton
   props
+    appearance: Appearance
     kind: string
     chosen: bool
     choose: action
@@ -151,8 +152,8 @@ component KindButton
       display="flex" flex-direction="column" align-items="center" gap=6 flex=(crowded and largeText ? "1 1 30%" : "1 1 0") min-width=0
       padding="4px 0"
       view width=(largeText ? 64 : 52) height=(largeText ? 64 : 52) border-radius=(largeText ? 32 : 26) display="flex" align-items="center"
-        justify-content="center" background-color=(chosen ? "AccentColor" : "-exact-tertiary-fill")
-        image kindSymbol(kind) font-size="min(-exact-title2, 28px)" color=(chosen ? "AccentColorText" : "-exact-label") aria-hidden=true
+        justify-content="center" background-color=(chosen ? appearance.fill : "-exact-tertiary-fill")
+        image kindSymbol(kind) font-size="min(-exact-title2, 28px)" color=(chosen ? appearance.onFill : "-exact-label") aria-hidden=true
       // a quarter of the screen's width: the name grows with the text size to a cap, on one line.
       text kindName(kind) font=(crowded and not largeText ? "-exact-caption1" : "-exact-footnote")
         font-size=(crowded and not largeText ? "min(-exact-caption1, 19px)" : "min(-exact-footnote, 19px)") white-space="nowrap"
@@ -162,6 +163,7 @@ component KindButton
 // its newest message, and its unread count.
 component ChatResult
   props
+    appearance: Appearance
     chat: FoundChat
     open: action
     now: number
@@ -188,10 +190,10 @@ component ChatResult
           text chat.preview font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2 flex=1 min-width=0
           if chat.mentions > 0
             view flex-shrink=0
-              Badge(label=`@ ${countText(max(chat.unread, chat.mentions))}`, tint=some("AccentColor"))
+              AccentBadge(appearance=appearance, label=`@ ${countText(max(chat.unread, chat.mentions))}`, muted=false)
           else if chat.unread > 0
             view flex-shrink=0
-              Badge(label=countText(chat.unread), tint=(chat.muted ? none : some("AccentColor")))
+              AccentBadge(appearance=appearance, label=countText(chat.unread), muted=chat.muted)
           else if chat.markedUnread
             view width=12 height=12 border-radius=6 margin="4px 4px 0" aria-label="Unread"
               background-color=(chat.muted ? "-exact-tertiary-label" : "AccentColor")
@@ -309,6 +311,7 @@ component AudioResult
 // searches and chats before any word). found answers query and kind once shown is true.
 component SearchResults
   props
+    appearance: Appearance
     found: SearchFound
     shown: bool
     loading: bool
@@ -339,7 +342,7 @@ component SearchResults
         section
           row padding="8px 0 10px" gap=4 testId="kinds"
             for k in ["images", "videos", "links", "files"] key=k
-              KindButton(kind=k, chosen=(kind == k), choose=chooseKind, largeText=largeText, crowded=false)
+              KindButton(appearance=appearance, kind=k, chosen=(kind == k), choose=chooseKind, largeText=largeText, crowded=false)
         if not typed and kind == ""
           if recentSearches.length > 0
             section testId="recent-searches"
@@ -357,7 +360,7 @@ component SearchResults
               header
                 text "Recent"
               for c in found.chats key=c.id
-                ChatResult(chat=c, open=openChat, now=now, offset=offset)
+                ChatResult(appearance=appearance, chat=c, open=openChat, now=now, offset=offset)
         else if empty
           section
             column align-items="center" gap=8 padding="48px 0" text-align="center" width="100%" testId="no-results"
@@ -385,7 +388,7 @@ component SearchResults
               header
                 text "Chats"
               for c in found.chats.slice(0, 8) key=c.id
-                ChatResult(chat=c, open=openChat, now=now, offset=offset)
+                ChatResult(appearance=appearance, chat=c, open=openChat, now=now, offset=offset)
           if found.messages.length > 0
             section testId="found-messages"
               header
@@ -409,6 +412,7 @@ component SearchResults
 // the all-chats search's (SearchBar), named for the chat.
 component ChatSearchResults
   props
+    appearance: Appearance
     found: SearchFound
     shown: bool
     loading: bool
@@ -437,7 +441,7 @@ component ChatSearchResults
       section
         row padding="8px 8px 10px" gap=0 flex-wrap=(largeText ? "wrap" : "nowrap") row-gap=12 testId="chat-kinds"
           for k in ["images", "videos", "links", "files", "audio", "bookmarks"] key=k
-            KindButton(kind=k, chosen=(kind == k), choose=chooseKind, largeText=largeText, crowded=true)
+            KindButton(appearance=appearance, kind=k, chosen=(kind == k), choose=chooseKind, largeText=largeText, crowded=true)
       if empty and (typed or kind != "")
         section
           column align-items="center" gap=8 padding="48px 0" text-align="center" width="100%" testId="chat-no-results"

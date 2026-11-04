@@ -36,5 +36,8 @@
   },
   "env": [
     "KLIPY_KEY"
+  ],
+  "modules": [
+    "accent-picker"
   ]
 }

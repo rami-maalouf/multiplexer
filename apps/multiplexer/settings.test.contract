@@ -22,3 +22,44 @@ test "each of Settings' speeds is chosen in turn"
   expect state voiceSpeed == 1.5
   tap "speed-1"
   expect state voiceSpeed == 1
+
+test "appearance keeps a chosen accent across launch"
+  at "/settings"
+  clock data
+  expect state accentColor == "#007aff"
+  expect text "accent-value" == "#007aff"
+  expect tree has "accent-custom"
+  expect disabled "accent-reset"
+  tap "accent-yellow"
+  clock data
+  expect state accentColor == "#ffcc00"
+  expect state appearance.fill == "#ffcc00"
+  expect state appearance.onFill == "#000000"
+  reload
+  clock data
+  expect state accentColor == "#ffcc00"
+  expect state appearance.fill == "#ffcc00"
+
+test "appearance resets to default blue immediately and across launch"
+  at "/settings"
+  clock data
+  tap "accent-green"
+  clock data
+  tap "accent-reset"
+  clock data
+  expect state accentColor == "#007aff"
+  expect text "accent-value" == "#007aff"
+  expect disabled "accent-reset"
+  reload
+  clock data
+  expect state appearance.fill == "#007aff"
+
+test "appearance follows the system and keeps the chosen fill in both modes"
+  at "/settings"
+  clock data
+  tap "accent-purple"
+  clock data
+  prefer prefers-color-scheme dark
+  expect state appearance.fill == "#af52de"
+  prefer prefers-color-scheme light
+  expect state appearance.fill == "#af52de"
