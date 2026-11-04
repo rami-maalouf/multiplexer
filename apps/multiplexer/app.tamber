@@ -23,6 +23,8 @@ theme
   camera.problem = #ff6961 scheme=fixed
 
 icons
+  // private chat labels, with the same native symbol on apple hosts.
+  icon.tag = icon(sf "tag", svg "icons/tag.svg")
   // the "+" panel's rows, as Beeper draws them; the svg is for hosts without SF Symbols.
   icon.photos = icon(sf "photo.on.rectangle", svg "icons/photos.svg")
   icon.folder = icon(sf "folder", svg "icons/folder.svg")

@@ -64,7 +64,7 @@ final class LatestMessages: @unchecked Sendable {
 /// sdk observes only its own types, so this reads them from the store (no request) every
 /// `interval` seconds while the account syncs, and calls `changed` when one differs.
 final class AccountDataWatch: @unchecked Sendable {
-    static let types = [ChatMarks.type, CustomNames.type]
+    static let types = [ChatMarks.type, CustomNames.type, LabelStore.type]
     private var task: Task<Void, Never>?
     private let lock = NSLock()
 

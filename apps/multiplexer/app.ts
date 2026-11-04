@@ -275,17 +275,17 @@ const sources: Sources = {
   // matrixcore filters the list (list: inbox, archive or lowPriority; filter: all, unread,
   // unanswered, people or groups; network: one network's chats, or "" for every network); in the
   // inbox under all, the pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter, network, list], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+  loadRoomsByRecency: async ([userId, filter, network, list, label], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
     if (userId === '' || !native?.available) {
-      return { owner: userId, filter, network, list, rooms: [], pinned: [], networks: [], unread: 0, archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
+      return { owner: userId, filter, network, list, label, rooms: [], pinned: [], networks: [], unread: 0, archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
     }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
-    const answer = (await native.later({ op: 'rooms', filter, network, list })) as RoomsAnswer;
+    const answer = (await native.later({ op: 'rooms', filter, network, list, label })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     // the reminders' notifications follow the account's reminders; a failure leaves the list as it is.
     syncReminders(answer.rooms, storage).catch((e) => console.log(`reminders: ${e}`));
     return {
-      owner: userId, filter, network, list, networks: answer.networks, unread: answer.unread,
+      owner: userId, filter, network, list, label, networks: answer.networks, unread: answer.unread,
       archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread, reminders: answer.reminders,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
@@ -297,6 +297,18 @@ const sources: Sources = {
       }),
     };
   },
+  loadLabels: async ([userId], _store, _storage, native): Promise<Result<'loadLabels'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, labels: [] };
+    native.watch('rooms');
+    const result = await native.later({ op: 'labels' }) as { labels: Result<'loadLabels'>['labels'] };
+    return { owner: userId, labels: result.labels };
+  },
+  editLabel: async ([id, name], _store, _storage, native): Promise<Result<'editLabel'>> =>
+    await native!.later({ op: 'label', action: id === '' ? 'create' : 'rename', id, name }) as Result<'editLabel'>,
+  assignLabel: async ([id, rooms, included], _store, _storage, native): Promise<Result<'assignLabel'>> =>
+    await native!.later({ op: 'label', action: 'assign', id, rooms, included }) as Result<'assignLabel'>,
+  removeLabel: async ([id], _store, _storage, native): Promise<Result<'removeLabel'>> =>
+    await native!.later({ op: 'label', action: 'delete', id }) as Result<'removeLabel'>,
   // a pin is kept on the server, so the account's other devices show it too.
   setPinned: async ([roomId, pinned], _store, _storage, native): Promise<Result<'setPinned'>> => {
     await native!.later({ op: pinned ? 'pin' : 'unpin', roomId });

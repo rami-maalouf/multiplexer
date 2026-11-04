@@ -1,0 +1,103 @@
+// private label groups, their editor and the picker that assigns chats to them.
+shape ChatLabel
+  id: string
+  name: string
+  rooms: string[]
+  unread: number
+
+shape LabelList
+  owner: string
+  labels: ChatLabel[]
+
+shape LabelWrite
+  ok: bool
+  error: string
+
+component LabelEditor
+  props
+    route: string
+    editing: bool
+    draft: string
+    problem: string
+    saving: bool
+    typeName: action
+    save: action
+    close: action
+  view
+    column navigationKey=route navigationPresentation="modal" navigationScroll="label-editor" position="absolute" inset=0
+      display="flex" flex-direction="column" testId="label-editor"
+      header
+        button id="back" press=close disabled=saving testId="label-cancel"
+          text "Cancel"
+        text (editing ? "Rename Label" : "Create Label") role="heading" aria-level=1
+        button press=save disabled=(draft.trim() == "" or saving) buttonStyle="filled" testId="label-save"
+          text (saving ? "Saving…" : "Save")
+      list id="label-editor" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        section
+          row
+            input value=draft input=typeName submit=save placeholder="Label name" aria-label="Label name"
+              autocapitalize="words" testId="label-name" flex=1 min-width=0 disabled=saving
+          footer
+            text (problem != "" ? problem : (draft.trim() == "" ? "Enter a name to save." : "Only you see your labels. They sync across your devices."))
+              color=(problem != "" ? "-exact-system-red" : "-exact-secondary-label") testId="label-note"
+
+component LabelPicker
+  props
+    route: string
+    labels: ChatLabel[]
+    rooms: string[]
+    loaded: bool
+    loadFailed: bool
+    saving: bool
+    problem: string
+    toggle: action
+    create: action
+    close: action
+    retry: action
+  view
+    column navigationKey=route navigationPresentation="modal" navigationScroll="label-picker" position="absolute" inset=0
+      display="flex" flex-direction="column" testId="label-picker"
+      header
+        text "Labels" role="heading" aria-level=1
+        button press=close disabled=saving testId="labels-done"
+          text "Done"
+      list id="label-picker" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        if saving
+          section
+            row gap=8
+              progress aria-label="Saving labels"
+              text "Saving labels…" color="-exact-secondary-label"
+        section
+          header
+            text (rooms.length == 1 ? "1 Chat" : `${rooms.length} Chats`)
+          if loadFailed
+            text "Couldn’t load labels. Check your connection and try again." color="-exact-system-red" testId="labels-load-error"
+            button press=retry testId="labels-retry"
+              text "Try Again"
+          else if not loaded
+            progress aria-label="Loading labels"
+          else if labels.length == 0
+            text "No Labels Yet" font-weight=600 testId="labels-empty"
+            text "Create a label, then choose it here to group these chats." color="-exact-secondary-label"
+          for l in labels key=l.id
+            LabelChoice(label=l, rooms=rooms, saving=saving, choose=toggle)
+          footer
+            text (problem != "" ? problem : "Changes save as you choose. A chat can have more than one label.")
+              color=(problem != "" ? "-exact-system-red" : "-exact-secondary-label") testId="labels-note"
+        section
+          button press=create("") disabled=saving testId="labels-create"
+            image "symbol:add"
+            text "Create Label"
+
+component LabelChoice
+  props
+    label: ChatLabel
+    rooms: string[]
+    saving: bool
+    choose: action
+  derive count = rooms.filter(id => label.rooms.includes(id)).length
+  view
+    button press=choose(label.id) disabled=saving testId=`label-pick-${label.id}` role="checkbox" aria-checked=(count == rooms.length)
+      text label.name
+      if count > 0
+        image (count == rooms.length ? "symbol:checkmark" : "symbol:minus") color="AccentColor" aria-label=(count == rooms.length ? "All chats" : "Some chats")

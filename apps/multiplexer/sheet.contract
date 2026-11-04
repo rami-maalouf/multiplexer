@@ -5,6 +5,7 @@
 // show them (a muted chat counts only with a mention). The rows that do nothing yet come with
 // their tasks (see InboxSheet).
 use networkName from "./network.contract"
+use ChatLabel from "./labels.contract"
 
 // a network the account has chats on, and how many of them are unread.
 shape NetworkCount
@@ -52,6 +53,12 @@ component SheetRow
 // network (chooseList); a network's row shows its chats in the list shown (choose).
 component InboxSheet
   props
+    labels: ChatLabel[]
+    activeLabel: string
+    chooseLabel: action
+    createLabel: action
+    renameLabel: action
+    deleteLabel: action
     networks: NetworkCount[]
     unread: number
     archiveUnread: number
@@ -69,14 +76,26 @@ component InboxSheet
     openBookmarks: action
     largeText: bool
   view
+    for l in labels key=l.id
+      column id=`label-menu-${l.id}` popover="auto" role="menu"
+        button press=renameLabel(l.id) popovertarget=`label-menu-${l.id}` popovertargetaction="hide" testId=`label-rename-${l.id}`
+          image "symbol:pencil"
+          text "Rename Label"
+        button press=deleteLabel(l.id) destructive=true popovertarget=`label-menu-${l.id}` popovertargetaction="hide" testId=`label-delete-${l.id}`
+          image "symbol:delete"
+          text "Delete Label"
     scroll id="inboxes" flex=1 min-height=0 testId="inboxes"
       column padding="14px 0" gap=4
         SheetRow(picture="symbol:icon.tray", logo=false, name="Inbox", unread=unread, noun="unread", chosen=(list == "inbox" and chosen == ""),
           value="inbox", choose=chooseList, largeText=largeText, identifier="inboxes-inbox")
         SheetRow(picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, noun="unread", chosen=(list == "archive"),
           value="archive", choose=chooseList, largeText=largeText, identifier="inboxes-archive")
-        // Create Label and the labels come here with their task, then Reminders, Send Later and
-        // Bookmarks; Requests after them.
+        for l in labels key=l.id
+          view contextPopover=`label-menu-${l.id}`
+            SheetRow(picture="symbol:icon.tag", logo=false, name=l.name, unread=l.unread, noun="unread", chosen=(activeLabel == l.id),
+              value=l.id, choose=chooseLabel, largeText=largeText, identifier=`label-filter-${l.id}`)
+        SheetRow(picture="symbol:add", logo=false, name="Create Label", unread=0, noun="", chosen=false,
+          value="", choose=createLabel, largeText=largeText, identifier="inboxes-create-label")
         SheetRow(picture="symbol:icon.alarm", logo=false, name="Reminders", unread=reminders, noun="chats", chosen=(list == "reminders"),
           value="reminders", choose=chooseList, largeText=largeText, identifier="inboxes-reminders")
         SheetRow(picture="symbol:icon.clock", logo=false, name="Send Later", unread=scheduled, noun="scheduled", chosen=false,

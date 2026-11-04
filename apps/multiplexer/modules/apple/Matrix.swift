@@ -46,7 +46,10 @@ final class Matrix: ExactModule {
                     let started = Date(), account = try await signedIn()
                     let network = request["network"] as? String ?? "", filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
                     // Reminders is not a list a chat is in: it shows the chats with a reminder, from every list.
-                    let inbox = request["list"] as? String == "reminders"
+                    let label = request["label"] as? String ?? ""
+                    let inbox = !label.isEmpty
+                        ? try await account.labelInbox(id: label, filter: filter, network: network.isEmpty ? nil : network)
+                        : request["list"] as? String == "reminders"
                         ? try await account.reminderList(filter: filter, network: network.isEmpty ? nil : network)
                         : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox,
                                                   network: network.isEmpty ? nil : network)
@@ -57,6 +60,8 @@ final class Matrix: ExactModule {
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
                        "reminders": rooms.filter { !$0.isHidden && $0.reminderAt != nil }.count,
                        "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
+                case "labels", "label":
+                    reply.send(try await labelRequest(request))
                 case "pin", "unpin":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }

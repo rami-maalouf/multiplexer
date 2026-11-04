@@ -195,6 +195,7 @@ component SelectBar
     pinned: bool
     change: action
     delete: action
+    labelChats: action
     largeText: bool
     busy: bool
   derive off = count == 0 or busy
@@ -223,6 +224,9 @@ component SelectBar
         opacity=(off ? 0.35 : 1)
         image "symbol:delete" font-size=symbolSize color="-exact-system-red"
       column id="select-more" popover="auto" role="menu" pointer-events="auto"
+        button press=labelChats disabled=off popovertarget="select-more" popovertargetaction="hide" testId="select-label"
+          image "symbol:icon.tag"
+          text "Label…"
         button press=change(list == "lowPriority" ? "inbox" : "lowPriority") popovertarget="select-more" popovertargetaction="hide"
           testId="select-low-priority"
           image (list == "lowPriority" ? "symbol:icon.tray" : "symbol:icon.low-priority")
