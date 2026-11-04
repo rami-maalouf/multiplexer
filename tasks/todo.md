@@ -1432,8 +1432,9 @@ and the largest text size, with `check` (`apps/multiplexer/.exact/ui2/survey/`, 
 - [x] Fixed in the app: Settings' "Notifications" broke into syllables at the largest size beside "Turn On" (the row
   now wraps; `check` clean on Settings in all three); Select Chats' row said only the name (now its networks too).
   Integrated into main from `7e05b02` and `c56f5a2` on 2026-11-04.
-- [ ] A preview whose sender is a bare Matrix id spilled at the largest size. The wrapping patch was transferred
-  to the Later lane on resume, which owns its commit and integrated verification; it is not included in this merge.
+- [x] A preview whose sender is a bare Matrix id spilled at the largest size. Later accepted the wrapping patch
+  in `dc70b9a`. Inbox checked before integration; Select Chats checked on integrated head `1a38b7c` in light
+  and dark at the largest system text size. Display screenshots: `.exact/preview-select-largest-{light,dark}.png`.
 - [ ] Only Exact can fix (feedback files): the line above a plain list's first row (finding 49); Select Chats' lines
   start under the pictures, not at the names as the inbox's do (the host decides where a row's line starts; moving
   the mark into the row's picture slot changed nothing); `check` calls the rows under the app's bars overlaps
@@ -1676,10 +1677,10 @@ message request is accepted "with a button" (`accept_with_button`).
   Community filters include the merged row when any constituent belongs and count it once.
   An interrupted addition keeps successful children, reports failure and can be retried;
   the picker marks Added only when every constituent belongs. Focused tests cover mixed
-  membership, an invalid later child, and retry completing the remaining child.
+  membership, a newly added child surviving an invalid later child, and retry completing the remaining child.
 - verification note: the first current-main run passed the 10 existing tests and exposed a
-  bare merge-ID versus `merge:<id>` list-ID mismatch in the two new tests. Corrected; rerun
-  the corrected mixed-membership and partial-failure/retry tests both passed on the final
+  bare merge-ID versus `merge:<id>` list-ID mismatch in the two new tests. Corrected;
+  the mixed-membership and partial-failure/retry tests both passed on the final
   lock-held run (2026-11-04). An intermediate simulator shutdown raced the queued run's start,
   killing its end-to-end process without an assertion; it was rerun with the simulator kept on.
 
@@ -1711,9 +1712,21 @@ only as the final fallback. Keep Matrix details inside MatrixCore.
 - [x] Pre-integration iOS verification: 7 tests passed, no findings. Full-ID preview wraps at
   the largest system text size in light and dark; test account signed out. The UI lane’s
   break opportunities after colons and dots are preserved.
-- [ ] Check current-main integration and Select Chats fallback wrapping, then report tested commits to
-  the coordinator for serialized integration. Code review completed; its blank-profile fallback
-  finding was fixed and tested. New Space is committed as `149843c`.
+- [x] Integrated `03fec0f` and `cebda48`, preserving `chooseLabel` and Settings wrapping. Tested code head
+  `1a38b7c`: `verify ios` clean (7 tests, 9 largest-text screens, 173.9 s); Select Chats raw-ID display
+  screenshots and checks clean in both appearances at the largest system text size. Test account signed out;
+  text size restored and only this lane's simulator shut down. No fresh real-account drive.
+- [x] Reviews completed: New Space's route-entry completion guard and the preview's blank-profile fallback
+  findings fixed; merged-space review found no actionable defects. Core coverage: 10 existing focused tests
+  passed on the integrated code, then both corrected merged-space tests passed. Logs:
+  `/tmp/mx-later-integrated-core.log`, `/tmp/mx-community-merge-final.log`, `/tmp/mx-later-final-verify.log`,
+  `/tmp/mx-preview-select-dark-row.log`, `/tmp/mx-preview-select-light-final.log`.
+- integration handoff: New Space `149843c`, preview `dc70b9a`, compatibility/main integration `840eea5`,
+  UI-main integration `1a38b7c`. Main untouched; coordinator owns serialized integration. Main advanced to
+  `316e116` during this verification; not incorporated at the coordinator's request. Preserve its push/shared-store
+  migration in `Matrix.swift`, `SessionKeychain` and `SessionStore` when combining. Only the three preexisting
+  generated Cargo path files remain dirty and are excluded. Physical camera and bridge-specific Requests
+  limitations remain recorded in L1/L3; the forced late-native-completion race was reviewed, not reproduced.
 
 ## Phase 3: push notifications (M3)
 

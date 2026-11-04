@@ -3,7 +3,7 @@ agent: Codex gpt-6.1-sol
 task: resolve a group preview sender through the room member when the event has no profile
 
 ### Rough
-- after an in-drive light-to-dark preference switch, check claimed the title was black on black, but its screenshot showed white on black. no actual title contrast failure was visible; related to known finding 40. a fresh-appearance check is planned after integration. about 2 minutes.
+- after an in-drive light-to-dark preference switch, check claimed the title was black on black, but its screenshot showed white on black. no actual title contrast failure was visible; possibly related to known finding 40. fresh-appearance checks after integration passed in both schemes. about 2 minutes.
 - the existing native module build again compiled the unchanged vendor bindings after a small core change (known finding 1). view-only wrapping updates typechecked quickly.
 
 ### Lean in
@@ -21,3 +21,4 @@ task: resolve a group preview sender through the room member when the event has 
 - accepted the other ui lane’s break opportunities after colons and dots in fallback sender labels; the raw-id fixture wraps within the inbox at the largest system text size in both appearances; test device signed out.
 
 - final pre-integration verify ios: 7 tests passed, no findings, 9 largest-text screens fit.
+- integrated verification: smooth, 7 tests passed, no findings, 9 largest-text screens fit. signed-in selection previews wrap at the largest system text size in both appearances; display screenshots inspected and checks clean. test device signed out; system text reset and the lane's simulator shut down.
