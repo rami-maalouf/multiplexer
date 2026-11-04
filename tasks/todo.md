@@ -899,11 +899,19 @@ Mute, Label, Delete (red).
   only the newest video. A sync with a gap resets the media timeline to its newest events, and the
   "reached the start" flag from an earlier page back stopped any new one; the flag now holds only
   until the next reset (`MediaTimeline`, 5 runs of 5 pass). The chat's own timeline (`LiveTimeline`)
-  keeps the same flag: not changed, as B15 works there; check it with B15.
-- [ ] Seen 2026-11-03 under load from parallel threads: a new device's first sync of `@test1` took
+  had the same flag, so a reset chat could stop loading older messages; it gets the same rule.
+- [x] Seen 2026-11-03 under load from parallel threads: a new device's first sync of `@test1` took
   near the 30 s limit, so `testANameOnlyYouSeeShowsOnYourOtherDeviceNotTheOthers` timed out twice
   ("the first sync") and passed alone (53 s). A failed run leaves its own name on the info test
-  room, which then fails `testInfoNamesItsMembersAndWhatYouMayChange`.
+  room, which then fails `testInfoNamesItsMembersAndWhatYouMayChange`. Fixed 2026-11-03 (branch `work/test-stability`):
+  measured with prints in `startSync`, a new `@test1` device took 12.5 s to "running" and a new `@test2`
+  device more than 30 s, while the server answered the same first sliding sync by curl in 0.2 s and was
+  idle; the Mac had a load average of 25 on 18 cores (8 Simulators, builds of other conversations). Not
+  the recovery tests' cross-signing (`@test2` never had it) nor concurrent starts (one start each). Every
+  test file now signs in through `TestDevices.swift`: the sync is warmed with a 120 s limit, and the
+  teardown signs the device out, through its saved session when its own client cannot (failed runs had
+  left 15 devices on `@test1`). The app keeps its 30 s. Full suite: 65 passed, 2 skipped, and one wait of
+  15 s raised to 30 s (`testSeenByAfterTheOtherReadsAndTheFirstUnreadMessage`, then passed alone).
 
 **Dependencies:** B6 (the menu exists). **Scope:** M
 
