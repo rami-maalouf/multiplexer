@@ -39,8 +39,17 @@ fallbacks. Coordinate shared tint and material choices before integration.
 Measured findings: sideways row drags activate navigation on release rather than overflowing
 the inbox width (shared Exact finding 124, owned by Exact/UI). Cached rows were usable in
 3 ms but first native reply waited 1,178 ms; repeat opens also clear the UI resource briefly.
-The receipt SDK addition passes a host compile and five focused tests, but generated iOS
-binary proof and app integration are still pending. No production SDK pin has changed.
+The receipt SDK candidate is preserved in isolation at `bf8aaf2b`. An earlier snapshot passed
+13 host tests; the final redaction and callback-test changes are runtime-unvalidated. The
+8 GiB free-space guard refused the final run before Cargo started. A cancellation-test review
+finding remains to fix on resume. Generated iOS proof and app integration remain pending;
+no production SDK pin has changed.
+
+Appearance app commits `dbff982` and `01b070d7` are integrated on the coordinator branch.
+The follow-up fixes incoming-link contrast without changing chosen outgoing fills. Independent
+review resolved its finding with no new actionable defects; the lane's exact final head passed
+12 native tests and 14 body-53 screens in 124.7 s. The navigation-root header tint defect is
+still open, so this is app source integration rather than full appearance acceptance.
 
 Labels progress: integrated `8904255` into `work/labels` (`673efb5`), preserving communities,
 network-aware selection labels and SessionStore migration. The earlier integrated iOS verification

@@ -26,6 +26,17 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   replayed: a prominent native header button can remain blue even when the palette and content
   controls change. Framework owner and coordinator have the display evidence and reproduction.
   The app's full native verify passes despite this visible defect. No app-only tint bridge.
+- Independent review of the appearance commit found an omitted light incoming-bubble surface:
+  normal-size links could measure 4.14:1 with a white accent. A separate follow-up adds the
+  actual light/dark incoming backgrounds to tint calculation and the independent contrast sweep.
+  The strengthened test failed at 4.144299 before the fix. Exact chosen outgoing fills stay unchanged.
+- Coordinator integrated `dbff982` plus reviewed follow-up `01b070d7` on
+  `fix/daily-chat-experience`. Final lane verification: 12/12 native tests, checks clear,
+  14 body-53 screens without spill (124.7 s); Bun 9/9 with 45,145 assertions. The focused
+  independent follow-up resolved the contrast finding and found no new actionable defects.
+  Native header tint remains open; native incoming-link replay was not part of the review.
+  Coordinator checks passed: Bun 9/9 (45,145 assertions), contract build `[]`, and diff-check.
+  Functional app/core source matches the tested lane head; native verification was not rerun here.
 - Appearance verification (2026-11-04): 9 Bun tests passed; 12 native authored tests passed;
   full verify clean, 14 screens at body 53 pt without spill. Numerical palette contrast is
   independent of native glass/material contrast. Some captures fell back to app pixels, so they
@@ -34,9 +45,6 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   was inferred from those automation errors. Local proof artifacts stay gitignored.
 - [ ] Coordinator reviews and integrates tested commits, checks the combined native app,
   records remaining limits and retains all Exact feedback locally.
-- [ ] Settings provides accent presets and an arbitrary custom color picker, immediately
-  applied and retained after relaunch, with reset to default blue. Check readable foregrounds
-  for light/dark accents without recoloring semantic error/destructive states. Owner: Appearance lane.
 - [ ] Chat header, bottom composer and text input use genuine translucent blur/glass so
   messages remain visible behind them while scrolling. Preserve keyboard and gesture behavior,
   readable controls and reduced-transparency fallback. Owner: Exact/UI lane.
@@ -49,6 +57,11 @@ the framework cancellation fix and local feedback finding 124; Push owns the sha
 reproduction bundle. No app overflow workaround is justified. Cached-opening baseline also
 confirmed usable rows in 3 ms waiting until a 1,178 ms reply, plus a brief resource-reset
 spinner on repeat opening. Fixes and native after-checks remain pending.
+
+Receipt SDK capacity checkpoint: isolated candidate `bf8aaf2b` is not ready for integration.
+The final host run never launched at 7.83 GiB free. Earlier 13/13 results apply to an earlier
+snapshot. On resume, correct the cancellation test's masking second cancel, then validate
+and review the final redaction/callback changes before any generated simulator build.
 
 ## Phase 0: prove the server (M0)
 

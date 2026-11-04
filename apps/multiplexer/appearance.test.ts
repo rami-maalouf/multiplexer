@@ -22,8 +22,8 @@ test('chosen colors remain exact and their foregrounds stay readable', () => {
     expect(contrast(p.fill, p.onFill)).toBeGreaterThanOrEqual(4.5);
     const [lightTint, darkTint] = sides(p.tint), [lightInk, darkInk] = sides(p.onTint);
     for (const [tint, ink, backgrounds] of [
-      [lightTint, lightInk, ['#ffffff', '#f2f2f7']],
-      [darkTint, darkInk, ['#000000', '#1c1c1e', '#2c2c2e']],
+      [lightTint, lightInk, ['#ffffff', '#f2f2f7', '#e9e9eb']],
+      [darkTint, darkInk, ['#000000', '#1c1c1e', '#2c2c2e', '#262629']],
     ] as const) {
       expect(contrast(tint, ink)).toBeGreaterThanOrEqual(4.5);
       for (const bg of backgrounds) expect(contrast(tint, bg)).toBeGreaterThanOrEqual(4.5);

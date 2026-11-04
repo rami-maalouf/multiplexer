@@ -13,7 +13,8 @@ const foreground = (fill: string) => contrast(fill, '#000000') >= contrast(fill,
 const mix = (hex: string, end: number, fraction: number) => `#${rgb(hex).map(c =>
   Math.round(c + (end - c) * fraction).toString(16).padStart(2, '0')).join('')}`;
 function tint(fill: string, dark: boolean) {
-  const backgrounds = dark ? ['#000000', '#1c1c1e', '#2c2c2e'] : ['#ffffff', '#f2f2f7'];
+  // incoming links use this tint on the opaque bubble.incoming surface in app.tamber.
+  const backgrounds = dark ? ['#000000', '#1c1c1e', '#2c2c2e', '#262629'] : ['#ffffff', '#f2f2f7', '#e9e9eb'];
   const readable = (color: string) => backgrounds.every(bg => contrast(color, bg) >= 4.5);
   if (readable(fill)) return fill;
   let lo = 0, hi = 1;
