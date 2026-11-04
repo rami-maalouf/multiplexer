@@ -293,27 +293,40 @@ final class ChatActionsTests: XCTestCase {
         // sent from this app: back at once, and on the other device.
         try await owner.archive(roomId: archived)
         try await assertListed(owner, archived, in: .archive)
-        try await owner.send(roomId: archived, text: "Mine \(UUID().uuidString)")
+        let mine = "Mine \(UUID().uuidString)"
+        try await owner.send(roomId: archived, text: mine)
         try await listed(owner, archived, in: .inbox)
         try await listed(other, archived, in: .inbox)
+        // inbox membership can precede the remote echo; establish this exact event before re-archiving.
+        let remoteMine = try await remotelyEchoed(other, archived, text: mine)
+        let ownMine = try await remotelyEchoed(owner, archived, text: mine)
+        XCTAssertEqual(ownMine.eventId, remoteMine.eventId)
 
         // sent from another device of the account.
         try await owner.archive(roomId: archived)
         try await assertListed(owner, archived, in: .archive)
-        try await say("Elsewhere \(UUID().uuidString)", in: archived, as: other)
+        let elsewhere = "Elsewhere \(UUID().uuidString)"
+        try await say(elsewhere, in: archived, as: other)
         try await listed(owner, archived, in: .inbox)
+        _ = try await summary(owner, archived) { $0.lastMessage == elsewhere }
         try await assertListed(owner, archived, in: .inbox)
 
         // a muted one: the other person's message leaves it archived, our own brings it back, and
         // it stays back when they answer.
         try await owner.archive(roomId: archived)
         try await owner.mute(roomId: archived)
+        try await assertListed(owner, archived, in: .archive)
+        let muted = try await summary(owner, archived) { $0.isMuted }
+        XCTAssertTrue(muted.isArchived, "the muted phase must start with the chat archived")
         let quiet = "Quiet \(UUID().uuidString)"
         try await say(quiet, in: archived, as: sender)
         let stayed = try await summary(owner, archived) { $0.lastMessage == quiet }
         XCTAssertTrue(stayed.isArchived, "a muted archived chat came back with someone else's message")
-        try await owner.send(roomId: archived, text: "Mine too \(UUID().uuidString)")
+        let mineToo = "Mine too \(UUID().uuidString)"
+        try await owner.send(roomId: archived, text: mineToo)
         try await listed(owner, archived, in: .inbox)
+        // sending returns before acknowledgement; their answer must follow our server event.
+        try await acknowledged(owner, archived, text: mineToo)
         let answer = "Answer \(UUID().uuidString)"
         try await say(answer, in: archived, as: sender)
         let answered = try await summary(owner, archived) { $0.lastMessage == answer }
@@ -449,6 +462,34 @@ final class ChatActionsTests: XCTestCase {
         let sent = try await api("PUT", ["rooms", roomId, "send", "m.room.message", UUID().uuidString], content,
                                  session: try account.savedSession())
         XCTAssertNotNil(sent["event_id"], "send: \(sent)")
+    }
+
+    // preview timestamps can retain local-echo time. event identity proves remote convergence.
+    private func remotelyEchoed(_ account: MatrixAccount, _ roomId: String, text: String) async throws -> Message {
+        let start = Date()
+        while Date().timeIntervalSince(start) < 20 {
+            let messages = try await account.messages(roomId: roomId, limit: 20)
+            for message in messages where message.isOwn && message.body == text && !message.eventId.isEmpty {
+                if let event = account.readyTimeline(roomId)?.items.event(of: message.id), case nil = event.localSendState {
+                    return message
+                }
+            }
+            try await Task.sleep(nanoseconds: 300_000_000)
+        }
+        XCTFail("the exact outgoing event did not reach the remote timeline: \(text)")
+        throw CancellationError()
+    }
+
+    // waits for this exact queued message to reach the server without sending it again.
+    private func acknowledged(_ account: MatrixAccount, _ roomId: String, text: String) async throws {
+        let start = Date()
+        while Date().timeIntervalSince(start) < 20 {
+            let messages = try await account.messages(roomId: roomId, limit: 20)
+            if messages.contains(where: { $0.isOwn && $0.body == text && $0.sendState == .sent }) { return }
+            try await Task.sleep(nanoseconds: 300_000_000)
+        }
+        XCTFail("the outgoing message was not acknowledged before the reply: \(text)")
+        throw CancellationError()
     }
 
     /// The chat's summary once it matches `done`, or the last one after 20 s.

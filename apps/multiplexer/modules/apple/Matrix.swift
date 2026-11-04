@@ -51,7 +51,10 @@ final class Matrix: ExactModule {
                     let network = request["network"] as? String ?? "", chosen = request["community"] as? String ?? ""
                     let filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
                     // Reminders is not a list a chat is in: it shows the chats with a reminder, from every list.
-                    let all = request["list"] as? String == "reminders"
+                    let label = request["label"] as? String ?? ""
+                    let all = !label.isEmpty
+                        ? try await account.labelInbox(id: label, filter: filter)
+                        : request["list"] as? String == "reminders"
                         ? try await account.reminderList(filter: filter)
                         : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox)
                     let communities = await account.communities(among: all.chats)
@@ -67,6 +70,8 @@ final class Matrix: ExactModule {
                        "communities": inbox.counts(of: communities).map { c in
                            ["id": c.id, "name": c.name, "unread": c.unread,
                             "avatar": cached(c.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: c.id, directory: self.media) }] }])
+                case "labels", "label":
+                    reply.send(try await labelRequest(request))
                 case "pin", "unpin":
                     // a merged chat pins or unpins each of its rooms.
                     let chatId = request["roomId"] as? String ?? "", account = try await signedIn()

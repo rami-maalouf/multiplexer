@@ -65,18 +65,25 @@ final class LatestMessages: @unchecked Sendable {
 /// types, so this reads them from the store (no request) every `interval` seconds while the
 /// account syncs, and calls `changed` with the types that differ.
 final class AccountDataWatch: @unchecked Sendable {
-    static let types = [ChatMarks.type, CustomNames.type, ReminderStore.type, MergeStore.type, Bookmarks.type]
+    static let types = [ChatMarks.type, CustomNames.type, ReminderStore.type, MergeStore.type, Bookmarks.type,
+                        LabelStore.type, LabelStore.markerType]
     private var task: Task<Void, Never>?
     private let lock = NSLock()
 
-    func start(_ client: Client, interval: TimeInterval = 2, changed: @escaping @Sendable (Set<String>) -> Void) {
+    static func values(_ client: Client) async -> [String: String] {
+        var values: [String: String] = [:]
+        for type in types { values[type] = (try? await client.accountData(eventType: type)) ?? "" }
+        return values
+    }
+
+    func start(_ client: Client, interval: TimeInterval = 2, initial: [String: String]? = nil,
+               changed: @escaping @Sendable (Set<String>) -> Void) {
         let task = Task {
-            var last: [String: String] = [:]
-            for type in Self.types { last[type] = (try? await client.accountData(eventType: type)) ?? "" }
+            var last: [String: String]
+            if let initial { last = initial } else { last = await Self.values(client) }
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                var now: [String: String] = [:]
-                for type in Self.types { now[type] = (try? await client.accountData(eventType: type)) ?? "" }
+                let now = await Self.values(client)
                 let differ = Set(Self.types.filter { now[$0] != last[$0] })
                 if !differ.isEmpty, !Task.isCancelled {
                     last = now

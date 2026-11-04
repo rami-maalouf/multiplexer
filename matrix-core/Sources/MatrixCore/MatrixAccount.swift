@@ -20,9 +20,11 @@ public final class MatrixAccount: @unchecked Sendable {
     /// The bookmarks this device wrote and the server has not confirmed (Bookmarks.swift).
     let bookmarkStates = BookmarkStates()
     let reminderStates = ReminderStates()
+    let labelStates = LabelStates()
     /// The account data events read from the server while the store had none (AccountData.swift).
     let serverAccountData = ServerAccountData()
     let mergeStates = MergeStates()
+
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
@@ -477,10 +479,16 @@ public final class MatrixAccount: @unchecked Sendable {
         startSearchBackfill()
         // another device's archive, delete, name, reminder or bookmark changes no room: the list
         // and the bookmarks hear of it here.
-        accountDataWatch.start(client) { [weak self] types in
-            if types.contains(Bookmarks.type) { self?.notify(.bookmarks) }
-            if !types.subtracting([Bookmarks.type]).isEmpty { self?.notify(.rooms) }
-        }
+        // seed before startSync returns: a label read cannot finish before the watch samples
+        // its baseline and then miss a marker that the sdk delivered during that read.
+        let initial = await AccountDataWatch.values(client)
+        accountDataWatch.start(client, initial: initial) { [weak self] types in self?.accountDataChanged(types) }
+    }
+
+    func accountDataChanged(_ types: Set<String>) {
+        if !types.isDisjoint(with: [LabelStore.type, LabelStore.markerType]) { labelStates.invalidate() }
+        if types.contains(Bookmarks.type) { notify(.bookmarks) }
+        if !types.subtracting([Bookmarks.type]).isEmpty { notify(.rooms) }
     }
 
     /// The room list service's order of the rooms (the most recent activity first), once synced.

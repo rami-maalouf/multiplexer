@@ -9,6 +9,7 @@ use Attachment, chosenOf, AddButton, AddPanel, Tray, FileBubble, UploadRing, siz
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, ChooseMark, SelectTitle, SelectBar, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage, deleteChatsTitle, deleteChatsMessage from "./inbox.contract"
 use NetworkBadge, NetworkBadges, networkName from "./network.contract"
 use InboxSheet, NetworkCount, CommunityCount from "./sheet.contract"
+use LabelEditor, LabelPicker from "./labels.contract"
 use ChatBar, MergeTab, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
@@ -76,6 +77,7 @@ shape RoomList
   network: string
   community: string
   list: string
+  label: string
   rooms: Room[]
   pinned: PinnedChat[]
   networks: NetworkCount[]
@@ -239,6 +241,8 @@ routes nav
         addMember "/room/:id/info/add"
         chatBookmarks "/room/:id/info/bookmarks"
     inboxes "/inboxes"
+    labelEdit "/labels/edit"
+    labelPick "/labels/pick"
     settings "/settings"
     bookmarks "/bookmarks"
     scheduled "/scheduled"
@@ -336,7 +340,7 @@ component Multiplexer
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
-  resource roomList = loadRoomsByRecency(session.userId, filter, network, community, chatList) as shape RoomList else empty()
+  resource roomList = loadRoomsByRecency(session.userId, filter, network, community, chatList, labelFilter) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
   resource profile = loadProfile(session.userId) as shape Profile else empty()
@@ -439,7 +443,7 @@ component Multiplexer
   // the name of what the list is narrowed to, for the title and the empty list: the community's,
   // else the network's ("": every chat).
   derive scopeName = match shownCommunity { case some(c) => c.name, case none => (network == "" ? "" : networkName(network)) }
-  derive gridShown = roomList.filter == "all" and roomList.list == "inbox" and roomList.pinned.length > 0
+  derive gridShown = roomList.label == "" and roomList.filter == "all" and roomList.list == "inbox" and roomList.pinned.length > 0
   // the held chat's last messages, for its menu's preview. loading them reads nothing: only the
   // chat screen marks a chat read.
   derive aimedRoom = first(roomList.rooms.filter(r => r.id == aimed))
@@ -478,6 +482,7 @@ component Multiplexer
   members "./info-members.contract"
   members "./chat-search-members.contract"
   members "./select-members.contract"
+  members "./labels-members.contract"
   members "./send-later-members.contract"
   members "./gif-members.contract"
   members "./bookmarks-members.contract"
@@ -840,10 +845,12 @@ component Multiplexer
     scrollIntoView(gridShown ? "pinned" : (match first(listedRooms) { case some(r) => `room-${r.id}`, case none => "rooms" }), block="start")
   // the capsule's Inbox and Archive keep the network; a press on the list shown goes back to its top.
   action toInbox
+    activeLabel = ""
     if chatList != "inbox"
       chatList = "inbox"
     toTop()
   action toArchive
+    activeLabel = ""
     if chatList != "archive"
       chatList = "archive"
     toTop()
@@ -857,6 +864,7 @@ component Multiplexer
     toTop()
     haptic("selection")
   action chooseList(l: string)
+    activeLabel = ""
     chatList = l
     network = ""
     community = ""
@@ -941,7 +949,7 @@ component Multiplexer
               if selecting
                 SelectTitle(count=chosenIds.length, done=stopSelecting, busy=pending(changedChats))
               else if not searching
-                TitleMenu(title=listTitle(chatList, scopeName), select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize)
+                TitleMenu(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize)
               if selecting and selectionProblem != ""
                 text selectionProblem role="alert" font="-exact-footnote" color="-exact-system-red" padding="8px 16px"
                   background-color="-exact-background" testId="select-error"
@@ -952,6 +960,10 @@ component Multiplexer
                     EmptyState(symbol="symbol:filter", title=emptyTitle(roomList.filter), message=emptyMessage(roomList.filter))
                       button press=chooseFilter("all") buttonStyle="bordered" testId="show-all"
                         text "Show All Chats"
+                  else if roomList.label != ""
+                    EmptyState(symbol="symbol:icon.tag", title="No Chats in This Label", message="Hold a chat and choose Label to add it here. Deleted chats stay hidden.")
+                      button press=toInbox buttonStyle="bordered" testId="label-show-inbox"
+                        text "Show Inbox"
                   else if roomList.list != "inbox"
                     // an empty Archive, Low Priority or Reminders: the capsule's Inbox is the way back.
                     EmptyState(symbol=(roomList.list == "archive" ? "symbol:icon.archive" : (roomList.list == "reminders" ? "symbol:icon.alarm" : "symbol:icon.arrow-down-circle")),
@@ -1005,11 +1017,11 @@ component Multiplexer
                   focused=searchFocused, focus=searchFocus, blur=searchBlur, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion)
               else if roomsShown and selecting
-                SelectBar(count=chosenIds.length, list=chatList, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
-                  change=changeChosen, delete=askDeleteChosen, canMerge=(chosenRooms.filter(r => r.merge == "").length >= 2),
+                SelectBar(count=chosenIds.length, archived=chosenArchived, lowPriority=chosenLowPriority, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
+                  change=changeChosen, delete=askDeleteChosen, labelChats=labelSelected, canMerge=(chosenRooms.filter(r => r.merge == "").length >= 2),
                   merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats))
               else if roomsShown
-                BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=chatList, network=network,
+                BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=(labelFilter == "" ? chatList : "label"), network=network,
                   communityName=(community != "" ? scopeName : ""), communityPicture=(match shownCommunity { case some(c) => c.avatar, case none => "" }),
                   sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize)
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
@@ -1084,9 +1096,20 @@ component Multiplexer
                   image "symbol:people"
                   text "Add to Space"
                 hr
+                button press=labelAimed popovertarget="chat-menu" popovertargetaction="hide" testId="menu-label"
+                  image "symbol:icon.tag"
+                  text "Label…"
+                hr
                 button press=askDelete destructive=true popovertarget="chat-menu" popovertargetaction="hide" testId="menu-delete"
                   image "symbol:delete"
                   text "Delete"
+        if e.name == "labelEdit"
+          LabelEditor(route=`${e.id}`, editing=(labelEditing != ""), draft=labelDraft, problem=labelEditError,
+            saving=pending(labelEdited), typeName=typeLabelName, save=saveLabel, close=closeLabelEditor)
+        if e.name == "labelPick"
+          LabelPicker(route=`${e.id}`, labels=labelsShown, rooms=labelRooms, chatCount=labelChatCount, loaded=(labelList.owner == session.userId),
+            loadFailed=(failed(labelList) and not pending(labelList)), retry=retryLabels,
+            saving=pending(labelAssigned), refreshing=pending(labelList), problem=labelAssignError, toggle=toggleLabel, create=newLabel, close=closeLabelPicker)
         // Send Later's list, and its time sheet for the composer's text or a waiting message.
         if e.name == "scheduled"
           ScheduledScreen(route=`${e.id}`, messages=scheduledShown, loaded=(scheduledList.owner == session.userId),
@@ -1141,11 +1164,14 @@ component Multiplexer
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
-            InboxSheet(networks=roomList.networks, communities=roomList.communities, community=community, chooseCommunity=chooseCommunity,
+            InboxSheet(labels=labelsShown, activeLabel=labelFilter, chooseLabel=selectLabel, createLabel=newLabel,
+              renameLabel=renameLabel, deleteLabel=askDeleteLabel, networks=roomList.networks, communities=roomList.communities, community=community, chooseCommunity=chooseCommunity,
               requests=requestsShown.length, openRequests=openRequests, newSpace=openNewSpace, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
-              lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
+              lowPriorityUnread=roomList.lowPriorityUnread, list=(labelFilter == "" ? chatList : "label"), chosen=network, choose=chooseNetwork,
               chooseList=chooseList, reminders=roomList.reminders, scheduled=scheduledShown.length, openScheduled=chooseSendLater, openBookmarks=chooseBookmarks,
               largeText=viewport.accessibilityTextSize)
+            if labelDeleteError != ""
+              text labelDeleteError font="-exact-footnote" color="-exact-system-red" padding=16 testId="label-delete-error"
         // a held message's sheets: every emoji, half height and pulled up to full; the chats to forward to.
         if e.name == "reactions"
           EmojiSheet(route=`${e.id}`, rows=emojiRows, query=emojiQuery, group=emojiGroup, columns=emojiColumns, search=searchEmoji,
@@ -1568,6 +1594,12 @@ component Multiplexer
         button press=changeAimed("delete") destructive=true commandfor="delete-chat" command="close" testId="delete-chat-confirm"
           text "Delete"
         button commandfor="delete-chat" command="close" testId="delete-chat-cancel"
+          text "Cancel"
+      dialog id="delete-label" role="alertdialog" aria-label="Delete Label?"
+        text "This removes only the label. Your chats and messages stay where they are."
+        button press=deleteLabel destructive=true commandfor="delete-label" command="close" testId="label-delete-confirm"
+          text "Delete Label"
+        button commandfor="delete-label" command="close" testId="label-delete-cancel"
           text "Cancel"
       dialog id="delete-chats" role="alertdialog" aria-label=deleteChatsTitle(chosenIds.length)
         text deleteChatsMessage(chosenIds.length) testId="delete-chats-message"

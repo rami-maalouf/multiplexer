@@ -16,6 +16,8 @@ members Multiplexer
   // are pinned.
   derive chosenUnread = chosenRooms.filter(r => r.unread > 0 or r.markedUnread).length > 0
   derive chosenMuted = chosenRooms.length > 0 and chosenRooms.filter(r => not r.muted).length == 0
+  derive chosenArchived = labelFilter == "" ? chatList == "archive" : chosenRooms.length > 0 and chosenRooms.filter(r => not r.archived).length == 0
+  derive chosenLowPriority = labelFilter == "" ? chatList == "lowPriority" : chosenRooms.length > 0 and chosenRooms.filter(r => not r.lowPriority).length == 0
   derive chosenPinned = chosenIds.length > 0 and chosenIds.filter(id => not roomList.pinned.map(p => p.id).includes(id)).length == 0
 
   action startSelecting

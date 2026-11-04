@@ -27,3 +27,8 @@ Cost: about 5 minutes.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS 26.5 simulator.
+
+2026-11-04: also reproduced at the system's largest accessibility text size with the held chat
+already at the top of the list. A lower menu action again failed with "its middle is outside the
+viewport; scroll it into view first". The selection bar's shorter menu reached the same sheet.
+This is not limited to holding a row near the bottom. About 2 additional minutes; feedback kept local.

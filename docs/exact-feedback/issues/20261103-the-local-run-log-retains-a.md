@@ -1,6 +1,11 @@
 # the local run log retains a password argument that terminal output masks
 
 **Status:** Open
+
+Additional evidence (2026-11-04): an authenticated drive used a separate native driver to fill
+the secure field from stdin, then resumed the Exact drive after sign-in. This kept the secret
+out of Exact's persisted command arguments, but required coordinating two drivers. A dedicated
+secret-input channel would remove that workaround.
 **Systems:** agent, logs, secrets
 **Severity:** P1
 **Author:** Codex (GPT-6.1), from an external app friction log

@@ -1454,6 +1454,68 @@ serialized integration into `main`; no duplicate Labels implementation continues
 Rami wants these, after the tasks above (2026-11-02):
 - Labels: a named group of chats, shown as a filter in the sheet, with Create Label (the same
   tag way as Archive, B8). "Not a requirement."
+  - Implementation in `work/labels`: private account data, create/rename/delete, multiple labels per
+    chat, single and selected-chat assignment, and filters across Inbox, Archive and Low Priority.
+    Merged chats expand to their underlying rooms; hidden chats stay excluded.
+  - Core proof: both `LabelsTests` passed in 106.185 s under the shared lock on MX select
+    (`/tmp/mx-labels-core2.log`). Covers two devices, privacy, validation, unread/network filters,
+    hidden and merged chats, and preserving chats when a label is deleted.
+  - Before main integration, `verify ios` passed 8 tests, light/dark and 10 largest-text screens
+    (`/tmp/mx-labels-verify3.log`). Authenticated test-user creation was checked visually.
+  - Main `cebda48` incorporated as `a35625b`; retained network-aware selection accessibility and
+    notification wrapping. Renamed the Labels action to avoid colliding with main's `chooseLabel`
+    accessibility helper. Integrated verification passed in 98.9 s: 8 tests, both appearances,
+    10 largest-text screens (`/tmp/mx-labels-integrated-verify.log`).
+  - Review receipt `20261104-112257-e7801688`: four confirmed P2s. Applied bulk placement actions
+    based on selection and blocked picker toggles during membership refresh/failure. Reproduced
+    the bulk Archive bug before fixing it; afterward Unarchive appeared and restored the test chat.
+    Pin metadata and concurrent account-data writes are fixed, with regression tests and a scoped
+    follow-up review finding no new actionable defects.
+    Assigned a label through Select Chats and inspected the checked picker screenshot. Signed out
+    successfully (`/tmp/mx-labels-signout.log`); MX select shut down while another lane holds the lock.
+  - Integrated main `8904255` as `673efb5`. Combined core selection: 38/39 tests passed;
+    Labels 10/10, AccountData 2/2, Communities 8/8 and SessionStore 11/11 passed. One ChatActions
+    test failed its muted-archive assertion and reply-preview wait. Preserved evidence:
+    `/tmp/mx-labels-combined-core.xcresult` and `/tmp/mx-labels-combined-core-preserved.log`.
+  - Isolated main `8904255` and dirty branch copies each passed the unchanged focused archive test
+    once and diagnostic repeats twice. Server history proves the failed reply-preview expectation
+    assumed the wrong order: Answer arrived 18 ms before the queued Mine too event, so Mine too
+    was correctly latest. Replaying preceding AccountData and ChatActions tests with diagnostics
+    passed 10/10 on both versions. Repeating the original sequence 12 times reproduced the muted
+    archive failure on both baseline (iteration 6) and branch (iteration 2): the third archive still
+    sampled Mine, then Elsewhere arrived and removed the mark before Quiet. Logs and xcresults:
+    `/tmp/mx-labels-baseline-archive-stress` and `/tmp/mx-labels-branch-archive-stress`.
+  - Corrected the test prerequisites, preserving immediate inbox assertions and existing wait
+    limits: observe the same remote event ID on both devices before re-archiving; observe exact
+    Elsewhere before the muted phase; assert archived/muted preconditions; await Mine too's server
+    acknowledgement before Answer. Preview timestamps were unsuitable: one retained local time
+    59 ms later than the server event. No production archive behavior changed. The corrected
+    event-ID sequence passed 12 repetitions in 147.522 s, without diagnostic core logging
+    (`/tmp/mx-labels-branch-archive-event-stress.log` and `.xcresult`). The exact worktree test also
+    passed in 99.199 s (`/tmp/mx-labels-final-archive-event.log` and `.xcresult`). Committed as
+    `af5c49e`; scoped review `archive-final-673efb5-cddc757-20261104T181929Z` found no defects.
+  - A separate isolated
+    send-queue pause probe crashed in the SDK's `enableSendQueue(false)` before testing the archive
+    hypothesis (`there is no reactor running`); neither crash is archive evidence. Its four test
+    devices signed out through recovered test-device sessions (`/tmp/mx-labels-probe-signout.log`).
+  - Final authenticated drive covered rename, duplicate-name validation, assignment/removal,
+    filtering and deletion while preserving the chat. Dark and largest-text picker/editor screenshots
+    are in `apps/multiplexer/.exact/labels-final/`; the final action reads New Label without wrapping.
+    Signed out successfully (`/tmp/mx-labels-final-signout2.log`). Final iOS verification passed
+    after that copy change in 93.6 s: 9 tests, both appearances and 11 largest-text screens
+    (`/tmp/mx-labels-final-verify2.log`). MX select is shut down. Ready for coordinator integration.
+    Exact finding 123 belongs to Labels; 121 and 122 belong to Later. Feedback stays local.
+  - Final coordinator integration of the whole branch `2b55caf`: all 39 combined core tests
+    passed, no failures or skips, in 1062.9 s on MX main under the shared lock. This includes
+    all 8 ChatActions tests with the corrected event prerequisites. Evidence:
+    `/tmp/mx-main-labels-2b55caf-core.log` and `/tmp/mx-main-labels-2b55caf-core.xcresult`.
+    Integrated app/core sources are identical to the lane's final tested head; contract build
+    returns `[]`. The lane's 9 passing iOS tests and 11 largest-text screens are retained as
+    the UI verification. No production archive semantics changed.
+  - Storage limits: same-field writes use server order; simultaneous duplicate-name creates
+    both survive; multi-room assignment can partially succeed and be retried. If the change
+    marker fails after fields are written, another device may retain its cache until a later
+    marker or a new session. Older builds cannot read the new field overrides.
 - Camera in the + panel: a built-in camera. Done 2026-11-03 for photos ("L1" below).
 - Remind Me: a reminder to answer a chat later (B7, B20; a Reminders row in the sheet). Done 2026-11-03:
   - Kept in the account's data (one global event, `com.ramimaalouf.multiplexer.reminders`, as Customize for Me's

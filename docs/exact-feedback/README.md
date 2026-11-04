@@ -145,6 +145,8 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 121 | `verify ios` exits zero while its final report says there are problems. | About 3 min | P3 | [verify-ios-exits-zero](issues/20261104-verify-ios-exits-zero-while-its.md) |
 | 122 | A drive says "the app hung up (exit code 0)" when the app crashed; the crash report shows only in the next drive's `logs`. | About 10 min and three drives | P3 | [a-drive-says-the-app-hung](issues/20261103-a-drive-says-the-app-hung.md) |
 
+| 123 | A view-local `let` is reported as an unknown tag, followed by unknown-name errors at its uses. | About 2 min | P3 | [view-local-let](issues/20261104-view-local-let-reports-an-unknown.md) |
+
 ## What worked well
 
 - Compiler errors name the fix (`lower-grouped-list`, `lower-empty-state-in-list`, symbol aliases).

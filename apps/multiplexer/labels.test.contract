@@ -1,0 +1,26 @@
+// these signed-out routes exercise the form and empty picker; real account writes are driven separately.
+test "a label needs a name before save, and cancel keeps the list unchanged"
+  at "/labels/edit"
+  clock data
+  expect disabled "label-save"
+  expect text "label-note" == "Enter a name to save."
+  type "label-name" "   "
+  expect disabled "label-save"
+  type "label-name" "Friends"
+  expect enabled "label-save"
+  expect text "label-note" == "Only you see your labels. They sync across your devices."
+  tap "label-cancel"
+  clock settle
+  expect tree missing "label-editor"
+
+test "an empty label picker offers create and returns after cancelling the form"
+  at "/labels/pick"
+  clock data
+  clock settle
+  expect tree has "labels-empty"
+  tap "labels-create"
+  clock settle
+  expect tree has "label-editor"
+  tap "label-cancel"
+  clock settle
+  expect tree has "labels-empty"
