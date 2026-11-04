@@ -35,3 +35,11 @@ A test step that types a named secret from the environment, masked in every repo
 log, for example `type "password" env "APP_TEST_PASSWORD"`. A test whose variable is not
 set would be skipped and say why. `verify` would then check the screens behind the
 sign-in, in both schemes and at every text size.
+
+## native completion races (2026-11-04)
+
+An authenticated native create operation completed before the next host-driven tap could
+dismiss its sheet. The tests recipe and the agent operation list did not reveal a way to
+hold that native reply and release it after navigating elsewhere. The ownership guard was
+checked in code, but this drive did not force the delayed completion. A native-answer hold
+would let an app test this without a test-only production flag. About 3 minutes.

@@ -59,6 +59,8 @@ icons
   // the camera's flash (on, off) and its switch between the back and front cameras, as the phone's camera draws them.
   icon.bolt = icon(sf "bolt.fill", svg "icons/bolt.svg")
   icon.bolt-slash = icon(sf "bolt.slash.fill", svg "icons/bolt-slash.svg")
+  // the filter sheet's Requests row, as Beeper draws it.
+  icon.person-badge-plus = icon(sf "person.badge.plus", svg "icons/person-badge-plus.svg")
   icon.camera-flip = icon(sf "arrow.triangle.2.circlepath.camera", svg "icons/camera-flip.svg")
   // the inbox title menu's Merge Chats.
   icon.merge = icon(sf "arrow.triangle.merge", svg "icons/merge.svg")

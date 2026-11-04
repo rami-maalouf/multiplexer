@@ -1432,8 +1432,9 @@ and the largest text size, with `check` (`apps/multiplexer/.exact/ui2/survey/`, 
 - [x] Fixed in the app: Settings' "Notifications" broke into syllables at the largest size beside "Turn On" (the row
   now wraps; `check` clean on Settings in all three); Select Chats' row said only the name (now its networks too).
   Integrated into main from `7e05b02` and `c56f5a2` on 2026-11-04.
-- [ ] A preview whose sender is a bare Matrix id spilled at the largest size. The wrapping patch was transferred
-  to the Later lane on resume, which owns its commit and integrated verification; it is not included in this merge.
+- [x] A preview whose sender is a bare Matrix id spilled at the largest size. Later accepted the wrapping patch
+  in `dc70b9a`. Inbox checked before integration; Select Chats checked on integrated head `1a38b7c` in light
+  and dark at the largest system text size. Display screenshots: `.exact/preview-select-largest-{light,dark}.png`.
 - [ ] Only Exact can fix (feedback files): the line above a plain list's first row (finding 49); Select Chats' lines
   start under the pictures, not at the names as the inbox's do (the host decides where a row's line starts; moving
   the mark into the row's picture slot changed nothing); `check` calls the rows under the app's bars overlaps
@@ -1527,8 +1528,9 @@ Rami wants these, after the tasks above (2026-11-02):
     switches the sending network to its own. Several days, and a risk to the chat's tested features.
 - Select chat: act on several chats at once (B7, B21). Built 2026-11-03, see "B22 Select Chats".
 - Transcribe voice notes (B16): check whether the iPhone can do it on the phone, at no cost.
-- Communities as filters ("whatever is easiest"): after B4.
-- Requests and New Space in the filter sheet: look at what Beeper does first.
+- Communities as filters ("whatever is easiest"): after B4. Done 2026-11-03 ("L2" below).
+- Requests and New Space in the filter sheet: look at what Beeper does first. Requests built
+  2026-11-03 ("L3" below); New Space was approved and built (2026-11-04).
 - Message expiry (B20): the very last.
 
 Not wanted for now: Poll.
@@ -1568,6 +1570,171 @@ built; ask Rami if wanted).
   to WhatsApp as a photo.
 
 **Dependencies:** B10, B11. **Scope:** S
+
+### L2 Communities as filters
+
+**Description:** Beeper's filter sheet lists WhatsApp communities as rows under the networks
+(report, topics 03 and 07). On our server (read only, 2026-11-03) `@rami` has joined 17 spaces:
+each bridge's own space (WhatsApp, Instagram, LinkedIn: every chat of that network, with only
+Rami and the bot as members and no `io.element.functional_members`), and 14 WhatsApp
+communities (spaces the bridge serves as rooms, each holding 1 to 5 groups; 12 of them sit inside
+the WhatsApp space). MatrixCore lists every joined space but the bridges' own as a community
+(`Communities.swift`), with its chats from the sdk's space graph (each chat's parent spaces, up
+through nested ones). A space of Matrix (no bridge) is a community too. The sheet shows them after
+the networks, by name, each with its picture (a rounded square) and its unread chats; choosing
+one narrows the list as a network does (`community` state, kept across launches; choosing a
+network or a list clears it).
+
+**Acceptance criteria:**
+- [x] The sheet lists the communities after the networks, by name, with pictures and unread
+  counts; a bridge's own space is not listed; a space with none of the account's chats is not.
+- [x] Choosing one shows only its chats (and its pinned chats); the title is its name; the
+  capsule shows its picture (or the people symbol).
+- [x] A new device lists a space once its first sync has brought it (on `@rami`, 300 chats:
+  about a minute; before that 12 of the 14 showed).
+- [x] At the accessibility text sizes a row's count goes under its name, so a long word
+  ("WhatsApp") no longer spills (it did since B4). A list preview with one long word (a sender
+  shown by its id) breaks instead of covering the count.
+
+**Verification (2026-11-03):**
+- [ ] MatrixCore: `CommunitiesTests` (the bridge-space rule, the order, the filter and counts, the
+  space graph, and a space of `@test1`'s on a new device), and the whole suite.
+- [x] A read-only drive on `@rami` (no chat opened, signed out at the end): 14 communities, the 3
+  bridge spaces left out; Jiu Jitsu Canada lists its 2 groups; `check` clean in dark, light and
+  the largest text size.
+- [ ] `verify ios`.
+
+Seen on the way (not this task): a WhatsApp group's last sender without a name shows as its id
+(`@whatsapp_lid-…:ramimaalouf.com`) in the list's preview, on `@rami`.
+
+**Dependencies:** B4. **Scope:** S
+
+### L3 Requests and New Space in the filter sheet
+
+**What Beeper shows (report, topic 03 and the "small things" list):** the sheet's rows are Inbox,
+Archive, Create Label, Reminders, Send Later, **Requests** ("message requests"), Low Priority,
+the networks and the communities; under them a gear, **"+ New Space"** and Edit. The video opens
+neither, so what they do inside Beeper is not seen.
+
+**What our server has (read only, 2026-11-03):** `@rami` has no invites (331 rooms joined, 4
+left). The three bridges keep a `message_request` flag on each portal (WhatsApp 279 portals,
+Instagram 34, LinkedIn 21): none is set today. Each portal's `com.beeper.room_features` says a
+message request is accepted "with a button" (`accept_with_button`).
+
+**Design:**
+- **Requests** is two things. (1) A Matrix invite: someone asked this account into a chat. The
+  sync has it (`Membership.invited`); Accept joins, Decline leaves. Built now. (2) A network's
+  message request (Instagram, WhatsApp): the bridge makes the portal and flags it. Not built:
+  none exists to look at, and how the bridge shows the flag to a client (and takes the accept)
+  needs a spike when Rami gets one. Until then such a chat shows in the inbox as now.
+- **New Space** is a private Matrix space, approved by the coordinator on 2026-11-03:
+  a required name and optional picture, created from the filter sheet. Empty spaces remain
+  visible. Chats can be added from their long-press menus or a scrollable row on their info
+  pages. Only editable spaces are offered; adding a chat changes no state in the chat itself
+  or on its bridged network.
+
+**Built (Requests, 2026-11-03):**
+- [x] The sheet's Requests row (after Send Later, as Beeper orders it) counts the invites and
+  opens the Requests screen: each invite's chat, who invited, Decline and Accept; "No Requests"
+  when there are none. Accept joins (the chat shows in the list at once), Decline refuses.
+- [x] MatrixCore `requests()`, `accept(request:)`, `decline(request:)` (`Requests.swift`). The
+  room list's filter takes invites too, so an invite that arrives or goes tells the app.
+- [x] Found on the way: two MatrixCore sources asked at once at launch (the list and another)
+  each started the sync, and the sdk's room list crashed (`EXC_BAD_ACCESS` in
+  `entries_with_dynamic_adapters`; 3 crashes in 5 launches with Requests). Another lane fixed it
+  the same way at the same time (`startSync` is one start that every caller waits on); the merge
+  keeps that fix. With it: 6 launches, no crash. `RequestsTests` asks three sources at once.
+- [x] `scripts/invite-test-user.sh`: `@test2` invites `@test1` to "Multiplexer request drive"
+  (taking `@test1` out first if an earlier drive accepted), from a short-lived device.
+
+**Verification (2026-11-03):**
+- [x] MatrixCore: `RequestsTests` (`@test2` invites `@test1`: a request with its inviter, not in
+  the list; declined; invited again and accepted: in the list), and three sources asked at once
+  on a new device. Focused Communities/Requests run: 8 passed, 0 failed (2026-11-03).
+- [x] Drive as `@test1`: the row counts 1; the screen; Decline empties it; a new invite, Accept:
+  the chat is first in the list. `check` clean in dark, light and the largest text size (there
+  the half-height sheet scrolls to the buttons).
+- [x] `verify ios` clean.
+
+**New Space built and checked (2026-11-04):**
+- private space creation uploads the optional picture first, then creates the space in one
+  request; selecting Create shows the new empty space immediately.
+- the picker checks one chat's memberships and lists only spaces this account can edit.
+  repeated additions are harmless; an added row shows a checkmark.
+- the name form and picker use native grouped sheets; the name is required, saving disables
+  submission, and a failed save retains the form for retry. compressed upload copies are
+  removed when the request finishes.
+- the create/add drive passed as `@test1`. Light, dark and largest-system-text forms and the
+  info-page picker were inspected. The largest-text context-menu drive hits known Exact
+  finding 52; the info-page entry provides the same action in a scrollable list.
+- `verify ios`: clean, 7 tests passed, no findings in either appearance or at the largest
+  text size. Focused core tests: 8 passed after awaiting permission sync, including the optional
+  picture and membership on another device.
+- review found a late creation could replace a screen opened after dismissal; completion now
+  belongs to the initiating navigation entry. Space-only sync changes are watched too, so
+  permissions and membership can refresh without a chat message arriving.
+- current-main integration: Add to Space expands a merged chat to its underlying rooms.
+  Community filters include the merged row when any constituent belongs and count it once.
+  An interrupted addition keeps successful children, reports failure and can be retried;
+  the picker marks Added only when every constituent belongs. Focused tests cover mixed
+  membership, a newly added child surviving an invalid later child, and retry completing the remaining child.
+- verification note: the first current-main run passed the 10 existing tests and exposed a
+  bare merge-ID versus `merge:<id>` list-ID mismatch in the two new tests. Corrected;
+  the mixed-membership and partial-failure/retry tests both passed on the final
+  lock-held run (2026-11-04). An intermediate simulator shutdown raced the queued run's start,
+  killing its end-to-end process without an assertion; it was rerun with the simulator kept on.
+
+**Dependencies:** B4, L2. **Scope:** S (Requests); M (New Space).
+
+### L4 Room member names in group previews
+
+**Reproduced read-only (2026-11-03):** a fresh device of the real account loaded 315 chats;
+29 group previews used opaque WhatsApp sender IDs. A targeted read of each sender's
+`m.room.member` content found a nonempty display name in all 29 rooms. Both read-only
+devices signed out; no message or receipt was sent.
+
+**Cause:** the inbox uses only the SDK latest event's `ProfileDetails`. Its fallback is the
+sender ID until that profile is ready. Opening a timeline fetches members, so chat messages
+can show names while the unopened room's preview still has an ID. The preview has never
+looked up the sender through the room itself.
+
+**Approved fix (coordinator, 2026-11-03):** when a group's incoming preview has no usable
+profile name, resolve the sender with the room member's display name. Preserve the raw ID
+only as the final fallback. Keep Matrix details inside MatrixCore.
+
+- [x] Resolve the room member when the latest event's sender profile has no name; a nil, blank
+  or failed lookup retains the raw ID as the final fallback.
+- [x] Core test as test users: a room-specific member display name appears in the preview on
+  a fresh device, before opening the chat. Two focused tests passed, including blank-name fallback.
+- [x] Prior authorized read-only after-drive: 315 chats, no raw group sender IDs. 28 of the
+  29 affected previews matched the recorded room member name; the remaining chat received a
+  new message and sender. Devices signed out. Cold list query 2.042 s; later mostly under 0.5 s.
+- [x] Pre-integration iOS verification: 7 tests passed, no findings. Full-ID preview wraps at
+  the largest system text size in light and dark; test account signed out. The UI lane’s
+  break opportunities after colons and dots are preserved.
+- [x] Integrated `03fec0f` and `cebda48`, preserving `chooseLabel` and Settings wrapping. Tested code head
+  `1a38b7c`: `verify ios` clean (7 tests, 9 largest-text screens, 173.9 s); Select Chats raw-ID display
+  screenshots and checks clean in both appearances at the largest system text size. Test account signed out;
+  text size restored and only this lane's simulator shut down. No fresh real-account drive.
+- [x] Reviews completed: New Space's route-entry completion guard and the preview's blank-profile fallback
+  findings fixed; merged-space review found no actionable defects. Core coverage: 10 existing focused tests
+  passed on the integrated code, then both corrected merged-space tests passed. Logs:
+  `/tmp/mx-later-integrated-core.log`, `/tmp/mx-community-merge-final.log`, `/tmp/mx-later-final-verify.log`,
+  `/tmp/mx-preview-select-dark-row.log`, `/tmp/mx-preview-select-light-final.log`.
+- integration handoff: New Space `149843c`, preview `dc70b9a`, compatibility/main integration `840eea5`,
+  UI-main integration `1a38b7c`. Main untouched; coordinator owns serialized integration. Main advanced to
+  `316e116` during this verification; not incorporated at the coordinator's request. Preserve its push/shared-store
+  migration in `Matrix.swift`, `SessionKeychain` and `SessionStore` when combining. Only the three preexisting
+  generated Cargo path files remain dirty and are excluded. Physical camera and bridge-specific Requests
+  limitations remain recorded in L1/L3; the forced late-native-completion race was reviewed, not reproduced.
+- coordinator integration (2026-11-04): complete Later head `e93aa0e` combined with main `316e116`.
+  Shared-store migration is preserved. Combined `verify ios`: 7 passed, light/dark clean,
+  9 largest-text screens without overflow (186.9 s; `/tmp/mx-main-later-push-verify.log`).
+  Lock-held combined MatrixCore selection: 25 passed, no failures or skips, covering
+  Communities, Requests, preview senders, Push and SessionStore (224.2 s;
+  `/tmp/mx-main-later-push-core.log`, xcresult `Test-MatrixCore-2026.11.04_11-50-02--0500`).
+  Labels remains separate while its review fixes are verified. Entitled migration, physical
+  camera, bridge-specific requests and the live late-completion race remain unproved.
 
 ## Phase 3: push notifications (M3)
 
@@ -1666,8 +1833,8 @@ the text. Memory and time are measured on the iPhone.
   client takes the lock as `"app"`; `SessionKeychain` uses the access group
   `3V2UU7RRK9.com.ramimaalouf.multiplexer`; the agent keeps its own folder. (2026-11-03: the lock
   as `"app"` and `SessionKeychain.accessGroup` done; the app's items are already in that group, its
-  default. The move is planned in `matrix-core/NOTES.md`, "The App Group store move", and waits
-  for P3.0's App Group.)
+  default. The move is implemented in `0939ebc` (preparation below); proving it on an entitled
+  device still waits for P3.0's App Group.)
 - [ ] The extension sets `threadIdentifier` to the room id and the badge from `unread_count`.
 - [ ] On an error, a timeout, or before the first unlock after a reboot, it shows "New message";
   never an empty or raw payload. (Both written in `extensions/notifications/NotificationService.swift`;
@@ -1680,6 +1847,24 @@ the text. Memory and time are measured on the iPhone.
 the extension builds it reads `@test2`'s message in a plain and an encrypted room; then the phone test.
 
 **Dependencies:** P3.1. **Scope:** M (L if the store move is hard)
+
+**Preparation, 2026-11-04:** shared-store code is implemented in `0939ebc`, with
+`SessionStoreTests` (11 passing filesystem tests) and push/search/sign-out regression checks
+(15 passing tests). Legacy metadata defaults to data; an interrupted move finishes its metadata
+write on retry; an unavailable group retains the session and refuses replacement sign-in;
+agent sessions never use the group. Sign-out removes only its resolved store. Keychain writes
+update existing items in place. The extension opens only a published group store.
+Integrated into main from `86d3a80`. Conservative limitation: when both the group is
+unavailable and legacy data is absent, the app retains the session and refuses replacement
+login. This also affects a genuinely deleted legacy store, because it cannot distinguish that
+case from a move completed before its metadata was saved.
+The acceptance criterion above stays unchecked until P3.0 permits a real entitled migration
+without signing in again. Phone delivery, memory and timing also remain unproved.
+After incorporating main cebda48, `verify ios` passed all 6 tests, light/dark checks and
+8 largest-text screens (75.2 s; `/tmp/mx-store-migration-logs/integrated-verify.log`).
+Settings matches cebda48. Test sessions signed out; MX main shut down.
+P3.6 badge semantics and WhatsApp mute policy still need decisions; P3.7 still needs
+the documented Exact notification activation/presentation integration. Neither is claimed done.
 
 ### P3.3 Server: Sygnal (server conversation)
 

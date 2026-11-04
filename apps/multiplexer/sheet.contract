@@ -12,12 +12,22 @@ shape NetworkCount
   network: string
   unread: number
 
+// a community (a space the account has joined: a WhatsApp community, or a space of Matrix), its
+// picture once it is downloaded ("" for none), and how many of its chats are unread.
+shape CommunityCount
+  id: string
+  name: string
+  avatar: string
+  unread: number
+
 // one row: a symbol or a network's logo, a name, and the unread chats (none when 0). The row
 // chosen sits on a light pill, as Beeper shows it. choose(value) chooses it.
 component SheetRow
   props
     picture: string
     logo: bool
+    // a community's picture: a rounded square, as WhatsApp and Beeper draw one.
+    rounded: bool
     name: string
     unread: number
     // what the count counts: "unread", or "scheduled" for Send Later's waiting messages.
@@ -40,17 +50,32 @@ component SheetRow
       // the box is a little wider than a logo, so the tray symbol, which is wider than tall, fits too.
       view width=(side + 6) height=side flex-shrink=0 display="flex" align-items="center" justify-content="center"
         if logo
-          image picture width=side height=side aria-hidden=true
+          image picture width=side height=side border-radius=(rounded ? side * 0.24 : 0) object-fit="cover" aria-hidden=true
+        else if rounded
+          // a community with no picture: its place, with the people symbol small inside it.
+          view width=side height=side border-radius=(side * 0.24) background-color="-exact-tertiary-fill" display="flex"
+            align-items="center" justify-content="center"
+            image picture font-size=(side * 0.5) color="-exact-secondary-label" aria-hidden=true
         else
           image picture font-size=symbolSize color="-exact-label" aria-hidden=true
-      text name font="-exact-body" color="-exact-label" flex=1 min-width=0
-      if unread > 0
-        text unread.toString() font="-exact-body" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
-          testId=`${identifier}-unread`
+      // at the accessibility text sizes the count goes under the name, so a long word ("WhatsApp")
+      // has the row's width; a name longer than that wraps between its words.
+      if largeText
+        column flex=1 min-width=0
+          text name font="-exact-body" color="-exact-label"
+          if unread > 0
+            text unread.toString() font="-exact-body" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
+              testId=`${identifier}-unread`
+      else
+        text name font="-exact-body" color="-exact-label" flex=1 min-width=0
+        if unread > 0
+          text unread.toString() font="-exact-body" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
+            testId=`${identifier}-unread`
 
-// the sheet's rows, in Beeper's order. list: the list shown (inbox, archive, lowPriority or reminders);
-// chosen: the network it shows ("" for every network). A list's row shows that list on every
-// network (chooseList); a network's row shows its chats in the list shown (choose).
+// the sheet's rows, in Beeper's order. list: the list shown (inbox, archive, lowPriority or
+// reminders); chosen: the network it shows ("" for every network); community: the community it
+// shows ("" for none). A list's row shows that list on every network (chooseList); a network's or
+// a community's row shows its chats in the list shown (choose, chooseCommunity).
 component InboxSheet
   props
     labels: ChatLabel[]
@@ -60,6 +85,9 @@ component InboxSheet
     renameLabel: action
     deleteLabel: action
     networks: NetworkCount[]
+    communities: CommunityCount[]
+    community: string
+    chooseCommunity: action
     unread: number
     archiveUnread: number
     lowPriorityUnread: number
@@ -69,6 +97,10 @@ component InboxSheet
     chooseList: action
     // the chats with a reminder (Remind Me).
     reminders: number
+    // the chats this account is invited to, and the list of them (Requests).
+    requests: number
+    openRequests: action
+    newSpace: action
     // messages waiting on the server, and the list of them (Send Later).
     scheduled: number
     openScheduled: action
@@ -86,26 +118,35 @@ component InboxSheet
           text "Delete Label"
     scroll id="inboxes" flex=1 min-height=0 testId="inboxes"
       column padding="14px 0" gap=4
-        SheetRow(picture="symbol:icon.tray", logo=false, name="Inbox", unread=unread, noun="unread", chosen=(list == "inbox" and chosen == ""),
+        SheetRow(rounded=false, picture="symbol:icon.tray", logo=false, name="Inbox", unread=unread, noun="unread", chosen=(list == "inbox" and chosen == "" and community == ""),
           value="inbox", choose=chooseList, largeText=largeText, identifier="inboxes-inbox")
-        SheetRow(picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, noun="unread", chosen=(list == "archive"),
+        SheetRow(rounded=false, picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, noun="unread", chosen=(list == "archive"),
           value="archive", choose=chooseList, largeText=largeText, identifier="inboxes-archive")
         for l in labels key=l.id
           view contextPopover=`label-menu-${l.id}`
-            SheetRow(picture="symbol:icon.tag", logo=false, name=l.name, unread=l.unread, noun="unread", chosen=(activeLabel == l.id),
+            SheetRow(rounded=false, picture="symbol:icon.tag", logo=false, name=l.name, unread=l.unread, noun="unread", chosen=(activeLabel == l.id),
               value=l.id, choose=chooseLabel, largeText=largeText, identifier=`label-filter-${l.id}`)
-        SheetRow(picture="symbol:add", logo=false, name="Create Label", unread=0, noun="", chosen=false,
+        SheetRow(rounded=false, picture="symbol:add", logo=false, name="Create Label", unread=0, noun="", chosen=false,
           value="", choose=createLabel, largeText=largeText, identifier="inboxes-create-label")
-        SheetRow(picture="symbol:icon.alarm", logo=false, name="Reminders", unread=reminders, noun="chats", chosen=(list == "reminders"),
+        SheetRow(rounded=false, picture="symbol:icon.alarm", logo=false, name="Reminders", unread=reminders, noun="chats", chosen=(list == "reminders"),
           value="reminders", choose=chooseList, largeText=largeText, identifier="inboxes-reminders")
-        SheetRow(picture="symbol:icon.clock", logo=false, name="Send Later", unread=scheduled, noun="scheduled", chosen=false,
+        SheetRow(rounded=false, picture="symbol:icon.clock", logo=false, name="Send Later", unread=scheduled, noun="scheduled", chosen=false,
           value="scheduled", choose=openScheduled, largeText=largeText, identifier="inboxes-send-later")
         // no count: the sheet's numbers are for what waits (unread chats, scheduled messages).
-        SheetRow(picture="symbol:bookmark", logo=false, name="Bookmarks", unread=0, noun="", chosen=false,
+        SheetRow(rounded=false, picture="symbol:bookmark", logo=false, name="Bookmarks", unread=0, noun="", chosen=false,
           value="bookmarks", choose=openBookmarks, largeText=largeText, identifier="inboxes-bookmarks")
-        SheetRow(picture="symbol:icon.arrow-down-circle", logo=false, name="Low Priority", unread=lowPriorityUnread, noun="unread",
+        SheetRow(rounded=false, picture="symbol:icon.person-badge-plus", logo=false, name="Requests", unread=requests, noun="waiting",
+          chosen=false, value="requests", choose=openRequests, largeText=largeText, identifier="inboxes-requests")
+        SheetRow(rounded=false, picture="symbol:icon.arrow-down-circle", logo=false, name="Low Priority", unread=lowPriorityUnread, noun="unread",
           chosen=(list == "lowPriority"), value="lowPriority", choose=chooseList, largeText=largeText, identifier="inboxes-low-priority")
         for n in networks key=n.network
-          SheetRow(picture=`assets/networks/${n.network}.svg`, logo=true, name=networkName(n.network), unread=n.unread, noun="unread",
+          SheetRow(rounded=false, picture=`assets/networks/${n.network}.svg`, logo=true, name=networkName(n.network), unread=n.unread, noun="unread",
             chosen=(chosen == n.network), value=n.network, choose=choose, largeText=largeText, identifier=`inboxes-${n.network}`)
-        // the communities come after the networks; the gear, New Space and Edit under the rows.
+        // the communities after the networks, by name, as Beeper lists WhatsApp's; one with no
+        // picture shows the people symbol. The gear, New Space and Edit come under the rows.
+        for c in communities key=c.id
+          SheetRow(picture=(c.avatar != "" ? c.avatar : "symbol:people"), logo=(c.avatar != ""), rounded=true, name=c.name,
+            unread=c.unread, noun="unread", chosen=(community == c.id), value=c.id, choose=chooseCommunity, largeText=largeText,
+            identifier=`inboxes-community-${c.id}`)
+        SheetRow(rounded=false, picture="symbol:add", logo=false, name="New Space", unread=0, noun="", chosen=false,
+          value="new", choose=newSpace, largeText=largeText, identifier="inboxes-new-space")

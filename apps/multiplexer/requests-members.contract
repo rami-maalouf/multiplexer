@@ -1,0 +1,27 @@
+// Requests' state and actions (requests.contract): the invites, read while signed in so the
+// filter sheet's row can count them, and the answer to one.
+use ChatRequest, RequestList, RequestAnswered from "./requests.contract"
+
+members Multiplexer
+  // the request being answered ("" for none), and why the last answer failed.
+  state answeringRequest = ""
+  resource requestList = loadRequests(session.userId) as shape RequestList else empty()
+  mutation requestAnswered as shape RequestAnswered refreshes requestList then requestDone
+  derive requestsShown = requestList.owner == session.userId ? requestList.requests : []
+  derive requestRefused = match failure(requestAnswered) { case some(f) => "Couldn’t answer the request. Try again.", case none => "" }
+  // a refused answer runs no `then`: the buttons come back here.
+  task endFailedAnswer when answeringRequest != "" and requestRefused != "" key=answeringRequest
+    after(1, requestDone)
+
+  // the filter sheet's Requests row: the list of them, as Send Later's row opens its list.
+  action openRequests(v: string)
+    nav = go(nav, path("requests"))
+  action acceptRequest(id: string)
+    answeringRequest = id
+    send requestAnswered = answerRequest(id, true)
+    haptic("success")
+  action declineRequest(id: string)
+    answeringRequest = id
+    send requestAnswered = answerRequest(id, false)
+  action requestDone
+    answeringRequest = ""

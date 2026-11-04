@@ -37,10 +37,13 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   phone is locked. The app uses the service `com.ramimaalouf.multiplexer.session`;
   under Exact's agent it adds `.agent`, because the agent's data is a fresh scratch
   tree.
-- **The SDK's store** (state, crypto, event cache, media) is a folder in the app's
-  data: `<Exact's context.data>/matrix/<uuid>/`. A Keychain session whose folder is
-  gone (a reinstall keeps the Keychain) counts as signed out, and the item moves to the
-  `sign-out` slot below: a session without its crypto store has lost its encryption keys.
+- **The SDK's store** (state, crypto, event cache, media, search) is
+  `<App Group container>/matrix/<uuid>/` when the group is available, otherwise
+  `<Exact's context.data>/matrix/<uuid>/`. `StoredSession.storeLocation` names `group` or
+  `data`; an omitted location is legacy `data`. Existing stores move before the sdk opens
+  them (see "The App Group store move"). A confirmed missing store counts as signed out,
+  and the item moves to the `sign-out` slot below. An unavailable group keeps its session:
+  lack of an entitlement does not prove the crypto store is gone.
 - **A session the server must still forget** waits in a second Keychain item (slot
   `sign-out`): a session whose store is gone, or one whose Sign Out could not reach the
   server. The module signs it out with `MatrixAccount.signOutOnServer` (a scratch store,
@@ -134,8 +137,9 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   comes after, in the client's order.
 - `RoomSummary.unreadCount` is the sdk's `numUnreadMessages`; `markRead(roomId:)` sends a
   read receipt for the room's newest message.
-- Spaces are not chats: `rooms()` leaves them out (`isSpace()`), and the list service's
-  filter is `joined` and `nonSpace`.
+- Spaces are not chats: `rooms()` leaves them out (`isSpace()`). The list service watches
+  joined rooms and invites, including spaces, so a space's permissions or children can refresh
+  the filter sheet even when no chat message arrives.
 - `RoomSummary.avatarName` names the room's picture; `avatarFile(roomId:directory:)`
   downloads a thumbnail of at most 160 pixels a side once.
 
@@ -357,27 +361,49 @@ takes no part: matrix-rust-sdk keeps a message index on the device.
 - `simctl privacy` cannot grant notifications: the app asks (`@exact/notifications`), and a
   person or `agent-device alert accept` answers.
 
-### The App Group store move (planned; waits for P3.0's App Group)
+### The App Group store move
 
-The extension can open the store only in the App Group's container. The move, once the App Group
-`group.com.ramimaalouf.multiplexer` exists and both profiles grant it:
+The implementation is ready, but activation and device proof still require the App Group
+`group.com.ramimaalouf.multiplexer` and profiles that grant it. No Apple setup is performed by
+this change. `SessionStore` resolves the location before the app builds an sdk client:
 
-1. `StoredSession` gets the store's place (`data` or `group`); nil means `data`, as today.
-2. At launch, before the client is made: if the place is `data` and
-   `containerURL(forSecurityApplicationGroupIdentifier:)` answers, move
-   `<context.data>/matrix/<store>` to `MatrixPush.sharedStore(in:store:)` (one `moveItem`; the
-   same volume, so it is a rename), then write the place. The search index moves with it (it is
-   inside the store folder). Rami does not sign in again.
-3. A store whose place is `group` while the container does not answer (a build without the
-   entitlement, such as an Exact drive) is **unavailable, not gone**: the app must not move the
-   session to the `sign-out` slot, which would sign Rami out on the server. It shows signed out
-   for that launch only.
-4. The agent's sessions (`.agent`) keep their own folder in Exact's scratch data: a drive never
-   touches the app's store.
-5. Sign Out removes the store in either place.
+1. Legacy sessions decode with no `storeLocation`, which means `data`. A new session chooses
+   `group` only when `containerURL(forSecurityApplicationGroupIdentifier:)` answers; otherwise
+   it chooses `data`.
+2. If the location is `data` and the container answers, move the complete
+   `<context.data>/matrix/<store>` to `MatrixPush.sharedStore(in:store:)` with one `moveItem`
+   (a rename on the same volume), then persist `group`. The crypto store, event cache, nested
+   search index and its existing Keychain key are retained. No password or new device is needed.
+3. If the process stops after the move, or the metadata write fails, the old session still
+   names the same store UUID. On retry, a missing source with that destination present finishes
+   the metadata write before opening the sdk. Both paths present is a conflict: neither is
+   overwritten or deleted. Filesystem errors propagate instead of becoming "store gone".
+4. `SessionKeychain.write` updates an existing item with `SecItemUpdate`, adding only when no
+   item exists. It never deletes the old session before a write, so a failed metadata update
+   leaves enough information to recover the moved crypto store.
+5. A `group` session without its container is **unavailable, not gone**. A legacy session whose
+   data folder is missing while the container is unavailable is also unavailable: it may be an
+   interrupted migration. Neither queues server sign-out or changes the Keychain. The app shows
+   signed out for that launch and refuses replacement sign-in or Sign Out until the store is
+   available. With the group available, neither source nor destination present confirms a
+   missing store and uses the existing pending server sign-out flow.
+6. `.agent` sessions use only Exact's scratch data, even if a group container is supplied.
+   They never migrate or recover from the shared store. A missing scratch store is genuinely
+   missing; a group-marked agent session is unavailable and never opens the group.
+7. Sign Out removes only the resolved session directory, in either location. Sign-in failure
+   removes only its new UUID directory. Neither deletes the shared `matrix` root or other stores.
 
-The extension today looks only in the group (`<container>/matrix/<store>`); before the move it
-shows "New message" and logs `storeNotShared`.
+The extension opens only a session whose persisted location is `group`, at
+`<container>/matrix/<store>`; before publication it shows "New message" and logs `storeNotShared`.
+
+Local proof: `SessionStoreTests` exercises real temporary directories, legacy decoding, nested
+crypto/cache/search preservation, unchanged session metadata, interrupted-move retries,
+metadata-write failure, unavailable versus missing stores, conflicts, and agent isolation.
+An isolated macOS Keychain fixture kept the same creation date across updates; the old
+delete-before-add implementation changed it. The iOS test-user drive restores the same session
+on relaunch and Sign Out removes just its active scratch directory, preserving a sibling fixture
+and another store. This is not proof of an entitled App Group migration, extension delivery,
+locked-phone decryption, or phone memory/time limits; those device gates remain open.
 
 ## Bookmarks
 

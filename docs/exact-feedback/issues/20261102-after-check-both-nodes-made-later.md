@@ -31,3 +31,9 @@ Cost: about 8 minutes, and a color fix written first for a bug that was not ther
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0`, `agent ios` on an iOS 26.5 Simulator.
+
+Additional evidence, 2026-11-04 at the same exact2 commit: after switching a signed-in
+list from light to dark within a drive, `check` reported the title as black on black
+while its screenshot showed white text on black. About 2 minutes to compare the two.
+Fresh drives started in each appearance passed the same largest-text selection screen.
+This may be related scheme-state drift; the exact cause was not isolated.

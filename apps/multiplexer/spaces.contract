@@ -1,0 +1,91 @@
+// a private matrix space: a name and optional picture, then chats added from their menus.
+use Face from "./bubble.contract"
+use InfoSheet from "./info.contract"
+
+shape SpaceCreated
+  id: string
+
+shape SpaceChoice
+  id: string
+  name: string
+  added: bool
+
+shape SpaceChoices
+  room: string
+  spaces: SpaceChoice[]
+
+shape SpaceAdded
+  ok: bool
+
+component NewSpaceSheet
+  props
+    route: string
+    name: string
+    picture: string
+    saving: bool
+    refused: bool
+    type: action
+    choose: action
+    pick: action
+    close: action
+    save: action
+  view
+    InfoSheet(route=route, title="New Space", done="Create", canSave=(name.trim() != ""), saving=saving, close=close, save=save)
+      section background-color="transparent"
+        column align-items="center" gap=8 width="100%"
+          if picture != ""
+            Face(picture=picture, initials="", size=96)
+          else
+            view width=96 height=96 border-radius=48 background-color="-exact-tertiary-fill" display="flex"
+              align-items="center" justify-content="center"
+              image "symbol:people" font="-exact-title1" color="-exact-secondary-label" aria-hidden=true
+          button press=choose disabled=saving testId="space-picture"
+            text "Choose Picture"
+          input type="file" id="space-pick-picture" accept="image/jpeg,image/png,image/webp" display="none" change=pick
+            testId="space-pick-picture"
+      section
+        header
+          text "Name"
+        input value=name input=type placeholder="Space name" disabled=saving aria-label="Space Name" autocapitalize="words"
+          testId="space-name" enterkeyhint="done"
+        footer
+          text (refused ? "Couldn’t create the space. Try again." : "Group chats here without changing them on their networks. Only people you invite can join this space.")
+            color=(refused ? "-exact-system-red" : "-exact-secondary-label") testId="space-footer"
+
+component AddToSpaceSheet
+  props
+    route: string
+    spaces: SpaceChoice[]
+    loaded: bool
+    saving: bool
+    refused: bool
+    close: action
+    add: action
+    create: action
+  view
+    column navigationKey=route navigationPresentation="modal" navigationScroll="add-space" position="absolute" inset=0
+      display="flex" flex-direction="column" testId="add-space-sheet"
+      header display="flex" align-items="center"
+        button id="back" press=close testId="add-space-close"
+          text "Done"
+        text "Add to Space" role="heading" aria-level=1
+      list id="add-space" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        if refused
+          section
+            text "Couldn’t add the chat. Try again." color="-exact-system-red" testId="add-space-refused"
+        if not loaded
+          section
+            progress aria-label="Loading spaces"
+        else
+          section
+            if spaces.length == 0
+              text "Create a space to group your chats." color="-exact-secondary-label"
+            for s in spaces key=s.id
+              button press=add(s.id) disabled=(saving or s.added) testId=`add-space-${s.id}`
+                text s.name
+                if s.added
+                  image "symbol:checkmark" aria-label="Added"
+          section
+            button press=create("new") disabled=saving testId="add-space-new"
+              image "symbol:add"
+              text "New Space"

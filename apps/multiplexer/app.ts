@@ -35,6 +35,7 @@ const readTranscripts = (storage: Storage): Promise<Record<string, Transcript[]>
   (e: { code?: string }) => { if (e?.code === 'ENOENT') return {}; throw e; });
 
 // the GIFs the grid shows, by slug, so a tap sends the one it shows.
+let spacePictures = 0;
 const shownGifs = new Map<string, KlipyItem>();
 
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
@@ -47,6 +48,7 @@ type RoomsAnswer = {
   rooms: (Omit<Result<'loadRoomsByRecency'>['rooms'][number], 'initials'> & { oneToOne: boolean })[];
   pinned: string[];
   networks: Result<'loadRoomsByRecency'>['networks'];
+  communities: Result<'loadRoomsByRecency'>['communities'];
   unread: number;
   archiveUnread: number;
   lowPriorityUnread: number;
@@ -274,19 +276,21 @@ const sources: Sources = {
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
   // matrixcore filters the list (list: inbox, archive or lowPriority; filter: all, unread,
-  // unanswered, people or groups; network: one network's chats, or "" for every network); in the
-  // inbox under all, the pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter, network, list, label], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+  // unanswered, people or groups; network: one network's chats, or "" for every network;
+  // community: one community's chats instead, a space's id or ""); in the inbox under all, the
+  // pinned chats are not in it.
+  loadRoomsByRecency: async ([userId, filter, network, community, list, label], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
     if (userId === '' || !native?.available) {
-      return { owner: userId, filter, network, list, label, rooms: [], pinned: [], networks: [], unread: 0, archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
+      return { owner: userId, filter, network, community, list, label, rooms: [], pinned: [], networks: [], communities: [], unread: 0,
+        archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
     }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
-    const answer = (await native.later({ op: 'rooms', filter, network, list, label })) as RoomsAnswer;
+    const answer = (await native.later({ op: 'rooms', filter, network, community, list, label })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     // the reminders' notifications follow the account's reminders; a failure leaves the list as it is.
     syncReminders(answer.rooms, storage).catch((e) => console.log(`reminders: ${e}`));
     return {
-      owner: userId, filter, network, list, label, networks: answer.networks, unread: answer.unread,
+      owner: userId, filter, network, community, list, label, networks: answer.networks, communities: answer.communities, unread: answer.unread,
       archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread, reminders: answer.reminders,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
@@ -358,8 +362,43 @@ const sources: Sources = {
     if (roomId === '' || !native?.available) return { room: roomId, can: false };
     return (await native.later({ op: 'canSendLater', roomId })) as { room: string; can: boolean };
   },
-  // the messages waiting on the server, the soonest first; read again each minute (minute), as
-  // they go at their time, and when one is made, moved, sent or cancelled.
+  createSpace: async ([name, pictures], _store, storage, native): Promise<Result<'createSpace'>> => {
+    const file = pictures[0];
+    let picture: { path: string; type: string } | undefined;
+    if (file) {
+      await storage.fs.mkdir('app:/tmp/upload/space').catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });
+      picture = await storage.fs.compressImage(file.path, `app:/tmp/upload/space/${++spacePictures}.jpg`, { maxDimension: 1024, maxBytes: 400_000 });
+    }
+    try {
+      return await native!.later({ op: 'createSpace', name, path: picture?.path ?? '', mimetype: picture?.type ?? '' }) as { id: string };
+    } finally {
+      if (picture) await storage.fs.rm(picture.path).catch(() => {});
+    }
+  },
+  loadSpaceChoices: async ([roomId], _store, _storage, native): Promise<Result<'loadSpaceChoices'>> => {
+    if (roomId === '' || !native?.available) return { room: roomId, spaces: [] };
+    native.watch('rooms');
+    const answer = await native.later({ op: 'spaceChoices', roomId }) as { spaces: { id: string; name: string; added: boolean }[] };
+    return { room: roomId, ...answer };
+  },
+  addToSpace: async ([roomId, spaceId], _store, _storage, native): Promise<Result<'addToSpace'>> => {
+    await native!.later({ op: 'addToSpace', roomId, spaceId });
+    return { ok: true };
+  },
+  // the list changes when an invite comes or goes.
+  loadRequests: async ([userId], _store, _storage, native): Promise<Result<'loadRequests'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, requests: [] };
+    native.watch('rooms');
+    const answer = (await native.later({ op: 'requests' })) as {
+      requests: { id: string; name: string; isDirect: boolean; inviterId: string; inviterName: string; avatar: string }[];
+    };
+    return { owner: userId, requests: answer.requests.map((r) => ({ ...r, initials: initials(r.name) })) };
+  },
+  // accept: join the chat; else decline the invite.
+  answerRequest: async ([roomId, accept], _store, _storage, native): Promise<Result<'answerRequest'>> => {
+    await native!.later({ op: 'answerRequest', roomId, accept });
+    return { ok: true };
+  },
   loadScheduled: async ([userId, _minute], _store, _storage, native): Promise<Result<'loadScheduled'>> => {
     if (userId === '' || !native?.available) return { owner: userId, messages: [] };
     native.watch('scheduled');

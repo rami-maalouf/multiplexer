@@ -1,14 +1,17 @@
 import Foundation
 
 /// Answers app.ts's asks with MatrixCore (the core-*.swift files beside this one).
-/// The session is in the Keychain; the account's store is a folder in the app's data.
+/// the session is in the keychain; its store is in data or the app group's container.
 final class Matrix: ExactModule {
     // the agent's data is a fresh scratch tree, so it keeps its session apart from the app's.
     lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
     /// A session the server must still forget. Until it does, its device stays on the account.
     private lazy var pending = SessionKeychain(service: keychain.service, slot: "sign-out")
     private var signingOutPending = false
-    private var stores: URL { context.data.appendingPathComponent("matrix", isDirectory: true) }
+    private var sessionStore: SessionStore {
+        let group = context.agent ? nil : FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ramimaalouf.multiplexer")
+        return SessionStore(dataDirectory: context.data, groupContainer: group, agent: context.agent)
+    }
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
     private var account: Task<MatrixAccount, Error>?
     /// Topics that changed and app.ts has not heard of yet: a burst of changes becomes one ask.
@@ -27,7 +30,7 @@ final class Matrix: ExactModule {
         switch request["op"] as? String {
         case "session":
             defer { signOutPending() }
-            return ["userId": try stored()?.session.userId ?? ""]
+            return ["userId": try stored()?.session.session.userId ?? ""]
         default: throw ExactNativeRefusal("matrix answers session")
         }
     }
@@ -43,23 +46,30 @@ final class Matrix: ExactModule {
                     // every chat, each saying whether the list (inbox, archive or lowPriority) shows it
                     // under the filter menu's choice and the filter sheet's network ("": every network),
                     // the pinned ones' ids in their pin order, and the sheet's rows with their unread chats.
+                    // a community (a space's id) narrows it instead of a network.
                     let started = Date(), account = try await signedIn()
-                    let network = request["network"] as? String ?? "", filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
+                    let network = request["network"] as? String ?? "", chosen = request["community"] as? String ?? ""
+                    let filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
                     // Reminders is not a list a chat is in: it shows the chats with a reminder, from every list.
                     let label = request["label"] as? String ?? ""
-                    let inbox = !label.isEmpty
-                        ? try await account.labelInbox(id: label, filter: filter, network: network.isEmpty ? nil : network)
+                    let all = !label.isEmpty
+                        ? try await account.labelInbox(id: label, filter: filter)
                         : request["list"] as? String == "reminders"
-                        ? try await account.reminderList(filter: filter, network: network.isEmpty ? nil : network)
-                        : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox,
-                                                  network: network.isEmpty ? nil : network)
+                        ? try await account.reminderList(filter: filter)
+                        : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox)
+                    let communities = await account.communities(among: all.chats)
+                    let community = communities.first { $0.id == chosen }
+                    let inbox = community != nil ? all.on(community: community) : all.on(network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
                        "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
                        "reminders": rooms.filter { !$0.isHidden && $0.foldedInto == nil && $0.reminderAt != nil }.count,
-                       "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
+                       "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] },
+                       "communities": inbox.counts(of: communities).map { c in
+                           ["id": c.id, "name": c.name, "unread": c.unread,
+                            "avatar": cached(c.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: c.id, directory: self.media) }] }])
                 case "labels", "label":
                     reply.send(try await labelRequest(request))
                 case "pin", "unpin":
@@ -109,6 +119,39 @@ final class Matrix: ExactModule {
                         for id in chosen { rooms += await account.roomsOf(id) }
                         if rooms.count == 1 { try await account.change(roomId: rooms[0], change) } else { try await account.change(roomIds: rooms, change) }
                     }
+                    reply.send(["ok": true])
+                case "spaceChoices":
+                    let account = try await signedIn(), roomId = request["roomId"] as? String ?? ""
+                    let spaces = try await account.editableCommunities(for: roomId)
+                    let children = await account.roomsOf(roomId)
+                    reply.send(["spaces": spaces.map { space in
+                        ["id": space.id, "name": space.name,
+                         "added": !children.isEmpty && children.allSatisfy { space.rooms.contains($0) }]
+                    }])
+                case "createSpace", "addToSpace":
+                    let account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    if request["op"] as? String == "createSpace" {
+                        let path = request["path"] as? String ?? ""
+                        let id = try await account.createSpace(name: request["name"] as? String ?? "",
+                            picture: path.isEmpty ? nil : appFile(path), mimetype: request["mimetype"] as? String ?? "image/jpeg")
+                        reply.send(["id": id])
+                    } else {
+                        try await account.addToSpace(roomId: request["roomId"] as? String ?? "", spaceId: request["spaceId"] as? String ?? "")
+                        reply.send(["ok": true])
+                    }
+                case "requests":
+                    // the chats this account is invited to (MatrixCore's Requests.swift), newest first.
+                    let account = try await signedIn()
+                    let requests = try await account.requests()
+                    reply.send(["requests": requests.map { r in
+                        ["id": r.id, "name": r.name, "isDirect": r.isDirect, "inviterId": r.inviterId, "inviterName": r.inviterName,
+                         "avatar": cached(r.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: r.id, directory: self.media) }] }])
+                case "answerRequest":
+                    // Accept joins the chat; Decline refuses the invite. A drive answers only a test user's.
+                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    if request["accept"] as? Bool == true { try await account.accept(request: roomId) } else { try await account.decline(request: roomId) }
                     reply.send(["ok": true])
                 case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":
                     // Send Later (MatrixCore's ScheduledMessages.swift): messages that wait on the server.
@@ -273,15 +316,18 @@ final class Matrix: ExactModule {
         }
     }
 
-    /// The Keychain's session if its store is still there. A reinstall keeps the Keychain
-    /// but not the store, and a session without its store has lost its encryption keys:
-    /// it waits to be signed out on the server, and the app opens signed out.
-    private func stored() throws -> StoredSession? {
+    /// unavailable shared stores stay in the keychain. only a confirmed missing store
+    /// queues server sign-out; moving or repairing metadata happens before opening the sdk.
+    private func stored() throws -> (session: StoredSession, directory: URL)? {
         guard let stored = try keychain.read() else { return nil }
-        if FileManager.default.fileExists(atPath: stores.appendingPathComponent(stored.store).path) { return stored }
-        try pending.write(stored)
-        try keychain.delete()
-        return nil
+        switch try sessionStore.prepare(stored, persist: { try keychain.write($0) }) {
+        case .available(let session, let directory): return (session, directory)
+        case .unavailable: return nil
+        case .missing:
+            try pending.write(stored)
+            try keychain.delete()
+            return nil
+        }
     }
 
     /// Signs the pending session out on the server in the background. If the server cannot
@@ -301,17 +347,21 @@ final class Matrix: ExactModule {
 
     /// A refusal is a reply: `problem` names it for app.ts, which says it to the person.
     @MainActor private func signIn(server: String, user: String, password: String) async -> [String: Any] {
-        account = nil
-        shownThumbnails = [:]
-        try? FileManager.default.removeItem(at: stores)
         let store = UUID().uuidString, searchKey = SearchIndex.newKey()
+        let stores = sessionStore
+        let location = stores.newStoreLocation
+        let directory = stores.directory(store: store, location: location)!
         do {
+            // an unavailable session still owns its keys. replacing it would orphan them.
+            guard try keychain.read() == nil else { throw ExactNativeRefusal("an existing session must be available and signed out before signing in") }
+            account = nil
+            shownThumbnails = [:]
             let signedIn = try await MatrixAccount.signIn(homeserver: server, user: user, password: password,
                                                           deviceName: context.agent ? "Multiplexer test" : "Multiplexer",
-                                                          storeDirectory: stores.appendingPathComponent(store), searchIndexKey: searchKey,
+                                                          storeDirectory: directory, searchIndexKey: searchKey,
                                                           sessionStorage: sessionStorage)
             do {
-                try keychain.write(StoredSession(session: try signedIn.savedSession(), store: store, searchKey: searchKey))
+                try keychain.write(StoredSession(session: try signedIn.savedSession(), store: store, searchKey: searchKey, storeLocation: location))
             } catch {
                 // a session this device cannot keep must not stay on the server.
                 try? await signedIn.signOut()
@@ -322,7 +372,7 @@ final class Matrix: ExactModule {
             account = Task { signedIn }
             return ["ok": true, "problem": "", "detail": ""]
         } catch {
-            try? FileManager.default.removeItem(at: stores)
+            try? FileManager.default.removeItem(at: directory)
             let problem: String
             switch error as? SignInError {
             case .wrongPassword?: problem = "wrong-password"
@@ -337,14 +387,15 @@ final class Matrix: ExactModule {
 
     @MainActor func signedIn() async throws -> MatrixAccount {
         if let account { return try await account.value }
-        guard var stored = try stored() else { throw ExactNativeRefusal("signed out") }
+        guard let resolved = try stored() else { throw ExactNativeRefusal("signed out") }
+        var stored = resolved.session
         // a session kept before the search index gets its key now; its index starts empty.
         if stored.searchKey == nil {
             stored.searchKey = SearchIndex.newKey()
             try keychain.write(stored)
         }
         let restoring = Task { [stored] in
-            try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store), searchIndexKey: stored.searchKey,
+            try await MatrixAccount.restore(stored.session, storeDirectory: resolved.directory, searchIndexKey: stored.searchKey,
                                             sessionStorage: sessionStorage)
         }
         account = restoring
@@ -660,16 +711,24 @@ final class Matrix: ExactModule {
     /// Asks the server to forget this device, then forgets the session here. If the server
     /// could not be reached, the session waits to be signed out there later.
     @MainActor private func signOut() async throws {
-        let stored = try keychain.read()
+        // resolving first refuses sign-out when the actual store cannot be reached.
+        // read the metadata after migration, so deletion always names its actual directory.
+        let resolved = try stored()
+        guard let resolved else {
+            if try keychain.read() != nil { throw ExactNativeRefusal("the session's store is unavailable") }
+            signOutPending()
+            return
+        }
+        let stored = resolved.session
         var forgotten = false
         if let signedIn = try? await signedIn() {
             await deletePusher(signedIn, stored)
             forgotten = (try? await signedIn.signOut()) != nil
         }
         account = nil
-        if !forgotten, let stored { try pending.write(stored) }
+        if !forgotten { try pending.write(stored) }
         try keychain.delete()
-        try? FileManager.default.removeItem(at: stores)
+        try? FileManager.default.removeItem(at: resolved.directory)
         try? FileManager.default.removeItem(at: media)
         try? FileManager.default.removeItem(at: files)
         shownThumbnails = [:]

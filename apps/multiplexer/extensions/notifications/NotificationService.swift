@@ -75,6 +75,8 @@ final class NotificationService: UNNotificationServiceExtension {
         // the item is readable after the phone's first unlock; before, this throws.
         let keychain = SessionKeychain(service: service, accessGroup: keychainGroup)
         guard let stored = try keychain.read() else { throw ExtensionProblem.signedOut }
+        // the app publishes this only after the complete store has moved successfully.
+        guard stored.storeLocation == .group else { throw ExtensionProblem.storeNotShared }
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else {
             throw ExtensionProblem.noAppGroup
         }
