@@ -4,7 +4,7 @@ import Foundation
 /// The session is in the Keychain; the account's store is a folder in the app's data.
 final class Matrix: ExactModule {
     // the agent's data is a fresh scratch tree, so it keeps its session apart from the app's.
-    private lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
+    lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
     /// A session the server must still forget. Until it does, its device stays on the account.
     private lazy var pending = SessionKeychain(service: keychain.service, slot: "sign-out")
     private var signingOutPending = false
@@ -59,46 +59,67 @@ final class Matrix: ExactModule {
                     reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
                        "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
-                       "reminders": rooms.filter { !$0.isHidden && $0.reminderAt != nil }.count,
+                       "reminders": rooms.filter { !$0.isHidden && $0.foldedInto == nil && $0.reminderAt != nil }.count,
                        "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] },
                        "communities": inbox.counts(of: communities).map { c in
                            ["id": c.id, "name": c.name, "unread": c.unread,
                             "avatar": cached(c.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: c.id, directory: self.media) }] }])
                 case "pin", "unpin":
-                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
-                    if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
+                    // a merged chat pins or unpins each of its rooms.
+                    let chatId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    for roomId in await account.roomsOf(chatId) {
+                        if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
+                    }
                     reply.send(["ok": true])
-                case "chat":
-                    // a chat's long-press actions (MatrixCore's ChatActions.swift).
-                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                case "merge", "unmerge":
+                    // Merge Chats (MatrixCore's Merges.swift): kept in the account's data.
+                    let account = try await signedIn()
                     guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
-                    switch request["action"] as? String {
-                    case "read": try await account.markRead(roomId: roomId)
-                    case "unread": try await account.setMarkedUnread(roomId: roomId, true)
-                    case "mute": try await account.mute(roomId: roomId)
-                    case "unmute": try await account.unmute(roomId: roomId)
-                    case "lowPriority": try await account.setLowPriority(roomId: roomId, true)
-                    case "inbox": try await account.setLowPriority(roomId: roomId, false)
-                    case "archive": try await account.archive(roomId: roomId)
-                    case "unarchive": try await account.unarchive(roomId: roomId)
-                    case "delete": try await account.hide(roomId: roomId)
-                    case "clearReminder": try await account.clearReminder(roomId: roomId)
-                    case "remind":
+                    if request["op"] as? String == "merge" {
+                        let id = try await account.merge(rooms: request["rooms"] as? [String] ?? [], name: request["name"] as? String ?? "",
+                                                         defaultRoom: request["defaultRoom"] as? String ?? "")
+                        reply.send(["ok": true, "id": id])
+                    } else {
+                        try await account.unmerge(request["id"] as? String ?? "")
+                        reply.send(["ok": true, "id": ""])
+                    }
+                case "chat", "chats":
+                    // a chat's long-press actions, or select chats' on several (matrixcore's chatactions.swift).
+                    // a merged chat's action acts on each of its rooms; its reminder is on the room it opens.
+                    let account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    let action = request["action"] as? String ?? "", roomId = request["roomId"] as? String ?? ""
+                    switch action {
+                    case "clearReminder" where request["op"] as? String == "chat":
+                        for id in await account.roomsOf(roomId) { try await account.clearReminder(roomId: id) }
+                    case "remind" where request["op"] as? String == "chat":
                         // Remind Me: `when` is "tomorrow", "monday" or a picked time without a zone, as Send Later's.
                         guard let when = ScheduledMessage.date(for: request["when"] as? String ?? ""), when > Date().addingTimeInterval(5) else {
                             reply.send(["ok": false, "at": 0, "problem": "past"])
                             return
                         }
-                        try await account.setReminder(roomId: roomId, at: when)
+                        let target = try await account.rooms().first { $0.id == roomId }?.opensRoom ?? roomId
+                        try await account.setReminder(roomId: target, at: when)
                         reply.send(["ok": true, "at": (when.timeIntervalSince1970 * 1000).rounded(), "problem": ""])
                         return
-                    default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive, delete, remind and clearReminder")
+                    default:
+                        guard let change = MatrixAccount.ChatChange(rawValue: action) else {
+                            throw ExactNativeRefusal("a chat's actions: \(MatrixAccount.ChatChange.allCases.map(\.rawValue).joined(separator: ", ")), and for one chat remind and clearReminder")
+                        }
+                        let chosen = request["op"] as? String == "chats" ? request["roomIds"] as? [String] ?? [] : [roomId]
+                        var rooms: [String] = []
+                        for id in chosen { rooms += await account.roomsOf(id) }
+                        if rooms.count == 1 { try await account.change(roomId: rooms[0], change) } else { try await account.change(roomIds: rooms, change) }
                     }
                     reply.send(["ok": true])
                 case "spaceChoices":
                     let account = try await signedIn(), roomId = request["roomId"] as? String ?? ""
                     let spaces = try await account.editableCommunities(for: roomId)
-                    reply.send(["spaces": spaces.map { ["id": $0.id, "name": $0.name, "added": $0.rooms.contains(roomId)] }])
+                    let children = await account.roomsOf(roomId)
+                    reply.send(["spaces": spaces.map { space in
+                        ["id": space.id, "name": space.name,
+                         "added": !children.isEmpty && children.allSatisfy { space.rooms.contains($0) }]
+                    }])
                 case "createSpace", "addToSpace":
                     let account = try await signedIn()
                     guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
@@ -269,14 +290,17 @@ final class Matrix: ExactModule {
                 case "bookmarks", "bookmark", "removeBookmark":
                     // saved messages (Bookmarks.swift).
                     reply.send(try await bookmarks(request))
-                case "chatInfo", "chatMembers", "chatMedia", "rename", "customName", "invite", "setPicture":
+                case "chatInfo", "chatMembers", "chatMedia", "rename", "customName", "invite", "setPicture", "expiry", "setExpiry":
                     // a chat's info page (Info.swift).
                     reply.send(try await info(request))
+                case "registerPush":
+                    // with the notification permission: the push token to the server (PushRegistration.swift).
+                    reply.send(["registered": try await registerPush()])
                 case "signOut":
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers registerPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -319,7 +343,8 @@ final class Matrix: ExactModule {
         do {
             let signedIn = try await MatrixAccount.signIn(homeserver: server, user: user, password: password,
                                                           deviceName: context.agent ? "Multiplexer test" : "Multiplexer",
-                                                          storeDirectory: stores.appendingPathComponent(store), searchIndexKey: searchKey)
+                                                          storeDirectory: stores.appendingPathComponent(store), searchIndexKey: searchKey,
+                                                          sessionStorage: sessionStorage)
             do {
                 try keychain.write(StoredSession(session: try signedIn.savedSession(), store: store, searchKey: searchKey))
             } catch {
@@ -354,7 +379,8 @@ final class Matrix: ExactModule {
             try keychain.write(stored)
         }
         let restoring = Task { [stored] in
-            try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store), searchIndexKey: stored.searchKey)
+            try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store), searchIndexKey: stored.searchKey,
+                                            sessionStorage: sessionStorage)
         }
         account = restoring
         do {
@@ -366,6 +392,17 @@ final class Matrix: ExactModule {
             account = nil
             throw error
         }
+    }
+
+    /// The session as the sdk keeps it for the notification extension too: the Keychain item,
+    /// whose session a refreshed token replaces.
+    private var sessionStorage: SessionStorage {
+        let keychain = self.keychain
+        return SessionStorage(load: { try? keychain.read()?.session }, save: { session in
+            guard var stored = try? keychain.read() else { return }
+            stored.session = session
+            try? keychain.write(stored)
+        })
     }
 
     /// Read receipts go out, except in a drive on an account that is not a test user: a drive
@@ -401,6 +438,9 @@ final class Matrix: ExactModule {
          "oneToOne": room.isOneToOne, "listed": listed,
          "muted": room.isMuted, "mentions": room.unreadMentions, "lowPriority": room.isLowPriority,
          "archived": room.isArchived, "reminder": Double(room.reminderAt ?? 0),
+         // Merge Chats: every network, the room a merged chat opens, its merge (a folded room's too) and its rooms.
+         "networks": room.networks, "open": room.opensRoom, "merge": room.mergeId ?? "",
+         "mergeRooms": room.mergeRooms.map { ["id": $0.id, "network": $0.network] },
          "avatar": cached(room.avatarName, topic: topic) { _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
     }
 
@@ -657,7 +697,10 @@ final class Matrix: ExactModule {
     @MainActor private func signOut() async throws {
         let stored = try keychain.read()
         var forgotten = false
-        if let signedIn = try? await signedIn() { forgotten = (try? await signedIn.signOut()) != nil }
+        if let signedIn = try? await signedIn() {
+            await deletePusher(signedIn, stored)
+            forgotten = (try? await signedIn.signOut()) != nil
+        }
         account = nil
         if !forgotten, let stored { try pending.write(stored) }
         try keychain.delete()

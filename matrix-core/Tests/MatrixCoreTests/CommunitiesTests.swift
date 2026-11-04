@@ -77,6 +77,23 @@ final class CommunitiesTests: XCTestCase {
         XCTAssertEqual(inbox.counts(of: [community]), [CommunityCount(id: "!s", name: "S", avatarName: "", unread: 1)])
     }
 
+    func testACommunityIncludesAMergedChatWhenOneOfItsRoomsBelongs() {
+        var first = RoomSummary(id: "!one", name: "One", isDirect: false, lastMessage: "Hello",
+            lastSenderName: "Sender", lastIsOwn: false, lastTimestamp: 1, unreadCount: 1)
+        first.isPinned = true
+        let second = RoomSummary(id: "!two", name: "Two", isDirect: false, lastMessage: "Hi",
+            lastSenderName: "Sender", lastIsOwn: false, lastTimestamp: 2, unreadCount: 1)
+        let merge = ChatMerge(id: "pair", name: "Pair", rooms: [first.id, second.id], defaultRoom: first.id)
+        let chats = MergeStore.fold([first, second], [merge])
+        let community = Community(id: "!space", name: "Space", avatarName: "", rooms: [second.id])
+            .includingMergedChats(chats)
+        XCTAssertTrue(community.rooms.contains(merge.chatId))
+        let inbox = Inbox(chats: chats, listed: [merge.chatId], pinned: [chats.first { $0.id == merge.chatId }!])
+        XCTAssertEqual(inbox.on(community: community).listed, [merge.chatId])
+        XCTAssertEqual(inbox.on(community: community).pinned.map(\.id), [merge.chatId])
+        XCTAssertEqual(inbox.counts(of: [community]).first?.unread, 1)
+    }
+
     /// A new device lists a space of Matrix with its room, and the space narrows the list to it.
     func testASpaceIsACommunityOnANewDevice() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -150,6 +167,63 @@ final class CommunitiesTests: XCTestCase {
         XCTAssertEqual(found?.rooms, [chatId])
         let inbox = try await reader.inbox(filter: .all).on(community: found)
         XCTAssertEqual(inbox.listed, [chatId])
+    }
+
+    func testAMergedChatAddsEachOfItsRoomsToTheSpace() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("a test user is needed")
+        }
+        let account = try await signInTestDevice(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let rooms = try await account.rooms()
+        var ids: [String] = []
+        for name in ["Multiplexer space merge first", "Multiplexer space merge second", "Multiplexer space merge third"] {
+            if let found = rooms.first(where: { $0.roomName == name }) { ids.append(found.id) }
+            else { ids.append(try await account.createRoom(name: name)) }
+        }
+        let space = try await account.createSpace(name: "Multiplexer merged space \(UUID().uuidString.prefix(8))")
+        addTeardownBlock { try? await account.decline(request: space) }
+        let merged = try await account.merge(rooms: ids, name: "Space pair", defaultRoom: ids[0])
+        addTeardownBlock { try? await account.unmerge(merged) }
+        // a partial earlier attempt: one room is already present and must survive retry.
+        try await account.addToSpace(roomId: ids[0], spaceId: space)
+        var partial: Community?
+        for _ in 0..<40 {
+            partial = try await account.editableCommunities(for: merged).first { $0.id == space }
+            if partial?.rooms.contains(ids[0]) == true { break }
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+        XCTAssertTrue(partial?.rooms.contains(ids[0]) ?? false)
+        XCTAssertFalse(Set(ids).isSubset(of: partial?.rooms ?? []))
+        // a stale merge with an unavailable later child fails after its earlier child succeeds.
+        let stale = ChatMerge(id: "partial-space-test", name: "Stale pair", rooms: [ids[1], "not-a-room"], defaultRoom: ids[1])
+        let currentMerges = await account.merges()
+        account.mergeStates.wrote([stale])
+        do {
+            try await account.addToSpace(roomId: stale.chatId, spaceId: space)
+            XCTFail("an invalid later child should fail the addition")
+        } catch {}
+        account.mergeStates.wrote(currentMerges)
+        var afterFailure: Community?
+        for _ in 0..<40 {
+            afterFailure = try await account.editableCommunities(for: merged).first { $0.id == space }
+            if afterFailure?.rooms.contains(ids[1]) == true { break }
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+        XCTAssertTrue(afterFailure?.rooms.contains(ids[0]) ?? false)
+        XCTAssertTrue(afterFailure?.rooms.contains(ids[1]) ?? false, "the successful new child survives the later failure")
+        XCTAssertFalse(Set(ids).isSubset(of: afterFailure?.rooms ?? []))
+        try await account.addToSpace(roomId: merged, spaceId: space)
+        try await account.addToSpace(roomId: merged, spaceId: space)
+        var found: Community?
+        for _ in 0..<40 {
+            found = try await account.communities().first { $0.id == space }
+            if Set(ids + [merged]).isSubset(of: found?.rooms ?? []) { break }
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+        XCTAssertTrue(Set(ids + [merged]).isSubset(of: found?.rooms ?? []))
+        let choices = try await account.editableCommunities(for: merged)
+        XCTAssertTrue(Set(ids).isSubset(of: choices.first { $0.id == space }?.rooms ?? []))
     }
 
     /// The space once the sdk's space graph holds its room, or the last answer after 20 s: a new

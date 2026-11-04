@@ -20,6 +20,9 @@ public final class MatrixAccount: @unchecked Sendable {
     /// The bookmarks this device wrote and the server has not confirmed (Bookmarks.swift).
     let bookmarkStates = BookmarkStates()
     let reminderStates = ReminderStates()
+    /// The account data events read from the server while the store had none (AccountData.swift).
+    let serverAccountData = ServerAccountData()
+    let mergeStates = MergeStates()
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
@@ -47,31 +50,37 @@ public final class MatrixAccount: @unchecked Sendable {
 
     /// Signs in with a user name and password. `homeserver` is a server name
     /// (`matrix.org`) or a URL; the store lives in `storeDirectory`, with the message search
-    /// index, encrypted with `searchIndexKey` (`SearchIndex.newKey`; nil: not encrypted). Throws
-    /// a `SignInError`.
+    /// index, encrypted with `searchIndexKey` (`SearchIndex.newKey`; nil: not encrypted).
+    /// `sessionStorage` is where the session is kept for other processes (the notification
+    /// extension): the sdk reads it there again, and saves a refreshed token there. Throws a
+    /// `SignInError`.
     public static func signIn(homeserver: String, user: String, password: String, deviceName: String, storeDirectory: URL,
-                              searchIndexKey: String? = nil) async throws -> MatrixAccount {
+                              searchIndexKey: String? = nil, sessionStorage: SessionStorage = .memory()) async throws -> MatrixAccount {
         do {
-            let client = try await builder(storeDirectory, searchIndexKey: searchIndexKey).serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
+            let client = try await builder(storeDirectory, role: .app(searchIndexKey: searchIndexKey), sessionStorage: sessionStorage)
+                .serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
             try await client.login(username: user, password: password, initialDeviceName: deviceName, deviceId: nil)
-            return MatrixAccount(client: client, storeDirectory: storeDirectory)
+            let account = MatrixAccount(client: client, storeDirectory: storeDirectory)
+            // the sdk reads the session back from the storage (the cross-process lock): it must
+            // hold the new one. the app's Keychain storage saves only into an item it already has;
+            // the app writes its item right after.
+            if let saved = try? account.savedSession(), sessionStorage.load()?.accessToken != saved.accessToken {
+                sessionStorage.save(saved)
+            }
+            return account
         } catch {
             throw SignInError(error)
         }
     }
 
     /// Signs in again with a session that `savedSession()` returned, and the search index's key
-    /// it signed in with (another key starts the index again, empty).
-    public static func restore(_ saved: SavedSession, storeDirectory: URL, searchIndexKey: String? = nil) async throws -> MatrixAccount {
-        let client = try await builder(storeDirectory, searchIndexKey: searchIndexKey).homeserverUrl(url: saved.homeserverUrl).build()
-        try await client.restoreSession(session: Session(
-            accessToken: saved.accessToken,
-            refreshToken: saved.refreshToken,
-            userId: saved.userId,
-            deviceId: saved.deviceId,
-            homeserverUrl: saved.homeserverUrl,
-            oauthData: saved.oauthData,
-            slidingSyncVersion: saved.nativeSlidingSync ? .native : .none))
+    /// it signed in with (another key starts the index again, empty). `sessionStorage`: as for
+    /// `signIn`; by default the session is kept in memory only.
+    public static func restore(_ saved: SavedSession, storeDirectory: URL, searchIndexKey: String? = nil,
+                               sessionStorage: SessionStorage? = nil) async throws -> MatrixAccount {
+        let client = try await builder(storeDirectory, role: .app(searchIndexKey: searchIndexKey), sessionStorage: sessionStorage ?? .memory(saved))
+            .homeserverUrl(url: saved.homeserverUrl).build()
+        try await client.restoreSession(session: saved.sdkSession)
         return MatrixAccount(client: client, storeDirectory: storeDirectory)
     }
 
@@ -90,20 +99,40 @@ public final class MatrixAccount: @unchecked Sendable {
         }
     }
 
-    private static func builder(_ storeDirectory: URL, searchIndexKey: String?) throws -> ClientBuilder {
+    /// Who opens a store: the app, or the notification extension, in its own process (Push.swift).
+    enum Role {
+        case app(searchIndexKey: String?)
+        case notifications
+    }
+
+    static func builder(_ storeDirectory: URL, role: Role, sessionStorage: SessionStorage) throws -> ClientBuilder {
         let data = storeDirectory.appendingPathComponent("data"), cache = storeDirectory.appendingPathComponent("cache")
-        let search = SearchIndex.directory(in: storeDirectory)
-        for folder in [data, cache, search] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
-        return ClientBuilder()
+        for folder in [data, cache] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+        let builder = ClientBuilder()
             .sessionPaths(dataPath: data.path, cachePath: cache.path)
             .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
-            // the sdk indexes each message the device syncs or pages back; its backfill pages back
-            // every chat (`startSearchBackfill`), which needs automatic back-pagination.
-            .withSearchIndexStore(path: search.path, key: searchIndexKey)
-            .enableAutomaticBackPagination(enableAutomaticBackPagination: true)
-            // once the account's backup is open (`recover`), a message this device has no key
-            // for fetches its key from the backup, as Element X does.
-            .backupDownloadStrategy(backupDownloadStrategy: .afterDecryptionFailure)
+            // the cross-process lock needs it: a process reads the session again when another
+            // may have refreshed its token.
+            .setSessionDelegate(sessionDelegate: SessionBridge(sessionStorage))
+        switch role {
+        case .app(let searchIndexKey):
+            let search = SearchIndex.directory(in: storeDirectory)
+            try FileManager.default.createDirectory(at: search, withIntermediateDirectories: true)
+            // the notification extension may open the same store from its own process.
+            return builder.crossProcessLockConfig(crossProcessLockConfig: .multiProcess(holderName: MatrixPush.appLock))
+                // the sdk indexes each message the device syncs or pages back; its backfill pages back
+                // every chat (`startSearchBackfill`), which needs automatic back-pagination.
+                .withSearchIndexStore(path: search.path, key: searchIndexKey)
+                .enableAutomaticBackPagination(enableAutomaticBackPagination: true)
+                // once the account's backup is open (`recover`), a message this device has no key
+                // for fetches its key from the backup, as Element X does.
+                .backupDownloadStrategy(backupDownloadStrategy: .afterDecryptionFailure)
+        case .notifications:
+            // an extension has little memory (about 24 MB): no event cache, no latest events, no
+            // search index.
+            return builder.crossProcessLockConfig(crossProcessLockConfig: .multiProcess(holderName: MatrixPush.extensionLock))
+                .systemIsMemoryConstrained()
+        }
     }
 
     public var userId: String {
@@ -175,6 +204,7 @@ public final class MatrixAccount: @unchecked Sendable {
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
         await fillReminders(&rooms)
+        await fillMerges(&rooms)
         return rooms
     }
 
@@ -266,7 +296,7 @@ public final class MatrixAccount: @unchecked Sendable {
     /// is there. An added one counts among the frequent emojis (`frequentEmojis`).
     public func toggleReaction(roomId: String, messageId: String, key: String, timeout: TimeInterval = 30) async throws {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        guard let event = live.items.event(of: messageId) else { return }
+        guard let event = live.items.event(of: messageId) else { throw MatrixCoreError.noMessage(messageId) }
         // the sdk adds or takes back from its own state at the call, and says which (true: added).
         if try await live.timeline.toggleReaction(itemId: event.eventOrTransactionId, key: key) {
             await countReaction(key)
@@ -445,8 +475,12 @@ public final class MatrixAccount: @unchecked Sendable {
             roomOrder = order
         }
         startSearchBackfill()
-        // another device's archive, delete or name changes no room: the list hears of it here.
-        accountDataWatch.start(client) { [weak self] in self?.notify(.rooms) }
+        // another device's archive, delete, name, reminder or bookmark changes no room: the list
+        // and the bookmarks hear of it here.
+        accountDataWatch.start(client) { [weak self] types in
+            if types.contains(Bookmarks.type) { self?.notify(.bookmarks) }
+            if !types.subtracting([Bookmarks.type]).isEmpty { self?.notify(.rooms) }
+        }
     }
 
     /// The room list service's order of the rooms (the most recent activity first), once synced.
@@ -667,6 +701,11 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     /// How many times the sdk cleared or reset the items: a sync with a gap can reset a timeline
     /// to its newest events, after which a page back is needed again.
     private var resets = 0
+    /// Each item's event, by the item's id (`Message.id`). The sdk can replace an item under a new
+    /// id while it holds the same event (seen 2026-11-04: a message's id went from 40 to 47 within
+    /// a minute; most likely its event cache dropping a duplicate and inserting the event anew). A
+    /// caller that holds the old id still means that message, so a lookup falls back to its event.
+    private var eventIds: [String: String] = [:]
 
     init(me: String) { self.me = me }
 
@@ -688,6 +727,7 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     private func apply(_ d: TimelineDiff) {
+        for item in d.values { remember(item) }
         switch d {
         case .append(let values): items += values
         case .clear:
@@ -754,7 +794,7 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     /// A photo's or a sticker's picture, its sender's thumbnail of it (nil for none), and its names.
     func image(of messageId: String) -> (MediaSource, MediaSource?, MessageImage)? {
         lock.withLock {
-            guard let event = items.first(where: { $0.uniqueId().id == messageId })?.asEvent(),
+            guard let event = item(of: messageId)?.asEvent(),
                   case .msgLike(let like) = event.content else { return nil }
             switch like.kind {
             case .message(let message):
@@ -773,7 +813,22 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     func event(of messageId: String) -> EventTimelineItem? {
-        lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent() }
+        lock.withLock { item(of: messageId)?.asEvent() }
+    }
+
+    /// The item a message's id names: the item with that id, else (the sdk replaced it) the item
+    /// that holds the same event now. Called with the lock held.
+    private func item(of messageId: String) -> TimelineItem? {
+        if let item = items.first(where: { $0.uniqueId().id == messageId }) { return item }
+        guard let eventId = eventIds[messageId] else { return nil }
+        return items.first {
+            guard case .eventId(let id)? = $0.asEvent()?.eventOrTransactionId else { return false }
+            return id == eventId
+        }
+    }
+
+    private func remember(_ item: TimelineItem) {
+        if case .eventId(let id)? = item.asEvent()?.eventOrTransactionId { eventIds[item.uniqueId().id] = id }
     }
 
     /// The event a reply answers: `replyTo` is a message's id in this chat, or an event id ("$…")
@@ -795,6 +850,17 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
                                   body: body, isOwn: event.sender == me)
             }
             return nil
+        }
+    }
+}
+
+extension TimelineDiff {
+    /// The items this diff brings into the timeline.
+    var values: [TimelineItem] {
+        switch self {
+        case .append(let values), .reset(let values): return values
+        case .pushFront(let value), .pushBack(let value), .insert(_, let value), .set(_, let value): return [value]
+        case .clear, .popFront, .popBack, .remove, .truncate: return []
         }
     }
 }

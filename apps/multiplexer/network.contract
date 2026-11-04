@@ -16,3 +16,14 @@ component NetworkBadge
     view position="absolute" right=-2 bottom=-2 padding=1.5 border-radius=5 background-color="-exact-background" display="flex"
       testId=identifier
       image `assets/networks/${network}.svg` width=15 height=15 aria-label=networkName(network)
+
+// a merged chat's networks (Merge Chats): each one's logo side by side, at the picture's corner.
+component NetworkBadges
+  props
+    networks: string[]
+    identifier: string
+  view
+    row position="absolute" right=-6 bottom=-2 gap=1 padding=1.5 border-radius=5 background-color="-exact-background"
+      testId=identifier
+      for n in networks key=n
+        image `assets/networks/${n}.svg` width=15 height=15 aria-label=networkName(n)

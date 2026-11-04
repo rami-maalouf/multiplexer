@@ -3,7 +3,7 @@ import type { Result, Sources } from './app.contract.d.ts';
 // a chat's info page (info.contract): what modules/apple/Info.swift answers. MatrixCore says when
 // any of it changes, on the topic info:<room>.
 type InfoSources = Pick<Sources, 'loadChatInfo' | 'loadChatMembers' | 'loadChatMedia' | 'renameChat' | 'setChatPicture'
-  | 'setCustomName' | 'inviteMember'>;
+  | 'setCustomName' | 'inviteMember' | 'loadExpiry' | 'setExpiry'>;
 
 const initials = (name: string): string =>
   name.split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).slice(0, 2).map((w) => [...w][0].toUpperCase()).join('')
@@ -13,6 +13,17 @@ const initials = (name: string): string =>
 let pictures = 0;
 
 export const infoSources: InfoSources = {
+  // the chat's message expiry, when its network takes timers (MatrixCore MessageExpiry.swift).
+  loadExpiry: async ([roomId], _store, _storage, native): Promise<Result<'loadExpiry'>> => {
+    if (roomId === '' || !native?.available) return { room: roomId, offered: false, timer: 0, choices: [] };
+    native.watch(`info:${roomId}`);
+    const answer = (await native.later({ op: 'expiry', roomId })) as { offered: boolean; timer: number; choices: number[] };
+    return { room: roomId, ...answer };
+  },
+  setExpiry: async ([roomId, timer], _store, _storage, native): Promise<Result<'setExpiry'>> => {
+    await native!.later({ op: 'setExpiry', roomId, timer });
+    return { ok: true };
+  },
   loadChatInfo: async ([roomId], _store, _storage, native): Promise<Result<'loadChatInfo'>> => {
     const none = {
       id: roomId, name: '', roomName: '', customName: '', topic: '', picture: '', initials: '', network: 'matrix',

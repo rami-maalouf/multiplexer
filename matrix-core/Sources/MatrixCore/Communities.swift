@@ -51,6 +51,15 @@ extension Community {
         return rooms
     }
 
+    // a merged row belongs wherever any constituent room belongs; folded rooms stay available.
+    func includingMergedChats(_ chats: [RoomSummary]) -> Community {
+        var community = self
+        for chat in chats where rooms.contains(chat.id) {
+            if let merged = chat.foldedInto { community.rooms.insert(MergeStore.prefix + merged) }
+        }
+        return community
+    }
+
     /// The communities in the filter sheet's order: by name, as Beeper lists them. A space whose
     /// chats this account has none of is still listed, so a newly created space is usable.
     static func listed(_ spaces: [Community], chats: Set<String>) -> [Community] {
@@ -93,7 +102,8 @@ extension MatrixAccount {
     /// two levels). A new device knows a space only once its first sync has brought the space's
     /// room: on a bridged account with 300 chats, after about a minute.
     public func communities(among chats: [RoomSummary]) async -> [Community] {
-        await communities(chatIds: Set(chats.map(\.id)))
+        let spaces = await communities(chatIds: Set(chats.map(\.id)))
+        return spaces.map { $0.includingMergedChats(chats) }
     }
 
     private func communities(chatIds: Set<String>) async -> [Community] {
@@ -147,7 +157,7 @@ extension MatrixAccount {
     /// only spaces where this account can add chats are offered by the chat menu.
     public func editableCommunities(for roomId: String) async throws -> [Community] {
         try await startSync(timeout: 30)
-        let communities = await communities(chatIds: [roomId])
+        let communities = await communities(chatIds: Set(await roomsOf(roomId)))
         let editable = await client.spaceService().editableSpaces()
         let ids = Set(editable.map { $0.roomId })
         return communities.filter { ids.contains($0.id) }
@@ -156,7 +166,11 @@ extension MatrixAccount {
     /// the child link belongs to the space. no write to the chat, or its network, is needed.
     public func addToSpace(roomId: String, spaceId: String) async throws {
         try await startSync(timeout: 30)
-        try await client.spaceService().addChildToSpace(childId: roomId, spaceId: spaceId)
-        notify(.rooms)
+        let service = await client.spaceService()
+        // a failure can leave earlier additions on the server; refresh them and allow an idempotent retry.
+        defer { notify(.rooms) }
+        for child in await roomsOf(roomId) {
+            try await service.addChildToSpace(childId: child, spaceId: spaceId)
+        }
     }
 }

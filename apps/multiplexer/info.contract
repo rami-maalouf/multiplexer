@@ -33,6 +33,14 @@ shape ChatInfo
 shape InfoReply
   ok: bool
 
+// the chat's message expiry (WhatsApp's disappearing messages): offered when its network takes
+// timers; timer in milliseconds (0: messages stay), choices the network's timers.
+shape ChatExpiry
+  room: string
+  offered: bool
+  timer: number
+  choices: number[]
+
 shape ChatMember
   id: string
   name: string
@@ -73,6 +81,9 @@ shape Viewed
   label: string
 
 // under the name: "WhatsApp Group · 7 members", or the network for a chat with one person.
+// a message expiry's name, as WhatsApp names its timers.
+fn countOf(n: number, one: string, many: string): string = `${n} ${n == 1 ? one : many}`
+fn expiryText(ms: number): string = ms <= 0 ? "Off" : (ms == 86400000 ? "24 Hours" : (ms % 86400000 == 0 ? countOf(ms / 86400000, "Day", "Days") : (ms % 3600000 == 0 ? countOf(ms / 3600000, "Hour", "Hours") : countOf(round(ms / 60000), "Minute", "Minutes"))))
 fn infoSubtitle(network: string, isOneToOne: bool, count: number): string = isOneToOne ? networkName(network) : `${networkName(network)} Group · ${count} ${count == 1 ? "member" : "members"}`
 // a video's length on its tile: "0:07".
 fn clipLength(s: number): string = `${floor(s / 60)}:${s % 60 < 10 ? "0" : ""}${s % 60}`
@@ -118,6 +129,9 @@ component InfoPage
     pin: action
     read: action
     mute: action
+    // a merged chat (Merge Chats), and Unmerge, which shows its rooms as their own chats again.
+    merged: bool
+    unmerge: action
     // the chat's reminder (ms since 1970; 0 for none), Remind Me's time sheet, and Clear Reminder.
     reminder: number
     remind: action
@@ -139,6 +153,9 @@ component InfoPage
     search: action
     // this chat's saved messages, and their list.
     bookmarkCount: number
+    // the chat's message expiry, and choosing one (a timer in milliseconds, 0 for Off).
+    expiry: ChatExpiry
+    chooseExpiry: action
     bookmarks: action
     closeSearch: action
     largeText: bool
@@ -171,6 +188,17 @@ component InfoPage
           image "symbol:person"
           text "Customize for Me"
       // the info page's own actions, in Beeper's order; Jump to Date is not here (the SDK has none).
+      // the message expiry's choices, as WhatsApp offers them (the menu is not inside the list).
+      column id="info-expiry" popover="auto" role="menu"
+        button press=chooseExpiry(0) popovertarget="info-expiry" popovertargetaction="hide" testId="expiry-0"
+          if expiry.timer == 0
+            image "symbol:checkmark"
+          text "Off"
+        for c in expiry.choices key=c
+          button press=chooseExpiry(c) popovertarget="info-expiry" popovertargetaction="hide" testId=`expiry-${c}`
+            if expiry.timer == c
+              image "symbol:checkmark"
+            text expiryText(c)
       column id="info-more" popover="auto" role="menu"
         button press=pin popovertarget="info-more" popovertargetaction="hide" testId="info-more-pin"
           image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
@@ -190,6 +218,10 @@ component InfoPage
           button press=remind popovertarget="info-more" popovertargetaction="hide" testId="info-more-remind"
             image "symbol:icon.alarm"
             text "Remind Me…"
+        if merged
+          button press=unmerge popovertarget="info-more" popovertargetaction="hide" testId="info-more-unmerge"
+            image "symbol:icon.merge"
+            text "Unmerge"
         hr
         button press=askDelete destructive=true popovertarget="info-more" popovertargetaction="hide" testId="info-more-delete"
           image "symbol:delete"
@@ -272,6 +304,17 @@ component InfoPage
                 button press=seeMedia testId="info-see-media"
                   text "See More"
                   image "symbol:forward-chevron"
+          // WhatsApp's disappearing messages: how long a message stays, for everyone in the chat.
+          if expiry.offered and expiry.room == info.id
+            section testId="info-expiry-section"
+              header
+                text "Disappearing Messages"
+              button popovertarget="info-expiry" testId="info-expiry" aria-label=`Message Expiry, ${expiryText(expiry.timer)}`
+                text "Message Expiry" flex=1
+                text expiryText(expiry.timer) color="-exact-secondary-label" testId="info-expiry-value"
+                image "symbol:chooser"
+              footer
+                text (expiry.timer > 0 ? `New messages disappear ${expiryText(expiry.timer).toLowerCase()} after they are sent, for everyone in this chat.` : "New messages stay. Everyone in this chat sees the change.")
           // the members, by name. A bridged group gets its people on its network: Matrix cannot add one there.
           if not info.isOneToOne and loaded
             section

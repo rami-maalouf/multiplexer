@@ -98,6 +98,61 @@ extension MatrixAccount {
         readyTimeline(roomId)?.items.since = newest
     }
 
+    /// one of a chat's actions, by name, for one chat or several (select chats).
+    public enum ChatChange: String, CaseIterable, Sendable {
+        case read, unread, mute, unmute, lowPriority, inbox, archive, unarchive, delete, pin, unpin
+    }
+
+    /// does `change` to one chat, as its long-press menu does.
+    public func change(roomId: String, _ change: ChatChange, timeout: TimeInterval = 30) async throws {
+        switch change {
+        case .read: try await markRead(roomId: roomId, timeout: timeout)
+        case .unread: try await setMarkedUnread(roomId: roomId, true, timeout: timeout)
+        case .mute: try await mute(roomId: roomId, timeout: timeout)
+        case .unmute: try await unmute(roomId: roomId, timeout: timeout)
+        case .lowPriority: try await setLowPriority(roomId: roomId, true, timeout: timeout)
+        case .inbox: try await setLowPriority(roomId: roomId, false, timeout: timeout)
+        case .archive: try await archive(roomId: roomId, timeout: timeout)
+        case .unarchive: try await unarchive(roomId: roomId, timeout: timeout)
+        case .delete: try await hide(roomId: roomId, timeout: timeout)
+        case .pin: try await pin(roomId: roomId, timeout: timeout)
+        case .unpin: try await unpin(roomId: roomId, timeout: timeout)
+        }
+    }
+
+    /// does `change` to several chats (select chats). archive, unarchive and delete write the
+    /// account's marks once after resolving every room. the others go chat by chat, in the given
+    /// order (so pins keep it), trying every chat and throwing the first failure after the rest.
+    public func change(roomIds: [String], _ change: ChatChange, timeout: TimeInterval = 30) async throws {
+        let ids = roomIds.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        switch change {
+        case .archive, .delete:
+            var newest: [String: UInt64] = [:]
+            for id in ids { newest[id] = await newestTimestamp(try await room(id, timeout: timeout)) }
+            let times = newest
+            try await changeMarks { marks in
+                for (id, time) in times {
+                    if change == .archive {
+                        marks.archived[id] = time
+                    } else {
+                        marks.hidden[id] = time
+                        marks.cleared[id] = time
+                    }
+                }
+            }
+            if change == .delete { for (id, time) in times { readyTimeline(id)?.items.since = time } }
+        case .unarchive:
+            for id in ids { _ = try await room(id, timeout: timeout) }
+            try await changeMarks { marks in for id in ids { marks.archived[id] = nil } }
+        default:
+            var failure: Error?
+            for id in ids {
+                do { try await self.change(roomId: id, change, timeout: timeout) } catch { failure = failure ?? error }
+            }
+            if let failure { throw failure }
+        }
+    }
+
     /// The archive and delete marks: those this device just wrote until the server has them,
     /// else the store's.
     func chatMarks() async -> ChatMarks {
@@ -172,7 +227,8 @@ extension MatrixAccount {
     /// in a row both stay. Marks whose chat came back are dropped on the way.
     private func changeMarks(_ change: @escaping @Sendable (inout ChatMarks) -> Void) async throws {
         try await chats.serially {
-            let before = await self.chatMarks()
+            // the store's marks, else the server's: a new device must not start from none.
+            let before = self.chats.marks(stored: ChatMarks(json: try await self.accountDataForChange(ChatMarks.type)))
             var marks = before
             change(&marks)
             marks.dropReturned(try await self.rooms())
@@ -191,10 +247,17 @@ extension MatrixAccount {
 
     /// The time of the chat's newest message (or own join): what a later message is newer than.
     private func newestTimestamp(_ room: Room) async -> UInt64 {
+        var newest: UInt64 = 0
         switch await room.latestEvent() {
-        case .remote(let timestamp, _, _, _, _), .local(let timestamp, _, _, _, _): return timestamp
-        case .none, .remoteInvite: return 0
+        case .remote(let timestamp, _, _, _, _), .local(let timestamp, _, _, _, _): newest = timestamp
+        case .none, .remoteInvite: break
         }
+        // the open chat's timeline can be ahead of the room's latest event, which the sdk computes
+        // after the same sync: a chat deleted right after a message came must hide that one too.
+        if let live = readyTimeline(room.id()) {
+            newest = max(newest, live.items.messages().map(\.timestamp).max() ?? 0)
+        }
+        return newest
     }
 }
 

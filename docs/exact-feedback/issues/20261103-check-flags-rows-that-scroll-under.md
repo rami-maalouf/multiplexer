@@ -44,3 +44,27 @@ Seen again on 2026-11-03 at `ed43ad09a0`: `check both` on a chat opened at its f
 message called a video's poster, scrolled under the app's top bar, an overlap with the bar's
 title and Back ("video-14 [48,-106 172x306]: overlaps chat-name"). After the next scroll, `check`
 was clean in both schemes. About 2 minutes.
+
+Seen while adding a list's selection mode on 2026-11-03 at `ed43ad09a0`: two bottom glass bars
+with the same structure produced different unscrolled `check both` results. The selection
+bar reported overlaps, while the normal inbox bar did not; after scrolling both reported
+them. Reading `scripts/agent-check.mjs` did not clarify the difference. About 10 minutes.
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+A chat's floating bar grew a row of tabs under its title. `check both` on a chat scrolled to its end
+reported 6 to 11 findings: the title, More and each tab "overlaps Text#…" (the messages fading under
+the bar), and in dark, contrast on the bar's glass labels (Back's count, the title, a tab) read
+over the bubbles behind. The same chat without the tabs gave the same kinds of finding. Telling the
+new ones from those took a second drive of the plain chat. About 10 minutes.
+
+## Cause, and a local fix (2026-11-04, `ed43ad09a0`)
+
+The facts `check` uses to tell a covered row from an overlap (`beneath`, `solid`) come only from
+the web host; the iOS host reports none, so on iOS every row under an app's opaque bar backdrop is
+an overlap. A local exact2 branch (not pushed) adds `hiddenBy` to the iOS host's items, the boxes
+of the opaque views drawn after an item over part of it, and `check` skips an overlap whose meeting
+one of them holds. With it, a chat's bar (an opaque backdrop sized by the bar) read "no findings"
+in light, dark and the largest text size, and the rows under an app's bottom bar were no longer
+reported. A floating bar that draws no opaque view (UIKit's own soft edge at the top of a list)
+is still reported.

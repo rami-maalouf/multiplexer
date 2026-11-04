@@ -185,7 +185,8 @@ extension MatrixAccount {
         _ = try await room(roomId, timeout: timeout)
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         try await infoStates.serially {
-            var names = await self.customNames()
+            // the store's names, else the server's: a new device must not start from none.
+            var names = self.infoStates.names(stored: CustomNames.names(json: try await self.accountDataForChange(CustomNames.type)))
             names[roomId] = trimmed.isEmpty ? nil : trimmed
             self.infoStates.wrote(names)
             self.notify(.rooms)

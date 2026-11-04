@@ -108,7 +108,7 @@ extension MatrixAccount {
     /// deleted from this app shows nowhere. Narrowed to one `network` (nil: every network).
     public func reminderList(filter: RoomFilter = .all, network: String? = nil, timeout: TimeInterval = 30) async throws -> Inbox {
         let all = try await rooms(timeout: timeout)
-        let listed = all.filter { !$0.isHidden && $0.reminderAt != nil && $0.passes(filter) }
+        let listed = all.filter { !$0.isHidden && $0.foldedInto == nil && $0.reminderAt != nil && $0.passes(filter) }
         return Inbox(chats: all, listed: Set(listed.map(\.id)), pinned: Self.inPinOrder(all).filter(\.isInInbox)).on(network: network)
     }
 
@@ -129,7 +129,8 @@ extension MatrixAccount {
 
     private func changeReminders(_ change: @escaping @Sendable (inout [String: Reminder]) -> Void) async throws {
         try await reminderStates.serially {
-            var all = await self.reminders()
+            // the store's reminders, else the server's: a new device must not start from none.
+            var all = self.reminderStates.reminders(stored: ReminderStore.reminders(json: try await self.accountDataForChange(ReminderStore.type)))
             let before = all
             change(&all)
             guard all != before else { return }
