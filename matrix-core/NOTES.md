@@ -75,6 +75,13 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - `send` puts the message in the room's send queue (the open chat's live timeline) and
   returns at once; `Message.sendState` goes `sending`, then `sent` or `failed`. A message
   keeps its id (the timeline item's unique id) from sending to sent.
+- **An id can change under the caller.** The sdk can replace a timeline item under a new id while
+  it holds the same event (seen 2026-11-04: a message's id went from 40 to 47 within a minute of a
+  test; most likely its event cache dropping a duplicate and inserting the event anew). An action
+  with an id the caller read before still means that message: `TimelineItems` remembers each id's
+  event, and a lookup that finds no item with the id finds the one that holds its event. Before,
+  a reaction then did nothing and said nothing; a message truly gone now throws
+  `MatrixCoreError.noMessage`.
 - A failure the sdk can recover from (no network) stops the room's send queue; `retry`
   starts it again and also retries a message the server refused (`retrySend`).
 - The sdk keeps a refused message in its queue, across launches, until it is sent or
@@ -231,10 +238,10 @@ bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a Wha
 - **Shown at once.** Each action shows in the list before the server confirms it (`ChatStates`,
   as `Pins` does for a pin); an answer the server never confirms is dropped after 30 s. Changes of
   the marks go one at a time from the newest content this device knows.
-- **Limit: another device's archive or delete** shows at the next change of the room list (a new
-  message in any chat) or launch: the sdk tells no listener of a custom global account data event,
-  and that change alone moves nothing in the room list. A timer reading `Client.accountData` would
-  close the gap.
+- **Another device's archive or delete** reaches the list through the account's data watch
+  (`AccountDataWatch`, `ListFreshness.swift`): the sdk tells no listener of a custom global
+  account data event, so the watch reads the store every 2 s while the account syncs, and says
+  which types changed.
 - **The lists.** Each chat is in one `ChatList`: the inbox, the Archive or Low Priority (an
   archived chat in Low Priority is in the Archive), or none when deleted (`RoomSummary.list`).
   `inbox(filter:list:network:)` shows one list, narrowed by the filter menu's choice and the
@@ -298,6 +305,80 @@ takes no part: matrix-rust-sdk keeps a message index on the device.
 - The tests: `SearchTests` (rooms "Multiplexer search test" and "... history", the second with 40
   numbered messages from its first run).
 
+## Push (Phase 3)
+
+`Push.swift`. What a push shows, and the pusher that makes the server send it.
+
+- **The extension's read.** `MatrixPush.content(session:storeDirectory:roomId:eventId:)` builds
+  a client as a notification extension must: `systemIsMemoryConstrained()` (no event cache, no
+  latest events, no search index), the store's cross-process lock held as `notifications`, only
+  the pushed room loaded (`restoreSessionWith(..., .one(roomId:))`), then
+  `notificationClient(.multipleProcesses).getNotification`. It returns a `PushContent` (plain
+  types) or nil when there is nothing to show (the event is gone, deleted, or filtered out by the
+  push rules). The body uses the chat list's words ("Photo", "Voice message").
+- **One store, two processes.** The app's client takes the same lock as `app`. With a
+  multi-process lock the sdk refuses to build a client without session delegates ("missing
+  session delegates with multi-process lock configuration"): `SessionStorage` is ours, a load and
+  a save, so a token one process refreshes reaches the other. The app and the extension back it
+  with the session's Keychain item; tests keep it in memory (`.memory()`).
+- **A chat's kind in a push.** `PushContent.isDirect` follows the chat list's rule
+  (`isOneToOne`: at most two people besides a bridge's bot, and marked direct or bridged); the
+  network comes from the room's service members and the sender, as `RoomNetwork` does.
+- **Pushers.** `setPusher(_:)` (an http pusher, `event_id_only`, `append: false`),
+  `deletePusher(appId:pushkey:)` (none to delete is no error), and `pushers()` (`GET
+  /_matrix/client/v3/pushers`; the bindings cannot list them). `Pusher.apnsPayload` is the
+  default payload: "New message" with `mutable-content`, so the extension wakes, and that text
+  shows when it cannot read the message. Our server accepts a pusher without a gateway running
+  (checked 2026-11-03 with `sygnal.ramimaalouf.com`, which has no DNS record yet).
+- **Measured** (`testAPushShowsTheSenderAndTheText`, `@test1` and `@test2` on our server, the
+  Simulator): see the decision log in `tasks/plan.md`. Peak memory needs the phone.
+
+- **What notifies** is the server's decision, from the account's push rules: Synapse lists the
+  events whose actions notify at `GET /_matrix/client/v3/notifications`, the same ones it sends to
+  the push gateway. `PushRulesTests` (2026-11-04): in a normal chat a message and a mention notify;
+  in a chat a bridge muted (a room rule with no actions, mautrix-go `ASIntent.MuteRoom`) only the
+  mention; in a chat muted here (`mute`: an override with no actions, and our mention rule with only
+  a highlight) neither, while the mention still counts in `unreadMentions`. An encrypted room's
+  mention is invisible to the server, so there it cannot notify on its own.
+
+### The Simulator and push (iOS 26.5, Xcode at 2026-11-03)
+
+- `xcrun simctl push` (and a dropped `.apns` file) adds the notification through
+  `CoreSimulatorBridge` directly: **no service extension runs**, `mutable-content` or not, with
+  or without `aps-environment`. It shows the payload's own alert.
+- The Simulator gets a real APNs **sandbox** token once the app's entitlements have
+  `aps-environment` (without it: "no valid aps-environment entitlement string found"). So a
+  real push from `scripts/send-test-push.sh` (with P3.0's key) is the way to run the extension on
+  the Simulator.
+- The Simulator reads an app's entitlements from its binary's `__TEXT,__entitlements` section,
+  not from the signature. `segedit -replace` refuses it ("requires relocation");
+  `scripts/add-notification-extension.sh` writes a compact plist in place, padded to the
+  section's size (432 of Exact's 462 bytes for this app), then signs ad hoc.
+- `simctl privacy` cannot grant notifications: the app asks (`@exact/notifications`), and a
+  person or `agent-device alert accept` answers.
+
+### The App Group store move (planned; waits for P3.0's App Group)
+
+The extension can open the store only in the App Group's container. The move, once the App Group
+`group.com.ramimaalouf.multiplexer` exists and both profiles grant it:
+
+1. `StoredSession` gets the store's place (`data` or `group`); nil means `data`, as today.
+2. At launch, before the client is made: if the place is `data` and
+   `containerURL(forSecurityApplicationGroupIdentifier:)` answers, move
+   `<context.data>/matrix/<store>` to `MatrixPush.sharedStore(in:store:)` (one `moveItem`; the
+   same volume, so it is a rename), then write the place. The search index moves with it (it is
+   inside the store folder). Rami does not sign in again.
+3. A store whose place is `group` while the container does not answer (a build without the
+   entitlement, such as an Exact drive) is **unavailable, not gone**: the app must not move the
+   session to the `sign-out` slot, which would sign Rami out on the server. It shows signed out
+   for that launch only.
+4. The agent's sessions (`.agent`) keep their own folder in Exact's scratch data: a drive never
+   touches the app's store.
+5. Sign Out removes the store in either place.
+
+The extension today looks only in the group (`<container>/matrix/<store>`); before the move it
+shows "New message" and logs `storeNotShared`.
+
 ## Bookmarks
 
 A held message's Bookmark (`Bookmarks.swift`). Matrix has no bookmarks, and the sdk cannot write
@@ -326,11 +407,15 @@ custom room account data, so they are one global account data event,
   server (`GET /user/{userId}/account_data/{type}`, kept 30 s); if that read fails, a change
   throws instead of writing (`testANewDeviceKeepsTheBookmarksSavedBefore`). The bookmark calls start
   the sync first, as `rooms()` does: on a new device, a store read before the first sync made that
-  sync time out (three runs of three; none with the sync started first). The other account
-  data events (`com.ramimaalouf.multiplexer.names`, `.chats`, `io.element.recent_emoji`) still
-  read only the store, so a change made in a new device's first seconds could replace them too.
-- **Limit: another device's bookmark** reaches this one's store with the sync, but the sdk tells
-  no listener of a custom global account data event. The app reads the list again each minute.
+  sync time out (three runs of three; none with the sync started first). Every change of the
+  account's own data starts the same way (`AccountData.swift`, `accountDataForChange`): the
+  names (`com.ramimaalouf.multiplexer.names`), the archive and delete marks (`.chats`), the
+  reminders (`.reminders`), the frequent emojis (`io.element.recent_emoji`) and the bookmarks
+  (`testANewDeviceKeepsTheAccountDataSavedBefore`, 2026-11-03).
+- **Another device's bookmark** reaches this one's store with the sync, and the sdk tells no
+  listener of a custom global account data event. The account's data watch (`AccountDataWatch`,
+  which reads the store every 2 s while the account syncs) tells the list (`MatrixChange.bookmarks`;
+  `testAnotherDevicesBookmarkShowsWithinSeconds`).
 - **Size.** Each bookmark is about 0.5 KB, and the whole event goes to every device at each
   change. A few hundred bookmarks are fine; thousands would want a cap or one event per chat.
 

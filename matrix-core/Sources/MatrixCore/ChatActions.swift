@@ -227,7 +227,8 @@ extension MatrixAccount {
     /// in a row both stay. Marks whose chat came back are dropped on the way.
     private func changeMarks(_ change: @escaping @Sendable (inout ChatMarks) -> Void) async throws {
         try await chats.serially {
-            let before = await self.chatMarks()
+            // the store's marks, else the server's: a new device must not start from none.
+            let before = self.chats.marks(stored: ChatMarks(json: try await self.accountDataForChange(ChatMarks.type)))
             var marks = before
             change(&marks)
             marks.dropReturned(try await self.rooms())
@@ -246,10 +247,17 @@ extension MatrixAccount {
 
     /// The time of the chat's newest message (or own join): what a later message is newer than.
     private func newestTimestamp(_ room: Room) async -> UInt64 {
+        var newest: UInt64 = 0
         switch await room.latestEvent() {
-        case .remote(let timestamp, _, _, _, _), .local(let timestamp, _, _, _, _): return timestamp
-        case .none, .remoteInvite: return 0
+        case .remote(let timestamp, _, _, _, _), .local(let timestamp, _, _, _, _): newest = timestamp
+        case .none, .remoteInvite: break
         }
+        // the open chat's timeline can be ahead of the room's latest event, which the sdk computes
+        // after the same sync: a chat deleted right after a message came must hide that one too.
+        if let live = readyTimeline(room.id()) {
+            newest = max(newest, live.items.messages().map(\.timestamp).max() ?? 0)
+        }
+        return newest
     }
 }
 

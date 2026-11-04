@@ -61,37 +61,43 @@ component BottomBar
   // the symbols grow a little at the accessibility text sizes, and stay inside their glass.
   derive symbolSize = largeText ? 24 : 20
   view
-    row position="absolute" left=0 right=0 bottom=0 padding="0 16px" align-items="center" justify-content="space-between"
-      glassGroup=12 pointer-events="none" testId="bottom-bar"
-      button popovertarget="filter-menu" buttonStyle=(filtered ? "prominent-glass" : "glass") width=48 height=48 pointer-events="auto"
-        aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
-        image "symbol:filter" font-size=symbolSize
-      row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
-        button appearance="none" press=top aria-label=(network == "" ? "Inbox" : networkName(network)) aria-selected=inInbox
-          testId="inbox" min-width=68 height=44 border-radius=22 background-color=(inInbox ? "-exact-tertiary-fill" : "transparent")
-          display="flex" align-items="center" justify-content="center"
-          if network == ""
-            image "symbol:icon.tray" font-size=symbolSize color="-exact-label"
-          else
-            image `assets/networks/${network}.svg` width=(symbolSize + 4) height=(symbolSize + 4) aria-hidden=true
-        button appearance="none" press=archive aria-label="Archive" aria-selected=inArchive testId="archive"
-          min-width=68 height=44 border-radius=22 background-color=(inArchive ? "-exact-tertiary-fill" : "transparent")
-          display="flex" align-items="center" justify-content="center"
-          image "symbol:icon.archive" font-size=symbolSize color="-exact-label"
-        button appearance="none" press=sheet aria-label="Inboxes" testId="inboxes-button"
-          width=44 height=44 border-radius=22 display="flex" align-items="center" justify-content="center"
-          image "symbol:chooser" font-size=symbolSize color="-exact-label"
-      // its own glass face, as the capsule's: it flies into the search's field (a native button
-      // takes no layout transition).
-      button appearance="none" press=search backgroundMaterial="glass" width=48 height=48 border-radius=24 pointer-events="auto"
-        display="flex" align-items="center" justify-content="center" aria-label="Search" testId="search"
-        sharedElement="search" -exact-layout-transition="340ms cubic-bezier(.32,.72,0,1)"
-        image "symbol:search" font-size=symbolSize color="-exact-label"
-      column id="filter-menu" popover="auto" role="menu" pointer-events="auto"
-        for f in ["all", "unread", "unanswered", "people", "groups"] key=f
-          button role="menuitemradio" aria-checked=(filter == f) press=choose(f)
-            popovertarget="filter-menu" popovertargetaction="hide" testId=`filter-${f}`
-            text filterName(f)
+    // as iOS's scroll edge effect under a bottom bar: the rows passing under the bar are hidden behind it and
+    // the home indicator, and fade out just above it. Outside the bar's glass group, so its glass stays its own.
+    view position="absolute" left=0 right=0 bottom=0 pointer-events="none"
+      view position="absolute" left=0 right=0 top=0 bottom=-40 background-color="-exact-background"
+      view position="absolute" left=0 right=0 top=-32 height=32
+        background-image="linear-gradient(to top, -exact-background 0%, transparent 100%)"
+      row position="relative" padding="0 16px" align-items="center" justify-content="space-between"
+        glassGroup=12 pointer-events="none" testId="bottom-bar"
+        button popovertarget="filter-menu" buttonStyle=(filtered ? "prominent-glass" : "glass") width=48 height=48 pointer-events="auto"
+          aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
+          image "symbol:filter" font-size=symbolSize
+        row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
+          button appearance="none" press=top aria-label=(network == "" ? "Inbox" : networkName(network)) aria-selected=inInbox
+            testId="inbox" min-width=68 height=44 border-radius=22 background-color=(inInbox ? "-exact-tertiary-fill" : "transparent")
+            display="flex" align-items="center" justify-content="center"
+            if network == ""
+              image "symbol:icon.tray" font-size=symbolSize color="-exact-label"
+            else
+              image `assets/networks/${network}.svg` width=(symbolSize + 4) height=(symbolSize + 4) aria-hidden=true
+          button appearance="none" press=archive aria-label="Archive" aria-selected=inArchive testId="archive"
+            min-width=68 height=44 border-radius=22 background-color=(inArchive ? "-exact-tertiary-fill" : "transparent")
+            display="flex" align-items="center" justify-content="center"
+            image "symbol:icon.archive" font-size=symbolSize color="-exact-label"
+          button appearance="none" press=sheet aria-label="Inboxes" testId="inboxes-button"
+            width=44 height=44 border-radius=22 display="flex" align-items="center" justify-content="center"
+            image "symbol:chooser" font-size=symbolSize color="-exact-label"
+        // its own glass face, as the capsule's: it flies into the search's field (a native button
+        // takes no layout transition).
+        button appearance="none" press=search backgroundMaterial="glass" width=48 height=48 border-radius=24 pointer-events="auto"
+          display="flex" align-items="center" justify-content="center" aria-label="Search" testId="search"
+          sharedElement="search" -exact-layout-transition="340ms cubic-bezier(.32,.72,0,1)"
+          image "symbol:search" font-size=symbolSize color="-exact-label"
+        column id="filter-menu" popover="auto" role="menu" pointer-events="auto"
+          for f in ["all", "unread", "unanswered", "people", "groups"] key=f
+            button role="menuitemradio" aria-checked=(filter == f) press=choose(f)
+              popovertarget="filter-menu" popovertargetaction="hide" testId=`filter-${f}`
+              text filterName(f)
 
 // the pinned chats above the list, as Messages draws them: large round pictures, three to a
 // row (a short last row centred), a name under each, and a dot on one with unread messages.
@@ -129,13 +135,15 @@ component PinnedGrid
           text r.shortName font="-exact-subheadline" color="-exact-secondary-label" line-clamp=1 max-width="100%"
 
 // the inbox's title, as Beeper's: its words and a chevron at the top left, which open a menu.
-// merge chats comes later, so it shows greyed. the route draws this row in
-// place of the system bar, whose large title cannot open a menu.
+// Select Chats, Merge Chats and Settings. The route draws this row in place of the system bar,
+// whose large title cannot open a menu.
 component TitleMenu
   props
     title: string
     select: action
     settings: action
+    // Merge Chats' sheet (merge.contract).
+    merge: action
     largeText: bool
   view
     row padding="2px 16px 6px" align-items="center" testId="title-bar"
@@ -150,7 +158,7 @@ component TitleMenu
         button press=select popovertarget="title-menu" popovertargetaction="hide" testId="menu-select-chats"
           image "symbol:select"
           text "Select Chats"
-        button press=settings disabled=true testId="menu-merge-chats"
+        button press=merge popovertarget="title-menu" popovertargetaction="hide" testId="menu-merge-chats"
           image "symbol:icon.merge"
           text "Merge Chats"
         button press=settings popovertarget="title-menu" popovertargetaction="hide" testId="menu-settings"
@@ -196,41 +204,54 @@ component SelectBar
     change: action
     delete: action
     labelChats: action
+    // Merge Chats with the chosen chats: two or more that are not merged already.
+    canMerge: bool
+    merge: action
     largeText: bool
     busy: bool
   derive off = count == 0 or busy
   derive symbolSize = largeText ? 24 : 20
   view
-    row position="absolute" left=0 right=0 bottom=0 padding="0 16px" align-items="center" justify-content="space-between"
-      glassGroup=12 pointer-events="none" testId="select-bar"
-      row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="select-capsule"
-        button appearance="none" press=change(list == "archive" ? "unarchive" : "archive") disabled=off
-          aria-label=(list == "archive" ? "Unarchive" : "Archive") testId="select-archive"
-          width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
-          image (list == "archive" ? "symbol:icon.unarchive" : "symbol:icon.archive") font-size=symbolSize color="-exact-label"
-        button appearance="none" press=change(unread ? "read" : "unread") disabled=off
-          aria-label=(unread ? "Mark as Read" : "Mark as Unread") testId="select-read"
-          width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
-          image (unread ? "symbol:messages" : "symbol:icon.mark-unread") font-size=symbolSize color="-exact-label"
-        button appearance="none" press=change(muted ? "unmute" : "mute") disabled=off
-          aria-label=(muted ? "Unmute" : "Mute") testId="select-mute"
-          width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
-          image (muted ? "symbol:notifications" : "symbol:icon.bell-slash") font-size=symbolSize color="-exact-label"
-        button appearance="none" popovertarget="select-more" disabled=off aria-label="More" testId="select-more-button"
-          width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
-          image "symbol:more" font-size=symbolSize color="-exact-label"
-      button appearance="none" press=delete disabled=off backgroundMaterial="glass" width=48 height=48 border-radius=24
-        pointer-events="auto" display="flex" align-items="center" justify-content="center" aria-label="Delete" testId="select-delete"
-        opacity=(off ? 0.35 : 1)
-        image "symbol:delete" font-size=symbolSize color="-exact-system-red"
-      column id="select-more" popover="auto" role="menu" pointer-events="auto"
-        button press=labelChats disabled=off popovertarget="select-more" popovertargetaction="hide" testId="select-label"
-          image "symbol:icon.tag"
-          text "Label…"
-        button press=change(list == "lowPriority" ? "inbox" : "lowPriority") popovertarget="select-more" popovertargetaction="hide"
-          testId="select-low-priority"
-          image (list == "lowPriority" ? "symbol:icon.tray" : "symbol:icon.low-priority")
-          text (list == "lowPriority" ? "Move to Inbox" : "Move to Low Priority")
-        button press=change(pinned ? "unpin" : "pin") popovertarget="select-more" popovertargetaction="hide" testId="select-pin"
-          image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
-          text (pinned ? "Unpin" : "Pin")
+    // as iOS's scroll edge effect under a bottom bar: the rows passing under the bar are hidden behind it and
+    // the home indicator, and fade out just above it. Outside the bar's glass group, so its glass stays its own.
+    view position="absolute" left=0 right=0 bottom=0 pointer-events="none"
+      view position="absolute" left=0 right=0 top=0 bottom=-40 background-color="-exact-background"
+      view position="absolute" left=0 right=0 top=-32 height=32
+        background-image="linear-gradient(to top, -exact-background 0%, transparent 100%)"
+      row position="relative" padding="0 16px" align-items="center" justify-content="space-between"
+        glassGroup=12 pointer-events="none" testId="select-bar"
+        row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="select-capsule"
+          button appearance="none" press=change(list == "archive" ? "unarchive" : "archive") disabled=off
+            aria-label=(list == "archive" ? "Unarchive" : "Archive") testId="select-archive"
+            width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+            image (list == "archive" ? "symbol:icon.unarchive" : "symbol:icon.archive") font-size=symbolSize color="-exact-label"
+          button appearance="none" press=change(unread ? "read" : "unread") disabled=off
+            aria-label=(unread ? "Mark as Read" : "Mark as Unread") testId="select-read"
+            width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+            image (unread ? "symbol:messages" : "symbol:icon.mark-unread") font-size=symbolSize color="-exact-label"
+          button appearance="none" press=change(muted ? "unmute" : "mute") disabled=off
+            aria-label=(muted ? "Unmute" : "Mute") testId="select-mute"
+            width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+            image (muted ? "symbol:notifications" : "symbol:icon.bell-slash") font-size=symbolSize color="-exact-label"
+          button appearance="none" popovertarget="select-more" disabled=off aria-label="More" testId="select-more-button"
+            width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+            image "symbol:more" font-size=symbolSize color="-exact-label"
+        button appearance="none" press=delete disabled=off backgroundMaterial="glass" width=48 height=48 border-radius=24
+          pointer-events="auto" display="flex" align-items="center" justify-content="center" aria-label="Delete" testId="select-delete"
+          opacity=(off ? 0.35 : 1)
+          image "symbol:delete" font-size=symbolSize color="-exact-system-red"
+        column id="select-more" popover="auto" role="menu" pointer-events="auto"
+          button press=labelChats disabled=off popovertarget="select-more" popovertargetaction="hide" testId="select-label"
+            image "symbol:icon.tag"
+            text "Label…"
+          button press=change(list == "lowPriority" ? "inbox" : "lowPriority") popovertarget="select-more" popovertargetaction="hide"
+            testId="select-low-priority"
+            image (list == "lowPriority" ? "symbol:icon.tray" : "symbol:icon.low-priority")
+            text (list == "lowPriority" ? "Move to Inbox" : "Move to Low Priority")
+          button press=change(pinned ? "unpin" : "pin") popovertarget="select-more" popovertargetaction="hide" testId="select-pin"
+            image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
+            text (pinned ? "Unpin" : "Pin")
+          if canMerge
+            button press=merge popovertarget="select-more" popovertargetaction="hide" testId="select-merge"
+              image "symbol:icon.merge"
+              text "Merge Chats"

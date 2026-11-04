@@ -29,8 +29,8 @@ members Multiplexer
     picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
     initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork, isOneToOne=openIsDirect,
     memberCount=0, canRename=false, canChangePicture=false, canInvite=false)
-  derive openArchived = match openRoomInfo { case some(r) => r.archived, case none => false }
-  derive openLowPriority = match openRoomInfo { case some(r) => r.lowPriority, case none => false }
+  derive openArchived = match openChatInfo { case some(r) => r.archived, case none => false }
+  derive openLowPriority = match openChatInfo { case some(r) => r.lowPriority, case none => false }
   derive infoSaving = pending(renamed) or pending(pictured) or pending(customNamed) or pending(invited)
   derive groupRefused = infoAsked and not infoSaving and (failed(renamed) or failed(pictured))
   derive customRefused = infoAsked and not infoSaving and failed(customNamed)
@@ -77,24 +77,24 @@ members Multiplexer
       nav = push(nav, path("photo", openRoom, id))
   // the four buttons and More: each shows on the page and in the list at once.
   action archiveOpen
-    send changedChat = changeChat(openRoom, openArchived ? "unarchive" : "archive")
+    send changedChat = changeChat(openChatId, openArchived ? "unarchive" : "archive")
     haptic("success")
   action lowPriorityOpen
-    send changedChat = changeChat(openRoom, openLowPriority ? "inbox" : "lowPriority")
+    send changedChat = changeChat(openChatId, openLowPriority ? "inbox" : "lowPriority")
     haptic("success")
   // marked unread, the chat is left, as the chat bar's Mark as Unread does; read, it stays.
   action readOpen
     if openUnread > 0
-      send changedChat = changeChat(openRoom, "read")
+      send changedChat = changeChat(openChatId, "read")
       haptic("success")
     else
-      send changedChat = changeChat(openRoom, "unread")
+      send changedChat = changeChat(openChatId, "unread")
       haptic("success")
       nav = back(back(nav))
   action askDeleteOpen
     showModal("info-delete")
   action deleteOpen
-    send changedChat = changeChat(openRoom, "delete")
+    send changedChat = changeChat(openChatId, "delete")
     haptic("success")
     nav = back(back(nav))
   // Edit: the group's name (and picture) for everyone, or a name only you see.

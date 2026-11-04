@@ -58,11 +58,12 @@ type RoomsAnswer = {
 // a reminder answered or cleared on another device has its notification taken away here.
 const REMINDERS = 'app:/data/reminders', SCHEDULED = `${REMINDERS}/scheduled.json`;
 export const reminderTag = (roomId: string) => `reminder-${roomId}`;
-type ReminderChat = { id: string; name: string; reminder: number; lastMessage: string; lastSender: string; lastIsOwn: boolean };
+type ReminderChat = { id: string; name: string; reminder: number; lastMessage: string; lastSender: string; lastIsOwn: boolean; merge: string };
 let syncing: Promise<void> = Promise.resolve();
 const syncReminders = (rooms: ReminderChat[], storage: Storage) => (syncing = syncing.then(() => syncNow(rooms, storage), () => syncNow(rooms, storage)));
 async function syncNow(rooms: ReminderChat[], storage: Storage) {
-  const wanted = new Map(rooms.filter((r) => r.reminder > 0).map((r) => [r.id, r]));
+  // a merged chat's reminder is the merged chat's: its rooms post none of their own.
+  const wanted = new Map(rooms.filter((r) => r.reminder > 0 && (r.merge === '' || r.id.startsWith('merge:'))).map((r) => [r.id, r]));
   let scheduled: Record<string, number> = {};
   try { scheduled = JSON.parse(new TextDecoder().decode(await storage.fs.readFile(SCHEDULED))); } catch { /* none yet */ }
   let changed = false;
@@ -316,6 +317,11 @@ const sources: Sources = {
   },
   // a chat's long-press actions: read, unread, mute, unmute, lowPriority, inbox (out of Low
   // Priority), archive, unarchive and delete (from this app only; the chat stays on its network).
+  // Merge Chats: kept in the account's data (MatrixCore's Merges.swift); id is the merged chat's.
+  mergeChats: async ([name, rooms, defaultRoom], _store, _storage, native): Promise<Result<'mergeChats'>> =>
+    (await native!.later({ op: 'merge', name, rooms, defaultRoom })) as { ok: boolean; id: string },
+  unmergeChat: async ([id], _store, _storage, native): Promise<Result<'unmergeChat'>> =>
+    (await native!.later({ op: 'unmerge', id })) as { ok: boolean; id: string },
   // Remind Me (B7, B20): when is "tomorrow", "monday" or a picked time without a zone, as Send
   // Later's; a time not ahead is refused with problem "past".
   remindChat: async ([roomId, when], _store, _storage, native): Promise<Result<'remindChat'>> =>
@@ -373,9 +379,9 @@ const sources: Sources = {
     const answer = (await native!.later({ op: 'scheduledAction', id, action })) as { ok: boolean; problem?: string };
     return { ok: answer.ok, problem: answer.problem ?? '' };
   },
-  // the saved messages, the last saved first, each with its chat; read again each minute (minute),
-  // as another device's reach the store with no word, and when one is saved or removed.
-  loadBookmarks: async ([userId, _minute], _store, _storage, native): Promise<Result<'loadBookmarks'>> => {
+  // the saved messages, the last saved first, each with its chat; read again when the module says
+  // they changed (saved or removed here, or on another device).
+  loadBookmarks: async ([userId], _store, _storage, native): Promise<Result<'loadBookmarks'>> => {
     if (userId === '' || !native?.available) return { owner: userId, bookmarks: [] };
     native.watch('bookmarks');
     const answer = (await native.later({ op: 'bookmarks' })) as {
@@ -521,6 +527,12 @@ const sources: Sources = {
     return { ok: true };
   },
   // the largest file the server takes, in bytes; 0 while it is not known.
+  // the module asks for the phone's push token and gives it to the server as a pusher; a drive
+  // does that only for a test user. Without the permission, nothing.
+  registerPush: async ([userId, permission], _store, _storage, native): Promise<Result<'registerPush'>> => {
+    if (userId === '' || permission !== 'granted' || !native?.available) return { registered: false };
+    return (await native.later({ op: 'registerPush' })) as { registered: boolean };
+  },
   loadUploadLimit: async ([userId], _store, _storage, native): Promise<Result<'loadUploadLimit'>> => {
     if (userId === '' || !native?.available) return { bytes: 0 };
     return (await native.later({ op: 'maxUploadSize' })) as { bytes: number };

@@ -2,17 +2,23 @@ import Foundation
 import Security
 
 /// What the Keychain holds for the signed-in account: its session, the name of its store
-/// folder (a session without its store has lost its encryption keys), and the key of its
-/// message search index (`SearchIndex.newKey`; nil for a session kept before the index).
+/// folder (a session without its store has lost its encryption keys), the key of its
+/// message search index (`SearchIndex.newKey`; nil for a session kept before the index), and
+/// the pusher this device set (`MatrixAccount.setPusher`), to replace when the push token
+/// changes and to delete at Sign Out (nil for none).
 public struct StoredSession: Codable, Equatable, Sendable {
     public var session: SavedSession
     public var store: String
     public var searchKey: String?
+    public var pusherAppId: String?
+    public var pushkey: String?
 
-    public init(session: SavedSession, store: String, searchKey: String? = nil) {
+    public init(session: SavedSession, store: String, searchKey: String? = nil, pusherAppId: String? = nil, pushkey: String? = nil) {
         self.session = session
         self.store = store
         self.searchKey = searchKey
+        self.pusherAppId = pusherAppId
+        self.pushkey = pushkey
     }
 }
 
@@ -23,16 +29,23 @@ public struct StoredSession: Codable, Equatable, Sendable {
 public struct SessionKeychain: Sendable {
     public var service: String
     public var slot: String
+    /// The Keychain group the item is in: nil for the app's own default (its first
+    /// `keychain-access-groups` entry, else its application identifier). The notification
+    /// extension names the app's (`<team>.<app id>`), which its entitlements list too.
+    public var accessGroup: String?
 
-    public init(service: String, slot: String = "session") {
+    public init(service: String, slot: String = "session", accessGroup: String? = nil) {
         self.service = service
         self.slot = slot
+        self.accessGroup = accessGroup
     }
 
     private var item: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: service,
-         kSecAttrAccount as String: slot]
+        var item: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                   kSecAttrService as String: service,
+                                   kSecAttrAccount as String: slot]
+        if let accessGroup { item[kSecAttrAccessGroup as String] = accessGroup }
+        return item
     }
 
     public func read() throws -> StoredSession? {

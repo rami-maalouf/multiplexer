@@ -1,16 +1,16 @@
 // Multiplexer: the view. app.ts answers what it asks for, through the native module
 // (modules/apple/Matrix.swift), which calls MatrixCore.
 use ClipboardItem from "@exact/clipboard"
-use notificationclick from "@exact/notifications"
+use notificationclick, requestNotificationPermission, notificationStatus, NotificationStatus from "@exact/notifications"
 use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
 use Attachment, chosenOf, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, ChooseMark, SelectTitle, SelectBar, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage, deleteChatsTitle, deleteChatsMessage from "./inbox.contract"
-use NetworkBadge, networkName from "./network.contract"
+use NetworkBadge, NetworkBadges, networkName from "./network.contract"
 use InboxSheet, NetworkCount from "./sheet.contract"
 use LabelEditor, LabelPicker from "./labels.contract"
-use ChatBar, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
+use ChatBar, MergeTab, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, SwipeReply, seenText, videoLabel, OlderLine from "./details.contract"
@@ -20,6 +20,7 @@ use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
 use ScheduledBar, ScheduledScreen, LaterSheet, laterProblem, weekdayOf from "./send-later.contract"
 use BookmarksScreen, BookmarkMenu from "./bookmarks.contract"
+use MergeSheet from "./merge.contract"
 use GifSheet from "./gif.contract"
 use CameraScreen from "./camera.contract"
 
@@ -54,6 +55,12 @@ shape Room
   archived: bool
   // when the account asked to be reminded to answer it (ms since 1970); 0 for none (Remind Me).
   reminder: number
+  // Merge Chats: every network the chat is on; the room it opens (a merged chat's choice, else its
+  // own id); its merge ("" for none; a merged chat's rooms say it too); a merged chat's rooms.
+  networks: string[]
+  open: string
+  merge: string
+  mergeRooms: MergeTab[]
 
 // owner is the account the rooms belong to, so a list never shows under another account; filter
 // the filter menu's choice the list is for, network the filter sheet's ("": every network), list
@@ -192,6 +199,10 @@ shape EmojiList
 shape UploadLimit
   bytes: number
 
+// the phone's push token reached the server as a pusher (Matrix.swift's registerPush).
+shape Push
+  registered: bool
+
 // a file message's file, downloaded to open: name names it in the share sheet.
 shape OpenedFile
   message: string
@@ -232,6 +243,7 @@ routes nav
     scheduled "/scheduled"
       laterChange "/scheduled/:delay/time"
     remind "/remind/:id"
+    merge "/merge"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
@@ -319,6 +331,11 @@ component Multiplexer
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
   resource profile = loadProfile(session.userId) as shape Profile else empty()
+  resource notifications = notificationStatus() as shape NotificationStatus
+  // with the permission, the phone's push token goes to the server as a pusher: at each launch
+  // and sign-in, and once the person allows notifications.
+  resource push = registerPush(session.userId, notifications.state) as shape Push else empty()
+  mutation askedNotifications as shape NotificationStatus
   mutation pinned as shape Reply refreshes roomList
   mutation changedChat as shape Reply queue refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
@@ -350,14 +367,19 @@ component Multiplexer
   derive shownPhotoMessage = first(thread.messages.filter(m => m.id == shownPhoto))
   resource photo = loadPhoto(openRoom, shownPhoto) as shape Photo else empty()
   derive openRoomInfo = first(roomList.rooms.filter(r => r.id == openRoom))
-  derive openName = match openRoomInfo { case some(r) => r.name, case none => "" }
+  // Merge Chats: the merged chat the open room is in, and the chat its actions act on (the merged
+  // chat's id, else the room's) with its row.
+  derive openMerge = first(roomList.rooms.filter(r => r.mergeRooms.map(m => m.id).includes(openRoom)))
+  derive openChatId = match openMerge { case some(m) => m.id, case none => openRoom }
+  derive openChatInfo = first(roomList.rooms.filter(r => r.id == openChatId))
+  derive openName = match openChatInfo { case some(r) => r.name, case none => "" }
   derive openRoomName = match openRoomInfo { case some(r) => r.roomName, case none => "" }
   derive openIsDirect = match openRoomInfo { case some(r) => r.isDirect, case none => false }
   derive openNetwork = match openRoomInfo { case some(r) => r.network, case none => "matrix" }
-  derive openPinned = roomList.pinned.map(p => p.id).includes(openRoom)
-  derive openMuted = match openRoomInfo { case some(r) => r.muted, case none => false }
+  derive openPinned = roomList.pinned.map(p => p.id).includes(openChatId)
+  derive openMuted = match openChatInfo { case some(r) => r.muted, case none => false }
   // Back's count: the inbox's unread chats on every network (the filter sheet's Inbox row), but this one.
-  derive otherUnread = max(0, roomList.unread - (match openRoomInfo { case some(r) => inboxUnread(r) ? 1 : 0, case none => 0 }))
+  derive otherUnread = max(0, roomList.unread - (match openChatInfo { case some(r) => inboxUnread(r) ? 1 : 0, case none => 0 }))
   // the day a message is on is the reader's, so the zone's offset groups them.
   resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset, openNetwork) as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
@@ -416,8 +438,10 @@ component Multiplexer
   derive aimedLowPriority = match aimedRoom { case some(r) => r.lowPriority, case none => false }
   derive aimedArchived = match aimedRoom { case some(r) => r.archived, case none => false }
   derive aimedNetwork = match aimedRoom { case some(r) => r.network, case none => "matrix" }
-  resource peek = loadMessages(aimed, aimedIsDirect, aimedRoomName, time.utcOffset, aimedNetwork) as shape Thread else empty()
-  derive peekShown = peek.room == aimed and aimed != ""
+  // a merged chat's preview is the room it opens.
+  derive aimedOpen = match aimedRoom { case some(r) => r.open, case none => aimed }
+  resource peek = loadMessages(aimedOpen, aimedIsDirect, aimedRoomName, time.utcOffset, aimedNetwork) as shape Thread else empty()
+  derive peekShown = peek.room == aimedOpen and aimed != ""
   // the chat is in front, not behind its photo viewer, and the app is too.
   derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
   task tick mount
@@ -448,6 +472,7 @@ component Multiplexer
   members "./encryption-members.contract"
   members "./transcribe-members.contract"
   members "./remind-members.contract"
+  members "./merge-members.contract"
 
   action step
     now = performanceNow()
@@ -513,6 +538,11 @@ component Multiplexer
       password = ""
       network = ""
       chatList = "inbox"
+      allowNotifications()
+  // the system asks once; after a no, the iPhone's Settings decides (Settings says so).
+  action allowNotifications
+    if notifications.state == "prompt"
+      send askedNotifications = requestNotificationPermission()
   action askSignOut
     showModal("sign-out")
   // drafts stay with the account that wrote them.
@@ -813,8 +843,9 @@ component Multiplexer
     haptic("selection")
   action aim(id: string)
     aimed = id
+  // a merged chat opens the room it chose (Merge Chats).
   action openChat(id: string)
-    follow(path("room", id))
+    follow(path("room", match first(roomList.rooms.filter(r => r.id == id)) { case some(r) => r.open, case none => id }))
   action togglePin
     send pinned = setPinned(aimed, not aimedPinned)
     haptic("success")
@@ -826,15 +857,15 @@ component Multiplexer
     showModal("delete-chat")
   // the chat bar's "..." pins, mutes or marks unread the open chat.
   action togglePinOpen
-    send pinned = setPinned(openRoom, not openPinned)
+    send pinned = setPinned(openChatId, not openPinned)
     haptic("success")
   action toggleMuteOpen
-    send changedChat = changeChat(openRoom, openMuted ? "unmute" : "mute")
+    send changedChat = changeChat(openChatId, openMuted ? "unmute" : "mute")
     haptic("success")
   // the chat is marked unread and left: staying, it would read itself again a second later. Unlike
   // back, leaving does not mark it read.
   action markUnreadOpen
-    send changedChat = changeChat(openRoom, "unread")
+    send changedChat = changeChat(openChatId, "unread")
     keepDraftNow()
     nav = back(nav)
     held = ""
@@ -887,7 +918,7 @@ component Multiplexer
               if selecting
                 SelectTitle(count=chosenIds.length, done=stopSelecting, busy=pending(changedChats))
               else if not searching
-                TitleMenu(title=(labelFilter == "" ? listTitle(chatList, network) : activeLabelName), select=startSelecting, settings=showSettings, largeText=viewport.accessibilityTextSize)
+                TitleMenu(title=(labelFilter == "" ? listTitle(chatList, network) : activeLabelName), select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize)
               if selecting and selectionProblem != ""
                 text selectionProblem role="alert" font="-exact-footnote" color="-exact-system-red" padding="8px 16px"
                   background-color="-exact-background" testId="select-error"
@@ -934,7 +965,7 @@ component Multiplexer
                             ChooseMark(on=selectedChats.includes(r.id), identifier=`room-mark-${r.id}`)
                           RoomFace(r=r, now=shown, offset=time.utcOffset, chevron=false, picture=(not viewport.accessibilityTextSize))
                       else
-                        link href=path("room", r.id) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
+                        link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
                           RoomFace(r=r, now=shown, offset=time.utcOffset, chevron=true, picture=true)
               else if not searching
                 if failed(roomList) and not pending(roomList)
@@ -955,7 +986,8 @@ component Multiplexer
                   reduced=viewport.prefersReducedMotion)
               else if roomsShown and selecting
                 SelectBar(count=chosenIds.length, list=chatList, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
-                  change=changeChosen, delete=askDeleteChosen, labelChats=labelSelected, largeText=viewport.accessibilityTextSize, busy=pending(changedChats))
+                  change=changeChosen, delete=askDeleteChosen, labelChats=labelSelected, canMerge=(chosenRooms.filter(r => r.merge == "").length >= 2),
+                  merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats))
               else if roomsShown
                 BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=(labelFilter == "" ? chatList : "label"), network=network,
                   sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize)
@@ -1065,6 +1097,11 @@ component Multiplexer
             body=(match first(scheduledShown.filter(m => m.id == laterFor)) { case some(m) => m.body, case none => "" }),
             bodyLabel="Message", verb="Send", saveLabel="Schedule", note=laterNote, picked=laterWhen, saving=laterSaving,
             refused=laterRefused, choices=false, monday=false, choose=pickLater, pick=pickLater, close=closeLater, save=saveLater)
+        // Merge Chats' sheet (merge.contract).
+        if e.name == "merge"
+          MergeSheet(route=`${e.id}`, chats=mergeCandidates, picked=mergePicked, name=mergeName, defaultRoom=mergeDefault,
+            query=mergeQuery, saving=pending(merged), typeName=typeMergeName, typeQuery=typeMergeQuery, toggle=toggleMergePick,
+            chooseDefault=chooseMergeDefault, close=closeMergeSheet, save=saveMerge)
         // Remind Me's time: Send Later's set times, or one picked.
         if e.name == "remind"
           LaterSheet(route=`${e.id}`, title="Remind Me", body=remindName, bodyLabel="Chat", verb="Remind", saveLabel="Set",
@@ -1074,7 +1111,8 @@ component Multiplexer
         if e.name == "settings"
           SettingsScreen(route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
             signOut=askSignOut, recovery=recovery, recoveryDraft=recoveryDraft, unlocking=pending(unlocked), refused=recoveryRefused,
-            typeKey=typeRecoveryKey, unlock=unlockRecovery, largeText=viewport.accessibilityTextSize)
+            typeKey=typeRecoveryKey, unlock=unlockRecovery, largeText=viewport.accessibilityTextSize,
+            notifications=notifications.state, allowNotifications=allowNotifications)
         // the filter sheet, from the bottom: half height, pulled up to full; UIKit's glass below full.
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
@@ -1137,7 +1175,7 @@ component Multiplexer
             media=chatMedia.items, mediaLoaded=(chatMedia.room == openRoom), moreMedia=allMedia, pinned=openPinned, archived=openArchived, lowPriority=openLowPriority,
             muted=openMuted, unread=(openUnread > 0), close=closeInfo, archive=archiveOpen, moveLowPriority=lowPriorityOpen,
             pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, reminder=openReminderAt, remind=remindOpen,
-            clearReminder=clearOpenReminder, now=shown, offset=time.utcOffset, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
+            clearReminder=clearOpenReminder, merged=(openMerge != none), unmerge=unmergeOpen, now=shown, offset=time.utcOffset, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
             customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,
             searching=chatSearching, returned=chatSearchClosed, search=openChatSearch, closeSearch=closeChatSearch,
             bookmarkCount=chatBookmarks.length, bookmarks=openChatBookmarks, expiry=chatExpiry, chooseExpiry=chooseExpiry,
@@ -1174,7 +1212,7 @@ component Multiplexer
               else
                 // the first message can scroll down from under the bar, a chat name of two lines too.
                 list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
-                  reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=(viewport.accessibilityTextSize ? 116 : 100)
+                  reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=((viewport.accessibilityTextSize ? 116 : 100) + (openMerge == none ? 0 : 56))
                   testId="transcript"
                   for m in transcriptRows key=m.id
                     // a found message the chat opened at is marked a moment (search-members.contract).
@@ -1417,7 +1455,9 @@ component Multiplexer
             ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
               initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork,
               unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, muted=openMuted, mute=toggleMuteOpen,
-              markUnread=markUnreadOpen, info=openInfo, covered=(held != ""), largeText=viewport.accessibilityTextSize)
+              markUnread=markUnreadOpen, info=openInfo, covered=(held != ""),
+              tabs=(match openMerge { case some(m) => m.mergeRooms, case none => [] }), shown=openRoom, switchTo=switchMerged,
+              largeText=viewport.accessibilityTextSize)
             // the chat's one player of voice messages: no box of its own; each bubble is its button.
             if voiceSrc != ""
               audio voiceSrc id="voice-player" paused=voicePaused playbackRate=voiceSpeed preservesPitch=true timeupdate=voiceTimed
@@ -1568,7 +1608,9 @@ component RoomFace
               image r.avatar width="100%" height="100%" object-fit="cover" aria-label=""
             else
               text r.initials font-size="min(-exact-headline, 20px)" font-weight=600 color="-exact-secondary-label"
-          if r.network != "matrix"
+          if r.networks.length > 1
+            NetworkBadges(networks=r.networks, identifier=`network-${r.id}`)
+          else if r.network != "matrix"
             NetworkBadge(network=r.network, identifier=`network-${r.id}`)
       column flex=1 min-width=0 gap=2 padding="10px 0"
         // at large text sizes the time wraps under the name instead of covering it.

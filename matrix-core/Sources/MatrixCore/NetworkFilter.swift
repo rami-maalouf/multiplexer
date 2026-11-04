@@ -14,15 +14,18 @@ extension Inbox {
     /// Every chat stays in `chats`, so an open chat keeps its name.
     public func on(network: String?) -> Inbox {
         guard let network else { return self }
-        let theirs = Set(chats.filter { $0.network == network }.map(\.id))
-        return Inbox(chats: chats, listed: listed.intersection(theirs), pinned: pinned.filter { $0.network == network })
+        let theirs = Set(chats.filter { $0.networks.contains(network) }.map(\.id))
+        return Inbox(chats: chats, listed: listed.intersection(theirs), pinned: pinned.filter { $0.networks.contains(network) })
     }
 
     /// Each network the account has chats on, in `RoomNetwork.all`'s order (Matrix first),
     /// with its unread chats in the inbox. Whatever the filter and the list shown.
     public var networks: [NetworkCount] {
         var unread: [String: Int] = [:]
-        for chat in chats { unread[chat.network, default: 0] += chat.isInInbox && chat.isLoudlyUnread ? 1 : 0 }
+        // a merged chat counts under each of its networks; its folded rooms count nowhere.
+        for chat in chats where chat.foldedInto == nil {
+            for network in chat.networks { unread[network, default: 0] += chat.isInInbox && chat.isLoudlyUnread ? 1 : 0 }
+        }
         let order = RoomNetwork.all
         return unread.keys.sorted { (order.firstIndex(of: $0) ?? order.count, $0) < (order.firstIndex(of: $1) ?? order.count, $1) }
             .map { NetworkCount(network: $0, unread: unread[$0] ?? 0) }

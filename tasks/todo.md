@@ -763,8 +763,12 @@ appears when its feature exists: the capsule's Archive with B8, search with B18.
 **Acceptance criteria:**
 - [x] The bar floats over the list, the list scrolls under it, and its last row can scroll above
   the bar. (2026-11-02, `inbox.contract`, `BottomBar`.)
-- [ ] The iOS edge effect under the bar: Exact gives a floating bar over a large-title list none,
-  and a route has no bottom toolbar (Exact finding 35; no PR: a design question for the Exact team, LLP 1131).
+- [x] The iOS edge effect under the bar (2026-11-04): Exact gives a floating bar none (finding 35), so the app draws
+  one: behind the bottom bar (and Select Chats' bar) a solid backdrop down past the home indicator and a 32-point fade
+  above it, outside the bar's glass group so its glass stays its own. Before, rows ran sharp under the bar; after,
+  they fade out above it and are hidden behind it, in light, dark and the largest text size
+  (`apps/multiplexer/.exact/ui/before/4-bottom-*.png`, `after/4-bottom-*.png`, gitignored). It is the app's fade,
+  not UIKit's blur. `check` still flags the inbox's title row over the rows (UIKit's own soft edge at the top).
 - [x] The capsule holds Inbox (selected; a tap scrolls to the top); the left button opens the
   filter menu (B5). The up-down button comes with B4.
 - [x] `check both` clean in dark, light and the largest text size; VoiceOver reads "Filter" (or
@@ -791,9 +795,11 @@ Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and com
   only that network's pins.
 - [x] The choice is kept across launches; a new sign-in starts at Inbox.
 - [x] MatrixCore filters the list itself (`NetworkFilter.swift`, `NetworkFilterTests`).
-- [ ] After a network change in a list scrolled down, the large title stays collapsed (Exact
-  finding 50; no PR: exact2's own tests say a scroll to the top after a collapse keeps the title collapsed, a design
-  question for the Exact team); a short line shows above the pinned grid (finding 49).
+- [x] After a network change in a list scrolled down, the large title stays collapsed: no longer seen (2026-11-04).
+  The inbox draws its own title row (no system bar since B21's title menu), which never collapses. Driven: scrolled
+  down 600 points, then WhatsApp in the filter sheet: "WhatsApp" large, the list at its top, in light, dark and the
+  largest text size (`.exact/ui/before/3-network-*.png`).
+- [ ] A short line shows above the pinned grid (finding 49). Not checked on 2026-11-04.
 - [x] Rami (2026-11-03): keep the Matrix row first; count unread chats; the title shows the network's name.
 
 **Dependencies:** B1, B3. **Scope:** M
@@ -951,6 +957,15 @@ chat info page, B20), and "..." on the right.
   `tap root drag 320 0 from 2 276 over 400`, at the height of a bubble that a swipe right answers, went back to the inbox
   ("willShow 0, by the edge swipe", then the drawn Back pressed), and no reply started (`composers` empty). Four runs; in the
   first, the log also showed the chat pushed again and popped a moment later, not seen in the other three.
+- [x] Messages no longer show behind the bar's name (2026-11-04; Exact finding 55); `check` is clean on it only with a local Exact change.
+  Cause: the bar's fade had a fixed height, shorter than the bar with a two-line name, the merged chat's tabs or the
+  largest text, so a bubble showed behind the name's glass (and in dark, that glass read under 4.5:1). Fix in the app:
+  the backdrop is sized by the bar itself, solid behind it and fading 32 points below it. Before and after in light,
+  dark and the largest size: `apps/multiplexer/.exact/ui/before/1-chat-*.png`, `after/1-chat-*.png` (gitignored).
+  `check` still reports the messages under the bar as overlaps with the app's Exact (it cannot tell an opaque view
+  covers them); a local exact2 branch (`local/check-hidden-by` in `exact2-gaps`, not pushed) makes the iOS host
+  report the opaque views drawn over an item, and with it `check` read "no findings" on this chat in light, dark and
+  the largest text size.
 - [x] Rami (2026-11-03): Mark as Unread inside a chat goes back to the list; Back leaves out muted,
   archived and Low Priority chats.
 
@@ -1093,10 +1108,17 @@ emoji, a search and "Frequently used".
   on the server. MatrixCore now reads the event from the server while the store has none, and a
   change throws if that read fails (`testANewDeviceKeepsTheBookmarksSavedBefore`, which failed
   before the fix with "a new device lists the bookmarks saved before: []").
-- [ ] The same risk, not fixed: Customize for Me's names, Archive and Delete
+- [x] The same risk, not fixed: Customize for Me's names, Archive and Delete
   (`com.ramimaalouf.multiplexer.chats`) and the frequent emojis read only the store, so a change in a
   new device's first seconds could replace the account's others. The same server read would fix
-  them (`accountDataOnServer` in `Bookmarks.swift`).
+  them (`accountDataOnServer` in `Bookmarks.swift`). (2026-11-03: every change of the account's own
+  data, the reminders and bookmarks too, starts from `accountDataForChange` (`AccountData.swift`):
+  the store's event, else the server's, and a failed read throws. `testANewDeviceKeepsTheAccountDataSavedBefore`
+  failed before the fix with "the emoji counted before is gone: ["🦉"]" (a new device's count
+  before its first sync); names, archive and reminders made right after the first sync kept the
+  others even before the fix, as the store had the account's data by then. Another device's
+  bookmark now tells the list through the account's data watch, which also watches reminders; the
+  minute's reload is gone (`testAnotherDevicesBookmarkShowsWithinSeconds`: 2.0 s; before, never).)
 - [x] Share a text, photo, file or video (media downloaded first, under its file name).
 - [x] Forward a text, photo, file or video to one or more chats from a sheet with search; media is
   not uploaded again (`testAForwardedTextPhotoAndFileArriveInAnotherChat`).
@@ -1264,6 +1286,13 @@ same test users time out on "the first sync"; run one suite at a time. Every con
 holds a lock around each run (agreed 2026-11-03): `until mkdir /tmp/mx-matrixcore.lock 2>/dev/null; do sleep
 10; done; <the run>; rmdir /tmp/mx-matrixcore.lock`. Do not wait with `pgrep`: two waiters see a quiet moment
 at once, and `pgrep -f "xcodebuild test -scheme MatrixCore"` in a shell loop matches the loop's own command line.
+**It came back (2026-11-04), with another cause, now fixed (branch `work/emoji-test`):** it failed again,
+also on `main`, with "this account's reactions are [:]". A diagnostic showed the test's message id no longer
+found the message: the sdk had replaced its timeline item under a new id (40 became 47) while the event
+stayed the same, and `toggleReaction` returned silently for an id it could not find, so every later toggle
+did nothing. The app had the same bug (a reaction tap could do nothing). MatrixCore now remembers each
+item's event and finds a replaced item by it; a message truly gone throws `MatrixCoreError.noMessage`. Before the fix: 3 failures in 3 runs; after: 3 passes in a row under one hold of the lock, a fourth in
+`MessageActionsTests` (5 passed), and `AccountDataTests` 2 passed.
 
 **Fixed on the way (2026-11-03, during Bookmarks): a crash at launch.** A relaunch, signed in,
 crashed in the sdk's room list (`RoomList.entriesWithDynamicAdapters`, `EXC_BAD_ACCESS`) two
@@ -1337,7 +1366,11 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
   clean in dark, light and the largest text size (`apps/multiplexer/.exact/b21/`, gitignored).
   `verify ios` clean.
 - [ ] After Sign Out, the sign-in screen's title shows small until the next launch (Exact
-  finding "a large title comes back inline"). Exact PR #1410 (open) fixes the sign-out path (the pop, then the reply).
+  finding "a large title comes back inline"). Still seen on 2026-11-04 in light, dark and the largest text size
+  (`.exact/ui/before/2-signout-*.png`). Exact PR #1410 fixes a minimal app's path (a pop, then the change in place),
+  not this app's: with it and a second local Exact change (the stack rebuilt), the title still came back inline. A trace
+  showed the bar already shown, 54 points tall, when the signed-out route arrives, with none of Exact's bar-showing
+  steps run. Stopped after three tries; it needs the Exact team or a closer look at how the route is rebuilt.
 - [x] A picture on the account: `@test1` has none, so only the initials were seen. (2026-11-03: `@test1` has a
   picture now; Settings shows it in its circle, `check both` clean: `apps/multiplexer/.exact/b21/account-picture.png`.)
 
@@ -1409,8 +1442,32 @@ Rami wants these, after the tasks above (2026-11-02):
   - MatrixCore `RemindersTests` (as `@test1` and `@test2`, under the lock): 3 passed. A reminder shows at once, reaches
     a second device of the account and not the other person; their message leaves it; your answer ends it on both
     devices and in the account's data; Clear takes it away.
-- Merge Chats: one person on two networks as one chat (B21). Designed 2026-11-03, not built: it waits on Rami's
-  choice (plan.md Q6).
+- Merge Chats: one person on two networks as one chat (B21). Built 2026-11-03 as Way A, the switchable chat (the
+  coordinator's choice under Rami's "continue as you see fit"; plan.md's log). What is built:
+  - Merge: the title menu's Merge Chats, or Select Chats' More > Merge Chats with two or more chosen. A sheet: the
+    name (the first chat's at first), the chats (search by name; a chat in a merge is not offered), and the default
+    network (a radio among those picked). Merge needs two chats and a name.
+  - Kept in the account's data (`com.ramimaalouf.multiplexer.merges`), the default with it, so the account's other
+    devices show the same merged chat; MatrixCore's `Merges.swift` (`merge`, `unmerge`, `roomsOf`, the list's fold).
+  - The list: one row, `merge:<id>`, with the merge's name, every network's logo on the picture, the newest message,
+    the unread counts added; it shows under each of its networks, and its rooms are in no list of their own. Every
+    chat action on it (Archive, Low Priority, Pin, Mute, Mark as Read or Unread, Delete, Select Chats' actions) acts on
+    each of its rooms; Remind Me is on the room it opens.
+  - Opening it: the room of the other person's newest message, else the default. The chat bar shows the networks as
+    tabs under the name; a tap shows that network's chat. Each network's chat is the room it was, so every chat
+    feature works as before.
+  - Unmerge: the info page's More > Unmerge; the rooms show as their own chats again.
+  - Checked (2026-11-03, as `@test1`): merged the "Multiplexer bar test" WhatsApp and Instagram chats from the title
+    menu and from Select Chats; the row showed both logos; the chat opened the WhatsApp room and the Instagram tab
+    showed the other in place, Back to the list; Unmerge in More brought both rows back. `check both` on the sheet clean;
+    on the chat at the default and largest sizes no overflow, size or clipping finding; the overlaps and dark contrast
+    it reports there are the floating bar's own (the same chat unmerged shows the same kinds; Exact finding 55). At
+    the accessibility sizes the tabs show the logos only. `verify ios` clean (6 tests).
+  - MatrixCore: `MergesTests` 3 passed (two offline; one end to end with a second device of `@test1`, whose first
+    sync took 27 s, so that test waits up to 90 s for it); `NetworkFilterTests`, `InboxTests`, `RemindersTests` and
+    `ChatActionsTests` passed with the change (one ChatActions test failed once and passed on its rerun).
+  - Not done: Beeper's suggestions (same phone number or name), and renaming a merge (unmerge and merge again).
+  - The design notes below were written before the choice.
   - What Beeper does (its help page, "Merge chats getting started guide"; our recording shows only the greyed menu
     row): Inbox menu > Merge Chats > pick the chats > a name and a default network. The merged chat replaces its chats
     in the list as one row; its unread count is their sum; Mark as Read, pins and labels act on the whole. Inside, one
@@ -1535,13 +1592,24 @@ push goes from the Mac straight to APNs, so no server is needed.
   compile `apps/multiplexer/extensions/notifications/NotificationService.swift` into
   `PlugIns/MultiplexerNotifications.appex` (Exact's share extension is the pattern:
   `host/apple/extensions.mjs`); sign it; sign the app again with `aps-environment development`, the
-  App Group and the Keychain group; install with `devicectl`.
-- [ ] The app asks for permission (`@exact/notifications`, grant `device.notifications`), then
+  App Group and the Keychain group; install with `devicectl`. (2026-11-03: written as
+  `scripts/add-notification-extension.sh --sim|--device <udid> <app>`, run after Exact's build.
+  `--sim` done on the Simulator: the extension (MatrixCore and the sdk compiled in, 36 s, cached;
+  73 MB) is in `PlugIns/`, the system registers it, and the app's simulated entitlements get
+  `aps-environment` and the App Group. `--device` is written, not run: it waits for P3.0's profiles.)
+- [x] The app asks for permission (`@exact/notifications`, grant `device.notifications`), then
   registers; the module adds the token callbacks to Exact's app delegate; a development build logs
-  the token.
+  the token. (2026-11-03, the Simulator: it asks after sign-in; Settings has a Notifications row
+  with "Turn On" when not asked yet; the token arrives through the callbacks added at run time,
+  `modules/apple/PushRegistration.swift`.)
 - [ ] `scripts/send-test-push.sh` sends a push to APNs sandbox, signed with the `.p8` from the Keychain.
+  (2026-11-03: written; `--dry-run` signs with a throwaway key and checks the signature. The real
+  send waits for P3.0's key. It works for the Simulator too: the Simulator has a real sandbox token,
+  so the extension can be proved on the Simulator before the iPhone.)
 - [ ] The locked iPhone shows the text the extension wrote (Rami confirms once).
 - [ ] A phone drive after the script still runs the app with the extension, or the gap is written down.
+  (2026-11-03, the Simulator: a drive keeps it, as the script patches Exact's build in place; an
+  Exact rebuild drops it until the script runs again.)
 - [ ] After 3 failed rounds: stop, write down the blocker, and decide whether to wait for Exact.
 
 **Verification:** `codesign -d --entitlements -` on the app and the extension; the extension logs
@@ -1556,17 +1624,22 @@ Keychain, opens the store in the App Group, fetches one event, and shows the cha
 the text. Memory and time are measured on the iPhone.
 
 **Acceptance criteria:**
-- [ ] A public `PushContent` in MatrixCore, plain types only: roomId, chatName, senderName, body,
-  network, isDirect, isNoisy, hasMention, threadId.
-- [ ] The fetch builds a memory-constrained client (`systemIsMemoryConstrained`, `.multiProcess(holderName:
+- [x] A public `PushContent` in MatrixCore, plain types only: roomId, chatName, senderName, body,
+  network, isDirect, isNoisy, hasMention, threadId. (`matrix-core/Sources/MatrixCore/Push.swift`, with eventId.)
+- [x] The fetch builds a memory-constrained client (`systemIsMemoryConstrained`, `.multiProcess(holderName:
   "notifications")`, `.one(roomId:)`, `.multipleProcesses`), then `getNotification`. The body uses
-  the chat list's word for each message kind.
+  the chat list's word for each message kind. (`MatrixPush.content`. A multi-process lock needs
+  session delegates: `SessionStorage`, backed by the Keychain item in the app and the extension.)
 - [ ] The app's store moves once into the App Group (Rami does not sign in again); the app's
   client takes the lock as `"app"`; `SessionKeychain` uses the access group
-  `3V2UU7RRK9.com.ramimaalouf.multiplexer`; the agent keeps its own folder.
+  `3V2UU7RRK9.com.ramimaalouf.multiplexer`; the agent keeps its own folder. (2026-11-03: the lock
+  as `"app"` and `SessionKeychain.accessGroup` done; the app's items are already in that group, its
+  default. The move is planned in `matrix-core/NOTES.md`, "The App Group store move", and waits
+  for P3.0's App Group.)
 - [ ] The extension sets `threadIdentifier` to the room id and the badge from `unread_count`.
 - [ ] On an error, a timeout, or before the first unlock after a reboot, it shows "New message";
-  never an empty or raw payload.
+  never an empty or raw payload. (Both written in `extensions/notifications/NotificationService.swift`;
+  they need a real push to run: `send-test-push.sh` with P3.0's key.)
 - [ ] `@test1` on the locked phone, `@test2` sends: chat, sender and text within 5 s, in a plain
   and in an encrypted room. The app open on a chat at the same time keeps working.
 - [ ] Peak memory and the time from push to banner are written in `matrix-core/NOTES.md`.
@@ -1611,12 +1684,16 @@ token from P3.1.
 ### P3.4 The pusher
 
 **Acceptance criteria:**
-- [ ] After sign-in and at each launch (permission given, token known), the app calls `setPusher`:
+- [x] After sign-in and at each launch (permission given, token known), the app calls `setPusher`:
   app id `com.ramimaalouf.multiplexer.ios.dev` for a development build, `.ios` later; pushkey the
   token in base64; URL `https://sygnal.ramimaalouf.com/_matrix/push/v1/notify`; format event id
-  only; a default payload with `mutable-content` and "New message"; `append: false`.
-- [ ] A new token replaces the old one; Sign Out calls `deletePusher` first.
-- [ ] A drive sets a pusher only for `@test` users, never on `@rami`.
+  only; a default payload with `mutable-content` and "New message"; `append: false`. (2026-11-03,
+  the Simulator as `@test1`: `scripts/list-pushers.sh` showed exactly that pusher. Our server takes
+  it with no gateway running.)
+- [x] A new token replaces the old one; Sign Out calls `deletePusher` first. (The pusher is kept in
+  the Keychain item; after Sign Out, `list-pushers.sh` showed 0. `testAPusherIsSetReplacedAndDeleted`.)
+- [x] A drive sets a pusher only for `@test` users, never on `@rami`. (`registerPush` checks
+  `sendsReadReceipts` first; `list-pushers.sh` refuses any account but a test user.)
 
 **Verification:** `scripts/list-pushers.sh` (like `list-test-devices.sh`) shows one pusher with
 the right values, and none after Sign Out.
@@ -1637,8 +1714,12 @@ the right values, and none after Sign Out.
 ### P3.6 Muted chats, mentions and the badge
 
 **Acceptance criteria:**
-- [ ] A chat muted in our app (B7) gets no push; a mentions-only chat gets only mentions
-  (`@test1`, `@test2`).
+- [x] A chat muted in our app (B7) gets no push; a mentions-only chat gets only mentions
+  (`@test1`, `@test2`). (2026-11-04, without APNs: `PushRulesTests` reads what Synapse itself
+  decides, `GET /notifications`, after a plain message and a mention from `@test2` in three rooms
+  of `@test1`'s. Normal: both notify. Mentions only (the room rule with no actions that
+  mautrix-go's `MuteRoom` writes): only the mention. Muted in our app: neither, and the mention
+  still counts for the list's "@". Our mute's rules already do this; nothing to fix.)
 - [ ] **Ask Rami:** WhatsApp mutes copy only when the bridge makes a chat's room
   (`mute_only_on_create: true`, the playbook's default): keep that, or follow WhatsApp's mute.
 - [ ] **Ask Rami:** the badge counts chats (the server's default) or messages. The extension and

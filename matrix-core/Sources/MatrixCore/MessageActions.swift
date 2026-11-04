@@ -110,7 +110,8 @@ extension MatrixAccount {
     /// Changes the emoji counts one change at a time, from the newest this device knows.
     private func changeEmojiUses(_ change: @escaping @Sendable (inout EmojiUses) -> Void) async throws {
         try await emojiUses.serially {
-            var uses = await self.currentEmojiUses()
+            // the store's counts, else the server's: a new device must not start from none.
+            var uses = self.emojiUses.uses(stored: EmojiUses(json: try await self.accountDataForChange(Self.recentEmojiType)))
             change(&uses)
             self.emojiUses.wrote(uses)
             do {

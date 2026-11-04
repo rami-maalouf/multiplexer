@@ -40,3 +40,11 @@ title that turns large again in place. Reproduced at exact2 `574720f370` in a mi
 with no bar that turns into a form under a large title): "Welcome" 73.67 x 20.67 before, 147 x
 40.67 after, both for the change in place and for a pop followed by the change (a sign-out whose
 reply arrives after the pop). Not fixed: a pop in the same batch as the change.
+
+## Seen again (2026-11-04, `ed43ad09a0`)
+
+In the app this finding came from, the minimal app's fix (open the title when `showBar` shows the
+bar again) and a second one (also when a rebuilt stack shows it again) did not help. A trace of
+the sign-out: the pop to the route with no bar hides the bar; when the signed-out route arrives
+(the route's controller is replaced), the bar is already shown, inline (54 points), and none of the
+host's own calls that show a hidden bar ran. Where it was shown again is not known yet.

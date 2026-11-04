@@ -74,7 +74,7 @@ final class ChatActionsTests: XCTestCase {
         _ = try await summary(second, archived) { !$0.isArchived }
 
         let heard = Heard(), watch = AccountDataWatch()
-        watch.start(second.client, interval: 0.5) { heard.add() }
+        watch.start(second.client, interval: 0.5) { _ in heard.add() }
         defer { watch.stop() }
         try await Task.sleep(nanoseconds: 3_000_000_000)
         XCTAssertEqual(heard.count, 0, "the watch heard a change before any")

@@ -292,7 +292,10 @@ final class MessageActionsTests: XCTestCase {
             if Set(mine.keys) == keys, !mine.values.contains(false) { return }
             try await Task.sleep(nanoseconds: 300_000_000)
         }
-        XCTFail("this account's reactions are \(mine) (true: on the server), not \(keys.sorted())")
+        // what the chat holds now: whether the message's id still finds it, and the newest messages.
+        let found = live.items.event(of: messageId) != nil
+        let newest = live.items.messages().suffix(3).map { "\($0.id) \($0.body.prefix(24))" }
+        XCTFail("this account's reactions are \(mine) (true: on the server), not \(keys.sorted()); the id \(messageId) finds the message: \(found); newest: \(newest)")
         throw CancellationError()
     }
 
