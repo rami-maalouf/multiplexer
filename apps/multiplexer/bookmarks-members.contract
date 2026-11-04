@@ -6,9 +6,9 @@ use BookmarkList, BookmarkReply from "./bookmarks.contract"
 members Multiplexer
   // the saved message a long press in the list is on (its event).
   state aimedBookmark = ""
-  // read again each minute too: another device's bookmark reaches this one's store with the sync,
-  // and nothing tells the list.
-  resource bookmarkList = loadBookmarks(session.userId, floor(shown / 60000)) as shape BookmarkList else empty()
+  // read again when the module says they changed: here, or on another device (its watch of the
+  // account's data).
+  resource bookmarkList = loadBookmarks(session.userId) as shape BookmarkList else empty()
   mutation bookmarked as shape BookmarkReply refreshes bookmarkList
   derive bookmarksLoaded = bookmarkList.owner == session.userId
   derive bookmarksShown = bookmarksLoaded ? bookmarkList.bookmarks : []

@@ -1093,10 +1093,17 @@ emoji, a search and "Frequently used".
   on the server. MatrixCore now reads the event from the server while the store has none, and a
   change throws if that read fails (`testANewDeviceKeepsTheBookmarksSavedBefore`, which failed
   before the fix with "a new device lists the bookmarks saved before: []").
-- [ ] The same risk, not fixed: Customize for Me's names, Archive and Delete
+- [x] The same risk, not fixed: Customize for Me's names, Archive and Delete
   (`com.ramimaalouf.multiplexer.chats`) and the frequent emojis read only the store, so a change in a
   new device's first seconds could replace the account's others. The same server read would fix
-  them (`accountDataOnServer` in `Bookmarks.swift`).
+  them (`accountDataOnServer` in `Bookmarks.swift`). (2026-11-03: every change of the account's own
+  data, the reminders and bookmarks too, starts from `accountDataForChange` (`AccountData.swift`):
+  the store's event, else the server's, and a failed read throws. `testANewDeviceKeepsTheAccountDataSavedBefore`
+  failed before the fix with "the emoji counted before is gone: ["🦉"]" (a new device's count
+  before its first sync); names, archive and reminders made right after the first sync kept the
+  others even before the fix, as the store had the account's data by then. Another device's
+  bookmark now tells the list through the account's data watch, which also watches reminders; the
+  minute's reload is gone (`testAnotherDevicesBookmarkShowsWithinSeconds`: 2.0 s; before, never).)
 - [x] Share a text, photo, file or video (media downloaded first, under its file name).
 - [x] Forward a text, photo, file or video to one or more chats from a sheet with search; media is
   not uploaded again (`testAForwardedTextPhotoAndFileArriveInAnotherChat`).
@@ -1657,8 +1664,12 @@ the right values, and none after Sign Out.
 ### P3.6 Muted chats, mentions and the badge
 
 **Acceptance criteria:**
-- [ ] A chat muted in our app (B7) gets no push; a mentions-only chat gets only mentions
-  (`@test1`, `@test2`).
+- [x] A chat muted in our app (B7) gets no push; a mentions-only chat gets only mentions
+  (`@test1`, `@test2`). (2026-11-04, without APNs: `PushRulesTests` reads what Synapse itself
+  decides, `GET /notifications`, after a plain message and a mention from `@test2` in three rooms
+  of `@test1`'s. Normal: both notify. Mentions only (the room rule with no actions that
+  mautrix-go's `MuteRoom` writes): only the mention. Muted in our app: neither, and the mention
+  still counts for the list's "@". Our mute's rules already do this; nothing to fix.)
 - [ ] **Ask Rami:** WhatsApp mutes copy only when the bridge makes a chat's room
   (`mute_only_on_create: true`, the playbook's default): keep that, or follow WhatsApp's mute.
 - [ ] **Ask Rami:** the badge counts chats (the server's default) or messages. The extension and

@@ -20,6 +20,8 @@ public final class MatrixAccount: @unchecked Sendable {
     /// The bookmarks this device wrote and the server has not confirmed (Bookmarks.swift).
     let bookmarkStates = BookmarkStates()
     let reminderStates = ReminderStates()
+    /// The account data events read from the server while the store had none (AccountData.swift).
+    let serverAccountData = ServerAccountData()
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
@@ -464,8 +466,12 @@ public final class MatrixAccount: @unchecked Sendable {
             roomOrder = order
         }
         startSearchBackfill()
-        // another device's archive, delete or name changes no room: the list hears of it here.
-        accountDataWatch.start(client) { [weak self] in self?.notify(.rooms) }
+        // another device's archive, delete, name, reminder or bookmark changes no room: the list
+        // and the bookmarks hear of it here.
+        accountDataWatch.start(client) { [weak self] types in
+            if types.contains(Bookmarks.type) { self?.notify(.bookmarks) }
+            if !types.subtracting([Bookmarks.type]).isEmpty { self?.notify(.rooms) }
+        }
     }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.

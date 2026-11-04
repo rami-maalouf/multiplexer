@@ -227,7 +227,8 @@ extension MatrixAccount {
     /// in a row both stay. Marks whose chat came back are dropped on the way.
     private func changeMarks(_ change: @escaping @Sendable (inout ChatMarks) -> Void) async throws {
         try await chats.serially {
-            let before = await self.chatMarks()
+            // the store's marks, else the server's: a new device must not start from none.
+            let before = self.chats.marks(stored: ChatMarks(json: try await self.accountDataForChange(ChatMarks.type)))
             var marks = before
             change(&marks)
             marks.dropReturned(try await self.rooms())
