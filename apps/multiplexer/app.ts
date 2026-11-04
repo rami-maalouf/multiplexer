@@ -312,6 +312,12 @@ const sources: Sources = {
     await native!.later({ op: 'chat', roomId, action });
     return { ok: true };
   },
+  // Select Chats: one of changeChat's actions, or pin or unpin, on several chats; the list shows
+  // each at once.
+  changeChats: async ([roomIds, action], _store, _storage, native): Promise<Result<'changeChats'>> => {
+    await native!.later({ op: 'chats', roomIds, action });
+    return { ok: true };
+  },
   // the search screen's results (search.ts): a kind's messages, the chats opened last (recent,
   // newest first) before any word, or chats by name, messages and links. Nothing while it is closed.
   // With room, the search in that chat (its info page's): its messages and links, or a kind's.

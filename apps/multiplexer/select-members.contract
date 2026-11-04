@@ -1,0 +1,48 @@
+// Select Chats (B7, B21): several chats at once, as Messages' and Beeper's select mode. The title
+// menu's Select Chats, or a chat's long-press Select Chat (that chat chosen), starts it; a tap on
+// a row or a pinned picture chooses it or lets it go; the bar under the list acts on every chosen
+// chat, then the mode ends. Its parts: inbox.contract (SelectTitle, SelectBar, ChooseMark).
+use ChatsChanged from "./inbox.contract"
+
+members Multiplexer
+  state selecting = false
+  state selectedChats: string[] = []
+  mutation changedChats as shape ChatsChanged queue refreshes roomList
+  // the chosen chats the list still has (one can leave it while chosen: another device archived it).
+  derive chosenRooms = roomList.rooms.filter(r => selectedChats.includes(r.id))
+  derive chosenIds = chosenRooms.map(r => r.id)
+  // what the bar offers: Mark as Read when one is unread, Unmute when all are muted, Unpin when all
+  // are pinned.
+  derive chosenUnread = chosenRooms.filter(r => r.unread > 0 or r.markedUnread).length > 0
+  derive chosenMuted = chosenRooms.length > 0 and chosenRooms.filter(r => not r.muted).length == 0
+  derive chosenPinned = chosenIds.length > 0 and chosenIds.filter(id => not roomList.pinned.map(p => p.id).includes(id)).length == 0
+
+  action startSelecting
+    selecting = true
+    selectedChats = []
+    haptic("selection")
+  // the long-press menu's Select Chat: the mode starts with that chat chosen.
+  action selectAimed
+    selecting = true
+    selectedChats = [aimed]
+    haptic("selection")
+  action toggleChosen(id: string)
+    selectedChats = selectedChats.includes(id) ? selectedChats.filter(c => c != id) : selectedChats.concat([id])
+    haptic("selection")
+  // a pinned picture: opens its chat, or chooses it while choosing chats.
+  action tapPinned(id: string)
+    if selecting
+      toggleChosen(id)
+    else
+      openChat(id)
+  action stopSelecting
+    selecting = false
+    selectedChats = []
+  // read, unread, mute, unmute, archive, unarchive, lowPriority, inbox, pin, unpin or delete, on
+  // every chosen chat; each shows in the list at once.
+  action changeChosen(change: string)
+    send changedChats = changeChats(chosenIds, change)
+    haptic("success")
+    stopSelecting()
+  action askDeleteChosen
+    showModal("delete-chats")
