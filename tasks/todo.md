@@ -1666,8 +1666,8 @@ the text. Memory and time are measured on the iPhone.
   client takes the lock as `"app"`; `SessionKeychain` uses the access group
   `3V2UU7RRK9.com.ramimaalouf.multiplexer`; the agent keeps its own folder. (2026-11-03: the lock
   as `"app"` and `SessionKeychain.accessGroup` done; the app's items are already in that group, its
-  default. The move is planned in `matrix-core/NOTES.md`, "The App Group store move", and waits
-  for P3.0's App Group.)
+  default. The move is implemented in `0939ebc` (preparation below); proving it on an entitled
+  device still waits for P3.0's App Group.)
 - [ ] The extension sets `threadIdentifier` to the room id and the badge from `unread_count`.
 - [ ] On an error, a timeout, or before the first unlock after a reboot, it shows "New message";
   never an empty or raw payload. (Both written in `extensions/notifications/NotificationService.swift`;
@@ -1680,6 +1680,20 @@ the text. Memory and time are measured on the iPhone.
 the extension builds it reads `@test2`'s message in a plain and an encrypted room; then the phone test.
 
 **Dependencies:** P3.1. **Scope:** M (L if the store move is hard)
+
+**Preparation, 2026-11-04:** shared-store code is implemented in `0939ebc`, with
+`SessionStoreTests` (11 passing filesystem tests) and push/search/sign-out regression checks
+(15 passing tests). Legacy metadata defaults to data; an interrupted move finishes its metadata
+write on retry; an unavailable group retains the session and refuses replacement sign-in;
+agent sessions never use the group. Sign-out removes only its resolved store. Keychain writes
+update existing items in place. The extension opens only a published group store.
+The acceptance criterion above stays unchecked until P3.0 permits a real entitled migration
+without signing in again. Phone delivery, memory and timing also remain unproved.
+After incorporating main cebda48, `verify ios` passed all 6 tests, light/dark checks and
+8 largest-text screens (75.2 s; `/tmp/mx-store-migration-logs/integrated-verify.log`).
+Settings matches cebda48. Test sessions signed out; MX main shut down.
+P3.6 badge semantics and WhatsApp mute policy still need decisions; P3.7 still needs
+the documented Exact notification activation/presentation integration. Neither is claimed done.
 
 ### P3.3 Server: Sygnal (server conversation)
 
