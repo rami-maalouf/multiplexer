@@ -22,6 +22,7 @@ use BookmarksScreen, BookmarkMenu from "./bookmarks.contract"
 use GifSheet from "./gif.contract"
 use CameraScreen from "./camera.contract"
 use RequestsScreen from "./requests.contract"
+use NewSpaceSheet, AddToSpaceSheet from "./spaces.contract"
 
 shape Session
   userId: string
@@ -230,8 +231,10 @@ routes nav
     settings "/settings"
     bookmarks "/bookmarks"
     scheduled "/scheduled"
-    requests "/requests"
       laterChange "/scheduled/:delay/time"
+    requests "/requests"
+    newSpace "/spaces/new"
+    addSpace "/spaces/add"
     remind "/remind/:id"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
@@ -453,6 +456,7 @@ component Multiplexer
   members "./bookmarks-members.contract"
   members "./camera-members.contract"
   members "./requests-members.contract"
+  members "./spaces-members.contract"
   members "./encryption-members.contract"
   members "./transcribe-members.contract"
   members "./remind-members.contract"
@@ -1068,6 +1072,9 @@ component Multiplexer
                   testId="menu-mute"
                   image (aimedMuted ? "symbol:notifications" : "symbol:icon.bell-slash")
                   text (aimedMuted ? "Unmute" : "Mute")
+                button press=openAddToSpace(aimed) popovertarget="chat-menu" popovertargetaction="hide" testId="menu-add-space"
+                  image "symbol:people"
+                  text "Add to Space"
                 hr
                 button press=askDelete destructive=true popovertarget="chat-menu" popovertargetaction="hide" testId="menu-delete"
                   image "symbol:delete"
@@ -1077,6 +1084,13 @@ component Multiplexer
           ScheduledScreen(route=`${e.id}`, messages=scheduledShown, loaded=(scheduledList.owner == session.userId),
             busy=pending(scheduledChanged), refused=laterRefused, now=shown, offset=time.utcOffset, close=back,
             sendNow=sendScheduledNow, change=changeLaterTime, cancel=cancelScheduled)
+        if e.name == "newSpace"
+          NewSpaceSheet(route=`${e.id}`, name=spaceName, picture=spacePicture, saving=pending(spaceCreated),
+            refused=(spaceAsked and failed(spaceCreated)), type=typeSpaceName, choose=chooseSpacePicture, pick=pickSpacePicture,
+            close=back, save=saveNewSpace)
+        if e.name == "addSpace"
+          AddToSpaceSheet(route=`${e.id}`, spaces=spaceChoices.spaces, loaded=(spaceChoices.room == spaceRoom),
+            saving=pending(spaceAdded), refused=(spaceAddAsked and failed(spaceAdded)), close=back, add=addChatToSpace, create=openNewSpace)
         if e.name == "requests"
           RequestsScreen(route=`${e.id}`, requests=requestsShown, loaded=(requestList.owner == session.userId),
             answering=answeringRequest, refused=requestRefused, close=back, accept=acceptRequest, decline=declineRequest,
@@ -1114,7 +1128,7 @@ component Multiplexer
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
             InboxSheet(networks=roomList.networks, communities=roomList.communities, community=community, chooseCommunity=chooseCommunity,
-              requests=requestsShown.length, openRequests=openRequests, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
+              requests=requestsShown.length, openRequests=openRequests, newSpace=openNewSpace, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
               chooseList=chooseList, reminders=roomList.reminders, scheduled=scheduledShown.length, openScheduled=chooseSendLater, openBookmarks=chooseBookmarks,
               largeText=viewport.accessibilityTextSize)
@@ -1164,7 +1178,7 @@ component Multiplexer
               column flex=1
         // the chat's info page (info.contract), full screen, zoomed out of the chat bar's picture and name.
         if e.name == "info"
-          InfoPage(route=`${e.id}`, info=infoShown, loaded=infoLoaded, members=chatMembers.members, total=chatMembers.total,
+          InfoPage(addToSpace=openAddToSpace(openRoom), route=`${e.id}`, info=infoShown, loaded=infoLoaded, members=chatMembers.members, total=chatMembers.total,
             media=chatMedia.items, mediaLoaded=(chatMedia.room == openRoom), moreMedia=allMedia, pinned=openPinned, archived=openArchived, lowPriority=openLowPriority,
             muted=openMuted, unread=(openUnread > 0), close=closeInfo, archive=archiveOpen, moveLowPriority=lowPriorityOpen,
             pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, reminder=openReminderAt, remind=remindOpen,

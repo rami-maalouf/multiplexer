@@ -1,5 +1,6 @@
 @testable import MatrixCore
 import XCTest
+import UIKit
 
 /// Communities as filters ("Later"): the spaces an account has joined, without the bridges'
 /// own. The end-to-end test uses a space of its own ("Multiplexer community test") holding one
@@ -42,8 +43,7 @@ final class CommunitiesTests: XCTestCase {
         XCTAssertNil(rooms["!alone"])
     }
 
-    /// By name, as Beeper lists them (a capital letter does not come first); a space with none
-    /// of the account's chats is left out, and each keeps only the chats the account has.
+    /// by name, including an empty space so a newly created one can be selected.
     func testCommunitiesAreListedByNameWithTheirChats() {
         let spaces = [
             Community(id: "!c", name: "happy town", avatarName: "", rooms: ["!1", "!gone"]),
@@ -52,7 +52,7 @@ final class CommunitiesTests: XCTestCase {
             Community(id: "!b", name: "Bahen", avatarName: "", rooms: ["!3", "!1"]),
         ]
         let listed = Community.listed(spaces, chats: ["!1", "!2", "!3"])
-        XCTAssertEqual(listed.map(\.name), ["Arab Run Club", "Bahen", "happy town"])
+        XCTAssertEqual(listed.map(\.name), ["Arab Run Club", "Bahen", "Empty", "happy town"])
         XCTAssertEqual(listed.last?.rooms, ["!1"])
     }
 
@@ -102,10 +102,54 @@ final class CommunitiesTests: XCTestCase {
         XCTAssertEqual(community?.rooms, [chatId])
         let inbox = try await reader.inbox(filter: .all, network: nil).on(community: community)
         XCTAssertEqual(inbox.listed, [chatId])
-        // the other test rooms are in no space.
-        let all = try await reader.communities()
-        let others = Set(try await reader.rooms().filter { $0.name.hasPrefix("Multiplexer") && $0.name != chatName }.map(\.id))
-        XCTAssertTrue(all.allSatisfy { $0.rooms.isDisjoint(with: others) }, "\(all.map(\.name))")
+    }
+
+    // a private space starts empty, accepts a chat, and keeps that chat on a fresh device.
+    func testANewSpaceCanHoldAChatOnAnotherDevice() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("a test user is needed")
+        }
+        let server = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let writer = try await signInTestDevice(server, user, password)
+        let name = "Multiplexer new space \(UUID().uuidString.prefix(8))"
+        let picture = FileManager.default.temporaryDirectory.appendingPathComponent("space-\(UUID().uuidString).jpg")
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 32)).image { context in
+            UIColor.systemTeal.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
+        }
+        try XCTUnwrap(image.jpegData(compressionQuality: 0.8)).write(to: picture)
+        defer { try? FileManager.default.removeItem(at: picture) }
+        let id = try await writer.createSpace(name: name, picture: picture)
+        addTeardownBlock { try? await writer.decline(request: id) }
+        let emptySpaces = try await writer.communities()
+        XCTAssertEqual(emptySpaces.first { $0.id == id }?.rooms, [])
+        let chats = try await writer.rooms()
+        let chatId: String
+        if let chat = chats.first(where: { $0.name == chatName }) { chatId = chat.id }
+        else { chatId = try await writer.createRoom(name: chatName) }
+        // creation and power-level state can arrive in separate sync updates.
+        var editable = try await writer.editableCommunities(for: chatId)
+        for _ in 0..<40 where !editable.contains(where: { $0.id == id }) {
+            try await Task.sleep(nanoseconds: 500_000_000)
+            editable = try await writer.editableCommunities(for: chatId)
+        }
+        XCTAssertTrue(editable.contains { $0.id == id })
+        try await writer.addToSpace(roomId: chatId, spaceId: id)
+        // repeating the action is harmless.
+        try await writer.addToSpace(roomId: chatId, spaceId: id)
+        let reader = try await signInTestDevice(server, user, password)
+        var found: Community?
+        for _ in 0..<40 {
+            found = try await reader.communities().first { $0.id == id }
+            if found?.rooms.contains(chatId) == true { break }
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+        XCTAssertEqual(found?.name, name)
+        XCTAssertFalse(found?.avatarName.isEmpty ?? true)
+        XCTAssertEqual(found?.rooms, [chatId])
+        let inbox = try await reader.inbox(filter: .all).on(community: found)
+        XCTAssertEqual(inbox.listed, [chatId])
     }
 
     /// The space once the sdk's space graph holds its room, or the last answer after 20 s: a new

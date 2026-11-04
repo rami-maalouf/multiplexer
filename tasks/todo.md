@@ -1491,8 +1491,11 @@ message request is accepted "with a button" (`accept_with_button`).
   message request (Instagram, WhatsApp): the bridge makes the portal and flags it. Not built:
   none exists to look at, and how the bridge shows the flag to a client (and takes the accept)
   needs a spike when Rami gets one. Until then such a chat shows in the inbox as now.
-- **New Space** needs Rami's choice (below). L2 already lists every joined space as a
-  community, so a space made here would show in the sheet with no more work there.
+- **New Space** is a private Matrix space, approved by the coordinator on 2026-11-03:
+  a required name and optional picture, created from the filter sheet. Empty spaces remain
+  visible. Chats can be added from their long-press menus or a scrollable row on their info
+  pages. Only editable spaces are offered; adding a chat changes no state in the chat itself
+  or on its bridged network.
 
 **Built (Requests, 2026-11-03):**
 - [x] The sheet's Requests row (after Send Later, as Beeper orders it) counts the invites and
@@ -1509,23 +1512,55 @@ message request is accepted "with a button" (`accept_with_button`).
   (taking `@test1` out first if an earlier drive accepted), from a short-lived device.
 
 **Verification (2026-11-03):**
-- [ ] MatrixCore: `RequestsTests` (`@test2` invites `@test1`: a request with its inviter, not in
+- [x] MatrixCore: `RequestsTests` (`@test2` invites `@test1`: a request with its inviter, not in
   the list; declined; invited again and accepted: in the list), and three sources asked at once
-  on a new device. The whole suite.
+  on a new device. Focused Communities/Requests run: 8 passed, 0 failed (2026-11-03).
 - [x] Drive as `@test1`: the row counts 1; the screen; Decline empties it; a new invite, Accept:
   the chat is first in the list. `check` clean in dark, light and the largest text size (there
   the half-height sheet scrolls to the buttons).
 - [x] `verify ios` clean.
 
-**Ask Rami (New Space):** Beeper's "+ New Space" groups chats you choose. Which do you want?
-1. A Matrix space on our server (recommended): a name, a picture, and the chats you add. It shows
-   as a row in the sheet at once (L2), and in Element too. Adding a WhatsApp chat to it changes
-   nothing in WhatsApp.
-2. The same as Labels (in "Later"): a private name on chats, kept in your account's data, not a
-   room. Then New Space and Create Label are one feature.
-3. Not needed: leave the button out.
+**New Space built and checked (2026-11-04):**
+- private space creation uploads the optional picture first, then creates the space in one
+  request; selecting Create shows the new empty space immediately.
+- the picker checks one chat's memberships and lists only spaces this account can edit.
+  repeated additions are harmless; an added row shows a checkmark.
+- the name form and picker use native grouped sheets; the name is required, saving disables
+  submission, and a failed save retains the form for retry. compressed upload copies are
+  removed when the request finishes.
+- the create/add drive passed as `@test1`. Light, dark and largest-system-text forms and the
+  info-page picker were inspected. The largest-text context-menu drive hits known Exact
+  finding 52; the info-page entry provides the same action in a scrollable list.
+- `verify ios`: clean, 7 tests passed, no findings in either appearance or at the largest
+  text size. Focused core tests: 8 passed after awaiting permission sync, including the optional
+  picture and membership on another device.
+- review found a late creation could replace a screen opened after dismissal; completion now
+  belongs to the initiating navigation entry. Space-only sync changes are watched too, so
+  permissions and membership can refresh without a chat message arriving.
 
-**Dependencies:** B4, L2. **Scope:** S (Requests); New Space: M, after the answer.
+**Dependencies:** B4, L2. **Scope:** S (Requests); M (New Space).
+
+### L4 Room member names in group previews
+
+**Reproduced read-only (2026-11-03):** a fresh device of the real account loaded 315 chats;
+29 group previews used opaque WhatsApp sender IDs. A targeted read of each sender's
+`m.room.member` content found a nonempty display name in all 29 rooms. Both read-only
+devices signed out; no message or receipt was sent.
+
+**Cause:** the inbox uses only the SDK latest event's `ProfileDetails`. Its fallback is the
+sender ID until that profile is ready. Opening a timeline fetches members, so chat messages
+can show names while the unopened room's preview still has an ID. The preview has never
+looked up the sender through the room itself.
+
+**Approved fix (coordinator, 2026-11-03):** when a group's incoming preview has no usable
+profile name, resolve the sender with the room member's display name. Preserve the raw ID
+only as the final fallback. Keep Matrix details inside MatrixCore.
+
+- [ ] Resolve the room member when the latest event's sender profile has no name.
+- [ ] Core test as test users: a room-specific member display name appears in the preview on
+  a fresh device, before opening the chat.
+- [ ] Repeat the real-account read-only drive and compare all 29 affected previews.
+- [ ] Focused core tests, iOS verification, review, commit and merge with New Space.
 
 ## Phase 3: push notifications (M3)
 

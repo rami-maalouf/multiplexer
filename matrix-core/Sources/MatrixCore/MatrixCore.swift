@@ -257,6 +257,7 @@ public enum SendState: String, Sendable {
 
 public enum MatrixCoreError: Error, Equatable {
     case noRoom(String)
+    case invalidSpaceName
     case timedOut(String)
     case sendFailed(String)
     /// The message is not a photo, or not in the open chat.

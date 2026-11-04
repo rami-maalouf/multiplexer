@@ -52,10 +52,9 @@ extension Community {
     }
 
     /// The communities in the filter sheet's order: by name, as Beeper lists them. A space whose
-    /// chats this account has none of is left out: it would filter to an empty list.
+    /// chats this account has none of is still listed, so a newly created space is usable.
     static func listed(_ spaces: [Community], chats: Set<String>) -> [Community] {
         spaces.map { Community(id: $0.id, name: $0.name, avatarName: $0.avatarName, rooms: $0.rooms.intersection(chats)) }
-            .filter { !$0.rooms.isEmpty }
             .sorted {
                 let order = $0.name.localizedStandardCompare($1.name)
                 return order == .orderedSame ? $0.id < $1.id : order == .orderedAscending
@@ -94,7 +93,10 @@ extension MatrixAccount {
     /// two levels). A new device knows a space only once its first sync has brought the space's
     /// room: on a bridged account with 300 chats, after about a minute.
     public func communities(among chats: [RoomSummary]) async -> [Community] {
-        let chatIds = Set(chats.map(\.id))
+        await communities(chatIds: Set(chats.map(\.id)))
+    }
+
+    private func communities(chatIds: Set<String>) async -> [Community] {
         let me = (try? client.userId()) ?? ""
         let service = await client.spaceService()
         // the graph is built from the joined rooms' space state; this asks for its latest.
@@ -122,5 +124,39 @@ extension MatrixAccount {
                                     avatarName: space.avatarUrl().map(avatarFileName) ?? "", rooms: rooms[space.id()] ?? []))
         }
         return Community.listed(spaces, chats: chatIds)
+    }
+}
+
+extension MatrixAccount {
+    /// upload the optional picture before creation, so a failed upload cannot create a duplicate space.
+    public func createSpace(name: String, picture: URL? = nil, mimetype: String = "image/jpeg") async throws -> String {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { throw MatrixCoreError.invalidSpaceName }
+        try await startSync(timeout: 30)
+        var avatar: String?
+        if let picture {
+            avatar = try await client.uploadMedia(mimeType: mimetype, data: Data(contentsOf: picture), progressWatcher: nil)
+        }
+        let id = try await client.createRoom(request: CreateRoomParameters(name: name, isEncrypted: false,
+            visibility: .private, preset: .privateChat, avatar: avatar, isSpace: true))
+        _ = try await room(id, timeout: 30)
+        notify(.rooms)
+        return id
+    }
+
+    /// only spaces where this account can add chats are offered by the chat menu.
+    public func editableCommunities(for roomId: String) async throws -> [Community] {
+        try await startSync(timeout: 30)
+        let communities = await communities(chatIds: [roomId])
+        let editable = await client.spaceService().editableSpaces()
+        let ids = Set(editable.map { $0.roomId })
+        return communities.filter { ids.contains($0.id) }
+    }
+
+    /// the child link belongs to the space. no write to the chat, or its network, is needed.
+    public func addToSpace(roomId: String, spaceId: String) async throws {
+        try await startSync(timeout: 30)
+        try await client.spaceService().addChildToSpace(childId: roomId, spaceId: spaceId)
+        notify(.rooms)
     }
 }

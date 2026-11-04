@@ -127,8 +127,9 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   comes after, in the client's order.
 - `RoomSummary.unreadCount` is the sdk's `numUnreadMessages`; `markRead(roomId:)` sends a
   read receipt for the room's newest message.
-- Spaces are not chats: `rooms()` leaves them out (`isSpace()`), and the list service's
-  filter is `joined` and `nonSpace`.
+- Spaces are not chats: `rooms()` leaves them out (`isSpace()`). The list service watches
+  joined rooms and invites, including spaces, so a space's permissions or children can refresh
+  the filter sheet even when no chat message arrives.
 - `RoomSummary.avatarName` names the room's picture; `avatarFile(roomId:directory:)`
   downloads a thumbnail of at most 160 pixels a side once.
 

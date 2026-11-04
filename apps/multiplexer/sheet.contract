@@ -93,6 +93,7 @@ component InboxSheet
     // the chats this account is invited to, and the list of them (Requests).
     requests: number
     openRequests: action
+    newSpace: action
     // messages waiting on the server, and the list of them (Send Later).
     scheduled: number
     openScheduled: action
@@ -128,3 +129,5 @@ component InboxSheet
           SheetRow(picture=(c.avatar != "" ? c.avatar : "symbol:people"), logo=(c.avatar != ""), rounded=true, name=c.name,
             unread=c.unread, noun="unread", chosen=(community == c.id), value=c.id, choose=chooseCommunity, largeText=largeText,
             identifier=`inboxes-community-${c.id}`)
+        SheetRow(rounded=false, picture="symbol:add", logo=false, name="New Space", unread=0, noun="", chosen=false,
+          value="new", choose=newSpace, largeText=largeText, identifier="inboxes-new-space")

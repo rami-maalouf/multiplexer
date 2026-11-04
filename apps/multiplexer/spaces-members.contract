@@ -1,0 +1,43 @@
+use SpaceCreated, SpaceChoices, SpaceAdded from "./spaces.contract"
+
+members Multiplexer
+  state spaceName = ""
+  state spacePictures: Picked[] = []
+  state spaceAsked = false
+  state spaceVisit = ""
+  state spaceRoom = ""
+  state spaceAddAsked = false
+  mutation spaceCreated as shape SpaceCreated refreshes roomList then newSpaceDone
+  resource spaceChoices = loadSpaceChoices(top(nav).name == "addSpace" ? spaceRoom : "") as shape SpaceChoices else empty()
+  mutation spaceAdded as shape SpaceAdded refreshes roomList, spaceChoices
+  derive spacePicture = match first(spacePictures) { case some(p) => p.path, case none => "" }
+  action openNewSpace(v: string)
+    spaceName = ""
+    spacePictures = []
+    spaceAsked = false
+    nav = go(nav, path("newSpace"))
+  action typeSpaceName(v: string)
+    spaceName = v
+  action chooseSpacePicture
+    showPicker("space-pick-picture")
+  action pickSpacePicture(files: Picked[])
+    spacePictures = files
+  action saveNewSpace
+    if spaceName.trim() != "" and not pending(spaceCreated)
+      spaceAsked = true
+      spaceVisit = `${top(nav).id}`
+      send spaceCreated = createSpace(spaceName.trim(), spacePictures)
+  action newSpaceDone
+    if top(nav).name == "newSpace" and `${top(nav).id}` == spaceVisit
+      community = match spaceCreated { case some(s) => s.id, case none => "" }
+      network = ""
+      chatList = "inbox"
+      nav = go(nav, path("home"))
+      haptic("success")
+  action openAddToSpace(id: string)
+    spaceRoom = id
+    spaceAddAsked = false
+    nav = go(nav, path("addSpace"))
+  action addChatToSpace(id: string)
+    spaceAddAsked = true
+    send spaceAdded = addToSpace(spaceRoom, id)

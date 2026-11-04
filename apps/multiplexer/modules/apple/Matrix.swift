@@ -95,6 +95,22 @@ final class Matrix: ExactModule {
                     default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive, delete, remind and clearReminder")
                     }
                     reply.send(["ok": true])
+                case "spaceChoices":
+                    let account = try await signedIn(), roomId = request["roomId"] as? String ?? ""
+                    let spaces = try await account.editableCommunities(for: roomId)
+                    reply.send(["spaces": spaces.map { ["id": $0.id, "name": $0.name, "added": $0.rooms.contains(roomId)] }])
+                case "createSpace", "addToSpace":
+                    let account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    if request["op"] as? String == "createSpace" {
+                        let path = request["path"] as? String ?? ""
+                        let id = try await account.createSpace(name: request["name"] as? String ?? "",
+                            picture: path.isEmpty ? nil : appFile(path), mimetype: request["mimetype"] as? String ?? "image/jpeg")
+                        reply.send(["id": id])
+                    } else {
+                        try await account.addToSpace(roomId: request["roomId"] as? String ?? "", spaceId: request["spaceId"] as? String ?? "")
+                        reply.send(["ok": true])
+                    }
                 case "requests":
                     // the chats this account is invited to (MatrixCore's Requests.swift), newest first.
                     let account = try await signedIn()

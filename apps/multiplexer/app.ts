@@ -35,6 +35,7 @@ const readTranscripts = (storage: Storage): Promise<Record<string, Transcript[]>
   (e: { code?: string }) => { if (e?.code === 'ENOENT') return {}; throw e; });
 
 // the GIFs the grid shows, by slug, so a tap sends the one it shows.
+let spacePictures = 0;
 const shownGifs = new Map<string, KlipyItem>();
 
 // what modules/apple/Matrix.swift answers. a refused sign-in names its problem;
@@ -337,9 +338,30 @@ const sources: Sources = {
     if (roomId === '' || !native?.available) return { room: roomId, can: false };
     return (await native.later({ op: 'canSendLater', roomId })) as { room: string; can: boolean };
   },
-  // the messages waiting on the server, the soonest first; read again each minute (minute), as
-  // they go at their time, and when one is made, moved, sent or cancelled.
-  // the chats this account is invited to (Requests); the list's watch says when one comes or goes.
+  createSpace: async ([name, pictures], _store, storage, native): Promise<Result<'createSpace'>> => {
+    const file = pictures[0];
+    let picture: { path: string; type: string } | undefined;
+    if (file) {
+      await storage.fs.mkdir('app:/tmp/upload/space').catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });
+      picture = await storage.fs.compressImage(file.path, `app:/tmp/upload/space/${++spacePictures}.jpg`, { maxDimension: 1024, maxBytes: 400_000 });
+    }
+    try {
+      return await native!.later({ op: 'createSpace', name, path: picture?.path ?? '', mimetype: picture?.type ?? '' }) as { id: string };
+    } finally {
+      if (picture) await storage.fs.rm(picture.path).catch(() => {});
+    }
+  },
+  loadSpaceChoices: async ([roomId], _store, _storage, native): Promise<Result<'loadSpaceChoices'>> => {
+    if (roomId === '' || !native?.available) return { room: roomId, spaces: [] };
+    native.watch('rooms');
+    const answer = await native.later({ op: 'spaceChoices', roomId }) as { spaces: { id: string; name: string; added: boolean }[] };
+    return { room: roomId, ...answer };
+  },
+  addToSpace: async ([roomId, spaceId], _store, _storage, native): Promise<Result<'addToSpace'>> => {
+    await native!.later({ op: 'addToSpace', roomId, spaceId });
+    return { ok: true };
+  },
+  // the list changes when an invite comes or goes.
   loadRequests: async ([userId], _store, _storage, native): Promise<Result<'loadRequests'>> => {
     if (userId === '' || !native?.available) return { owner: userId, requests: [] };
     native.watch('rooms');

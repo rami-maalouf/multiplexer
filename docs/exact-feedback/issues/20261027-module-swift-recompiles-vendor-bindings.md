@@ -30,3 +30,8 @@ edit to `app.contract` or `app.ts` took seconds.
 ## Evidence
 
 Seen at exact2 `65577096ed`. `host/apple/build.mjs` is unchanged at `cee509ac82`.
+
+## seen again (2026-11-03)
+
+Adding two small operations to a native module triggered a roughly 90-second build, including
+the unchanged vendor bindings. Subsequent view-only updates used the new plan in seconds.

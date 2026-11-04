@@ -433,8 +433,8 @@ public final class MatrixAccount: @unchecked Sendable {
         try await poll(timeout: timeout, what: "the first sync") { state.current == .running }
         let order = RoomEntries { [weak self] in self?.notify(.rooms) }
         let entries = try await service.roomListService().allRooms().entriesWithDynamicAdapters(pageSize: 1000, listener: order)
-        // the invites too, so a request that arrives or goes tells the list (Requests.swift).
-        _ = entries.controller().setFilter(kind: .all(filters: [.nonSpace, .any(filters: [.joined, .invite])]))
+        // invites and spaces must notify too; rooms() keeps spaces out of the chat list.
+        _ = entries.controller().setFilter(kind: .any(filters: [.joined, .invite]))
         lock.withLock {
             roomEntries = entries
             roomOrder = order

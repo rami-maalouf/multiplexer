@@ -1,0 +1,12 @@
+// the form's validation and cancellation need no account; signed-in drives prove creation.
+test "New Space needs a name and cancel keeps the inbox"
+  at "/spaces/new"
+  clock data
+  expect tree has "space-name"
+  expect disabled "info-sheet-save"
+  type "space-name" "   "
+  expect disabled "info-sheet-save"
+  type "space-name" "Friends"
+  expect enabled "info-sheet-save"
+  tap "info-sheet-cancel"
+  expect tree missing "space-name"
