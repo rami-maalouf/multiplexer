@@ -20,6 +20,7 @@ public final class MatrixAccount: @unchecked Sendable {
     /// The bookmarks this device wrote and the server has not confirmed (Bookmarks.swift).
     let bookmarkStates = BookmarkStates()
     let reminderStates = ReminderStates()
+    let mergeStates = MergeStates()
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
@@ -196,6 +197,7 @@ public final class MatrixAccount: @unchecked Sendable {
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
         await fillReminders(&rooms)
+        await fillMerges(&rooms)
         return rooms
     }
 

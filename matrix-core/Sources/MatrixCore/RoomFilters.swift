@@ -45,9 +45,9 @@ extension RoomSummary {
     /// Unread messages, or marked unread by hand.
     public var isUnread: Bool { unreadCount > 0 || isMarkedUnread }
 
-    /// The list the chat is in; nil when it is deleted from this app. An archived chat in Low
-    /// Priority is in the Archive.
-    public var list: ChatList? { isHidden ? nil : (isArchived ? .archive : (isLowPriority ? .lowPriority : .inbox)) }
+    /// The list the chat is in; nil when it is deleted from this app, or shown inside a merged
+    /// chat. An archived chat in Low Priority is in the Archive.
+    public var list: ChatList? { isHidden || foldedInto != nil ? nil : (isArchived ? .archive : (isLowPriority ? .lowPriority : .inbox)) }
 
     /// In the inbox: not archived, in Low Priority or deleted.
     public var isInInbox: Bool { list == .inbox }

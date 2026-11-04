@@ -58,11 +58,12 @@ type RoomsAnswer = {
 // a reminder answered or cleared on another device has its notification taken away here.
 const REMINDERS = 'app:/data/reminders', SCHEDULED = `${REMINDERS}/scheduled.json`;
 export const reminderTag = (roomId: string) => `reminder-${roomId}`;
-type ReminderChat = { id: string; name: string; reminder: number; lastMessage: string; lastSender: string; lastIsOwn: boolean };
+type ReminderChat = { id: string; name: string; reminder: number; lastMessage: string; lastSender: string; lastIsOwn: boolean; merge: string };
 let syncing: Promise<void> = Promise.resolve();
 const syncReminders = (rooms: ReminderChat[], storage: Storage) => (syncing = syncing.then(() => syncNow(rooms, storage), () => syncNow(rooms, storage)));
 async function syncNow(rooms: ReminderChat[], storage: Storage) {
-  const wanted = new Map(rooms.filter((r) => r.reminder > 0).map((r) => [r.id, r]));
+  // a merged chat's reminder is the merged chat's: its rooms post none of their own.
+  const wanted = new Map(rooms.filter((r) => r.reminder > 0 && (r.merge === '' || r.id.startsWith('merge:'))).map((r) => [r.id, r]));
   let scheduled: Record<string, number> = {};
   try { scheduled = JSON.parse(new TextDecoder().decode(await storage.fs.readFile(SCHEDULED))); } catch { /* none yet */ }
   let changed = false;
@@ -304,6 +305,11 @@ const sources: Sources = {
   },
   // a chat's long-press actions: read, unread, mute, unmute, lowPriority, inbox (out of Low
   // Priority), archive, unarchive and delete (from this app only; the chat stays on its network).
+  // Merge Chats: kept in the account's data (MatrixCore's Merges.swift); id is the merged chat's.
+  mergeChats: async ([name, rooms, defaultRoom], _store, _storage, native): Promise<Result<'mergeChats'>> =>
+    (await native!.later({ op: 'merge', name, rooms, defaultRoom })) as { ok: boolean; id: string },
+  unmergeChat: async ([id], _store, _storage, native): Promise<Result<'unmergeChat'>> =>
+    (await native!.later({ op: 'unmerge', id })) as { ok: boolean; id: string },
   // Remind Me (B7, B20): when is "tomorrow", "monday" or a picked time without a zone, as Send
   // Later's; a time not ahead is refused with problem "past".
   remindChat: async ([roomId, when], _store, _storage, native): Promise<Result<'remindChat'>> =>
