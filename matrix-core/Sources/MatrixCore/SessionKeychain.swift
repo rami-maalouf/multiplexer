@@ -12,13 +12,17 @@ public struct StoredSession: Codable, Equatable, Sendable {
     public var searchKey: String?
     public var pusherAppId: String?
     public var pushkey: String?
+    /// nil is a session saved before shared stores, whose store was in the app's data.
+    public var storeLocation: SessionStoreLocation?
 
-    public init(session: SavedSession, store: String, searchKey: String? = nil, pusherAppId: String? = nil, pushkey: String? = nil) {
+    public init(session: SavedSession, store: String, searchKey: String? = nil, pusherAppId: String? = nil, pushkey: String? = nil,
+                storeLocation: SessionStoreLocation? = nil) {
         self.session = session
         self.store = store
         self.searchKey = searchKey
         self.pusherAppId = pusherAppId
         self.pushkey = pushkey
+        self.storeLocation = storeLocation
     }
 }
 
@@ -60,10 +64,14 @@ public struct SessionKeychain: Sendable {
     }
 
     public func write(_ stored: StoredSession) throws {
-        try delete()
+        let values: [String: Any] = [kSecValueData as String: try JSONEncoder().encode(stored),
+                                     kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        // update in place: a failed write must leave the old session recoverable after a move.
+        let updated = SecItemUpdate(item as CFDictionary, values as CFDictionary)
+        if updated == errSecSuccess { return }
+        guard updated == errSecItemNotFound else { throw MatrixCoreError.keychain(updated) }
         var add = item
-        add[kSecValueData as String] = try JSONEncoder().encode(stored)
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        add.merge(values) { _, new in new }
         let status = SecItemAdd(add as CFDictionary, nil)
         guard status == errSecSuccess else { throw MatrixCoreError.keychain(status) }
     }
