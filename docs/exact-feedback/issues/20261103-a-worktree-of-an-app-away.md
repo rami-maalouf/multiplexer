@@ -34,3 +34,12 @@ Seen on 2026-11-03 at exact2 `ed43ad09a0`.
 Seen again on 2026-11-03 at `ed43ad09a0`, in another agent tool's worktree: `bun install` failed
 with the same "Could not find folder" for six framework packages. The same fix (a worktree next
 to the main checkout). About 3 minutes.
+
+## Seen again (2026-11-04, `ed43ad09a0`)
+
+To build an app against a second framework checkout (a local branch), `EXACT2` was not enough:
+the app's `Cargo.toml`, `apple/Cargo.toml` and `web/Cargo.toml` name the framework by a relative
+path, and the build refused ("[patch.crates-io] must name exact2's vendored …"). After editing them
+for the build and back, the next build against the usual checkout failed with "there are multiple
+different versions of crate `exact_markdown`": the app's `target/` still held the other checkout's
+crates. Moving `target/` aside fixed it, at the cost of a full build. About 15 minutes.
