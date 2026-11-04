@@ -300,6 +300,39 @@ the native module.
 
 ## Phase 2: daily reading and sending (M2)
 
+### Current navigation and material follow-up (2026-11-04, Exact lane)
+
+- [ ] Reproduce intermittent interactive Back layout corruption with keyboard
+  hidden/visible, completion, cancellation, reversal and repeated open/close.
+  First native cancelled/reversed and completed swipes were clean; screenshots
+  and recording are in `.exact/swipe-back/`. This is not yet a reproduced defect.
+- [x] Fix horizontal list-row drag activating its link on lift (local Exact
+  finding 124). Push's native controls rule out overflow: left/right row drags
+  navigate, gap drags do not, and vertical drags scroll without navigating.
+  Isolated `RowCellsIOSTests` regression covers left/right/reversal and a later
+  small-movement tap. Baseline runtime failed as expected: three drags activated
+  the row three times. Isolated row-only cancellation passed focused host tests:
+  77 passed, six scene-dependent skips, zero failures. Partial native replay passed
+  both row-pan directions, vertical scroll, tap, reply/cancel and one keyboard-visible
+  edge Back. Named-store retry proved reversal with zero pushes, 2 pt tap with one push, and
+  native menu-button drag-out/back. Prior attempts remain invalid and preserved.
+  Framework commit `7529006ab992ff021f790291fedd05b189250e81` is isolated in
+  `exact2-navigation`; normal exact2 is unchanged.
+  Preserve ordinary button tracking, row actions,
+  swipe-to-reply and edge Back. Native Sign Out cleared the session, size/appearance
+  restored, own simulator stopped and owned lock released. Server device identity
+  was not captured; no server absence claim.
+- [ ] After navigation proof, separately replace chat bar/composer opaque backing
+  with native material, inspect light/dark scrolling, keyboard, largest text and
+  reduced transparency. Preserve unread positioning and Appearance palette props.
+  Inbox owner controls home-only header/list composition and compact inbox bars.
+
+Evidence/builds: `/tmp/mx-navigation-tests-build.log` passed;
+`/tmp/mx-navigation-framework-build.log` built and signed the baseline framework
+consumer with `--no-install`. No simulator was booted for these builds. Worktree
+`multiplexer-older` is explicit on commands; T3's detached `work-exact-gaps`
+binding is unchanged. No auth lock is held. All feedback stays local.
+
 Written at the M1 checkpoint (2026-10-27). The client work runs on the practice account
 until the server is ready (D8). What we learned in Phase 1:
 

@@ -146,6 +146,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 122 | A drive says "the app hung up (exit code 0)" when the app crashed; the crash report shows only in the next drive's `logs`. | About 10 min and three drives | P3 | [a-drive-says-the-app-hung](issues/20261103-a-drive-says-the-app-hung.md) |
 
 | 123 | A view-local `let` is reported as an unknown tag, followed by unknown-name errors at its uses. | About 2 min | P3 | [view-local-let](issues/20261104-view-local-let-reports-an-unknown.md) |
+| 124 | A horizontal drag inside a full-width list link activates it on release, starting a navigation push. | Native controls and isolated host regression investigation | P2 | [horizontal-row-drag-activates-link](issues/20261104-horizontal-row-drag-activates-link.md) |
 
 ## What worked well
 

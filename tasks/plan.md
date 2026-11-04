@@ -18,6 +18,28 @@ Update this table at the end of every work session.
 
 ### Conversation assignments (2026-11-04)
 
+Exact navigation lane: actual checkout `multiplexer-older`, branch
+`fix/interactive-back-layout`, app base `a09a33d`. T3 still binds the thread to
+`work-exact-gaps` at detached `9da752c`; that checkout remains untouched. A first
+native cancelled/reversed Back and completed Back passed visually; intermittent
+corruption remains unproven and needs keyboard/repeated-transition coverage.
+Push's controlled native horizontal row drags confirmed a distinct release-time
+link activation bug, tracked locally as finding 124. Its host regression builds in
+isolated `exact2-navigation` on `local/interactive-navigation` at `ed43ad09a0`;
+baseline runtime failed as expected (three drag activations). The isolated row-only
+candidate passed 77 focused host tests with six scene-dependent skips. Partial
+native replay passed left/right cancellation, vertical scrolling, ordinary tap,
+reply/cancel and one keyboard-visible edge Back. The remaining named-store drive proved reversal cancellation (zero pushes), a
+2 pt movement tap (one push), and native menu-button drag-out/back. The isolated
+framework fix is committed as `7529006ab992ff021f790291fedd05b189250e81`; its diff
+hash matches the tested candidate. Initial invalid attempts and capture provenance
+remain recorded. Native Sign Out cleared the session; no exact server device ID
+was captured, so server absence is not claimed. Normal
+framework sources are unchanged. Normal exact2 and the `befb32d3cd` separator
+experiment remain preserved. Chat material work follows navigation as a separate
+change; the inbox lane owns home-only header/list composition. The lane holds no
+auth lock and its simulator is off.
+
 Labels progress: integrated `8904255` into `work/labels` (`673efb5`), preserving communities,
 network-aware selection labels and SessionStore migration. The earlier integrated iOS verification
 passed 8 tests and light, dark and largest-text checks. Four review findings are fixed in source:
