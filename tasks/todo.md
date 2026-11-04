@@ -871,7 +871,7 @@ Mute, Label, Delete (red).
   (the playbook's setting), and with it on, mautrix-whatsapp leaves the WhatsApp group.
 - [x] Nothing of this reaches WhatsApp: Synapse sends a bridge no account data. Only Mark as Read
   (a read receipt) does.
-- [ ] Label, Select chat: "Later".
+- [ ] Label: "Later". Select Chat is done (B22).
 - [x] Remind Me (2026-11-03, with B20's): "Remind Me…" after Pin (an alarm clock), or "Clear Reminder" when the chat has
   one. It opens Send Later's time sheet (`LaterSheet`) with Send Later's set times as rows: Tomorrow, 9:00 AM; Monday,
   9:00 AM (not on a Sunday); or a picked time, then Set. See "Remind Me" below for where it is kept.
@@ -1330,7 +1330,7 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
   chip on a voice message), Sign Out in red with the existing confirmation, and the app's
   version under it. Sign Out left the inbox's top bar. MatrixCore's `ownProfile()` reads the
   name and picture (`Profile.swift`).
-- [x] Merge Chats and Select Chats: "Later"; they show greyed in the menu, as Beeper lists them.
+- [x] Select Chats opens the selection mode (B22). Merge Chats stays greyed pending its design decision.
 - [x] `settings.test.contract`: Settings opened by its path (a test cannot sign in) changes the
   speed and keeps it across a reload. Drives as `@test1`: the menu, Settings, the speed shown on
   every voice message in a chat after a relaunch, Sign Out back to the sign-in screen; `check`
@@ -1342,6 +1342,46 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
   picture now; Settings shows it in its circle, `check both` clean: `apps/multiplexer/.exact/b21/account-picture.png`.)
 
 **Dependencies:** none. **Scope:** S
+
+### B22 Select Chats
+
+**Description:** From "Later" (B7, B21), started 2026-11-03 at the coordinator's hand-off ("continue
+until everything is done"). Act on several chats at once, as Messages' and Beeper's select mode.
+
+**Design (assumptions; no Beeper video of this mode exists, so Messages and Mail lead):**
+1. Two ways in: the title menu's Select Chats (no chat chosen), and a chat's long-press "Select Chat",
+   first in its menu as Beeper's "Select chat" (that chat chosen).
+2. The mode: the title says "Select Chats", then "N Selected", with Done at the right. Each row shows a
+   circle at its leading edge, the accent's filled check when chosen; a tap chooses or lets go, and
+   the long press is off. Pinned pictures get the same mark at their corner. At the accessibility
+   text sizes the mark takes the picture's place, so names keep their width.
+3. The floating bar becomes the actions' bar: Archive (Unarchive in the Archive), Mark as Read (when
+   any chosen chat is unread, else Mark as Unread), Mute (Unmute when all are muted), More (Move to
+   Low Priority or to Inbox, Pin or Unpin), and Delete in red with an alert ("Delete 2 Chats?").
+   With nothing chosen they are off. While an action waits, selection and its buttons are disabled
+   and a spinner says "Updating chats". Success ends the mode; failure keeps the selection and
+   shows a retry message, including that some chats may already have changed.
+4. MatrixCore `change(roomIds:_:)`: Archive, Unarchive and Delete write the account's marks once
+   for all; the others go chat by chat in the chosen order (so pins keep it); every chat is tried.
+
+**Acceptance criteria:**
+- [x] `testSelectedChatsChangeTogether`: each action reaches every chosen chat, here and on another device.
+  Passed in 90 s on 2026-11-03 (`~/.mx-logs/select-core.log`).
+  Rechecked after merging the latest main (including message expiry): passed in 88 s
+  (`~/.mx-logs/select-core-integrated.log`).
+- [x] Drives as `@test1`, dark, light and the largest text size: both ways in, choosing, each action,
+  Delete's alert; real menus with `--touch platform`; `check both` clean but for the floating bars
+  over a scrolled list (as the inbox's own bar). `verify ios` clean.
+  The final integrated `verify ios` also passed all 6 tests, both schemes and the largest text
+  checks, including its fresh native build (144 s; `~/.mx-logs/select-verify-integrated.txt`).
+- [x] A simulated server refusal reproduced the old mode closing without a visible error. The fixed
+  drive kept its selected chat and showed the retry message. The fault was removed afterward.
+- [x] The selection title has an opaque background: scrolled chat text no longer shows through it.
+- [x] Merged timeline verification finished successfully: 22 tests, 1 intentional fill-room skip,
+  0 failures, in 903 s (`~/.mx-logs/merged-timeline2.log`). The interrupted earlier run is not
+  verification evidence. Do not shut down another conversation's simulator.
+
+**Dependencies:** B7, B21. **Scope:** M
 
 ### Later
 
@@ -1396,7 +1436,7 @@ Rami wants these, after the tasks above (2026-11-02):
     message carries its room, and a reply, reaction, edit, delete, swipe to reply, read receipt, "Seen" line, search
     in the chat, media grid, Send Later and the "New" line each act on the message's own room; replying to a message
     switches the sending network to its own. Several days, and a risk to the chat's tested features.
-- Select chat: act on several chats at once (B7, B21).
+- Select chat: act on several chats at once (B7, B21). Built 2026-11-03, see "B22 Select Chats".
 - Transcribe voice notes (B16): check whether the iPhone can do it on the phone, at no cost.
 - Communities as filters ("whatever is easiest"): after B4.
 - Requests and New Space in the filter sheet: look at what Beeper does first.

@@ -30,3 +30,7 @@ Cost: about 1 minute, and a repeated button.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS Simulator (iOS 26.5).
+
+Seen again in a list's selection mode at the same commit: `press=(selecting ? toggle(r.id) :
+open(r.id))` produced the same refusal. One action with an `if` chose between the two.
+About 2 minutes.

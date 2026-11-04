@@ -30,3 +30,11 @@ edit to `app.contract` or `app.ts` took seconds.
 ## Evidence
 
 Seen at exact2 `65577096ed`. `host/apple/build.mjs` is unchanged at `cee509ac82`.
+
+## Further build-cost evidence (2026-11-03)
+
+At exact2 `ed43ad09a0`, integrating another feature with native changes required 76.8 s of iOS
+build time before verification tests could run; the build reported 59.5 s in host arms. Total
+verify time was 144.2 s with six tests. This is an overall rebuild measurement, not a separate
+measurement of vendor-binding compilation. Narrower invalidation and cached arms would reduce
+the edit-and-verify cost.

@@ -61,22 +61,15 @@ final class Matrix: ExactModule {
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
                     reply.send(["ok": true])
-                case "chat":
-                    // a chat's long-press actions (MatrixCore's ChatActions.swift).
-                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                case "chat", "chats":
+                    // a chat's long-press actions, or select chats' on several (matrixcore's chatactions.swift).
+                    let account = try await signedIn()
                     guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
-                    switch request["action"] as? String {
-                    case "read": try await account.markRead(roomId: roomId)
-                    case "unread": try await account.setMarkedUnread(roomId: roomId, true)
-                    case "mute": try await account.mute(roomId: roomId)
-                    case "unmute": try await account.unmute(roomId: roomId)
-                    case "lowPriority": try await account.setLowPriority(roomId: roomId, true)
-                    case "inbox": try await account.setLowPriority(roomId: roomId, false)
-                    case "archive": try await account.archive(roomId: roomId)
-                    case "unarchive": try await account.unarchive(roomId: roomId)
-                    case "delete": try await account.hide(roomId: roomId)
-                    case "clearReminder": try await account.clearReminder(roomId: roomId)
-                    case "remind":
+                    let action = request["action"] as? String ?? "", roomId = request["roomId"] as? String ?? ""
+                    switch action {
+                    case "clearReminder" where request["op"] as? String == "chat":
+                        try await account.clearReminder(roomId: roomId)
+                    case "remind" where request["op"] as? String == "chat":
                         // Remind Me: `when` is "tomorrow", "monday" or a picked time without a zone, as Send Later's.
                         guard let when = ScheduledMessage.date(for: request["when"] as? String ?? ""), when > Date().addingTimeInterval(5) else {
                             reply.send(["ok": false, "at": 0, "problem": "past"])
@@ -85,7 +78,15 @@ final class Matrix: ExactModule {
                         try await account.setReminder(roomId: roomId, at: when)
                         reply.send(["ok": true, "at": (when.timeIntervalSince1970 * 1000).rounded(), "problem": ""])
                         return
-                    default: throw ExactNativeRefusal("chat's actions: read, unread, mute, unmute, lowPriority, inbox, archive, unarchive, delete, remind and clearReminder")
+                    default:
+                        guard let change = MatrixAccount.ChatChange(rawValue: action) else {
+                            throw ExactNativeRefusal("a chat's actions: \(MatrixAccount.ChatChange.allCases.map(\.rawValue).joined(separator: ", ")), and for one chat remind and clearReminder")
+                        }
+                        if request["op"] as? String == "chats" {
+                            try await account.change(roomIds: request["roomIds"] as? [String] ?? [], change)
+                        } else {
+                            try await account.change(roomId: roomId, change)
+                        }
                     }
                     reply.send(["ok": true])
                 case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":

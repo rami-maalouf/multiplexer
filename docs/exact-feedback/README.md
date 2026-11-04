@@ -132,12 +132,15 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 | 111 | A page opened from a sheet with `go` stays in the sheet, and a chat opened from it opens inside the half-height sheet too, with no warning. | About 5 min | P3 | [a-page-opened-from-a-sheet](issues/20261103-a-page-opened-from-a-sheet.md) |
 | 112 | A data source's answer refused for its shape shows only in `logs`; a drive's `state` shows the old value with no word. | About 3 min | P3 | [a-refused-resource-answer-shows-only](issues/20261103-a-refused-resource-answer-shows-only.md) |
 | 113 | A large title shows inline over a list with rows and large over an empty state, on the same page (not isolated). | About 3 min | P3 | [a-large-title-shows-inline-over](issues/20261103-a-large-title-shows-inline-over.md) |
+| 114 | A plain list button sizes to its content instead of its cell, overflowing at large text sizes. | About 5 min | P3 | [a-plain-list-button-sizes-to](issues/20261103-a-plain-list-button-sizes-to.md) |
+| 115 | A members name collision does not name the file declaring the state. | About 3 min | P3 | [a-members-name-collision-does-not](issues/20261103-a-members-name-collision-does-not.md) |
+| 116 | The local run log retains a password argument that terminal output masks. | Found in under a minute | P1 | [the-local-run-log-retains-a](issues/20261103-the-local-run-log-retains-a.md) |
 
 ## What worked well
 
 - Compiler errors name the fix (`lower-grouped-list`, `lower-empty-state-in-list`, symbol aliases).
 - `clock data` waits for slow native replies, so tests and drives need no waits.
-- Drives mask password fields, and the command log keeps no arguments.
+- Drives mask password fields in terminal output, and the command log keeps no arguments. The separate local run log needs the same masking (finding 116).
 - A `list` with no `appearance` looks like the Messages app with no extra code.
 - `formatDay(…, "list")` and `"day-time"` give a chat list's and a transcript's times.
 - `modules/apple/*.xcframework` links a vendor's static library with no linker flags.
