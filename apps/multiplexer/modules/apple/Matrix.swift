@@ -1,14 +1,17 @@
 import Foundation
 
 /// Answers app.ts's asks with MatrixCore (the core-*.swift files beside this one).
-/// The session is in the Keychain; the account's store is a folder in the app's data.
+/// the session is in the keychain; its store is in data or the app group's container.
 final class Matrix: ExactModule {
     // the agent's data is a fresh scratch tree, so it keeps its session apart from the app's.
     lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
     /// A session the server must still forget. Until it does, its device stays on the account.
     private lazy var pending = SessionKeychain(service: keychain.service, slot: "sign-out")
     private var signingOutPending = false
-    private var stores: URL { context.data.appendingPathComponent("matrix", isDirectory: true) }
+    private var sessionStore: SessionStore {
+        let group = context.agent ? nil : FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ramimaalouf.multiplexer")
+        return SessionStore(dataDirectory: context.data, groupContainer: group, agent: context.agent)
+    }
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
     private var account: Task<MatrixAccount, Error>?
     /// Topics that changed and app.ts has not heard of yet: a burst of changes becomes one ask.
@@ -27,7 +30,7 @@ final class Matrix: ExactModule {
         switch request["op"] as? String {
         case "session":
             defer { signOutPending() }
-            return ["userId": try stored()?.session.userId ?? ""]
+            return ["userId": try stored()?.session.session.userId ?? ""]
         default: throw ExactNativeRefusal("matrix answers session")
         }
     }
@@ -268,15 +271,18 @@ final class Matrix: ExactModule {
         }
     }
 
-    /// The Keychain's session if its store is still there. A reinstall keeps the Keychain
-    /// but not the store, and a session without its store has lost its encryption keys:
-    /// it waits to be signed out on the server, and the app opens signed out.
-    private func stored() throws -> StoredSession? {
+    /// unavailable shared stores stay in the keychain. only a confirmed missing store
+    /// queues server sign-out; moving or repairing metadata happens before opening the sdk.
+    private func stored() throws -> (session: StoredSession, directory: URL)? {
         guard let stored = try keychain.read() else { return nil }
-        if FileManager.default.fileExists(atPath: stores.appendingPathComponent(stored.store).path) { return stored }
-        try pending.write(stored)
-        try keychain.delete()
-        return nil
+        switch try sessionStore.prepare(stored, persist: { try keychain.write($0) }) {
+        case .available(let session, let directory): return (session, directory)
+        case .unavailable: return nil
+        case .missing:
+            try pending.write(stored)
+            try keychain.delete()
+            return nil
+        }
     }
 
     /// Signs the pending session out on the server in the background. If the server cannot
@@ -296,17 +302,21 @@ final class Matrix: ExactModule {
 
     /// A refusal is a reply: `problem` names it for app.ts, which says it to the person.
     @MainActor private func signIn(server: String, user: String, password: String) async -> [String: Any] {
-        account = nil
-        shownThumbnails = [:]
-        try? FileManager.default.removeItem(at: stores)
         let store = UUID().uuidString, searchKey = SearchIndex.newKey()
+        let stores = sessionStore
+        let location = stores.newStoreLocation
+        let directory = stores.directory(store: store, location: location)!
         do {
+            // an unavailable session still owns its keys. replacing it would orphan them.
+            guard try keychain.read() == nil else { throw ExactNativeRefusal("an existing session must be available and signed out before signing in") }
+            account = nil
+            shownThumbnails = [:]
             let signedIn = try await MatrixAccount.signIn(homeserver: server, user: user, password: password,
                                                           deviceName: context.agent ? "Multiplexer test" : "Multiplexer",
-                                                          storeDirectory: stores.appendingPathComponent(store), searchIndexKey: searchKey,
+                                                          storeDirectory: directory, searchIndexKey: searchKey,
                                                           sessionStorage: sessionStorage)
             do {
-                try keychain.write(StoredSession(session: try signedIn.savedSession(), store: store, searchKey: searchKey))
+                try keychain.write(StoredSession(session: try signedIn.savedSession(), store: store, searchKey: searchKey, storeLocation: location))
             } catch {
                 // a session this device cannot keep must not stay on the server.
                 try? await signedIn.signOut()
@@ -317,7 +327,7 @@ final class Matrix: ExactModule {
             account = Task { signedIn }
             return ["ok": true, "problem": "", "detail": ""]
         } catch {
-            try? FileManager.default.removeItem(at: stores)
+            try? FileManager.default.removeItem(at: directory)
             let problem: String
             switch error as? SignInError {
             case .wrongPassword?: problem = "wrong-password"
@@ -332,14 +342,15 @@ final class Matrix: ExactModule {
 
     @MainActor func signedIn() async throws -> MatrixAccount {
         if let account { return try await account.value }
-        guard var stored = try stored() else { throw ExactNativeRefusal("signed out") }
+        guard let resolved = try stored() else { throw ExactNativeRefusal("signed out") }
+        var stored = resolved.session
         // a session kept before the search index gets its key now; its index starts empty.
         if stored.searchKey == nil {
             stored.searchKey = SearchIndex.newKey()
             try keychain.write(stored)
         }
         let restoring = Task { [stored] in
-            try await MatrixAccount.restore(stored.session, storeDirectory: stores.appendingPathComponent(stored.store), searchIndexKey: stored.searchKey,
+            try await MatrixAccount.restore(stored.session, storeDirectory: resolved.directory, searchIndexKey: stored.searchKey,
                                             sessionStorage: sessionStorage)
         }
         account = restoring
@@ -655,16 +666,24 @@ final class Matrix: ExactModule {
     /// Asks the server to forget this device, then forgets the session here. If the server
     /// could not be reached, the session waits to be signed out there later.
     @MainActor private func signOut() async throws {
-        let stored = try keychain.read()
+        // resolving first refuses sign-out when the actual store cannot be reached.
+        // read the metadata after migration, so deletion always names its actual directory.
+        let resolved = try stored()
+        guard let resolved else {
+            if try keychain.read() != nil { throw ExactNativeRefusal("the session's store is unavailable") }
+            signOutPending()
+            return
+        }
+        let stored = resolved.session
         var forgotten = false
         if let signedIn = try? await signedIn() {
             await deletePusher(signedIn, stored)
             forgotten = (try? await signedIn.signOut()) != nil
         }
         account = nil
-        if !forgotten, let stored { try pending.write(stored) }
+        if !forgotten { try pending.write(stored) }
         try keychain.delete()
-        try? FileManager.default.removeItem(at: stores)
+        try? FileManager.default.removeItem(at: resolved.directory)
         try? FileManager.default.removeItem(at: media)
         try? FileManager.default.removeItem(at: files)
         shownThumbnails = [:]

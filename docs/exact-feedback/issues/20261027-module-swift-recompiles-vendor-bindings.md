@@ -38,3 +38,11 @@ build time before verification tests could run; the build reported 59.5 s in hos
 verify time was 144.2 s with six tests. This is an overall rebuild measurement, not a separate
 measurement of vendor-binding compilation. Narrower invalidation and cached arms would reduce
 the edit-and-verify cost.
+
+## Further build-cost evidence (2026-11-04)
+
+At exact2 `ed43ad09a0`, a native session-storage change rebuilt iOS in 83.0 s, with 63.8 s
+reported in host arms. The complete six-test verify took 155.0 s, versus the initial estimate
+of about 85 s. The build log gave no intermediate stage progress after "the app's Swift modules
+compile as they are now" until compilation ended. This measures the overall native rebuild,
+not vendor compilation separately. The existing cached-vendor proposal still applies.

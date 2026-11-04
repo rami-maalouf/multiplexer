@@ -19,7 +19,7 @@ Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
-| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. | 31 to 42 s for each edit | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
+| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04. | 31 to 42 s for each edit; latest native build 83.0 s (host arms 63.8 s) | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
 | 2 | An authored test cannot read a secret, so `verify` never reaches the screens behind a sign-in. | A text-size bug that `verify` missed | P2 | [authored-tests-cannot-read-a-secret](issues/20261027-authored-tests-cannot-read-a-secret.md) |
 | 3 | A native module can use only real files in `modules/apple`: no links, no local Swift package. | About 20 min, then a copy step after each edit | P3 | [module-swift-only-from-modules-apple](issues/20261027-module-swift-only-from-modules-apple.md) |
 | 4 | A native module cannot keep a secret in Exact's store, so its Keychain items outlive a fresh drive. | A test device left signed in on the server | P3 | [native-module-has-no-secret-store](issues/20261027-native-module-has-no-secret-store.md) |
