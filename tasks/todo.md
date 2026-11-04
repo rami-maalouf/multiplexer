@@ -28,6 +28,13 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 - [ ] Reduce the oversized inbox header and use matching translucent material for inbox top
   and bottom bars. Keep accessible touch targets and largest-text layout. Owner: Push lane.
 
+Coordination evidence: native horizontal row drags activate a chat on release; measured
+horizontal scroll offsets remain zero and no node exceeds the viewport width. Exact/UI owns
+the framework cancellation fix and local feedback finding 124; Push owns the shared native
+reproduction bundle. No app overflow workaround is justified. Cached-opening baseline also
+confirmed usable rows in 3 ms waiting until a 1,178 ms reply, plus a brief resource-reset
+spinner on repeat opening. Fixes and native after-checks remain pending.
+
 ## Phase 0: prove the server (M0)
 
 ### T0.1 Inventory the server (read only)

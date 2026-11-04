@@ -36,6 +36,12 @@ after its gesture fix. Replace overly opaque black surfaces with actual backdrop
 that shows scrolling content behind controls, with readable light/dark and accessibility
 fallbacks. Coordinate shared tint and material choices before integration.
 
+Measured findings: sideways row drags activate navigation on release rather than overflowing
+the inbox width (shared Exact finding 124, owned by Exact/UI). Cached rows were usable in
+3 ms but first native reply waited 1,178 ms; repeat opens also clear the UI resource briefly.
+The receipt SDK addition passes a host compile and five focused tests, but generated iOS
+binary proof and app integration are still pending. No production SDK pin has changed.
+
 Labels progress: integrated `8904255` into `work/labels` (`673efb5`), preserving communities,
 network-aware selection labels and SessionStore migration. The earlier integrated iOS verification
 passed 8 tests and light, dark and largest-text checks. Four review findings are fixed in source:
