@@ -12,6 +12,10 @@ shape PinnedChat
   initials: string
   unread: bool
 
+// select chats' change on several chats (app.ts's changechats).
+shape ChatsChanged
+  ok: bool
+
 // the filter menu's choices, in Beeper's order; Drafts waits for drafts that the app keeps.
 fn filterName(f: string): string = f == "unread" ? "Unread" : (f == "unanswered" ? "Unanswered" : (f == "people" ? "DMs" : (f == "groups" ? "Groups" : "All")))
 // what the list says when a filter leaves no chat in it.
@@ -26,6 +30,10 @@ fn listEmptyTitle(l: string): string = l == "archive" ? "No Archived Chats" : (l
 fn listEmptyMessage(l: string, network: string): string = l == "reminders" ? `Chats you ask to be reminded about${network == "" ? "" : ` from ${networkName(network)}`} show here until you answer them.` : `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${network == "" ? "" : ` from ${networkName(network)}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
 // what Delete's alert says: the chat leaves this app only.
 fn deleteMessage(network: string): string = `It leaves Multiplexer on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
+// select chats' delete: the same, for several chats.
+fn deleteChatsTitle(n: number): string = n == 1 ? "Delete 1 Chat?" : `Delete ${n} Chats?`
+fn deleteChatsMessage(n: number): string = `${n == 1 ? "It leaves" : "They leave"} Multiplexer on all your devices, but ${n == 1 ? "stays" : "stay"} on ${n == 1 ? "its" : "their"} network. A new message brings ${n == 1 ? "it" : "each"} back.`
+fn selectedTitle(n: number): string = n == 0 ? "Select Chats" : `${n} Selected`
 
 // the floating bar over the chat list: a round filter button on the left (filled with the accent
 // while a filter is on), a capsule in the middle: Inbox (the chosen network's logo when the
@@ -94,11 +102,16 @@ component PinnedGrid
     open: action
     aim: action
     menu: string
+    // select chats: `open` chooses a chat then, and a mark on its picture says so.
+    selecting: bool
+    chosen: string[]
+    busy: bool
   view
     row id="pinned" flex-wrap="wrap" justify-content="center" padding="4px 8px 12px" border-bottom="none" testId="pinned"
       for r in rooms key=r.id
-        button appearance="none" press=open(r.id) contextmenu=aim(r.id) contextPopover=menu width="33.333%"
-          aria-label=(r.unread ? `${r.name}, unread` : r.name) testId=`pinned-${r.id}`
+        button appearance="none" press=open(r.id) disabled=busy contextmenu=aim(r.id) contextPopover=(selecting ? "" : menu)
+          width="33.333%" aria-label=(r.unread ? `${r.name}, unread` : r.name) testId=`pinned-${r.id}`
+          role=(selecting ? "checkbox" : "button") aria-checked=(selecting and chosen.includes(r.id))
           display="flex" flex-direction="column" align-items="center" gap=6 padding="8px 4px"
           view position="relative" width=80 height=80
             view width=80 height=80 border-radius=40 overflow="hidden" background-color="-exact-tertiary-fill"
@@ -110,14 +123,18 @@ component PinnedGrid
             if r.unread
               view position="absolute" left=0 top=2 width=18 height=18 border-radius=9 background-color="AccentColor"
                 border="3px solid -exact-background" box-sizing="border-box" testId=`pinned-unread-${r.id}`
+            if selecting
+              view position="absolute" right=0 bottom=0 border-radius=14 background-color="-exact-background" padding=2
+                ChooseMark(on=chosen.includes(r.id), identifier=`pinned-mark-${r.id}`)
           text r.shortName font="-exact-subheadline" color="-exact-secondary-label" line-clamp=1 max-width="100%"
 
 // the inbox's title, as Beeper's: its words and a chevron at the top left, which open a menu.
-// Select Chats and Merge Chats come later, so they show greyed. The route draws this row in
+// merge chats comes later, so it shows greyed. the route draws this row in
 // place of the system bar, whose large title cannot open a menu.
 component TitleMenu
   props
     title: string
+    select: action
     settings: action
     largeText: bool
   view
@@ -130,7 +147,7 @@ component TitleMenu
       // a row with no press is a break between sections on iOS, so the greyed rows name one,
       // which a disabled row never runs.
       column id="title-menu" popover="auto" role="menu"
-        button press=settings disabled=true testId="menu-select-chats"
+        button press=select popovertarget="title-menu" popovertargetaction="hide" testId="menu-select-chats"
           image "symbol:select"
           text "Select Chats"
         button press=settings disabled=true testId="menu-merge-chats"
@@ -139,3 +156,77 @@ component TitleMenu
         button press=settings popovertarget="title-menu" popovertargetaction="hide" testId="menu-settings"
           image "symbol:settings"
           text "Settings"
+
+// select chats' mark on a row or a pinned picture: an empty circle, or the accent's filled check.
+component ChooseMark
+  props
+    on: bool
+    identifier: string
+  view
+    image (on ? "symbol:select-fill" : "symbol:circle") font-size="min(-exact-title2, 28px)" color=(on ? "AccentColor" : "-exact-tertiary-label")
+      aria-hidden=true testId=identifier
+
+// the title row while choosing chats: how many are chosen, and done, which ends the mode. at the
+// largest text sizes done goes under the count rather than squeezing it.
+component SelectTitle
+  props
+    count: number
+    done: action
+    busy: bool
+  view
+    row padding="2px 16px 6px" align-items="center" flex-wrap="wrap" column-gap=12 row-gap=4 min-height=50 testId="select-title"
+      background-color="-exact-background"
+      text selectedTitle(count) role="heading" aria-level=1 font="-exact-title1" font-weight=700 color="-exact-label" flex="1 1 12rem"
+        min-width=0 testId="select-count"
+      if busy
+        progress aria-label="Updating chats" testId="select-progress"
+      button press=done disabled=busy buttonStyle="glass" margin-left="auto" testId="select-done"
+        text "Done" font-weight=600
+
+// the bar under the list while choosing chats, in the place of the inbox's bar: archive (or
+// unarchive in the archive), mark as read (or unread), mute (or unmute), more (low priority and
+// pin), and delete in red. with nothing chosen, all are off.
+component SelectBar
+  props
+    count: number
+    list: string
+    unread: bool
+    muted: bool
+    pinned: bool
+    change: action
+    delete: action
+    largeText: bool
+    busy: bool
+  derive off = count == 0 or busy
+  derive symbolSize = largeText ? 24 : 20
+  view
+    row position="absolute" left=0 right=0 bottom=0 padding="0 16px" align-items="center" justify-content="space-between"
+      glassGroup=12 pointer-events="none" testId="select-bar"
+      row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="select-capsule"
+        button appearance="none" press=change(list == "archive" ? "unarchive" : "archive") disabled=off
+          aria-label=(list == "archive" ? "Unarchive" : "Archive") testId="select-archive"
+          width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+          image (list == "archive" ? "symbol:icon.unarchive" : "symbol:icon.archive") font-size=symbolSize color="-exact-label"
+        button appearance="none" press=change(unread ? "read" : "unread") disabled=off
+          aria-label=(unread ? "Mark as Read" : "Mark as Unread") testId="select-read"
+          width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+          image (unread ? "symbol:messages" : "symbol:icon.mark-unread") font-size=symbolSize color="-exact-label"
+        button appearance="none" press=change(muted ? "unmute" : "mute") disabled=off
+          aria-label=(muted ? "Unmute" : "Mute") testId="select-mute"
+          width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+          image (muted ? "symbol:notifications" : "symbol:icon.bell-slash") font-size=symbolSize color="-exact-label"
+        button appearance="none" popovertarget="select-more" disabled=off aria-label="More" testId="select-more-button"
+          width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+          image "symbol:more" font-size=symbolSize color="-exact-label"
+      button appearance="none" press=delete disabled=off backgroundMaterial="glass" width=48 height=48 border-radius=24
+        pointer-events="auto" display="flex" align-items="center" justify-content="center" aria-label="Delete" testId="select-delete"
+        opacity=(off ? 0.35 : 1)
+        image "symbol:delete" font-size=symbolSize color="-exact-system-red"
+      column id="select-more" popover="auto" role="menu" pointer-events="auto"
+        button press=change(list == "lowPriority" ? "inbox" : "lowPriority") popovertarget="select-more" popovertargetaction="hide"
+          testId="select-low-priority"
+          image (list == "lowPriority" ? "symbol:icon.tray" : "symbol:icon.low-priority")
+          text (list == "lowPriority" ? "Move to Inbox" : "Move to Low Priority")
+        button press=change(pinned ? "unpin" : "pin") popovertarget="select-more" popovertargetaction="hide" testId="select-pin"
+          image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
+          text (pinned ? "Unpin" : "Pin")

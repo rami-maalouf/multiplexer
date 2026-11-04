@@ -15,6 +15,8 @@ final class ChatActionsTests: XCTestCase {
     private let choicesDeleteName = "Multiplexer choices test delete"
     private let choicesArchiveName = "Multiplexer choices test archive"
     private let choicesWhatsAppName = "Multiplexer choices test WhatsApp"
+    /// select chats acts on these two together.
+    private let selectNames = ["Multiplexer select test one", "Multiplexer select test two"]
 
     func testMarkedUnreadClearsOnReadAndAMutedChatStillCountsMentions() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
@@ -83,6 +85,67 @@ final class ChatActionsTests: XCTestCase {
         let shown = try await second.rooms().first { $0.id == archived }
         XCTAssertEqual(shown?.isArchived, true, "told, the list still shows the chat in the inbox")
         try await owner.unarchive(roomId: archived)
+    }
+
+    /// select chats: each action reaches every selected chat, here and on another device.
+    func testSelectedChatsChangeTogether() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let rooms = try await testRooms(owner, sender, user2: user2)
+        let both = selectNames.map { rooms[$0]! }
+        // a chat deleted by an earlier run comes back with a message.
+        for id in both {
+            guard try await summary(owner, id, { _ in true }).isHidden else { continue }
+            try await say("Back \(UUID().uuidString)", in: id, as: sender)
+            _ = try await summary(owner, id) { !$0.isHidden }
+        }
+        for id in both {
+            try await reset(owner, id)
+            try await owner.unpin(roomId: id)
+        }
+        let second = try await signIn(homeserver, user, password)
+
+        try await owner.change(roomIds: both, .archive)
+        for id in both {
+            try await assertListed(owner, id, in: .archive)
+            try await listed(second, id, in: .archive)
+        }
+        try await owner.change(roomIds: both, .unarchive)
+        for id in both { try await listed(second, id, in: .inbox) }
+
+        try await owner.change(roomIds: both, .lowPriority)
+        for id in both { try await listed(second, id, in: .lowPriority) }
+        try await owner.change(roomIds: both, .inbox)
+        for id in both { try await listed(second, id, in: .inbox) }
+
+        try await owner.change(roomIds: both, .mute)
+        for id in both { _ = try await summary(second, id) { $0.isMuted } }
+        try await owner.change(roomIds: both, .unmute)
+        for id in both { _ = try await summary(second, id) { !$0.isMuted } }
+
+        try await owner.change(roomIds: both, .unread)
+        for id in both { _ = try await summary(second, id) { $0.isMarkedUnread } }
+        try await owner.change(roomIds: both, .read)
+        for id in both { _ = try await summary(second, id) { !$0.isMarkedUnread && $0.unreadCount == 0 } }
+
+        // pinned in the order chosen.
+        try await owner.change(roomIds: both, .pin)
+        let pinned = try await summary(second, both[1]) { $0.isPinned }
+        let first = try await summary(second, both[0]) { $0.isPinned }
+        XCTAssertLessThan(first.pinOrder ?? 0, pinned.pinOrder ?? 0, "the pins do not keep the order chosen")
+        try await owner.change(roomIds: both, .unpin)
+        for id in both { _ = try await summary(second, id) { !$0.isPinned } }
+
+        // deleted: in no list on either device; a new message brings each back.
+        try await owner.change(roomIds: both, .delete)
+        for id in both {
+            try await assertListed(owner, id, in: nil)
+            _ = try await summary(second, id) { $0.isHidden }
+        }
+        for id in both { try await say("Again \(UUID().uuidString)", in: id, as: sender) }
+        for id in both { try await listed(second, id, in: .inbox) }
+        for id in both { try await owner.markRead(roomId: id) }
     }
 
     func testLowPriorityArchiveAndDeleteLeaveTheInboxOnAnotherDevice() async throws {
@@ -343,7 +406,7 @@ final class ChatActionsTests: XCTestCase {
         let known = try await owner.rooms()
         var ids: [String: String] = [:]
         let server = String(session.userId.split(separator: ":").last ?? "")
-        for name in [heldName, archiveName, deleteName, bridgedName, choicesDeleteName, choicesArchiveName, choicesWhatsAppName] {
+        for name in [heldName, archiveName, deleteName, bridgedName, choicesDeleteName, choicesArchiveName, choicesWhatsAppName] + selectNames {
             if let id = known.first(where: { $0.name == name })?.id {
                 ids[name] = id
                 continue

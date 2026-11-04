@@ -44,3 +44,8 @@ Seen again on 2026-11-03 at `ed43ad09a0`: `check both` on a chat opened at its f
 message called a video's poster, scrolled under the app's top bar, an overlap with the bar's
 title and Back ("video-14 [48,-106 172x306]: overlaps chat-name"). After the next scroll, `check`
 was clean in both schemes. About 2 minutes.
+
+Seen while adding a list's selection mode on 2026-11-03 at `ed43ad09a0`: two bottom glass bars
+with the same structure produced different unscrolled `check both` results. The selection
+bar reported overlaps, while the normal inbox bar did not; after scrolling both reported
+them. Reading `scripts/agent-check.mjs` did not clarify the difference. About 10 minutes.

@@ -55,3 +55,7 @@ A members file could not name the root's `Reply` shape, nor `Composer` and `with
 a one-field shape of the feature's own, and a call to a root action in place of the root's
 function. About 2 minutes.
 
+While adding a selection mode at the same commit, a derive called `none` was refused because
+the name is a reserved literal. The message named the cause clearly; renaming took under a
+minute. A members example listing reserved names would have prevented the failed build.
+
