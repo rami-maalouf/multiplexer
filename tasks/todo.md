@@ -763,8 +763,12 @@ appears when its feature exists: the capsule's Archive with B8, search with B18.
 **Acceptance criteria:**
 - [x] The bar floats over the list, the list scrolls under it, and its last row can scroll above
   the bar. (2026-11-02, `inbox.contract`, `BottomBar`.)
-- [ ] The iOS edge effect under the bar: Exact gives a floating bar over a large-title list none,
-  and a route has no bottom toolbar (Exact finding 35; no PR: a design question for the Exact team, LLP 1131).
+- [x] The iOS edge effect under the bar (2026-11-04): Exact gives a floating bar none (finding 35), so the app draws
+  one: behind the bottom bar (and Select Chats' bar) a solid backdrop down past the home indicator and a 32-point fade
+  above it, outside the bar's glass group so its glass stays its own. Before, rows ran sharp under the bar; after,
+  they fade out above it and are hidden behind it, in light, dark and the largest text size
+  (`apps/multiplexer/.exact/ui/before/4-bottom-*.png`, `after/4-bottom-*.png`, gitignored). It is the app's fade,
+  not UIKit's blur. `check` still flags the inbox's title row over the rows (UIKit's own soft edge at the top).
 - [x] The capsule holds Inbox (selected; a tap scrolls to the top); the left button opens the
   filter menu (B5). The up-down button comes with B4.
 - [x] `check both` clean in dark, light and the largest text size; VoiceOver reads "Filter" (or
@@ -791,9 +795,11 @@ Bookmarks (B14), labels and Create Label, Reminders, Requests, New Space and com
   only that network's pins.
 - [x] The choice is kept across launches; a new sign-in starts at Inbox.
 - [x] MatrixCore filters the list itself (`NetworkFilter.swift`, `NetworkFilterTests`).
-- [ ] After a network change in a list scrolled down, the large title stays collapsed (Exact
-  finding 50; no PR: exact2's own tests say a scroll to the top after a collapse keeps the title collapsed, a design
-  question for the Exact team); a short line shows above the pinned grid (finding 49).
+- [x] After a network change in a list scrolled down, the large title stays collapsed: no longer seen (2026-11-04).
+  The inbox draws its own title row (no system bar since B21's title menu), which never collapses. Driven: scrolled
+  down 600 points, then WhatsApp in the filter sheet: "WhatsApp" large, the list at its top, in light, dark and the
+  largest text size (`.exact/ui/before/3-network-*.png`).
+- [ ] A short line shows above the pinned grid (finding 49). Not checked on 2026-11-04.
 - [x] Rami (2026-11-03): keep the Matrix row first; count unread chats; the title shows the network's name.
 
 **Dependencies:** B1, B3. **Scope:** M
@@ -951,6 +957,15 @@ chat info page, B20), and "..." on the right.
   `tap root drag 320 0 from 2 276 over 400`, at the height of a bubble that a swipe right answers, went back to the inbox
   ("willShow 0, by the edge swipe", then the drawn Back pressed), and no reply started (`composers` empty). Four runs; in the
   first, the log also showed the chat pushed again and popped a moment later, not seen in the other three.
+- [x] Messages no longer show behind the bar's name (2026-11-04; Exact finding 55); `check` is clean on it only with a local Exact change.
+  Cause: the bar's fade had a fixed height, shorter than the bar with a two-line name, the merged chat's tabs or the
+  largest text, so a bubble showed behind the name's glass (and in dark, that glass read under 4.5:1). Fix in the app:
+  the backdrop is sized by the bar itself, solid behind it and fading 32 points below it. Before and after in light,
+  dark and the largest size: `apps/multiplexer/.exact/ui/before/1-chat-*.png`, `after/1-chat-*.png` (gitignored).
+  `check` still reports the messages under the bar as overlaps with the app's Exact (it cannot tell an opaque view
+  covers them); a local exact2 branch (`local/check-hidden-by` in `exact2-gaps`, not pushed) makes the iOS host
+  report the opaque views drawn over an item, and with it `check` read "no findings" on this chat in light, dark and
+  the largest text size.
 - [x] Rami (2026-11-03): Mark as Unread inside a chat goes back to the list; Back leaves out muted,
   archived and Low Priority chats.
 
@@ -1351,7 +1366,11 @@ Settings holds Sign Out (it leaves the chat list's top bar) and the voice note s
   clean in dark, light and the largest text size (`apps/multiplexer/.exact/b21/`, gitignored).
   `verify ios` clean.
 - [ ] After Sign Out, the sign-in screen's title shows small until the next launch (Exact
-  finding "a large title comes back inline"). Exact PR #1410 (open) fixes the sign-out path (the pop, then the reply).
+  finding "a large title comes back inline"). Still seen on 2026-11-04 in light, dark and the largest text size
+  (`.exact/ui/before/2-signout-*.png`). Exact PR #1410 fixes a minimal app's path (a pop, then the change in place),
+  not this app's: with it and a second local Exact change (the stack rebuilt), the title still came back inline. A trace
+  showed the bar already shown, 54 points tall, when the signed-out route arrives, with none of Exact's bar-showing
+  steps run. Stopped after three tries; it needs the Exact team or a closer look at how the route is rebuilt.
 - [x] A picture on the account: `@test1` has none, so only the initials were seen. (2026-11-03: `@test1` has a
   picture now; Settings shows it in its circle, `check both` clean: `apps/multiplexer/.exact/b21/account-picture.png`.)
 
