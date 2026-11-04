@@ -67,7 +67,8 @@ sync". Hold the shared lock around every run, on your own simulator:
 `until mkdir /tmp/mx-matrixcore.lock 2>/dev/null; do sleep 10; done; <run>; rmdir /tmp/mx-matrixcore.lock`.
 The SDK's start on a new device is CPU-bound: with many Simulators and builds at once, a test's first
 sync misses its limit. Keep at most one Simulator booted per conversation, and shut it down
-(`xcrun simctl shutdown <udid>`) whenever you are not driving or testing.
+(`xcrun simctl shutdown <udid>`) whenever you are not driving or testing. Shut down only your own Simulator, by its
+udid: never `xcrun simctl shutdown all`, which stops other conversations' test runs.
 
 ```sh
 ./scripts/test-matrix-core.sh
