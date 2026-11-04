@@ -147,6 +147,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 
 | 123 | A view-local `let` is reported as an unknown tag, followed by unknown-name errors at its uses. | About 2 min | P3 | [view-local-let](issues/20261104-view-local-let-reports-an-unknown.md) |
 | 124 | A horizontal drag inside a full-width list link activates it on release, starting a navigation push. | Native controls and isolated host regression investigation | P2 | [horizontal-row-drag-activates-link](issues/20261104-horizontal-row-drag-activates-link.md) |
+| 125 | A reactive navigation-root accent updates descendants but leaves a prominent native header blue. | Native visual mismatch and isolated regression investigation | P2 | [reparented-root-window-tint](issues/20261104-reparented-root-window-tint.md) |
 
 ## What worked well
 

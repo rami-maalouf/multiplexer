@@ -2078,3 +2078,9 @@ notifications reach no app code (no `willPresent` / `didReceive` hatch).
 
 - A guided setup from a new VPS and a domain to a working server.
 - Oracle Always Free as one supported target among others.
+
+Navigation tint follow-up: local finding 125 records the stale prominent header
+observed by the appearance lane. Separate `exact2-tint` branch has test-only
+reparenting regressions and a successful off-simulator test build; runtime RED
+is pending. Production tint code is unchanged, prominent foreground remains
+separately unproven, and `exact2-navigation` stays clean at `7529006ab9` for Inbox.
