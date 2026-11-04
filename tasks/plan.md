@@ -12,9 +12,18 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 | Blocked on Rami | Phase 3's Apple setup (P3.0 in `tasks/todo.md`): an App Group, two App IDs, an APNs key in the Keychain, two development profiles, and the DNS name `sygnal.ramimaalouf.com`. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `ed43ad09a0` (2026-11-02) |
-| Last updated | 2026-11-03 |
+| Last updated | 2026-11-04 |
 
 Update this table at the end of every work session.
+
+### Conversation assignments (2026-11-04)
+
+Rami lifted the pause and requested GPT-6 Astra and GPT-6.1 Sol for the continuing conversations.
+Labels (`work/labels`) and Later (`work/later-camera`) use GPT-6.1 Sol; the Exact/UI lane uses
+GPT-6 Astra. The push lane uses GPT-6.1 Sol, preserves its duplicate Labels work in
+`work/labels-finish`, and returns to push readiness without owning Labels. Completed lanes stay
+closed. Any new delegated work in these lanes uses only these two models. Integrations into
+`main` are coordinated here, one at a time, after each lane reports its tested commit.
 
 ## Goal
 
@@ -299,3 +308,5 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-04 | The frequent-emoji test failed again, also on `main`, for a new cause: the sdk can replace a timeline item under a new id while the event stays the same (a message went from id 40 to 47), and `toggleReaction` returned silently for an id it could not find. The app had the same bug: a reaction tap could do nothing. `TimelineItems` now remembers each id's event and finds a replaced item by it; a message truly gone throws `MatrixCoreError.noMessage`. 3 failures in 3 runs before, 3 passes in a row after (branch `work/emoji-test`). |
 | 2026-11-04 | UI faults, worst first: the chat bar fixed in the app (its backdrop sized by the bar, so no message shows behind the name); `check` is clean on it only with a local exact2 branch (`local/check-hidden-by`, not pushed) that tells the iOS host's check which opaque views cover an item. B3: the app draws the edge effect under the bottom bar. B4: no longer seen. B21: still open after three tries (trace in todo.md). |
 | 2026-11-04 | Health check of `main` after five merges (branch `work/main-health`): the whole MatrixCore suite, one class at a time with the lock let go between classes (load 2 to 10, one spike to 27): 74 passed, 2 failed, none on the first sync. `VoiceTests.testAVoiceNoteReachesTheOtherWithItsLengthAndWaveform`: a test bug; it found the received note by length and size, which an earlier run's note shares (the same recording), and the newest match could be that note while this one was on its way; it now finds it by event id (2 of 2 after). `NetworkFilterTests.testTheNetworkFilterNarrowsTheListAndThePinsAlsoUnderUnread`: the test process was killed from outside ("signal kill") after 50 s, no assertion failed and no crash report; not reproduced in 3 runs. `test ios` 6 passed; `verify ios` clean. |
+| 2026-11-04 | UI review resumed in work/polish (multiplexer-older; T3 binding remains detached work-exact-gaps). Select Chats explicitly speaks bridge networks; Settings Notifications wraps at largest text. Sender wrapping transferred to Later. Normal Exact ed43ad09a0 verification: 6 tests passed, light/dark checks clean, eight largest-text screens without overflow. Finding 49 remains open; local befb32d3cd experiment preserved, not required for app fixes. |
+| 2026-11-04 | Integrated work/polish commits 7e05b02 and c56f5a2 into main. App changes match the UI lane’s verified files; retained the health-check history and coordinator assignments. Sender preview wrapping stays pending in Later; no local Exact experiment is included. |

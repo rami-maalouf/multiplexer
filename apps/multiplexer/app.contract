@@ -255,6 +255,8 @@ fn inboxUnread(r: Room): bool = not r.archived and not r.lowPriority and (loud(r
 // a time limit not reached yet (0: none), as limits.ts's within.
 fn within(until: number, now: number): bool = until == 0 or now < until
 fn countText(n: number): string = n > 99 ? "99+" : n.toString()
+// a chat's name and bridge networks, spoken by its selection row.
+fn chooseLabel(r: Room): string = [r.name].concat(r.networks.filter(n => n != "matrix").map(n => networkName(n))).join(", ")
 // a message in one line, for a reply bar or the forward sheet: its text, else "Photo" or its file's name.
 fn messageLine(m: Message): string = m.body != "" ? m.body : (m.isImage ? "Photo" : (m.isVideo ? "Video" : (m.isSticker ? "Sticker" : (m.isFile ? m.fileName : (m.isAudio ? "Voice message" : "")))))
 // a chat's composer: the one touched in this launch, else the draft kept in the account's store
@@ -957,8 +959,9 @@ component Multiplexer
                     for r in listedRooms key=r.id
                       // choosing chats, a tap chooses the row's chat; else it opens it, and a long press holds it.
                       if selecting
+                        // its spoken name has the chat's networks: at the accessibility sizes no picture, so no logo, shows.
                         button appearance="none" press=toggleChosen(r.id) disabled=pending(changedChats) role="checkbox" aria-checked=selectedChats.includes(r.id)
-                          aria-label=r.name id=`room-${r.id}` testId=`room-${r.id}` display="flex" flex-direction="row" align-items="center"
+                          aria-label=chooseLabel(r) id=`room-${r.id}` testId=`room-${r.id}` display="flex" flex-direction="row" align-items="center"
                           width="100%" min-width=0 text-align="start"
                           // at the accessibility text sizes the mark takes the picture's place, so the name keeps its width.
                           view flex-shrink=0 margin=(viewport.accessibilityTextSize ? "8px 12px 8px 0" : "0 12px 0 0")
