@@ -85,7 +85,7 @@ final class CommunitiesTests: XCTestCase {
         }
         let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
         let server = String(user.split(separator: ":").last ?? "")
-        let writer = try await signIn(homeserver, user, password)
+        let writer = try await signInTestDevice(homeserver, user, password)
         let rooms = try await writer.rooms()
         let chatId: String
         if let id = rooms.first(where: { $0.name == chatName })?.id { chatId = id } else { chatId = try await writer.createRoom(name: chatName) }
@@ -96,7 +96,7 @@ final class CommunitiesTests: XCTestCase {
             try await putState(["via": [server], "canonical": true], type: "m.space.parent", stateKey: spaceId, roomId: chatId, session: session)
         }
 
-        let reader = try await signIn(homeserver, user, password)
+        let reader = try await signInTestDevice(homeserver, user, password)
         let community = try await communityOnceItHasItsChat(reader, chatId)
         XCTAssertEqual(community?.name, spaceName)
         XCTAssertEqual(community?.rooms, [chatId])
@@ -145,12 +145,4 @@ final class CommunitiesTests: XCTestCase {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
     }
 
-    /// Signs in as a new device that the test signs out at its end, even when the test fails.
-    private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)")
-        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                     deviceName: "Multiplexer test", storeDirectory: directory)
-        addTeardownBlock { try? await account.signOut() }
-        return account
-    }
 }

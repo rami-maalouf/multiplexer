@@ -14,11 +14,11 @@ final class RequestsTests: XCTestCase {
             throw XCTSkip("two test users are needed (MATRIX_TEST_USER2 and MATRIX_TEST_PASSWORD2)")
         }
         let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
-        let owner = try await signIn(homeserver, user2, password2)
+        let owner = try await signInTestDevice(homeserver, user2, password2)
         let roomId: String
         if let id = try await owner.rooms().first(where: { $0.name == roomName })?.id { roomId = id } else { roomId = try await owner.createRoom(name: roomName) }
 
-        let me = try await signIn(homeserver, user, password)
+        let me = try await signInTestDevice(homeserver, user, password)
         // a run that stopped half way left this account in the room, or invited.
         let joined = try await me.rooms().contains { $0.id == roomId }
         let invited = try await me.requests().contains { $0.id == roomId }
@@ -61,10 +61,15 @@ final class RequestsTests: XCTestCase {
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
             throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
         }
-        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
-        async let rooms = account.rooms()
-        async let requests = account.requests()
-        async let communities = account.communities()
+        // not signInTestDevice: it starts the sync, and this test needs the first start to be asked at once.
+        let account = try await MatrixAccount.signIn(
+            homeserver: env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user: user, password: password, deviceName: "Multiplexer test",
+            storeDirectory: FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)"))
+        let saved = try? account.savedSession()
+        addTeardownBlock { await Self.signOutTestDevice(account, saved: saved) }
+        async let rooms = account.rooms(timeout: 120)
+        async let requests = account.requests(timeout: 120)
+        async let communities = account.communities(timeout: 120)
         let (listed, _, _) = try await (rooms, requests, communities)
         XCTAssertFalse(listed.isEmpty)
     }
@@ -76,14 +81,5 @@ final class RequestsTests: XCTestCase {
             if Date().timeIntervalSince(start) > 20 { XCTFail("timed out: \(what)"); return }
             try await Task.sleep(nanoseconds: 300_000_000)
         }
-    }
-
-    /// Signs in as a new device that the test signs out at its end, even when the test fails.
-    private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)")
-        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                     deviceName: "Multiplexer test", storeDirectory: directory)
-        addTeardownBlock { try? await account.signOut() }
-        return account
     }
 }
