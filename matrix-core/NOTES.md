@@ -75,6 +75,13 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
 - `send` puts the message in the room's send queue (the open chat's live timeline) and
   returns at once; `Message.sendState` goes `sending`, then `sent` or `failed`. A message
   keeps its id (the timeline item's unique id) from sending to sent.
+- **An id can change under the caller.** The sdk can replace a timeline item under a new id while
+  it holds the same event (seen 2026-11-04: a message's id went from 40 to 47 within a minute of a
+  test; most likely its event cache dropping a duplicate and inserting the event anew). An action
+  with an id the caller read before still means that message: `TimelineItems` remembers each id's
+  event, and a lookup that finds no item with the id finds the one that holds its event. Before,
+  a reaction then did nothing and said nothing; a message truly gone now throws
+  `MatrixCoreError.noMessage`.
 - A failure the sdk can recover from (no network) stops the room's send queue; `retry`
   starts it again and also retries a message the server refused (`retrySend`).
 - The sdk keeps a refused message in its queue, across launches, until it is sent or

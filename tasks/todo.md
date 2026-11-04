@@ -1271,6 +1271,13 @@ same test users time out on "the first sync"; run one suite at a time. Every con
 holds a lock around each run (agreed 2026-11-03): `until mkdir /tmp/mx-matrixcore.lock 2>/dev/null; do sleep
 10; done; <the run>; rmdir /tmp/mx-matrixcore.lock`. Do not wait with `pgrep`: two waiters see a quiet moment
 at once, and `pgrep -f "xcodebuild test -scheme MatrixCore"` in a shell loop matches the loop's own command line.
+**It came back (2026-11-04), with another cause, now fixed (branch `work/emoji-test`):** it failed again,
+also on `main`, with "this account's reactions are [:]". A diagnostic showed the test's message id no longer
+found the message: the sdk had replaced its timeline item under a new id (40 became 47) while the event
+stayed the same, and `toggleReaction` returned silently for an id it could not find, so every later toggle
+did nothing. The app had the same bug (a reaction tap could do nothing). MatrixCore now remembers each
+item's event and finds a replaced item by it; a message truly gone throws `MatrixCoreError.noMessage`. Before the fix: 3 failures in 3 runs; after: 3 passes in a row under one hold of the lock, a fourth in
+`MessageActionsTests` (5 passed), and `AccountDataTests` 2 passed.
 
 **Fixed on the way (2026-11-03, during Bookmarks): a crash at launch.** A relaunch, signed in,
 crashed in the sdk's room list (`RoomList.entriesWithDynamicAdapters`, `EXC_BAD_ACCESS`) two

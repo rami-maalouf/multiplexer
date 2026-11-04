@@ -281,6 +281,8 @@ public enum MatrixCoreError: Error, Equatable {
     case noVideo(String)
     /// The message is not a voice message or an audio file, or not in the open chat.
     case noAudio(String)
+    /// The message is not in the open chat (a reaction to it, for one).
+    case noMessage(String)
     /// A Keychain call failed with this `OSStatus`.
     case keychain(Int32)
     /// Send Later: the chat is end-to-end encrypted, and a message that waits on the server

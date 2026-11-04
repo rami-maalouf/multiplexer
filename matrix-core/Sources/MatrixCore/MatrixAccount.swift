@@ -291,7 +291,7 @@ public final class MatrixAccount: @unchecked Sendable {
     /// is there. An added one counts among the frequent emojis (`frequentEmojis`).
     public func toggleReaction(roomId: String, messageId: String, key: String, timeout: TimeInterval = 30) async throws {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        guard let event = live.items.event(of: messageId) else { return }
+        guard let event = live.items.event(of: messageId) else { throw MatrixCoreError.noMessage(messageId) }
         // the sdk adds or takes back from its own state at the call, and says which (true: added).
         if try await live.timeline.toggleReaction(itemId: event.eventOrTransactionId, key: key) {
             await countReaction(key)
@@ -691,6 +691,11 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     /// How many times the sdk cleared or reset the items: a sync with a gap can reset a timeline
     /// to its newest events, after which a page back is needed again.
     private var resets = 0
+    /// Each item's event, by the item's id (`Message.id`). The sdk can replace an item under a new
+    /// id while it holds the same event (seen 2026-11-04: a message's id went from 40 to 47 within
+    /// a minute; most likely its event cache dropping a duplicate and inserting the event anew). A
+    /// caller that holds the old id still means that message, so a lookup falls back to its event.
+    private var eventIds: [String: String] = [:]
 
     init(me: String) { self.me = me }
 
@@ -712,6 +717,7 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     private func apply(_ d: TimelineDiff) {
+        for item in d.values { remember(item) }
         switch d {
         case .append(let values): items += values
         case .clear:
@@ -778,7 +784,7 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     /// A photo's or a sticker's picture, its sender's thumbnail of it (nil for none), and its names.
     func image(of messageId: String) -> (MediaSource, MediaSource?, MessageImage)? {
         lock.withLock {
-            guard let event = items.first(where: { $0.uniqueId().id == messageId })?.asEvent(),
+            guard let event = item(of: messageId)?.asEvent(),
                   case .msgLike(let like) = event.content else { return nil }
             switch like.kind {
             case .message(let message):
@@ -797,7 +803,22 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     func event(of messageId: String) -> EventTimelineItem? {
-        lock.withLock { items.first { $0.uniqueId().id == messageId }?.asEvent() }
+        lock.withLock { item(of: messageId)?.asEvent() }
+    }
+
+    /// The item a message's id names: the item with that id, else (the sdk replaced it) the item
+    /// that holds the same event now. Called with the lock held.
+    private func item(of messageId: String) -> TimelineItem? {
+        if let item = items.first(where: { $0.uniqueId().id == messageId }) { return item }
+        guard let eventId = eventIds[messageId] else { return nil }
+        return items.first {
+            guard case .eventId(let id)? = $0.asEvent()?.eventOrTransactionId else { return false }
+            return id == eventId
+        }
+    }
+
+    private func remember(_ item: TimelineItem) {
+        if case .eventId(let id)? = item.asEvent()?.eventOrTransactionId { eventIds[item.uniqueId().id] = id }
     }
 
     /// The event a reply answers: `replyTo` is a message's id in this chat, or an event id ("$…")
@@ -819,6 +840,17 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
                                   body: body, isOwn: event.sender == me)
             }
             return nil
+        }
+    }
+}
+
+extension TimelineDiff {
+    /// The items this diff brings into the timeline.
+    var values: [TimelineItem] {
+        switch self {
+        case .append(let values), .reset(let values): return values
+        case .pushFront(let value), .pushBack(let value), .insert(_, let value), .set(_, let value): return [value]
+        case .clear, .popFront, .popBack, .remove, .truncate: return []
         }
     }
 }
