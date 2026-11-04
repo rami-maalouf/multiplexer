@@ -58,8 +58,11 @@ final class VoiceTests: XCTestCase {
         XCTAssertEqual((extensible["waveform"] as? [Int])?.count, 64)
         XCTAssertEqual(content["body"] as? String, "Voice message.ogg")
 
-        // the other person: a voice message with its length and waveform, and the list's line.
-        let received = try await message(other, roomId, within: 30) { $0.audio?.duration == note.duration && $0.audio?.size == note.size && $0.sender == user }
+        // the other person: a voice message with its length and waveform, and the list's line. The
+        // one this run sent, by its event: an earlier run's note has the same length and size (the
+        // same recording), and the newest match can be that one while this one is on its way.
+        XCTAssertFalse(sent.eventId.isEmpty, "the sent message has no event id")
+        let received = try await message(other, roomId, within: 30) { $0.eventId == sent.eventId }
         let audio = try XCTUnwrap(received.audio)
         XCTAssertTrue(audio.isVoice)
         XCTAssertEqual(audio.duration, note.duration)
