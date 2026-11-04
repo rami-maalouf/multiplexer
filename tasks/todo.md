@@ -5,6 +5,21 @@ detail. Later phases are rough. We detail each one at the checkpoint before it.
 
 T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 
+## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
+
+- [ ] Home and conversation lists stay fixed horizontally under left/right drags; vertical
+  scrolling, row actions and navigation remain usable. Owner: Push lane.
+- [ ] Opening a cached conversation renders available messages immediately, without waiting
+  for unrelated network enrichment. Measure first and repeat opens; preserve unread position,
+  drafts, pagination and merged-room switching. Owner: Later lane.
+- [ ] Completing, cancelling and reversing interactive chat swipe-back leaves both layouts
+  intact, including with the keyboard shown. Reproduce with native touches. Owner: Exact/UI lane.
+- [ ] Outgoing list previews replace `You:` with subtle accessible receipt symbols tied to the
+  exact preview event. Prove remote seen updates without opening that chat; keep unknown,
+  pending and failed states truthful. Cover merged rows and supported list surfaces. Owner: Labels lane.
+- [ ] Coordinator reviews and integrates tested commits, checks the combined native app,
+  records remaining limits and retains all Exact feedback locally.
+
 ## Phase 0: prove the server (M0)
 
 ### T0.1 Inventory the server (read only)

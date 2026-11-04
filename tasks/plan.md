@@ -18,6 +18,16 @@ Update this table at the end of every work session.
 
 ### Conversation assignments (2026-11-04)
 
+Rami's next daily-use report is assigned to four existing conversations, all on GPT-6 Astra
+or GPT-6.1 Sol, starting from integrated main `a09a33d`. Push owns unintended horizontal
+inbox movement; Later owns cached chat opening; Exact/UI owns intermittent interactive
+swipe-back layout corruption; Labels owns outgoing preview receipt icons. Reproduce the
+gesture and loading defects before fixing them. Receipt indicators must distinguish actual
+seen evidence from unavailable status. The coordinator integrates tested lane commits on
+`fix/daily-chat-experience`; no lane independently merges main or publishes feedback.
+Authenticated drives share `/tmp/mx-auth-drive.lock`; core tests retain their existing lock.
+Each lane uses its own simulator and shuts it down when idle. All feedback stays local.
+
 Labels progress: integrated `8904255` into `work/labels` (`673efb5`), preserving communities,
 network-aware selection labels and SessionStore migration. The earlier integrated iOS verification
 passed 8 tests and light, dark and largest-text checks. Four review findings are fixed in source:
