@@ -26,6 +26,10 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   replayed: a prominent native header button can remain blue even when the palette and content
   controls change. Framework owner and coordinator have the display evidence and reproduction.
   The app's full native verify passes despite this visible defect. No app-only tint bridge.
+- Independent review of the appearance commit found an omitted light incoming-bubble surface:
+  normal-size links could measure 4.14:1 with a white accent. A separate follow-up adds the
+  actual light/dark incoming backgrounds to tint calculation and the independent contrast sweep.
+  The strengthened test failed at 4.144299 before the fix. Exact chosen outgoing fills stay unchanged.
 - Appearance verification (2026-11-04): 9 Bun tests passed; 12 native authored tests passed;
   full verify clean, 14 screens at body 53 pt without spill. Numerical palette contrast is
   independent of native glass/material contrast. Some captures fell back to app pixels, so they
