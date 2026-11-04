@@ -1,0 +1,66 @@
+// Merge Chats' state and actions (merge.contract): the sheet's picks, the merge, the chat bar's
+// network tabs and Unmerge.
+use MergeReply, MergeCandidate from "./merge.contract"
+
+members Multiplexer
+  state mergePicked: string[] = []
+  state mergeName = ""
+  state mergeDefault = ""
+  state mergeQuery = ""
+  mutation merged as shape MergeReply refreshes roomList then afterMerge
+  // the chats a merge may take: not merged, those picked first, then the newest first; the search keeps those whose name holds it.
+  derive mergeShown = roomList.rooms.filter(r => r.merge == "" and (mergePicked.includes(r.id) or mergeQuery.trim() == "" or r.name.toLowerCase().includes(mergeQuery.trim().toLowerCase())))
+  derive mergeCandidates = mergeShown.filter(r => mergePicked.includes(r.id)).concat(mergeShown.filter(r => not mergePicked.includes(r.id))).map(r => MergeCandidate(id=r.id, name=r.name, network=r.network, avatar=r.avatar, initials=r.initials))
+
+  // the title menu's Merge Chats.
+  action openMergeSheet
+    mergePicked = []
+    mergeName = ""
+    mergeDefault = ""
+    mergeQuery = ""
+    nav = push(nav, path("merge"))
+  // Select Chats' Merge Chats: the sheet opens with the chosen chats picked, the first naming the
+  // merge and its default; the select mode ends.
+  action mergeChosen
+    let picks = chosenRooms.filter(r => r.merge == "")
+    mergePicked = picks.map(r => r.id)
+    mergeName = match first(picks) { case some(r) => r.name, case none => "" }
+    mergeDefault = match first(picks) { case some(r) => r.id, case none => "" }
+    mergeQuery = ""
+    selecting = false
+    selectedChats = []
+    nav = push(nav, path("merge"))
+  action typeMergeName(v: string)
+    mergeName = v
+  action typeMergeQuery(v: string)
+    mergeQuery = v
+  // the first chat picked names the merge and is its default until another is chosen.
+  action toggleMergePick(id: string)
+    let next = mergePicked.includes(id) ? mergePicked.filter(x => x != id) : mergePicked.concat([id])
+    mergePicked = next
+    if mergeName.trim() == ""
+      mergeName = match first(roomList.rooms.filter(r => r.id == id)) { case some(r) => r.name, case none => "" }
+    if not next.includes(mergeDefault)
+      mergeDefault = match first(next) { case some(f) => f, case none => "" }
+  action chooseMergeDefault(id: string)
+    mergeDefault = id
+  action closeMergeSheet
+    nav = back(nav)
+  action saveMerge
+    send merged = mergeChats(mergeName.trim(), mergePicked, mergeDefault)
+  action afterMerge
+    match merged
+      case some(r)
+        haptic(r.ok ? "success" : "error")
+        if r.ok and top(nav).name == "merge"
+          nav = back(nav)
+      case none
+        haptic("error")
+  // a tab in a merged chat's bar shows that network's chat in place of this one: the same visit
+  // takes the other room, so Back still goes to the list.
+  action switchMerged(id: string)
+    if id != openRoom
+      nav = replace(nav, path("room", id))
+  // the info page's More: the merged chat's rooms show as their own chats again.
+  action unmergeOpen
+    send merged = unmergeChat(openChatId)

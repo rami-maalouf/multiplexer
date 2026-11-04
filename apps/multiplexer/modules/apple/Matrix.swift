@@ -55,38 +55,54 @@ final class Matrix: ExactModule {
                     reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
                        "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
-                       "reminders": rooms.filter { !$0.isHidden && $0.reminderAt != nil }.count,
+                       "reminders": rooms.filter { !$0.isHidden && $0.foldedInto == nil && $0.reminderAt != nil }.count,
                        "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
                 case "pin", "unpin":
-                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
-                    if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
+                    // a merged chat pins or unpins each of its rooms.
+                    let chatId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    for roomId in await account.roomsOf(chatId) {
+                        if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
+                    }
                     reply.send(["ok": true])
+                case "merge", "unmerge":
+                    // Merge Chats (MatrixCore's Merges.swift): kept in the account's data.
+                    let account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    if request["op"] as? String == "merge" {
+                        let id = try await account.merge(rooms: request["rooms"] as? [String] ?? [], name: request["name"] as? String ?? "",
+                                                         defaultRoom: request["defaultRoom"] as? String ?? "")
+                        reply.send(["ok": true, "id": id])
+                    } else {
+                        try await account.unmerge(request["id"] as? String ?? "")
+                        reply.send(["ok": true, "id": ""])
+                    }
                 case "chat", "chats":
                     // a chat's long-press actions, or select chats' on several (matrixcore's chatactions.swift).
+                    // a merged chat's action acts on each of its rooms; its reminder is on the room it opens.
                     let account = try await signedIn()
                     guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
                     let action = request["action"] as? String ?? "", roomId = request["roomId"] as? String ?? ""
                     switch action {
                     case "clearReminder" where request["op"] as? String == "chat":
-                        try await account.clearReminder(roomId: roomId)
+                        for id in await account.roomsOf(roomId) { try await account.clearReminder(roomId: id) }
                     case "remind" where request["op"] as? String == "chat":
                         // Remind Me: `when` is "tomorrow", "monday" or a picked time without a zone, as Send Later's.
                         guard let when = ScheduledMessage.date(for: request["when"] as? String ?? ""), when > Date().addingTimeInterval(5) else {
                             reply.send(["ok": false, "at": 0, "problem": "past"])
                             return
                         }
-                        try await account.setReminder(roomId: roomId, at: when)
+                        let target = try await account.rooms().first { $0.id == roomId }?.opensRoom ?? roomId
+                        try await account.setReminder(roomId: target, at: when)
                         reply.send(["ok": true, "at": (when.timeIntervalSince1970 * 1000).rounded(), "problem": ""])
                         return
                     default:
                         guard let change = MatrixAccount.ChatChange(rawValue: action) else {
                             throw ExactNativeRefusal("a chat's actions: \(MatrixAccount.ChatChange.allCases.map(\.rawValue).joined(separator: ", ")), and for one chat remind and clearReminder")
                         }
-                        if request["op"] as? String == "chats" {
-                            try await account.change(roomIds: request["roomIds"] as? [String] ?? [], change)
-                        } else {
-                            try await account.change(roomId: roomId, change)
-                        }
+                        let chosen = request["op"] as? String == "chats" ? request["roomIds"] as? [String] ?? [] : [roomId]
+                        var rooms: [String] = []
+                        for id in chosen { rooms += await account.roomsOf(id) }
+                        if rooms.count == 1 { try await account.change(roomId: rooms[0], change) } else { try await account.change(roomIds: rooms, change) }
                     }
                     reply.send(["ok": true])
                 case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":
@@ -382,6 +398,9 @@ final class Matrix: ExactModule {
          "oneToOne": room.isOneToOne, "listed": listed,
          "muted": room.isMuted, "mentions": room.unreadMentions, "lowPriority": room.isLowPriority,
          "archived": room.isArchived, "reminder": Double(room.reminderAt ?? 0),
+         // Merge Chats: every network, the room a merged chat opens, its merge (a folded room's too) and its rooms.
+         "networks": room.networks, "open": room.opensRoom, "merge": room.mergeId ?? "",
+         "mergeRooms": room.mergeRooms.map { ["id": $0.id, "network": $0.network] },
          "avatar": cached(room.avatarName, topic: topic) { _ = try await account.avatarFile(roomId: room.id, directory: self.media) }]
     }
 

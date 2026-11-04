@@ -14,7 +14,7 @@ members Multiplexer
   derive remindName = match first(roomList.rooms.filter(r => r.id == remindFor)) { case some(r) => r.name, case none => "" }
   // when the held chat's and the open chat's reminders are due (ms since 1970; 0 for none).
   derive aimedReminder = match aimedRoom { case some(r) => r.reminder, case none => 0 }
-  derive openReminderAt = match openRoomInfo { case some(r) => r.reminder, case none => 0 }
+  derive openReminderAt = match openChatInfo { case some(r) => r.reminder, case none => 0 }
 
   // the list's long-press menu and the info page's More open the time sheet.
   action askRemind(id: string)
@@ -25,7 +25,7 @@ members Multiplexer
   action remindAimed
     askRemind(aimed)
   action remindOpen
-    askRemind(openRoom)
+    askRemind(openChatId)
   // a set time ("tomorrow", "monday"), or the picked one.
   action remindAt(choice: string)
     remindRefused = ""
@@ -54,7 +54,7 @@ members Multiplexer
   action clearAimedReminder
     clearReminder(aimed)
   action clearOpenReminder
-    clearReminder(openRoom)
+    clearReminder(openChatId)
   // a reminder's notification, tapped: its chat opens.
   action openReminder(tag: string, e: NotificationEvent)
     let id = match e.data { case some(d) => d, case none => "" }

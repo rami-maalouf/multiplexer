@@ -129,13 +129,15 @@ component PinnedGrid
           text r.shortName font="-exact-subheadline" color="-exact-secondary-label" line-clamp=1 max-width="100%"
 
 // the inbox's title, as Beeper's: its words and a chevron at the top left, which open a menu.
-// merge chats comes later, so it shows greyed. the route draws this row in
-// place of the system bar, whose large title cannot open a menu.
+// Select Chats, Merge Chats and Settings. The route draws this row in place of the system bar,
+// whose large title cannot open a menu.
 component TitleMenu
   props
     title: string
     select: action
     settings: action
+    // Merge Chats' sheet (merge.contract).
+    merge: action
     largeText: bool
   view
     row padding="2px 16px 6px" align-items="center" testId="title-bar"
@@ -150,7 +152,7 @@ component TitleMenu
         button press=select popovertarget="title-menu" popovertargetaction="hide" testId="menu-select-chats"
           image "symbol:select"
           text "Select Chats"
-        button press=settings disabled=true testId="menu-merge-chats"
+        button press=merge popovertarget="title-menu" popovertargetaction="hide" testId="menu-merge-chats"
           image "symbol:icon.merge"
           text "Merge Chats"
         button press=settings popovertarget="title-menu" popovertargetaction="hide" testId="menu-settings"
@@ -195,6 +197,9 @@ component SelectBar
     pinned: bool
     change: action
     delete: action
+    // Merge Chats with the chosen chats: two or more that are not merged already.
+    canMerge: bool
+    merge: action
     largeText: bool
     busy: bool
   derive off = count == 0 or busy
@@ -230,3 +235,7 @@ component SelectBar
         button press=change(pinned ? "unpin" : "pin") popovertarget="select-more" popovertargetaction="hide" testId="select-pin"
           image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
           text (pinned ? "Unpin" : "Pin")
+        if canMerge
+          button press=merge popovertarget="select-more" popovertargetaction="hide" testId="select-merge"
+            image "symbol:icon.merge"
+            text "Merge Chats"

@@ -129,6 +129,9 @@ component InfoPage
     pin: action
     read: action
     mute: action
+    // a merged chat (Merge Chats), and Unmerge, which shows its rooms as their own chats again.
+    merged: bool
+    unmerge: action
     // the chat's reminder (ms since 1970; 0 for none), Remind Me's time sheet, and Clear Reminder.
     reminder: number
     remind: action
@@ -214,6 +217,10 @@ component InfoPage
           button press=remind popovertarget="info-more" popovertargetaction="hide" testId="info-more-remind"
             image "symbol:icon.alarm"
             text "Remind Me…"
+        if merged
+          button press=unmerge popovertarget="info-more" popovertargetaction="hide" testId="info-more-unmerge"
+            image "symbol:icon.merge"
+            text "Unmerge"
         hr
         button press=askDelete destructive=true popovertarget="info-more" popovertargetaction="hide" testId="info-more-delete"
           image "symbol:delete"

@@ -86,6 +86,14 @@ public struct RoomSummary: Equatable, Sendable {
     /// When the account asked to be reminded to answer this chat (`setReminder`), in milliseconds
     /// since 1970; nil for none, or once answered.
     public var reminderAt: UInt64? = nil
+    /// A merged chat (Merge Chats) and its folded rooms: the merge's id; nil for any other chat.
+    public var mergeId: String? = nil
+    /// A merged chat's rooms with their networks, in the merge's order; empty for any other chat.
+    public var mergeRooms: [MergedRoom] = []
+    /// The room a merged chat opens (`MergeStore.fold`); nil for any other chat.
+    public var opens: String? = nil
+    /// A room shown inside a merged chat (this merge's id): it is in no list of its own.
+    public var foldedInto: String? = nil
 }
 
 public struct Message: Equatable, Sendable {
@@ -257,6 +265,8 @@ public enum SendState: String, Sendable {
 
 public enum MatrixCoreError: Error, Equatable {
     case noRoom(String)
+    /// A merge needs two chats or more.
+    case mergeNeedsTwo
     case timedOut(String)
     case sendFailed(String)
     /// The message is not a photo, or not in the open chat.

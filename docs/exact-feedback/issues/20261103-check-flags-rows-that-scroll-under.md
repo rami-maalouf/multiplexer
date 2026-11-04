@@ -49,3 +49,11 @@ Seen while adding a list's selection mode on 2026-11-03 at `ed43ad09a0`: two bot
 with the same structure produced different unscrolled `check both` results. The selection
 bar reported overlaps, while the normal inbox bar did not; after scrolling both reported
 them. Reading `scripts/agent-check.mjs` did not clarify the difference. About 10 minutes.
+
+## Seen again (2026-11-03, `ed43ad09a0`)
+
+A chat's floating bar grew a row of tabs under its title. `check both` on a chat scrolled to its end
+reported 6 to 11 findings: the title, More and each tab "overlaps Text#…" (the messages fading under
+the bar), and in dark, contrast on the bar's glass labels (Back's count, the title, a tab) read
+over the bubbles behind. The same chat without the tabs gave the same kinds of finding. Telling the
+new ones from those took a second drive of the plain chat. About 10 minutes.
