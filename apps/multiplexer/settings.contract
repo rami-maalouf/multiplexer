@@ -1,3 +1,6 @@
+use Balloon from "./bubble.contract"
+use Appearance, AccentBadge, accentPresets from "./appearance.contract"
+
 // Settings, from the inbox's title menu, in the platform's grouped style: the signed-in account,
 // whether new messages notify (and a way to allow it), the one speed every voice message plays at
 // (the speed chip on a voice message changes the same setting), and Sign Out, which asks first.
@@ -36,6 +39,9 @@ component SettingsScreen
     // the signed-in account's id ("" while signed out), and its name and picture.
     userId: string
     profile: Profile
+    appearance: Appearance
+    chooseAccent: action
+    resetAccent: action
     speed: number
     chooseSpeed: action
     signOut: action
@@ -85,6 +91,37 @@ component SettingsScreen
                 text (notifications == "granted" ? "On" : "Off") color="-exact-secondary-label" testId="notifications-state"
             footer
               text (notifications == "denied" ? "Turn them on in the iPhone's Settings, under Multiplexer." : "A new message shows its chat, its sender and its text.")
+        section testId="appearance-settings"
+          header
+            text "Appearance"
+          row gap=12 align-items=(largeText ? "flex-start" : "center") flex-direction=(largeText ? "column" : "row")
+            text "Accent Color" flex=1
+            row gap=8 align-items="center" flex-shrink=0
+              view width=28 height=28 border-radius=14 background-color=appearance.fill border="1px solid -exact-separator" aria-hidden=true
+              text appearance.fill font="-exact-footnote" color="-exact-secondary-label" testId="accent-value"
+          row
+            view display="flex" flex-wrap="wrap" gap=8 role="group" aria-label="Accent presets"
+              for preset in accentPresets() key=preset.id
+                button press=chooseAccent(preset.color) aria-pressed=(appearance.fill == preset.color)
+                  aria-label=preset.name testId=`accent-${preset.id}` appearance="none" min-height=44
+                  border=(appearance.fill == preset.color ? "2px solid AccentColor" : "1px solid -exact-separator")
+                  border-radius=10 padding="8px 10px"
+                  row gap=6 align-items="center"
+                    view width=18 height=18 border-radius=9 background-color=preset.color border="1px solid -exact-separator" aria-hidden=true
+                    text preset.name
+                    if appearance.fill == preset.color
+                      image "symbol:checkmark" aria-hidden=true
+          row gap=10 align-items="center" justify-content="flex-end" testId="accent-preview"
+            AccentBadge(appearance=appearance, label="3", muted=false)
+            Balloon(appearance=appearance, body="Your messages", outgoing=true, tail=false, dimmed=false, identifier="accent-preview-bubble")
+          row gap=12 align-items=(largeText ? "flex-start" : "center") flex-direction=(largeText ? "column" : "row")
+            text "Custom Color" flex=1
+            accent-picker selected=appearance.fill message=chooseAccent width=(largeText ? 240 : 100) height=(largeText ? 72 : 44) aria-label="Custom accent color" testId="accent-custom"
+          row
+            button press=resetAccent disabled=(appearance.fill == "#007aff") testId="accent-reset"
+              text "Reset to Default Blue"
+          footer
+            text "Your messages keep this color. Buttons and links adapt for readability. Saved on this device."
         section
           header
             text "Voice Messages"

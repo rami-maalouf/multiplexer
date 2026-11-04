@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // a private matrix space: a name and optional picture, then chats added from their menus.
 use Face from "./bubble.contract"
 use InfoSheet from "./info.contract"
@@ -19,6 +20,7 @@ shape SpaceAdded
 
 component NewSpaceSheet
   props
+    appearance: Appearance
     route: string
     name: string
     picture: string
@@ -30,7 +32,7 @@ component NewSpaceSheet
     close: action
     save: action
   view
-    InfoSheet(route=route, title="New Space", done="Create", canSave=(name.trim() != ""), saving=saving, close=close, save=save)
+    InfoSheet(appearance=appearance, route=route, title="New Space", done="Create", canSave=(name.trim() != ""), saving=saving, close=close, save=save)
       section background-color="transparent"
         column align-items="center" gap=8 width="100%"
           if picture != ""

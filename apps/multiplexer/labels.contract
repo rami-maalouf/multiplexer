@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // private label groups, their editor and the picker that assigns chats to them.
 shape ChatLabel
   id: string
@@ -15,6 +16,7 @@ shape LabelWrite
 
 component LabelEditor
   props
+    appearance: Appearance
     route: string
     editing: bool
     draft: string
@@ -30,7 +32,7 @@ component LabelEditor
         button id="back" press=close disabled=saving testId="label-cancel"
           text "Cancel"
         text (editing ? "Rename Label" : "Create Label") role="heading" aria-level=1
-        button press=save disabled=(draft.trim() == "" or saving) buttonStyle="filled" testId="label-save"
+        button press=save disabled=(draft.trim() == "" or saving) buttonStyle="filled" color=((draft.trim() == "" or saving) ? "-exact-label" : appearance.onTint) testId="label-save"
           text (saving ? "Saving…" : "Save")
       list id="label-editor" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
         section

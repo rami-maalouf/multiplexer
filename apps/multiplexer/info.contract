@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // a chat's info page, after Beeper's: it zooms out of the chat bar's picture and name. Its
 // picture, name and network, four buttons (Search, Archive or Unpin, Low Priority, More), the
 // chat's newest photos and videos, and its members; Edit renames the group or gives it a name
@@ -347,6 +348,7 @@ component InfoPage
 // chat lets you change it), Customize for Me (a name only you see) and Add Member.
 component InfoSheet
   props
+    appearance: Appearance
     route: string
     title: string
     // the button that saves: "Save", "Invite".
@@ -363,7 +365,7 @@ component InfoSheet
         button id="back" press=close testId="info-sheet-cancel"
           text "Cancel"
         text title role="heading" aria-level=1 flex=1
-        button press=save disabled=(not canSave or saving) buttonStyle="filled" testId="info-sheet-save"
+        button press=save disabled=(not canSave or saving) buttonStyle="filled" color=((not canSave or saving) ? "-exact-label" : appearance.onTint) testId="info-sheet-save"
           text done
       list id="info-sheet" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
         children
@@ -372,6 +374,7 @@ component InfoSheet
 // in the chat and on its network.
 component EditGroupSheet
   props
+    appearance: Appearance
     route: string
     info: ChatInfo
     draft: string
@@ -386,7 +389,7 @@ component EditGroupSheet
     save: action
   derive renamed = draft.trim() != "" and draft.trim() != info.roomName
   view
-    InfoSheet(route=route, title="Edit Group Info", done="Save", canSave=((renamed and info.canRename) or picked != ""), saving=saving,
+    InfoSheet(appearance=appearance, route=route, title="Edit Group Info", done="Save", canSave=((renamed and info.canRename) or picked != ""), saving=saving,
       close=close, save=save)
       if info.canChangePicture
         section background-color="transparent"
@@ -409,6 +412,7 @@ component EditGroupSheet
 // Customize for Me: a name for the chat that only you see, on all your devices.
 component CustomNameSheet
   props
+    appearance: Appearance
     route: string
     info: ChatInfo
     draft: string
@@ -419,7 +423,7 @@ component CustomNameSheet
     close: action
     save: action
   view
-    InfoSheet(route=route, title="Customize for Me", done="Save", canSave=(draft.trim() != info.customName), saving=saving,
+    InfoSheet(appearance=appearance, route=route, title="Customize for Me", done="Save", canSave=(draft.trim() != info.customName), saving=saving,
       close=close, save=save)
       section
         header
@@ -437,6 +441,7 @@ component CustomNameSheet
 // Add Member: someone's Matrix ID (@name:server), invited to the chat.
 component AddMemberSheet
   props
+    appearance: Appearance
     route: string
     draft: string
     saving: bool
@@ -446,7 +451,7 @@ component AddMemberSheet
     save: action
   derive valid = draft.trim().startsWith("@") and draft.trim().includes(":")
   view
-    InfoSheet(route=route, title="Add Member", done="Invite", canSave=valid, saving=saving, close=close, save=save)
+    InfoSheet(appearance=appearance, route=route, title="Add Member", done="Invite", canSave=valid, saving=saving, close=close, save=save)
       section
         header
           text "Matrix ID"

@@ -1,0 +1,11 @@
+use Appearance from "./appearance.contract"
+
+members Multiplexer
+  // local to this installation, restored before first paint; never account data.
+  state accentColor = "#007aff" persist
+  resource appearance = loadAppearance(accentColor) as shape Appearance
+  action chooseAccent(color: string)
+    accentColor = color
+    haptic("selection")
+  action resetAccent
+    accentColor = "#007aff"

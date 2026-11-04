@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // voice messages in a chat, as Beeper shows them: a bubble with play, the waveform with its
 // progress, the length and one speed for every voice message; and the composer's voice button, the
 // bar while a voice message records, and its draft before it goes. Their state and actions are the
@@ -77,6 +78,7 @@ component VoicePlayMark
 // the waveform. VoiceStill draws one with no buttons.
 component VoiceBubble
   props
+    appearance: Appearance
     bars: VoiceBar[]
     // its length in seconds (0 when the sender did not say: the player's is used once it plays).
     seconds: number
@@ -93,14 +95,14 @@ component VoiceBubble
     play: action
     speedUp: action
     identifier: string
-  derive ink = outgoing ? "AccentColorText" : "-exact-label"
-  derive fill = outgoing ? "AccentColor" : "bubble.incoming"
+  derive ink = outgoing ? appearance.onFill : "-exact-label"
+  derive fill = outgoing ? appearance.fill : "bubble.incoming"
   derive played = current and seconds > 0 ? min(1, time / seconds) : -1
   derive shown = current and time > 0 ? max(0, ceil(seconds - time)) : seconds
   view
     column id=identifier testId=identifier role="group" aria-label=`Voice message, ${lengthText(seconds)}` gap=4
       width="16.5rem" max-width="100%" box-sizing="border-box" padding=(stacked ? "6px 12px 6px 4px" : "1px 6px 1px 4px")
-      border-radius=20 background-color=fill opacity=(dimmed ? 0.6 : 1)
+      border-radius=20 background-color=fill opacity=(dimmed and not outgoing ? 0.6 : 1)
       row align-items="center" gap=8 min-width=0
         // the length in its name, so VoiceOver tells one voice message's button from another's.
         button appearance="none" press=play aria-label=`${playing ? "Pause" : "Play"}, ${lengthText(seconds)}` testId=`${identifier}-play`
@@ -110,16 +112,17 @@ component VoiceBubble
         if not stacked
           text lengthText(shown) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" flex-shrink=0
             testId=`${identifier}-time`
-          VoiceSpeed(speed=speed, outgoing=outgoing, press=speedUp, identifier=`${identifier}-speed`)
+          VoiceSpeed(appearance=appearance, speed=speed, outgoing=outgoing, press=speedUp, identifier=`${identifier}-speed`)
       if stacked
         row align-items="center" justify-content="space-between" gap=8 padding-left=6
           text lengthText(shown) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" testId=`${identifier}-time`
-          VoiceSpeed(speed=speed, outgoing=outgoing, press=speedUp, identifier=`${identifier}-speed`)
+          VoiceSpeed(appearance=appearance, speed=speed, outgoing=outgoing, press=speedUp, identifier=`${identifier}-speed`)
 
 // a voice message as VoiceBubble draws it at rest, with no buttons: a held message's copy, and a
 // chat's preview (itself a button).
 component VoiceStill
   props
+    appearance: Appearance
     bars: VoiceBar[]
     seconds: number
     outgoing: bool
@@ -127,12 +130,12 @@ component VoiceStill
     dimmed: bool
     stacked: bool
     identifier: string
-  derive ink = outgoing ? "AccentColorText" : "-exact-label"
-  derive fill = outgoing ? "AccentColor" : "bubble.incoming"
+  derive ink = outgoing ? appearance.onFill : "-exact-label"
+  derive fill = outgoing ? appearance.fill : "bubble.incoming"
   view
     column id=identifier testId=identifier role="group" aria-label=`Voice message, ${lengthText(seconds)}` gap=4
       width="16.5rem" max-width="100%" box-sizing="border-box" padding=(stacked ? "6px 12px 6px 4px" : "1px 6px 1px 4px")
-      border-radius=20 background-color=fill opacity=(dimmed ? 0.6 : 1)
+      border-radius=20 background-color=fill opacity=(dimmed and not outgoing ? 0.6 : 1)
       row align-items="center" gap=8 min-width=0
         view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
           VoicePlayMark(playing=false, loading=false, ink=ink, fill=fill, size=32)
@@ -140,15 +143,16 @@ component VoiceStill
         if not stacked
           text lengthText(seconds) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" flex-shrink=0
           view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
-            VoiceSpeedText(speed=speed, outgoing=outgoing)
+            VoiceSpeedText(appearance=appearance, speed=speed, outgoing=outgoing)
       if stacked
         row align-items="center" justify-content="space-between" gap=8 padding-left=6
           text lengthText(seconds) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums"
-          VoiceSpeedText(speed=speed, outgoing=outgoing)
+          VoiceSpeedText(appearance=appearance, speed=speed, outgoing=outgoing)
 
 // the speed chip: "1x" on a faint fill, in a 44-point target.
 component VoiceSpeed
   props
+    appearance: Appearance
     speed: number
     outgoing: bool
     press: action
@@ -156,16 +160,17 @@ component VoiceSpeed
   view
     button appearance="none" press=press aria-label=`Playback Speed ${speedText(speed)}` testId=identifier min-width=44 min-height=44
       display="flex" align-items="center" justify-content="center" flex-shrink=0 -exact-press-haptic="selection"
-      VoiceSpeedText(speed=speed, outgoing=outgoing)
+      VoiceSpeedText(appearance=appearance, speed=speed, outgoing=outgoing)
 
 component VoiceSpeedText
   props
+    appearance: Appearance
     speed: number
     outgoing: bool
   view
     text speedText(speed) font="-exact-caption1" font-size="min(-exact-caption1, 22px)" font-weight=600 font-variant-numeric="tabular-nums"
-      color=(outgoing ? "AccentColorText" : "-exact-label") padding="3px 7px" border-radius=10 min-width=34 text-align="center" box-sizing="border-box"
-      background-color=(outgoing ? "bubble.outgoing-disc" : "-exact-tertiary-fill")
+      color=(outgoing ? appearance.onFill : "-exact-label") padding="3px 7px" border-radius=10 min-width=34 text-align="center" box-sizing="border-box"
+      background-color=(outgoing ? "transparent" : "-exact-tertiary-fill")
 
 // in the composer's field while it is empty and nothing is picked, where Send is once there is text.
 component VoiceButton
@@ -205,6 +210,7 @@ component RecordingBar
 // the recording before it goes: Delete, play with its waveform and length, and Send.
 component DraftBar
   props
+    appearance: Appearance
     bars: VoiceBar[]
     seconds: number
     // the draft is the one in the player (playing or paused).
@@ -228,5 +234,5 @@ component DraftBar
       VoiceBars(bars=bars, played=played, ink="AccentColor")
       text lengthText(shown) font="-exact-footnote" font-size="min(-exact-footnote, 20px)" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
         flex-shrink=0 testId="voice-draft-time"
-      button press=send disabled=preparing buttonStyle="filled" margin="4px 0" aria-label="Send Voice Message" testId="voice-send"
+      button press=send disabled=preparing buttonStyle="filled" color=(preparing ? "-exact-label" : appearance.onTint) margin="4px 0" aria-label="Send Voice Message" testId="voice-send"
         image "symbol:send" font-size="min(-exact-body, 22px)"

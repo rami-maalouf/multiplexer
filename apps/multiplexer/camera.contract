@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // the + panel's Camera (Beeper's "Camera"): the camera full screen over the chat, as the phone's
 // own camera shows it. The shutter takes a photo; it joins the composer as a photo picked from the
 // library does (attach.contract's tray), and the keyboard comes back for a caption. Photos only:
@@ -5,6 +6,7 @@
 
 component CameraScreen
   props
+    appearance: Appearance
     // the screen's route (its stack entry's id).
     route: string
     // the camera's video track, "" while it opens.
@@ -49,7 +51,7 @@ component CameraScreen
             text "Camera Access Is Off" font="-exact-title3" font-weight=600 text-align="center"
             text "Turn on the camera for Multiplexer in Settings to take a photo here." text-align="center"
               color="camera.ink-soft"
-            button press=openSettings buttonStyle="filled" testId="camera-settings"
+            button press=openSettings buttonStyle="filled" color=appearance.onTint testId="camera-settings"
               text "Open Settings"
       else
         // the viewfinder shows the whole photo between the bars, as the phone's camera; a tap focuses, a pinch zooms.

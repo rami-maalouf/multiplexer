@@ -1,0 +1,33 @@
+// fill is the exact device preference; tint is readable against platform surfaces.
+shape Appearance
+  fill: string
+  onFill: string
+  tint: string
+  onTint: string
+
+shape AccentPreset
+  id: string
+  name: string
+  color: string
+
+fn accentPresets(): AccentPreset[] = [
+  AccentPreset(id="blue", name="Blue", color="#007aff"),
+  AccentPreset(id="purple", name="Purple", color="#af52de"),
+  AccentPreset(id="pink", name="Pink", color="#ff2d55"),
+  AccentPreset(id="orange", name="Orange", color="#ff9500"),
+  AccentPreset(id="yellow", name="Yellow", color="#ffcc00"),
+  AccentPreset(id="green", name="Green", color="#34c759"),
+  AccentPreset(id="teal", name="Teal", color="#30b0c7")]
+
+// a count on the chosen accent, including very light and very dark colors.
+component AccentBadge
+  props
+    label: string
+    appearance: Appearance
+    muted: bool
+  view
+    row flex-shrink=0 align-items="center"
+      row background-color=(muted ? "-exact-tertiary-fill" : appearance.fill) border="1px solid -exact-separator"
+        border-radius=12 padding="2px 7px" min-width=20 box-sizing="border-box"
+        text label font="-exact-caption1" font-weight=600 font-variant-numeric="tabular-nums" white-space="nowrap"
+          color=(muted ? "-exact-label" : appearance.onFill)

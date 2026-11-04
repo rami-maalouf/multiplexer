@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // a chat's details beside its bubbles, as Beeper shows them: the day and time between messages,
 // the "New" line, who has seen the newest message, the jump to it, large emoji, stickers, links
 // and videos. Their state and actions are the chat screen's (details-members.contract).
@@ -68,6 +69,7 @@ component StatusLine
 // many messages are unread ("23" and an arrow, as Beeper has it); the arrow alone when none are.
 component JumpButton
   props
+    appearance: Appearance
     count: number
     press: action
   view
@@ -76,9 +78,9 @@ component JumpButton
       padding=(count > 0 ? "0 12px 0 8px" : "0") box-sizing="border-box"
       aria-label=(count > 0 ? `Newest message, ${count} unread` : "Newest message")
       if count > 0
-        view min-width=24 height=24 padding="0 7px" border-radius=12 box-sizing="border-box" background-color="AccentColor"
+        view min-width=24 height=24 padding="0 7px" border-radius=12 box-sizing="border-box" background-color=appearance.fill
           display="flex" align-items="center" justify-content="center"
-          text unreadCount(count) font="-exact-footnote" font-weight=600 color="AccentColorText" font-variant-numeric="tabular-nums"
+          text unreadCount(count) font="-exact-footnote" font-weight=600 color=appearance.onFill font-variant-numeric="tabular-nums"
       image "symbol:icon.arrow-down" font-size="min(-exact-body, 20px)" color="-exact-label" aria-hidden=true
 
 // a message of one to three emoji and nothing else: large, with no bubble, as Messages shows it.
@@ -98,19 +100,20 @@ component BigEmoji
 // paragraph's, not a run's.
 component RichBalloon
   props
+    appearance: Appearance
     runs: Run[]
     outgoing: bool
     tail: bool
     dimmed: bool
     identifier: string
     open: action
-  derive ink = outgoing ? "AccentColorText" : "-exact-label"
+  derive ink = outgoing ? appearance.onFill : "-exact-label"
   view
-    BalloonBox(outgoing=outgoing, tail=tail, dimmed=dimmed, identifier=identifier)
+    BalloonBox(appearance=appearance, outgoing=outgoing, tail=tail, dimmed=dimmed, identifier=identifier)
       text position="relative" white-space="pre-wrap" overflow-wrap="break-word" hyphens="none" min-width=0
         for r in runs key=r.id
           if r.href != ""
-            text r.text color=(outgoing ? "AccentColorText" : "AccentColor") text-decoration-line="underline" press=open(r.href)
+            text r.text color=(outgoing ? appearance.onFill : "AccentColor") text-decoration-line="underline" press=open(r.href)
               role="link" testId=`link-${identifier}-${r.id}`
           else
             text r.text color=ink

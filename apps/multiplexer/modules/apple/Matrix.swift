@@ -3,6 +3,10 @@ import Foundation
 /// Answers app.ts's asks with MatrixCore (the core-*.swift files beside this one).
 /// the session is in the keychain; its store is in data or the app group's container.
 final class Matrix: ExactModule {
+    override class var views: [String: ExactNativeFactory] {
+        ["accent-picker": ExactNativeFactory { _, props, events in AccentPickerInstance(props, events) }]
+    }
+
     // the agent's data is a fresh scratch tree, so it keeps its session apart from the app's.
     lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
     /// A session the server must still forget. Until it does, its device stays on the account.

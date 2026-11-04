@@ -5,6 +5,7 @@ import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
 import { deleteUntil, editUntil } from './limits.ts';
+import { appearance } from './appearance.ts';
 
 // app.json’s app.id: change the two together.
 export const appId = 'com.ramimaalouf.multiplexer';
@@ -270,6 +271,7 @@ async function prepare(f: Chosen, photo: boolean, storage: Storage) {
 
 // the web has no Matrix SDK: it shows the sign-in screen and refuses to sign in.
 const sources: Sources = {
+  loadAppearance: ([color]) => appearance(color),
   ...infoSources,
   currentSession: (_args, _store, _storage, native): Result<'currentSession'> => {
     if (!native?.available) return { userId: '' };

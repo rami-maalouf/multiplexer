@@ -1,3 +1,4 @@
+use Appearance from "./appearance.contract"
 // Merge Chats (B21, "Later"): one person's chats on several networks shown as one chat. A merge is
 // kept in the account's data (MatrixCore's Merges.swift), with its name and the network a new
 // message goes to by default, so the account's other devices show it too. The list shows one row
@@ -23,6 +24,7 @@ shape MergeReply
 // the sheet: a name, the chats (two or more, found by name), and the default network.
 component MergeSheet
   props
+    appearance: Appearance
     route: string
     chats: MergeCandidate[]
     picked: string[]
@@ -44,7 +46,7 @@ component MergeSheet
         button id="back" press=close testId="merge-cancel"
           text "Cancel"
         text "Merge Chats" role="heading" aria-level=1 flex=1
-        button press=save disabled=(picked.length < 2 or name.trim() == "" or saving) buttonStyle="filled" testId="merge-save"
+        button press=save disabled=(picked.length < 2 or name.trim() == "" or saving) buttonStyle="filled" color=((picked.length < 2 or name.trim() == "" or saving) ? "-exact-label" : appearance.onTint) testId="merge-save"
           text "Merge"
       list id="merge-sheet" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
         section
