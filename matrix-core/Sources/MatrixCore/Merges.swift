@@ -176,7 +176,8 @@ extension MatrixAccount {
 
     private func changeMerges(_ change: @escaping @Sendable (inout [ChatMerge]) -> Void) async throws {
         try await mergeStates.serially {
-            var all = await self.merges()
+            // the store's merges, else the server's: a new device must not start from none.
+            var all = self.mergeStates.merges(stored: MergeStore.merges(json: try await self.accountDataForChange(MergeStore.type)))
             let before = all
             change(&all)
             guard all != before else { return }

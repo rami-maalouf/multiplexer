@@ -231,10 +231,10 @@ bridgev2 (v0.32.0, under mautrix-whatsapp v0.2610.0) can turn `m.tag` into a Wha
 - **Shown at once.** Each action shows in the list before the server confirms it (`ChatStates`,
   as `Pins` does for a pin); an answer the server never confirms is dropped after 30 s. Changes of
   the marks go one at a time from the newest content this device knows.
-- **Limit: another device's archive or delete** shows at the next change of the room list (a new
-  message in any chat) or launch: the sdk tells no listener of a custom global account data event,
-  and that change alone moves nothing in the room list. A timer reading `Client.accountData` would
-  close the gap.
+- **Another device's archive or delete** reaches the list through the account's data watch
+  (`AccountDataWatch`, `ListFreshness.swift`): the sdk tells no listener of a custom global
+  account data event, so the watch reads the store every 2 s while the account syncs, and says
+  which types changed.
 - **The lists.** Each chat is in one `ChatList`: the inbox, the Archive or Low Priority (an
   archived chat in Low Priority is in the Archive), or none when deleted (`RoomSummary.list`).
   `inbox(filter:list:network:)` shows one list, narrowed by the filter menu's choice and the
@@ -326,6 +326,14 @@ takes no part: matrix-rust-sdk keeps a message index on the device.
 - **Measured** (`testAPushShowsTheSenderAndTheText`, `@test1` and `@test2` on our server, the
   Simulator): see the decision log in `tasks/plan.md`. Peak memory needs the phone.
 
+- **What notifies** is the server's decision, from the account's push rules: Synapse lists the
+  events whose actions notify at `GET /_matrix/client/v3/notifications`, the same ones it sends to
+  the push gateway. `PushRulesTests` (2026-11-04): in a normal chat a message and a mention notify;
+  in a chat a bridge muted (a room rule with no actions, mautrix-go `ASIntent.MuteRoom`) only the
+  mention; in a chat muted here (`mute`: an override with no actions, and our mention rule with only
+  a highlight) neither, while the mention still counts in `unreadMentions`. An encrypted room's
+  mention is invisible to the server, so there it cannot notify on its own.
+
 ### The Simulator and push (iOS 26.5, Xcode at 2026-11-03)
 
 - `xcrun simctl push` (and a dropped `.apns` file) adds the notification through
@@ -392,11 +400,15 @@ custom room account data, so they are one global account data event,
   server (`GET /user/{userId}/account_data/{type}`, kept 30 s); if that read fails, a change
   throws instead of writing (`testANewDeviceKeepsTheBookmarksSavedBefore`). The bookmark calls start
   the sync first, as `rooms()` does: on a new device, a store read before the first sync made that
-  sync time out (three runs of three; none with the sync started first). The other account
-  data events (`com.ramimaalouf.multiplexer.names`, `.chats`, `io.element.recent_emoji`) still
-  read only the store, so a change made in a new device's first seconds could replace them too.
-- **Limit: another device's bookmark** reaches this one's store with the sync, but the sdk tells
-  no listener of a custom global account data event. The app reads the list again each minute.
+  sync time out (three runs of three; none with the sync started first). Every change of the
+  account's own data starts the same way (`AccountData.swift`, `accountDataForChange`): the
+  names (`com.ramimaalouf.multiplexer.names`), the archive and delete marks (`.chats`), the
+  reminders (`.reminders`), the frequent emojis (`io.element.recent_emoji`) and the bookmarks
+  (`testANewDeviceKeepsTheAccountDataSavedBefore`, 2026-11-03).
+- **Another device's bookmark** reaches this one's store with the sync, and the sdk tells no
+  listener of a custom global account data event. The account's data watch (`AccountDataWatch`,
+  which reads the store every 2 s while the account syncs) tells the list (`MatrixChange.bookmarks`;
+  `testAnotherDevicesBookmarkShowsWithinSeconds`).
 - **Size.** Each bookmark is about 0.5 KB, and the whole event goes to every device at each
   change. A few hundred bookmarks are fine; thousands would want a cap or one event per chat.
 

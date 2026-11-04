@@ -129,7 +129,8 @@ extension MatrixAccount {
 
     private func changeReminders(_ change: @escaping @Sendable (inout [String: Reminder]) -> Void) async throws {
         try await reminderStates.serially {
-            var all = await self.reminders()
+            // the store's reminders, else the server's: a new device must not start from none.
+            var all = self.reminderStates.reminders(stored: ReminderStore.reminders(json: try await self.accountDataForChange(ReminderStore.type)))
             let before = all
             change(&all)
             guard all != before else { return }

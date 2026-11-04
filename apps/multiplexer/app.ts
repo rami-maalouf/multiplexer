@@ -367,9 +367,9 @@ const sources: Sources = {
     const answer = (await native!.later({ op: 'scheduledAction', id, action })) as { ok: boolean; problem?: string };
     return { ok: answer.ok, problem: answer.problem ?? '' };
   },
-  // the saved messages, the last saved first, each with its chat; read again each minute (minute),
-  // as another device's reach the store with no word, and when one is saved or removed.
-  loadBookmarks: async ([userId, _minute], _store, _storage, native): Promise<Result<'loadBookmarks'>> => {
+  // the saved messages, the last saved first, each with its chat; read again when the module says
+  // they changed (saved or removed here, or on another device).
+  loadBookmarks: async ([userId], _store, _storage, native): Promise<Result<'loadBookmarks'>> => {
     if (userId === '' || !native?.available) return { owner: userId, bookmarks: [] };
     native.watch('bookmarks');
     const answer = (await native.later({ op: 'bookmarks' })) as {
