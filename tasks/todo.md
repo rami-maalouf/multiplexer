@@ -1418,6 +1418,13 @@ until everything is done"). Act on several chats at once, as Messages' and Beepe
 
 ### Later
 
+Coordination (2026-11-04): Rami resumed feature work using GPT-6 Astra and GPT-6.1 Sol.
+The `work/labels` conversation alone owns finishing Labels, including useful changes from
+the preserved `work/labels-finish` branch. `work/later-camera` finishes Communities, Requests,
+New Space and the preview sender fix. The Exact lane completes its UI/accessibility review.
+The push lane returns to work possible before P3.0. Each lane reports tested commits for
+serialized integration into `main`; no duplicate Labels implementation continues.
+
 Rami wants these, after the tasks above (2026-11-02):
 - Labels: a named group of chats, shown as a filter in the sheet, with Create Label (the same
   tag way as Archive, B8). "Not a requirement."
