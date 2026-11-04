@@ -1,6 +1,6 @@
 // Settings, from the inbox's title menu, in the platform's grouped style: the signed-in account,
-// the one speed every voice message plays at (the speed chip on a voice message changes the same
-// setting), and Sign Out, which asks first.
+// whether new messages notify (and a way to allow it), the one speed every voice message plays at
+// (the speed chip on a voice message changes the same setting), and Sign Out, which asks first.
 
 // the account as others see it. avatar: its picture once it is downloaded ("" until then, or
 // for none), else its initials show. version: the app's.
@@ -47,6 +47,9 @@ component SettingsScreen
     typeKey: action
     unlock: action
     largeText: bool
+    // the notification permission: "granted", "denied", "prompt" (not asked yet) or "unknown".
+    notifications: string
+    allowNotifications: action
   derive side = largeText ? 72 : 60
   derive shown = profile.userId == userId
   view
@@ -70,6 +73,17 @@ component SettingsScreen
                 // an id has no spaces: it may break after its colon and its dots.
                 text userId.replaceAll(":", ":\u200B").replaceAll(".", ".\u200B") font="-exact-subheadline" color="-exact-secondary-label" hyphens="none"
                   testId="account-id"
+        if userId != "" and notifications != "unknown"
+          section
+            row gap=12 align-items="center" testId="notifications"
+              text "Notifications" flex=1
+              if notifications == "prompt"
+                button press=allowNotifications testId="allow-notifications"
+                  text "Turn On"
+              else
+                text (notifications == "granted" ? "On" : "Off") color="-exact-secondary-label" testId="notifications-state"
+            footer
+              text (notifications == "denied" ? "Turn them on in the iPhone's Settings, under Multiplexer." : "A new message shows its chat, its sender and its text.")
         section
           header
             text "Voice Messages"

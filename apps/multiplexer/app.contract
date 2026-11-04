@@ -1,7 +1,7 @@
 // Multiplexer: the view. app.ts answers what it asks for, through the native module
 // (modules/apple/Matrix.swift), which calls MatrixCore.
 use ClipboardItem from "@exact/clipboard"
-use notificationclick from "@exact/notifications"
+use notificationclick, requestNotificationPermission, notificationStatus, NotificationStatus from "@exact/notifications"
 use EmptyState from "exact:content"
 use Badge from "exact:content"
 use Balloon, Face from "./bubble.contract"
@@ -190,6 +190,10 @@ shape EmojiList
 shape UploadLimit
   bytes: number
 
+// the phone's push token reached the server as a pusher (Matrix.swift's registerPush).
+shape Push
+  registered: bool
+
 // a file message's file, downloaded to open: name names it in the share sheet.
 shape OpenedFile
   message: string
@@ -315,6 +319,11 @@ component Multiplexer
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
   resource profile = loadProfile(session.userId) as shape Profile else empty()
+  resource notifications = notificationStatus() as shape NotificationStatus
+  // with the permission, the phone's push token goes to the server as a pusher: at each launch
+  // and sign-in, and once the person allows notifications.
+  resource push = registerPush(session.userId, notifications.state) as shape Push else empty()
+  mutation askedNotifications as shape NotificationStatus
   mutation pinned as shape Reply refreshes roomList
   mutation changedChat as shape Reply queue refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
@@ -508,6 +517,11 @@ component Multiplexer
       password = ""
       network = ""
       chatList = "inbox"
+      allowNotifications()
+  // the system asks once; after a no, the iPhone's Settings decides (Settings says so).
+  action allowNotifications
+    if notifications.state == "prompt"
+      send askedNotifications = requestNotificationPermission()
   action askSignOut
     showModal("sign-out")
   // drafts stay with the account that wrote them.
@@ -1051,7 +1065,8 @@ component Multiplexer
         if e.name == "settings"
           SettingsScreen(route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
             signOut=askSignOut, recovery=recovery, recoveryDraft=recoveryDraft, unlocking=pending(unlocked), refused=recoveryRefused,
-            typeKey=typeRecoveryKey, unlock=unlockRecovery, largeText=viewport.accessibilityTextSize)
+            typeKey=typeRecoveryKey, unlock=unlockRecovery, largeText=viewport.accessibilityTextSize,
+            notifications=notifications.state, allowNotifications=allowNotifications)
         // the filter sheet, from the bottom: half height, pulled up to full; UIKit's glass below full.
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"

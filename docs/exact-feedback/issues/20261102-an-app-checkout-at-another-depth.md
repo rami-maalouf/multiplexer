@@ -53,3 +53,9 @@ paths. A symlink to the framework's parent folder beside the worktrees fixed the
 open, is not in `ed43ad09a0`). The branch moved to a worktree beside the main checkout and built
 there from scratch. About 15 minutes and a cold build. The `package.json` paths are not covered
 by PR #1346.
+
+At `ed43ad09a0`, in a second worktree at another depth, `bun exact.mjs update` rewrote the paths
+in `Cargo.toml`, `apple/Cargo.toml` and `web/Cargo.toml`, but not `package.json`'s `file:` paths
+to the framework's packages: `bun install --frozen-lockfile` then failed with `Could not find
+folder "file:../../../exact/exact2/packages/clipboard"`. The paths were edited by hand and kept out
+of git (`git update-index --skip-worktree`), with `bun.lock`. About 5 minutes.

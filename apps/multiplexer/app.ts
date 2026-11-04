@@ -509,6 +509,12 @@ const sources: Sources = {
     return { ok: true };
   },
   // the largest file the server takes, in bytes; 0 while it is not known.
+  // the module asks for the phone's push token and gives it to the server as a pusher; a drive
+  // does that only for a test user. Without the permission, nothing.
+  registerPush: async ([userId, permission], _store, _storage, native): Promise<Result<'registerPush'>> => {
+    if (userId === '' || permission !== 'granted' || !native?.available) return { registered: false };
+    return (await native.later({ op: 'registerPush' })) as { registered: boolean };
+  },
   loadUploadLimit: async ([userId], _store, _storage, native): Promise<Result<'loadUploadLimit'>> => {
     if (userId === '' || !native?.available) return { bytes: 0 };
     return (await native.later({ op: 'maxUploadSize' })) as { bytes: number };

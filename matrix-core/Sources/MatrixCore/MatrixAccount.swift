@@ -47,31 +47,37 @@ public final class MatrixAccount: @unchecked Sendable {
 
     /// Signs in with a user name and password. `homeserver` is a server name
     /// (`matrix.org`) or a URL; the store lives in `storeDirectory`, with the message search
-    /// index, encrypted with `searchIndexKey` (`SearchIndex.newKey`; nil: not encrypted). Throws
-    /// a `SignInError`.
+    /// index, encrypted with `searchIndexKey` (`SearchIndex.newKey`; nil: not encrypted).
+    /// `sessionStorage` is where the session is kept for other processes (the notification
+    /// extension): the sdk reads it there again, and saves a refreshed token there. Throws a
+    /// `SignInError`.
     public static func signIn(homeserver: String, user: String, password: String, deviceName: String, storeDirectory: URL,
-                              searchIndexKey: String? = nil) async throws -> MatrixAccount {
+                              searchIndexKey: String? = nil, sessionStorage: SessionStorage = .memory()) async throws -> MatrixAccount {
         do {
-            let client = try await builder(storeDirectory, searchIndexKey: searchIndexKey).serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
+            let client = try await builder(storeDirectory, role: .app(searchIndexKey: searchIndexKey), sessionStorage: sessionStorage)
+                .serverNameOrHomeserverUrl(serverNameOrUrl: homeserver).build()
             try await client.login(username: user, password: password, initialDeviceName: deviceName, deviceId: nil)
-            return MatrixAccount(client: client, storeDirectory: storeDirectory)
+            let account = MatrixAccount(client: client, storeDirectory: storeDirectory)
+            // the sdk reads the session back from the storage (the cross-process lock): it must
+            // hold the new one. the app's Keychain storage saves only into an item it already has;
+            // the app writes its item right after.
+            if let saved = try? account.savedSession(), sessionStorage.load()?.accessToken != saved.accessToken {
+                sessionStorage.save(saved)
+            }
+            return account
         } catch {
             throw SignInError(error)
         }
     }
 
     /// Signs in again with a session that `savedSession()` returned, and the search index's key
-    /// it signed in with (another key starts the index again, empty).
-    public static func restore(_ saved: SavedSession, storeDirectory: URL, searchIndexKey: String? = nil) async throws -> MatrixAccount {
-        let client = try await builder(storeDirectory, searchIndexKey: searchIndexKey).homeserverUrl(url: saved.homeserverUrl).build()
-        try await client.restoreSession(session: Session(
-            accessToken: saved.accessToken,
-            refreshToken: saved.refreshToken,
-            userId: saved.userId,
-            deviceId: saved.deviceId,
-            homeserverUrl: saved.homeserverUrl,
-            oauthData: saved.oauthData,
-            slidingSyncVersion: saved.nativeSlidingSync ? .native : .none))
+    /// it signed in with (another key starts the index again, empty). `sessionStorage`: as for
+    /// `signIn`; by default the session is kept in memory only.
+    public static func restore(_ saved: SavedSession, storeDirectory: URL, searchIndexKey: String? = nil,
+                               sessionStorage: SessionStorage? = nil) async throws -> MatrixAccount {
+        let client = try await builder(storeDirectory, role: .app(searchIndexKey: searchIndexKey), sessionStorage: sessionStorage ?? .memory(saved))
+            .homeserverUrl(url: saved.homeserverUrl).build()
+        try await client.restoreSession(session: saved.sdkSession)
         return MatrixAccount(client: client, storeDirectory: storeDirectory)
     }
 
@@ -90,20 +96,40 @@ public final class MatrixAccount: @unchecked Sendable {
         }
     }
 
-    private static func builder(_ storeDirectory: URL, searchIndexKey: String?) throws -> ClientBuilder {
+    /// Who opens a store: the app, or the notification extension, in its own process (Push.swift).
+    enum Role {
+        case app(searchIndexKey: String?)
+        case notifications
+    }
+
+    static func builder(_ storeDirectory: URL, role: Role, sessionStorage: SessionStorage) throws -> ClientBuilder {
         let data = storeDirectory.appendingPathComponent("data"), cache = storeDirectory.appendingPathComponent("cache")
-        let search = SearchIndex.directory(in: storeDirectory)
-        for folder in [data, cache, search] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
-        return ClientBuilder()
+        for folder in [data, cache] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+        let builder = ClientBuilder()
             .sessionPaths(dataPath: data.path, cachePath: cache.path)
             .slidingSyncVersionBuilder(versionBuilder: .discoverNative)
-            // the sdk indexes each message the device syncs or pages back; its backfill pages back
-            // every chat (`startSearchBackfill`), which needs automatic back-pagination.
-            .withSearchIndexStore(path: search.path, key: searchIndexKey)
-            .enableAutomaticBackPagination(enableAutomaticBackPagination: true)
-            // once the account's backup is open (`recover`), a message this device has no key
-            // for fetches its key from the backup, as Element X does.
-            .backupDownloadStrategy(backupDownloadStrategy: .afterDecryptionFailure)
+            // the cross-process lock needs it: a process reads the session again when another
+            // may have refreshed its token.
+            .setSessionDelegate(sessionDelegate: SessionBridge(sessionStorage))
+        switch role {
+        case .app(let searchIndexKey):
+            let search = SearchIndex.directory(in: storeDirectory)
+            try FileManager.default.createDirectory(at: search, withIntermediateDirectories: true)
+            // the notification extension may open the same store from its own process.
+            return builder.crossProcessLockConfig(crossProcessLockConfig: .multiProcess(holderName: MatrixPush.appLock))
+                // the sdk indexes each message the device syncs or pages back; its backfill pages back
+                // every chat (`startSearchBackfill`), which needs automatic back-pagination.
+                .withSearchIndexStore(path: search.path, key: searchIndexKey)
+                .enableAutomaticBackPagination(enableAutomaticBackPagination: true)
+                // once the account's backup is open (`recover`), a message this device has no key
+                // for fetches its key from the backup, as Element X does.
+                .backupDownloadStrategy(backupDownloadStrategy: .afterDecryptionFailure)
+        case .notifications:
+            // an extension has little memory (about 24 MB): no event cache, no latest events, no
+            // search index.
+            return builder.crossProcessLockConfig(crossProcessLockConfig: .multiProcess(holderName: MatrixPush.extensionLock))
+                .systemIsMemoryConstrained()
+        }
     }
 
     public var userId: String {

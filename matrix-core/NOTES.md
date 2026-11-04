@@ -298,6 +298,72 @@ takes no part: matrix-rust-sdk keeps a message index on the device.
 - The tests: `SearchTests` (rooms "Multiplexer search test" and "... history", the second with 40
   numbered messages from its first run).
 
+## Push (Phase 3)
+
+`Push.swift`. What a push shows, and the pusher that makes the server send it.
+
+- **The extension's read.** `MatrixPush.content(session:storeDirectory:roomId:eventId:)` builds
+  a client as a notification extension must: `systemIsMemoryConstrained()` (no event cache, no
+  latest events, no search index), the store's cross-process lock held as `notifications`, only
+  the pushed room loaded (`restoreSessionWith(..., .one(roomId:))`), then
+  `notificationClient(.multipleProcesses).getNotification`. It returns a `PushContent` (plain
+  types) or nil when there is nothing to show (the event is gone, deleted, or filtered out by the
+  push rules). The body uses the chat list's words ("Photo", "Voice message").
+- **One store, two processes.** The app's client takes the same lock as `app`. With a
+  multi-process lock the sdk refuses to build a client without session delegates ("missing
+  session delegates with multi-process lock configuration"): `SessionStorage` is ours, a load and
+  a save, so a token one process refreshes reaches the other. The app and the extension back it
+  with the session's Keychain item; tests keep it in memory (`.memory()`).
+- **A chat's kind in a push.** `PushContent.isDirect` follows the chat list's rule
+  (`isOneToOne`: at most two people besides a bridge's bot, and marked direct or bridged); the
+  network comes from the room's service members and the sender, as `RoomNetwork` does.
+- **Pushers.** `setPusher(_:)` (an http pusher, `event_id_only`, `append: false`),
+  `deletePusher(appId:pushkey:)` (none to delete is no error), and `pushers()` (`GET
+  /_matrix/client/v3/pushers`; the bindings cannot list them). `Pusher.apnsPayload` is the
+  default payload: "New message" with `mutable-content`, so the extension wakes, and that text
+  shows when it cannot read the message. Our server accepts a pusher without a gateway running
+  (checked 2026-11-03 with `sygnal.ramimaalouf.com`, which has no DNS record yet).
+- **Measured** (`testAPushShowsTheSenderAndTheText`, `@test1` and `@test2` on our server, the
+  Simulator): see the decision log in `tasks/plan.md`. Peak memory needs the phone.
+
+### The Simulator and push (iOS 26.5, Xcode at 2026-11-03)
+
+- `xcrun simctl push` (and a dropped `.apns` file) adds the notification through
+  `CoreSimulatorBridge` directly: **no service extension runs**, `mutable-content` or not, with
+  or without `aps-environment`. It shows the payload's own alert.
+- The Simulator gets a real APNs **sandbox** token once the app's entitlements have
+  `aps-environment` (without it: "no valid aps-environment entitlement string found"). So a
+  real push from `scripts/send-test-push.sh` (with P3.0's key) is the way to run the extension on
+  the Simulator.
+- The Simulator reads an app's entitlements from its binary's `__TEXT,__entitlements` section,
+  not from the signature. `segedit -replace` refuses it ("requires relocation");
+  `scripts/add-notification-extension.sh` writes a compact plist in place, padded to the
+  section's size (432 of Exact's 462 bytes for this app), then signs ad hoc.
+- `simctl privacy` cannot grant notifications: the app asks (`@exact/notifications`), and a
+  person or `agent-device alert accept` answers.
+
+### The App Group store move (planned; waits for P3.0's App Group)
+
+The extension can open the store only in the App Group's container. The move, once the App Group
+`group.com.ramimaalouf.multiplexer` exists and both profiles grant it:
+
+1. `StoredSession` gets the store's place (`data` or `group`); nil means `data`, as today.
+2. At launch, before the client is made: if the place is `data` and
+   `containerURL(forSecurityApplicationGroupIdentifier:)` answers, move
+   `<context.data>/matrix/<store>` to `MatrixPush.sharedStore(in:store:)` (one `moveItem`; the
+   same volume, so it is a rename), then write the place. The search index moves with it (it is
+   inside the store folder). Rami does not sign in again.
+3. A store whose place is `group` while the container does not answer (a build without the
+   entitlement, such as an Exact drive) is **unavailable, not gone**: the app must not move the
+   session to the `sign-out` slot, which would sign Rami out on the server. It shows signed out
+   for that launch only.
+4. The agent's sessions (`.agent`) keep their own folder in Exact's scratch data: a drive never
+   touches the app's store.
+5. Sign Out removes the store in either place.
+
+The extension today looks only in the group (`<container>/matrix/<store>`); before the move it
+shows "New message" and logs `storeNotShared`.
+
 ## Bookmarks
 
 A held message's Bookmark (`Bookmarks.swift`). Matrix has no bookmarks, and the sdk cannot write

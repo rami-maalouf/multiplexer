@@ -1535,13 +1535,24 @@ push goes from the Mac straight to APNs, so no server is needed.
   compile `apps/multiplexer/extensions/notifications/NotificationService.swift` into
   `PlugIns/MultiplexerNotifications.appex` (Exact's share extension is the pattern:
   `host/apple/extensions.mjs`); sign it; sign the app again with `aps-environment development`, the
-  App Group and the Keychain group; install with `devicectl`.
-- [ ] The app asks for permission (`@exact/notifications`, grant `device.notifications`), then
+  App Group and the Keychain group; install with `devicectl`. (2026-11-03: written as
+  `scripts/add-notification-extension.sh --sim|--device <udid> <app>`, run after Exact's build.
+  `--sim` done on the Simulator: the extension (MatrixCore and the sdk compiled in, 36 s, cached;
+  73 MB) is in `PlugIns/`, the system registers it, and the app's simulated entitlements get
+  `aps-environment` and the App Group. `--device` is written, not run: it waits for P3.0's profiles.)
+- [x] The app asks for permission (`@exact/notifications`, grant `device.notifications`), then
   registers; the module adds the token callbacks to Exact's app delegate; a development build logs
-  the token.
+  the token. (2026-11-03, the Simulator: it asks after sign-in; Settings has a Notifications row
+  with "Turn On" when not asked yet; the token arrives through the callbacks added at run time,
+  `modules/apple/PushRegistration.swift`.)
 - [ ] `scripts/send-test-push.sh` sends a push to APNs sandbox, signed with the `.p8` from the Keychain.
+  (2026-11-03: written; `--dry-run` signs with a throwaway key and checks the signature. The real
+  send waits for P3.0's key. It works for the Simulator too: the Simulator has a real sandbox token,
+  so the extension can be proved on the Simulator before the iPhone.)
 - [ ] The locked iPhone shows the text the extension wrote (Rami confirms once).
 - [ ] A phone drive after the script still runs the app with the extension, or the gap is written down.
+  (2026-11-03, the Simulator: a drive keeps it, as the script patches Exact's build in place; an
+  Exact rebuild drops it until the script runs again.)
 - [ ] After 3 failed rounds: stop, write down the blocker, and decide whether to wait for Exact.
 
 **Verification:** `codesign -d --entitlements -` on the app and the extension; the extension logs
@@ -1556,17 +1567,22 @@ Keychain, opens the store in the App Group, fetches one event, and shows the cha
 the text. Memory and time are measured on the iPhone.
 
 **Acceptance criteria:**
-- [ ] A public `PushContent` in MatrixCore, plain types only: roomId, chatName, senderName, body,
-  network, isDirect, isNoisy, hasMention, threadId.
-- [ ] The fetch builds a memory-constrained client (`systemIsMemoryConstrained`, `.multiProcess(holderName:
+- [x] A public `PushContent` in MatrixCore, plain types only: roomId, chatName, senderName, body,
+  network, isDirect, isNoisy, hasMention, threadId. (`matrix-core/Sources/MatrixCore/Push.swift`, with eventId.)
+- [x] The fetch builds a memory-constrained client (`systemIsMemoryConstrained`, `.multiProcess(holderName:
   "notifications")`, `.one(roomId:)`, `.multipleProcesses`), then `getNotification`. The body uses
-  the chat list's word for each message kind.
+  the chat list's word for each message kind. (`MatrixPush.content`. A multi-process lock needs
+  session delegates: `SessionStorage`, backed by the Keychain item in the app and the extension.)
 - [ ] The app's store moves once into the App Group (Rami does not sign in again); the app's
   client takes the lock as `"app"`; `SessionKeychain` uses the access group
-  `3V2UU7RRK9.com.ramimaalouf.multiplexer`; the agent keeps its own folder.
+  `3V2UU7RRK9.com.ramimaalouf.multiplexer`; the agent keeps its own folder. (2026-11-03: the lock
+  as `"app"` and `SessionKeychain.accessGroup` done; the app's items are already in that group, its
+  default. The move is planned in `matrix-core/NOTES.md`, "The App Group store move", and waits
+  for P3.0's App Group.)
 - [ ] The extension sets `threadIdentifier` to the room id and the badge from `unread_count`.
 - [ ] On an error, a timeout, or before the first unlock after a reboot, it shows "New message";
-  never an empty or raw payload.
+  never an empty or raw payload. (Both written in `extensions/notifications/NotificationService.swift`;
+  they need a real push to run: `send-test-push.sh` with P3.0's key.)
 - [ ] `@test1` on the locked phone, `@test2` sends: chat, sender and text within 5 s, in a plain
   and in an encrypted room. The app open on a chat at the same time keeps working.
 - [ ] Peak memory and the time from push to banner are written in `matrix-core/NOTES.md`.
@@ -1611,12 +1627,16 @@ token from P3.1.
 ### P3.4 The pusher
 
 **Acceptance criteria:**
-- [ ] After sign-in and at each launch (permission given, token known), the app calls `setPusher`:
+- [x] After sign-in and at each launch (permission given, token known), the app calls `setPusher`:
   app id `com.ramimaalouf.multiplexer.ios.dev` for a development build, `.ios` later; pushkey the
   token in base64; URL `https://sygnal.ramimaalouf.com/_matrix/push/v1/notify`; format event id
-  only; a default payload with `mutable-content` and "New message"; `append: false`.
-- [ ] A new token replaces the old one; Sign Out calls `deletePusher` first.
-- [ ] A drive sets a pusher only for `@test` users, never on `@rami`.
+  only; a default payload with `mutable-content` and "New message"; `append: false`. (2026-11-03,
+  the Simulator as `@test1`: `scripts/list-pushers.sh` showed exactly that pusher. Our server takes
+  it with no gateway running.)
+- [x] A new token replaces the old one; Sign Out calls `deletePusher` first. (The pusher is kept in
+  the Keychain item; after Sign Out, `list-pushers.sh` showed 0. `testAPusherIsSetReplacedAndDeleted`.)
+- [x] A drive sets a pusher only for `@test` users, never on `@rami`. (`registerPush` checks
+  `sendsReadReceipts` first; `list-pushers.sh` refuses any account but a test user.)
 
 **Verification:** `scripts/list-pushers.sh` (like `list-test-devices.sh`) shows one pusher with
 the right values, and none after Sign Out.
