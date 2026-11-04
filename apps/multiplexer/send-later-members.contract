@@ -24,6 +24,7 @@ members Multiplexer
   derive laterSaving = pending(scheduledSend) or pending(rescheduled)
   // Monday's choice would be tomorrow's on a Sunday.
   derive laterMonday = weekdayOf(shown, time.utcOffset) != 0
+  derive laterNote = "It waits on your server and goes at this time, even with the phone off."
 
   // a long press on Send notes nothing: the menu says what to do.
   action holdSend

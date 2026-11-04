@@ -189,3 +189,15 @@ component VideoPlayer
           image poster flex=1 min-height=0 width="100%" object-fit="contain" aria-label=label
         view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
           progress aria-label="Loading the video"
+
+// above the oldest loaded message: a small spinner while older messages load, then, quietly, where
+// the chat starts.
+component OlderLine
+  props
+    atStart: bool
+  view
+    row align-self="stretch" justify-content="center" padding="8px 0 12px" testId="older-line"
+      if atStart
+        text "Start of the chat" font="-exact-footnote" color="-exact-secondary-label" testId="chat-start"
+      else
+        progress aria-label="Loading older messages" testId="loading-older"

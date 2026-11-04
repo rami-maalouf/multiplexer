@@ -18,6 +18,8 @@ final class ChatInfoTests: XCTestCase {
         let owner = try await signIn(homeserver, user, password)
         let other = try await signIn(homeserver, user2, password2)
         let roomId = try await testRooms(owner, other, user2: user2)[infoName]!
+        // a name only you see, left by an earlier run, is not this test's.
+        try await owner.setCustomName(roomId: roomId, name: "")
         let otherName = try await displayName(user2, session: try owner.savedSession())
 
         let info = try await owner.chatInfo(roomId: roomId)
@@ -83,6 +85,8 @@ final class ChatInfoTests: XCTestCase {
 
         let mine = "Only mine \(UUID().uuidString.prefix(8))"
         try await owner.setCustomName(roomId: roomId, name: "  \(mine) ")
+        // a run that fails leaves no name of its own on the room for the next test.
+        addTeardownBlock { try? await owner.setCustomName(roomId: roomId, name: "") }
         let shown = try await owner.rooms().first { $0.id == roomId }
         XCTAssertEqual(shown?.name, mine, "this device shows it at once, trimmed")
         XCTAssertEqual(shown?.roomName, infoName)
@@ -267,20 +271,8 @@ final class ChatInfoTests: XCTestCase {
         FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)", isDirectory: true)
     }
 
-    /// Signs in as a new device that the test signs out at its end, even when it fails. The server
-    /// limits sign-ins, and other tests sign in as the same users: a refusal waits and tries again.
+    /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        for attempt in 1... {
-            do {
-                let account = try await MatrixAccount.signIn(
-                    homeserver: homeserver, user: user, password: password, deviceName: "Multiplexer test",
-                    storeDirectory: freshDirectory())
-                addTeardownBlock { try? await account.signOut() }
-                return account
-            } catch SignInError.rateLimited where attempt < 4 {
-                try await Task.sleep(nanoseconds: 20_000_000_000)
-            }
-        }
-        fatalError("unreachable")
+        try await signInTestDevice(homeserver, user, password)
     }
 }

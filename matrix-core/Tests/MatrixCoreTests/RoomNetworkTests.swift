@@ -110,12 +110,8 @@ final class RoomNetworkTests: XCTestCase {
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200, String(decoding: body, as: UTF8.self))
     }
 
-    /// Signs in as a new device that the test signs out at its end, even when the test fails.
+    /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)")
-        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                     deviceName: "Multiplexer test", storeDirectory: directory)
-        addTeardownBlock { try? await account.signOut() }
-        return account
+        try await signInTestDevice(homeserver, user, password)
     }
 }

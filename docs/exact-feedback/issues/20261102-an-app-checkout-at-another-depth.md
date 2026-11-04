@@ -35,6 +35,25 @@ https://github.com/ccheever/exact2/pull/1346 (fixes part of it): the patch check
 
 ## More evidence (2026-11-03)
 
+Seen again in a new worktree of the app: `exact.mjs` stopped at "no exact2 at …", and with
+`EXACT2` set the build stopped on the workspace's patches, then on `apple/Cargo.toml`. A symlink at
+the expected place passed the patch check but failed later: "compiler input has no captured source
+identity: <symlinked path>/packages/child-process/exact.json". The app's `package.json` names the
+framework's packages by the same relative path, so `bun install` cannot install them there either.
+Absolute paths in the three `Cargo.toml` files, kept out of git, worked. About 10 minutes and
+three builds. Seen at exact2 `ed43ad09a0`.
+
+A git worktree made by a desktop tool under `~/.t3/worktrees/<project>/<name>/` (not a sibling
+of the main checkout) failed before the Cargo check: `bun install --frozen-lockfile` cannot find
+the four `file:../../../exact/exact2/packages/...` packages in `package.json`, so `contract
+build` refuses `use … from "@exact/clipboard"` as not installed. `EXACT2` does not change those
+paths. A symlink to the framework's parent folder beside the worktrees fixed the install, then
+`ios` refused the app: the patch check wants the path from the real folder
+(`../../../../../../Documents/code/...`), with `EXACT2` set to the symlinked path too (PR #1346,
+open, is not in `ed43ad09a0`). The branch moved to a worktree beside the main checkout and built
+there from scratch. About 15 minutes and a cold build. The `package.json` paths are not covered
+by PR #1346.
+
 At `ed43ad09a0`, in a second worktree at another depth, `bun exact.mjs update` rewrote the paths
 in `Cargo.toml`, `apple/Cargo.toml` and `web/Cargo.toml`, but not `package.json`'s `file:` paths
 to the framework's packages: `bun install --frozen-lockfile` then failed with `Could not find

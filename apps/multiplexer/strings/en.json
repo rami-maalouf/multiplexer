@@ -1,4 +1,6 @@
 {
+  "purpose.camera": "Takes the photos you send.",
   "purpose.microphone": "Records the voice messages you send.",
-  "purpose.notifications": "Shows each new message with its chat, its sender and its text."
+  "purpose.notifications": "Shows each new message, and reminds you to answer a chat at the time you pick.",
+  "purpose.recognition": "Turns voice messages into text, on this iPhone."
 }

@@ -97,6 +97,10 @@ https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eig
    middle is outside the viewport; scroll it into view first", and `tap room-list into
    room-<id>` answered the same. The refusal could show the `tap <list> into <key>` form with the
    list's own key for that row (its `key`, not its `testId`). About 3 minutes.
+   Seen again on 2026-11-03 (exact2 `ed43ad09a0`): the same refusal for a row that had moved
+   under the floating bottom bar, though `agent`'s help says "tap and type scroll a target out
+   of view into it first". `type root /room/<id>` (the navigation root takes a path) opened it.
+   About 2 minutes.
 
 
 ## One more (2026-11-03, a chat list task, `ed43ad09a0`)
@@ -105,3 +109,9 @@ https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eig
   or --json`. `state roomList.rooms --json` printed the same summary again, not the value; only
   `--full` did. If `--json` is the drive's own flag (`agent ios --json`), the hint could say so
   ("or the drive's `--json`"). About 2 minutes and one more drive.
+
+## More evidence (2026-11-03)
+
+`bun exact.mjs check` answers with the list of verbs only. `check` is a drive step
+(`agent ios … "check both"`, as start-here shows it), and the message could say so: "check is a
+drive step: `bun exact.mjs agent ios "check both"`". About 1 minute.

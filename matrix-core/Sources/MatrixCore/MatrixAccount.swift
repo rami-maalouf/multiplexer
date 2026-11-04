@@ -17,11 +17,17 @@ public final class MatrixAccount: @unchecked Sendable {
     let search = SearchState()
     /// The chats' media timelines and own names (ChatInfo.swift).
     let infoStates = ChatInfoStates()
+    /// The bookmarks this device wrote and the server has not confirmed (Bookmarks.swift).
+    let bookmarkStates = BookmarkStates()
+    let reminderStates = ReminderStates()
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
     let accountDataWatch = AccountDataWatch()
     private var syncService: SyncService?
+    /// The sync's start, shared: callers at launch (the list, Send Later, Bookmarks) ask at once,
+    /// and a second sync service with its own room list crashed the sdk.
+    private var syncStart: Task<Void, Error>?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
     /// The room list's listener, kept so that it keeps listening, and the rooms in its order.
@@ -115,6 +121,9 @@ public final class MatrixAccount: @unchecked Sendable {
                 // every chat (`startSearchBackfill`), which needs automatic back-pagination.
                 .withSearchIndexStore(path: search.path, key: searchIndexKey)
                 .enableAutomaticBackPagination(enableAutomaticBackPagination: true)
+                // once the account's backup is open (`recover`), a message this device has no key
+                // for fetches its key from the backup, as Element X does.
+                .backupDownloadStrategy(backupDownloadStrategy: .afterDecryptionFailure)
         case .notifications:
             // an extension has little memory (about 24 MB): no event cache, no latest events, no
             // search index.
@@ -186,6 +195,7 @@ public final class MatrixAccount: @unchecked Sendable {
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
+        await fillReminders(&rooms)
         return rooms
     }
 
@@ -201,6 +211,9 @@ public final class MatrixAccount: @unchecked Sendable {
         lookUpNames(roomId, live.items.names)
         return shown
     }
+
+    /// The chats whose timeline is open (or opening).
+    func openRoomIds() -> [String] { lock.withLock { Array(timelines.keys) } }
 
     /// The chat's live timeline, opened the first time with its last `limit` messages.
     func liveTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
@@ -390,7 +403,10 @@ public final class MatrixAccount: @unchecked Sendable {
         switch encryption.recoveryState() {
         case .enabled: return .enabled
         case .disabled: return .disabled
-        case .incomplete: return .incomplete
+        // the sdk says incomplete while the account's cross-signing secrets are missing here,
+        // even after the recovery key opened the backup: with the backup open, this device reads
+        // its older messages, which is what recovery is for.
+        case .incomplete: return encryption.backupState() == .enabled ? .enabled : .incomplete
         case .unknown: return .unknown
         }
     }
@@ -406,15 +422,35 @@ public final class MatrixAccount: @unchecked Sendable {
         }
         search.stop()
         accountDataWatch.stop()
-        await syncService?.stop()
-        syncService = nil
+        let service = lock.withLock {
+            syncStart = nil
+            return syncService
+        }
+        await service?.stop()
+        lock.withLock { syncService = nil }
         try await client.logout()
     }
 
-    private func startSync(timeout: TimeInterval) async throws {
-        guard syncService == nil else { return }
+    /// Starts the sync once, for every caller; a start that failed is tried again at the next call.
+    func startSync(timeout: TimeInterval) async throws {
+        let start: Task<Void, Error> = lock.withLock {
+            if let started = syncStart { return started }
+            let task = Task { try await self.openSync(timeout: timeout) }
+            syncStart = task
+            return task
+        }
+        do {
+            try await start.value
+        } catch {
+            lock.withLock { if syncStart == start { syncStart = nil } }
+            throw error
+        }
+    }
+
+    private func openSync(timeout: TimeInterval) async throws {
+        if lock.withLock({ syncService != nil }) { return }
         let service = try await client.syncService().finish()
-        syncService = service
+        lock.withLock { syncService = service }
         let state = RoomListState()
         let handle = service.roomListService().state(listener: state)
         defer { handle.cancel() }
@@ -504,8 +540,10 @@ final class LiveTimeline: @unchecked Sendable {
     private let lock = NSLock()
     /// The oldest message the chat shows; older ones are loaded but not shown yet.
     private var firstShown: String?
-    /// The server has no older events: the timeline holds the room's first one.
-    private var reachedStart = false
+    /// The items' reset count when a page back reached the room's first event: a reset since (a
+    /// sync with a gap leaves only the newest events) makes the start unknown again.
+    private var startAtReset: Int?
+    private var reachedStart: Bool { lock.withLock { startAtReset } == items.resetCount }
     /// The read receipt's event the chat paged back to for its "New" line (`pageBackOnce`).
     private var pagedToReceipt: String?
 
@@ -541,10 +579,11 @@ final class LiveTimeline: @unchecked Sendable {
     /// True once the chat shows its first message, or the first after its delete.
     var atStart: Bool {
         let all = items.messages(), cut = items.reachesCut
+        let start = reachedStart
         return lock.withLock {
             // the first one shown can be from before the delete, which hides it.
             let hidden = cut && !all.contains { $0.id == firstShown }
-            return (reachedStart || cut) && (all.first == nil || all.first?.id == firstShown || hidden)
+            return (start || cut) && (all.first == nil || all.first?.id == firstShown || hidden)
         }
     }
 
@@ -557,12 +596,17 @@ final class LiveTimeline: @unchecked Sendable {
     /// shown (all of them when none is shown yet), or the room's start; at most 5 pages,
     /// since a page holds state events too (joins, names).
     func pageBack(until count: Int) async throws {
-        for _ in 0..<5 {
+        // a page is 50 events, at most 20 pages (1,000 events): a room whose newest events are
+        // mostly ones the chat does not show (a bridge's members joining or renamed) needs many
+        // pages for a few messages; before, 100 events of them opened the chat empty, and an
+        // empty chat has no list to ask for more.
+        for _ in 0..<20 {
             // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
             await items.settle()
-            if lock.withLock({ reachedStart }) || items.reachesCut || olderThanShown() >= count { return }
-            let start = try await timeline.paginateBackwards(numEvents: UInt16(clamping: count))
-            lock.withLock { reachedStart = start }
+            if reachedStart || items.reachesCut || olderThanShown() >= count { return }
+            let resets = items.resetCount
+            let start = try await timeline.paginateBackwards(numEvents: 50)
+            lock.withLock { startAtReset = start ? resets : nil }
         }
         await items.settle()
     }
@@ -579,15 +623,16 @@ final class LiveTimeline: @unchecked Sendable {
                 if at - context < shownFrom { lock.withLock { firstShown = all[max(0, at - context)].id } }
                 return id
             }
-            if lock.withLock({ reachedStart }) || paged >= limit {
+            if reachedStart || paged >= limit {
                 // the last page's diffs may still be on their way.
                 await items.settle()
                 guard items.messageId(ofEvent: eventId) != nil else { return nil }
                 continue
             }
+            let resets = items.resetCount
             let start = try await timeline.paginateBackwards(numEvents: 50)
             paged += 50
-            lock.withLock { reachedStart = start }
+            lock.withLock { startAtReset = start ? resets : nil }
             await items.settle(quiet: 0.15, limit: 2)
         }
     }

@@ -1,0 +1,69 @@
+// Bookmarks' state and actions (bookmarks.contract). A held message's Bookmark saves it, or
+// takes it away; the filter sheet's Bookmarks row and the chat info page's open the list. A tap
+// on one opens its chat at it, as a found message does (search-members.contract's jump).
+use BookmarkList, BookmarkReply from "./bookmarks.contract"
+
+members Multiplexer
+  // the saved message a long press in the list is on (its event).
+  state aimedBookmark = ""
+  // read again each minute too: another device's bookmark reaches this one's store with the sync,
+  // and nothing tells the list.
+  resource bookmarkList = loadBookmarks(session.userId, floor(shown / 60000)) as shape BookmarkList else empty()
+  mutation bookmarked as shape BookmarkReply refreshes bookmarkList
+  derive bookmarksLoaded = bookmarkList.owner == session.userId
+  derive bookmarksShown = bookmarksLoaded ? bookmarkList.bookmarks : []
+  // the chat open under its info page: its own.
+  derive chatBookmarks = bookmarksShown.filter(b => b.room == openRoom)
+  derive aimedBookmarkText = match first(bookmarksShown.filter(b => b.event == aimedBookmark)) { case some(b) => b.body, case none => "" }
+  // the held message's event, once the server has it: a message on its way cannot be saved yet.
+  derive heldEvent = match heldMessage { case some(m) => m.state == "sent" and not m.waitingForKey and not m.isDeleted ? m.event : "", case none => "" }
+  derive heldBookmarked = heldEvent != "" and bookmarksShown.filter(b => b.room == openRoom and b.event == heldEvent).length > 0
+
+  // the menu's Bookmark, or Remove Bookmark on a saved message.
+  action toggleBookmarkHeld
+    if heldEvent != ""
+      if heldBookmarked
+        send bookmarked = removeBookmark(openRoom, heldEvent)
+      else
+        send bookmarked = addBookmark(openRoom, held)
+      haptic("success")
+    letGo()
+  // the filter sheet's Bookmarks row passes its value. The sheet closes and the list is a page
+  // of its own: a chat opened from it then opens full screen, not in the sheet.
+  action chooseBookmarks(v: string)
+    nav = push(back(nav), path("bookmarks"))
+  action openChatBookmarks
+    nav = push(nav, path("chatBookmarks", openRoom))
+  action aimBookmark(event: string)
+    aimedBookmark = event
+  action copyBookmark
+    copyText(aimedBookmarkText)
+  action removeAimedBookmark
+    match first(bookmarksShown.filter(b => b.event == aimedBookmark))
+      case some(b)
+        send bookmarked = removeBookmark(b.room, b.event)
+        haptic("success")
+      case none
+        aimedBookmark = ""
+  // a row's swipe.
+  action removeBookmarkOf(room: string, event: string)
+    send bookmarked = removeBookmark(room, event)
+    haptic("success")
+  // the list of all: the chat opens at the message.
+  action openBookmark(room: string, event: string)
+    jumpRoom = room
+    jumpEvent = event
+    jumpedTo = ""
+    jumpMissed = ""
+    follow(path("room", room))
+  // a chat's own list, over its info page: both close to the chat under them, which pages back to
+  // the message (jumpWhenOpen).
+  action openChatBookmark(room: string, event: string)
+    jumpRoom = room
+    jumpEvent = event
+    jumpedTo = ""
+    jumpMissed = ""
+    chatSearching = false
+    chatSearchFocused = false
+    blur()
+    nav = back(back(nav))

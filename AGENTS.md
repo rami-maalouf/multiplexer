@@ -65,6 +65,9 @@ Test MatrixCore (about 10 s after the first build):
 Two MatrixCore runs at once (two conversations, the same test users) time out on "the first
 sync". Hold the shared lock around every run, on your own simulator:
 `until mkdir /tmp/mx-matrixcore.lock 2>/dev/null; do sleep 10; done; <run>; rmdir /tmp/mx-matrixcore.lock`.
+The SDK's start on a new device is CPU-bound: with many Simulators and builds at once, a test's first
+sync misses its limit. Keep at most one Simulator booted per conversation, and shut it down
+(`xcrun simctl shutdown <udid>`) whenever you are not driving or testing.
 
 ```sh
 ./scripts/test-matrix-core.sh

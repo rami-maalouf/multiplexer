@@ -1,0 +1,83 @@
+// the + panel's Camera (camera.contract): one video track while the camera screen shows, opened
+// when it opens and stopped when it closes, so the camera's green dot goes out. The shutter's
+// photo joins the open chat's composer as a picked photo (attachPhotos), and the screen closes.
+use getUserMedia, applyConstraints, stopTrack, enumerateDevices, cameraStatus, MediaStream, MediaStreamTrack, MediaDeviceList, CameraStatus, MediaTrackConstraints from "@exact/media-capture"
+use Attachment, Chosen from "./attach.contract"
+use takePhoto, Photo from "@exact/camera"
+
+members Multiplexer
+  // the camera's track while it is open; which camera it shows; the flash for the next photo.
+  state cameraTrack = ""
+  state cameraFacing = "environment"
+  state cameraFlash = false
+  resource camera = cameraStatus() as shape CameraStatus else empty()
+  resource cameraDevices = enumerateDevices() as shape MediaDeviceList else empty()
+  mutation cameraOpened as shape MediaStream then cameraReady
+  mutation cameraShot as shape Photo then cameraTaken
+  mutation cameraFlipped as shape MediaStreamTrack
+  mutation cameraStopped as shape MediaStreamTrack
+  derive cameraOpen = top(nav).name == "camera"
+  // the panel offers the camera where the device has one (the Simulator has none).
+  derive cameraOffered = camera.available
+  derive canFlipCamera = cameraDevices.devices.map(d => d.facingMode == some("user")).includes(true) and cameraDevices.devices.map(d => d.facingMode == some("environment")).includes(true)
+  // the open camera as its last answer describes it: the flip's, else the open's.
+  derive cameraInfo = match cameraFlipped { case some(t) => some(t), case none => (match cameraOpened { case some(s) => s.tracks.at(0), case none => none }) }
+  // a camera with a torch has a flash (an iPhone's back camera; not its front one). Asked of the track,
+  // as the photo's own capabilities cannot be asked before the camera opens.
+  derive cameraHasFlash = cameraTrack != "" and (match cameraInfo { case some(t) => (match t.capabilities { case some(c) => c.torch == some(true), case none => false }), case none => false })
+  // the camera that faces cameraFacing; every other constraint the platform's.
+  derive cameraFacingOnly = MediaTrackConstraints(deviceId=none, groupId=none, facingMode=some(cameraFacing), width=none, height=none,
+    aspectRatio=none, frameRate=none, resizeMode=none, zoom=none, torch=none, sampleRate=none, sampleSize=none, channelCount=none,
+    echoCancellation=none, autoGainControl=none, noiseSuppression=none, latency=none)
+  derive cameraOpenFailure = failure(cameraOpened)
+  derive cameraRefused = camera.state == "denied" or (match cameraOpenFailure { case some(f) => f.code == "NotAllowedError", case none => false })
+  // a refused request runs no `then`, so its failure is read here.
+  derive cameraProblem = match failure(cameraShot) { case some(f) => "Couldn’t take the photo. Try again.", case none => (match cameraOpenFailure { case some(f) => (f.code == "NotAllowedError" ? "" : "Couldn’t open the camera."), case none => "" }) }
+  // the camera screen left by any way but its own buttons (the chat closed under it): the camera stops.
+  task releaseCamera when cameraTrack != "" and not cameraOpen
+    after(1, stopCamera)
+
+  // the + panel's "Camera": the panel goes, the camera opens on the back camera, full screen.
+  action openCamera
+    panel = false
+    cameraFacing = "environment"
+    cameraFlipped = none
+    blur("composer")
+    // refused in Settings: the screen says so, and asks nothing.
+    if camera.state != "denied"
+      send cameraOpened = getUserMedia(video=true, videoConstraints=cameraFacingOnly)
+    nav = push(nav, path("camera", openRoom))
+  action cameraReady
+    match cameraOpened
+      case some(s)
+        cameraTrack = match s.tracks.at(0) { case some(t) => t.id, case none => "" }
+      case none
+        cameraTrack = cameraTrack
+  action shootPhoto
+    send cameraShot = takePhoto(track=cameraTrack, fillLightMode=(cameraFlash and cameraHasFlash ? "flash" : "off"))
+  // the photo is a picked one from here on: it shows in the tray, is made ready while the caption is
+  // typed, and goes with Send. Its name is the camera's own file name ("Photo 1.jpg").
+  action cameraTaken
+    match cameraShot
+      case some(p)
+        stopCamera()
+        nav = back(nav)
+        attachPhotos([Attachment(file=Chosen(path=p.path, name=`Photo ${match p.path.split("/").at(-1) { case some(n) => n, case none => "1.jpg" }}`,
+          type=p.type, size=p.size, width=p.width, height=p.height), photo=true)])
+      case none
+        cameraTrack = cameraTrack
+  action flipCamera
+    send cameraFlipped = applyConstraints(track=cameraTrack, facingMode=(cameraFacing == "environment" ? "user" : "environment"))
+    cameraFacing = cameraFacing == "environment" ? "user" : "environment"
+  action toggleCameraFlash
+    cameraFlash = not cameraFlash
+  action closeCamera
+    stopCamera()
+    nav = back(nav)
+    focus("composer")
+  action stopCamera
+    if cameraTrack != ""
+      send cameraStopped = stopTrack(track=cameraTrack)
+    cameraTrack = ""
+  action openCameraSettings
+    openURL("app-settings:")

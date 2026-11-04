@@ -314,6 +314,46 @@ final class MatrixCoreTests: XCTestCase {
         print("the reader showed the encrypted message after \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
     }
 
+    /// A room whose newest events are almost all ones the chat does not show (as a bridge's
+    /// member renames make): a new device still opens it with its messages, not empty.
+    func testAChatUnderManyHiddenEventsOpensWithItsMessages() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let writer = try await signIn(homeserver, user, password)
+        _ = try await writer.rooms(timeout: 120)
+        let name = "Multiplexer hidden events test"
+        let existing = try await writer.rooms(timeout: 120).first { $0.name == name }?.id
+        let roomId: String
+        if let existing { roomId = existing } else { roomId = try await writer.createRoom(name: name) }
+        let text = "Under the topics \(UUID().uuidString)"
+        try await writer.sendAndWait(roomId: roomId, text: text)
+        // 120 topic changes after it, more than the 100 events a chat paged at first: state events
+        // the chat does not show as messages.
+        let session = try writer.savedSession()
+        for n in 1...120 {
+            for _ in 0..<10 {
+                var request = URLRequest(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/client/v3/rooms")
+                    .appendingPathComponent(roomId).appendingPathComponent("state/m.room.topic"))
+                request.httpMethod = "PUT"
+                request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.httpBody = try JSONSerialization.data(withJSONObject: ["topic": "Topic \(n)"])
+                let (data, _) = try await URLSession.shared.data(for: request)
+                let reply = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+                if reply["event_id"] != nil { break }
+                try await Task.sleep(nanoseconds: UInt64((reply["retry_after_ms"] as? Int) ?? 500) * 1_000_000)
+            }
+        }
+        // a new device: its timeline starts from the room's newest events.
+        let reader = try await signIn(homeserver, user, password)
+        _ = try await reader.rooms(timeout: 120)
+        let shown = try await reader.messages(roomId: roomId, limit: 20)
+        XCTAssertTrue(shown.contains { $0.body == text }, "the chat opened with \(shown.count) messages")
+    }
+
     func testASpaceIsNotAChat() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
@@ -753,13 +793,9 @@ final class MatrixCoreTests: XCTestCase {
         return try await account.createRoom(name: roomName)
     }
 
-    /// Signs in as a new device that the test signs out at its end, even when the test
-    /// fails, so a failed run leaves no device on the account.
+    /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                     deviceName: "Multiplexer test", storeDirectory: freshDirectory())
-        addTeardownBlock { try? await account.signOut() }
-        return account
+        try await signInTestDevice(homeserver, user, password)
     }
 
     private func freshDirectory() -> URL {

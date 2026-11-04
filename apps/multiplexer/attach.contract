@@ -1,11 +1,24 @@
 // photos and files in a chat: the composer's "+", the panel that takes the keyboard's place,
 // the tray of what is picked for the next send, a file's bubble, and an upload's ring.
 
-// a photo or file picked for the next send; photo: it came from the photo library, so it goes
-// as a picture (a file from Files goes as a file, whatever it is).
+// a photo or file chosen for the next send, from a picker or the camera: Picked's fields, with
+// the size in pixels 0 where it is not known (a camera photo cannot be made a Picked).
+shape Chosen
+  path: string
+  name: string
+  type: string
+  size: number
+  width: number
+  height: number
+
+// a photo or file for the next send; photo: it came from the photo library or the camera, so it
+// goes as a picture (a file from Files goes as a file, whatever it is).
 shape Attachment
-  file: Picked
+  file: Chosen
   photo: bool
+
+fn chosenOf(f: Picked): Chosen = Chosen(path=f.path, name=f.name, type=f.type, size=f.size,
+  width=(match f.width { case some(w) => w, case none => 0 }), height=(match f.height { case some(h) => h, case none => 0 }))
 
 // "12 KB", "3.4 MB": a file's size as Files counts it (1000 bytes a kilobyte).
 fn sizeText(n: number): string = n < 1000 ? `${n} ${n == 1 ? "byte" : "bytes"}` : (n < 1000000 ? `${round(n / 1000)} KB` : `${round(n / 100000) / 10} MB`)
@@ -31,6 +44,9 @@ component AddButton
 component AddPanel
   props
     photos: action
+    camera: action
+    // the device has a camera (the Simulator has none).
+    cameraOffered: bool
     files: action
     gifs: action
     reduced: bool
@@ -42,6 +58,12 @@ component AddPanel
         gap=16 min-height=52 padding="0px 24px" text-align="start"
         image "symbol:icon.photos" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
         text "Photos" color="-exact-label"
+      // the camera full screen (camera.contract); its photo joins the tray as a picked one.
+      if cameraOffered
+        button appearance="none" press=camera testId="panel-camera" display="flex" flex-direction="row" align-items="center"
+          gap=16 min-height=52 padding="0px 24px" text-align="start"
+          image "symbol:camera" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
+          text "Camera" color="-exact-label"
       button appearance="none" press=files testId="panel-files" display="flex" flex-direction="row" align-items="center"
         gap=16 min-height=52 padding="0px 24px" text-align="start"
         image "symbol:icon.folder" font="-exact-title3" width="2rem" color="-exact-label" aria-hidden=true
