@@ -1017,7 +1017,7 @@ component Multiplexer
                   focused=searchFocused, focus=searchFocus, blur=searchBlur, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion)
               else if roomsShown and selecting
-                SelectBar(count=chosenIds.length, list=chatList, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
+                SelectBar(count=chosenIds.length, archived=chosenArchived, lowPriority=chosenLowPriority, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
                   change=changeChosen, delete=askDeleteChosen, labelChats=labelSelected, canMerge=(chosenRooms.filter(r => r.merge == "").length >= 2),
                   merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats))
               else if roomsShown
@@ -1107,9 +1107,9 @@ component Multiplexer
           LabelEditor(route=`${e.id}`, editing=(labelEditing != ""), draft=labelDraft, problem=labelEditError,
             saving=pending(labelEdited), typeName=typeLabelName, save=saveLabel, close=closeLabelEditor)
         if e.name == "labelPick"
-          LabelPicker(route=`${e.id}`, labels=labelsShown, rooms=labelRooms, loaded=(labelList.owner == session.userId),
+          LabelPicker(route=`${e.id}`, labels=labelsShown, rooms=labelRooms, chatCount=labelChatCount, loaded=(labelList.owner == session.userId),
             loadFailed=(failed(labelList) and not pending(labelList)), retry=retryLabels,
-            saving=pending(labelAssigned), problem=labelAssignError, toggle=toggleLabel, create=newLabel, close=closeLabelPicker)
+            saving=pending(labelAssigned), refreshing=pending(labelList), problem=labelAssignError, toggle=toggleLabel, create=newLabel, close=closeLabelPicker)
         // Send Later's list, and its time sheet for the composer's text or a waiting message.
         if e.name == "scheduled"
           ScheduledScreen(route=`${e.id}`, messages=scheduledShown, loaded=(scheduledList.owner == session.userId),
@@ -1164,7 +1164,7 @@ component Multiplexer
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
-            InboxSheet(labels=labelsShown, activeLabel=labelFilter, chooseLabel=chooseLabel, createLabel=newLabel,
+            InboxSheet(labels=labelsShown, activeLabel=labelFilter, chooseLabel=selectLabel, createLabel=newLabel,
               renameLabel=renameLabel, deleteLabel=askDeleteLabel, networks=roomList.networks, communities=roomList.communities, community=community, chooseCommunity=chooseCommunity,
               requests=requestsShown.length, openRequests=openRequests, newSpace=openNewSpace, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=(labelFilter == "" ? chatList : "label"), chosen=network, choose=chooseNetwork,

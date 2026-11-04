@@ -46,8 +46,10 @@ component LabelPicker
     route: string
     labels: ChatLabel[]
     rooms: string[]
+    chatCount: number
     loaded: bool
     loadFailed: bool
+    refreshing: bool
     saving: bool
     problem: string
     toggle: action
@@ -61,7 +63,7 @@ component LabelPicker
         text "Labels" role="heading" aria-level=1
         button press=close disabled=saving testId="labels-done"
           text "Done"
-      list id="label-picker" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+      list id="label-picker" testId="labels-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
         if saving
           section
             row gap=8
@@ -69,7 +71,7 @@ component LabelPicker
               text "Saving labels…" color="-exact-secondary-label"
         section
           header
-            text (rooms.length == 1 ? "1 Chat" : `${rooms.length} Chats`)
+            text (chatCount == 1 ? "1 Chat" : `${chatCount} Chats`)
           if loadFailed
             text "Couldn’t load labels. Check your connection and try again." color="-exact-system-red" testId="labels-load-error"
             button press=retry testId="labels-retry"
@@ -80,14 +82,14 @@ component LabelPicker
             text "No Labels Yet" font-weight=600 testId="labels-empty"
             text "Create a label, then choose it here to group these chats." color="-exact-secondary-label"
           for l in labels key=l.id
-            LabelChoice(label=l, rooms=rooms, saving=saving, choose=toggle)
+            LabelChoice(label=l, rooms=rooms, saving=(saving or refreshing or loadFailed), choose=toggle)
           footer
             text (problem != "" ? problem : "Changes save as you choose. A chat can have more than one label.")
               color=(problem != "" ? "-exact-system-red" : "-exact-secondary-label") testId="labels-note"
         section
           button press=create("") disabled=saving testId="labels-create"
             image "symbol:add"
-            text "Create Label"
+            text "New Label"
 
 component LabelChoice
   props

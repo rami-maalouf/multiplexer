@@ -7,21 +7,25 @@ members Multiplexer
   state labelDraft = ""
   state labelContext = ""
   state labelRooms: string[] = []
+  state labelChatCount = 0
   resource labelList = loadLabels(session.userId) as shape LabelList else empty()
   mutation labelEdited as shape LabelWrite refreshes labelList, roomList then afterLabelEdit
   mutation labelAssigned as shape LabelWrite refreshes labelList, roomList
   mutation labelDeleted as shape LabelWrite refreshes labelList, roomList then afterLabelDelete
   derive labelsShown = labelList.owner == session.userId ? labelList.labels : []
-  derive labelFilter = labelOwner == session.userId ? activeLabel : ""
+  // keep the choice during loading; a label deleted on another device returns to the list.
+  derive labelsLoaded = labelList.owner == session.userId
+  derive labelFilter = labelOwner == session.userId and (not labelsLoaded or labelsShown.filter(l => l.id == activeLabel).length > 0) ? activeLabel : ""
   derive activeLabelName = match first(labelsShown.filter(l => l.id == activeLabel)) { case some(l) => l.name, case none => "Label" }
   derive labelEditError = pending(labelEdited) ? "" : (failed(labelEdited) ? "Couldn’t save the label. Check your connection and try again." : (match labelEdited { case some(r) => r.error, case none => "" }))
-  derive labelAssignError = pending(labelAssigned) ? "" : (failed(labelAssigned) ? "Couldn’t change labels. Check your connection and try again." : (match labelAssigned { case some(r) => r.error, case none => "" }))
+  derive labelAssignError = pending(labelAssigned) ? "" : (failed(labelAssigned) ? "Couldn’t update every chat’s labels. Some may have changed. Try again." : (match labelAssigned { case some(r) => r.error, case none => "" }))
   derive labelDeleteError = pending(labelDeleted) ? "" : (failed(labelDeleted) ? "Couldn’t delete the label. Try again." : (match labelDeleted { case some(r) => r.error, case none => "" }))
 
-  action chooseLabel(id: string)
+  action selectLabel(id: string)
     activeLabel = id
     labelOwner = session.userId
     network = ""
+    community = ""
     nav = back(nav)
     toTop()
     haptic("selection")
@@ -50,16 +54,18 @@ members Multiplexer
     if not pending(labelEdited)
       nav = back(nav)
   action labelAimed
-    labelRooms = [aimed]
+    labelChatCount = 1
+    labelRooms = match first(roomList.rooms.filter(r => r.id == aimed)) { case some(r) => r.mergeRooms.length > 0 ? r.mergeRooms.map(t => t.id) : [r.id], case none => [aimed] }
     labelAssigned = none
     nav = push(nav, path("labelPick"))
   action labelSelected
     if chosenIds.length > 0
-      labelRooms = chosenIds
+      labelChatCount = chosenIds.length
+      labelRooms = chosenRooms.map(r => r.mergeRooms.length > 0 ? r.mergeRooms.map(t => t.id) : [r.id]).flat()
       labelAssigned = none
       nav = push(nav, path("labelPick"))
   action toggleLabel(id: string)
-    if not pending(labelAssigned)
+    if not pending(labelAssigned) and not pending(labelList) and not failed(labelList)
       let members = match first(labelsShown.filter(l => l.id == id)) { case some(l) => l.rooms, case none => [] }
       send labelAssigned = assignLabel(id, labelRooms, labelRooms.filter(r => members.includes(r)).length != labelRooms.length)
   action closeLabelPicker

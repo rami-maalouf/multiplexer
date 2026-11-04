@@ -67,3 +67,11 @@ The same hyphen on plain words, outside a link: a sheet row's name with `overflo
 "Commu-nity" on iOS, both words that broke only because of the hyphen rule. The row moved its
 count under the name at the accessibility sizes instead, without `break-word`. About 5 minutes and
 one drive. Seen at exact2 `ed43ad09a0`.
+
+## More evidence (2026-11-04, a grouped action)
+
+At the largest system text size, an inset-grouped action with a plus icon rendered its title as
+`Create La-` / `bel`. Setting `hyphens="none"` on the child text, then also on its button, left the
+display screenshot unchanged. Shortening the title to `New Label` kept the full text size and fit
+without breaking a word. About 3 minutes. A grouped title's effective paragraph style should honor
+the explicit setting, or the docs should identify the style owner. Feedback kept local.

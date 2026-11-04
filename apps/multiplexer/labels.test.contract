@@ -16,6 +16,7 @@ test "a label needs a name before save, and cancel keeps the list unchanged"
 test "an empty label picker offers create and returns after cancelling the form"
   at "/labels/pick"
   clock data
+  clock settle
   expect tree has "labels-empty"
   tap "labels-create"
   clock settle

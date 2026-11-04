@@ -22,6 +22,11 @@ I made a new worktree next to the main checkout, where the relative paths hold.
 
 Cost: about 5 minutes.
 
+Additional evidence from an external worktree: a framework symlink outside the app restored
+package installation, but native compilation still rejected the canonical Cargo patch paths.
+The documented `update` command regenerated them successfully. Its six generated local-path
+changes must be restored before committing the feature. About 5 minutes across both steps.
+
 ## What would help
 
 - The packages' paths following `EXACT2` too, or the "not installed" message saying that the

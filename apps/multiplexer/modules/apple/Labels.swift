@@ -5,10 +5,10 @@ extension Matrix {
         let account = try await signedIn()
         if request["op"] as? String == "labels" {
             let rooms = try await account.rooms()
-            let labels = await account.labels().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            let labels = try await account.labels().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
             return ["labels": labels.map { label in
                 ["id": label.id, "name": label.name, "rooms": label.roomIds,
-                 "unread": rooms.filter { label.roomIds.contains($0.id) && !$0.isHidden && $0.isLoudlyUnread }.count] as [String: Any]
+                 "unread": rooms.filter { label.contains($0) && !$0.isHidden && $0.foldedInto == nil && $0.isLoudlyUnread }.count] as [String: Any]
             }]
         }
         guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's labels") }

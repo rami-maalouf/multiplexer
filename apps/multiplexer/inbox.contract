@@ -205,7 +205,8 @@ component SelectTitle
 component SelectBar
   props
     count: number
-    list: string
+    archived: bool
+    lowPriority: bool
     unread: bool
     muted: bool
     pinned: bool
@@ -229,10 +230,10 @@ component SelectBar
       row position="relative" padding="0 16px" align-items="center" justify-content="space-between"
         glassGroup=12 pointer-events="none" testId="select-bar"
         row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="select-capsule"
-          button appearance="none" press=change(list == "archive" ? "unarchive" : "archive") disabled=off
-            aria-label=(list == "archive" ? "Unarchive" : "Archive") testId="select-archive"
+          button appearance="none" press=change(archived ? "unarchive" : "archive") disabled=off
+            aria-label=(archived ? "Unarchive" : "Archive") testId="select-archive"
             width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
-            image (list == "archive" ? "symbol:icon.unarchive" : "symbol:icon.archive") font-size=symbolSize color="-exact-label"
+            image (archived ? "symbol:icon.unarchive" : "symbol:icon.archive") font-size=symbolSize color="-exact-label"
           button appearance="none" press=change(unread ? "read" : "unread") disabled=off
             aria-label=(unread ? "Mark as Read" : "Mark as Unread") testId="select-read"
             width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
@@ -252,10 +253,10 @@ component SelectBar
           button press=labelChats disabled=off popovertarget="select-more" popovertargetaction="hide" testId="select-label"
             image "symbol:icon.tag"
             text "Label…"
-          button press=change(list == "lowPriority" ? "inbox" : "lowPriority") popovertarget="select-more" popovertargetaction="hide"
+          button press=change(lowPriority ? "inbox" : "lowPriority") popovertarget="select-more" popovertargetaction="hide"
             testId="select-low-priority"
-            image (list == "lowPriority" ? "symbol:icon.tray" : "symbol:icon.low-priority")
-            text (list == "lowPriority" ? "Move to Inbox" : "Move to Low Priority")
+            image (lowPriority ? "symbol:icon.tray" : "symbol:icon.low-priority")
+            text (lowPriority ? "Move to Inbox" : "Move to Low Priority")
           button press=change(pinned ? "unpin" : "pin") popovertarget="select-more" popovertargetaction="hide" testId="select-pin"
             image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
             text (pinned ? "Unpin" : "Pin")

@@ -1,6 +1,11 @@
 # Eight agent messages that could say what to do next
 
 **Status:** Open
+
+Additional evidence (2026-11-04): an authored test tapped a grouped-sheet action after
+`clock data`, during the native presentation transition. Adding `clock settle` made the
+eight-test verification pass. A missed native activation could suggest waiting for presentation,
+and distinguish data readiness from the sheet being ready to receive a tap.
 **Systems:** agent (`scripts/agent.mjs`, `scripts/agent-test.mjs`), `verify`
 **Severity:** P3
 **Author:** Claude (Opus 5.5), from Rami Maalouf's chat app friction log (an app outside exact2)
@@ -115,3 +120,12 @@ https://github.com/ccheever/exact2/pull/1338 (fixes part of it): five of the eig
 `bun exact.mjs check` answers with the list of verbs only. `check` is a drive step
 (`agent ios … "check both"`, as start-here shows it), and the message could say so: "check is a
 drive step: `bun exact.mjs agent ios "check both"`". About 1 minute.
+
+## More evidence (2026-11-04, scrolling a sheet)
+
+A grouped list had a navigation `id`, while its sheet wrapper had the drive `testId`. Dragging
+the wrapper refused to scroll it, and the tree's numeric `List#...` label was not a target either.
+Adding a separate `testId` to the list made `tap <list> drag 0 -350` work. The tree could expose a
+usable scroll target or distinguish navigation IDs from drive IDs. Trying platform touches first
+also left a menu's rows unavailable after its suggested `clock settle`; normal activation worked.
+About 5 minutes, with all feedback kept local.

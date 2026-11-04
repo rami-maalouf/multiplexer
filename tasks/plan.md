@@ -18,6 +18,31 @@ Update this table at the end of every work session.
 
 ### Conversation assignments (2026-11-04)
 
+Labels progress: integrated `8904255` into `work/labels` (`673efb5`), preserving communities,
+network-aware selection labels and SessionStore migration. The earlier integrated iOS verification
+passed 8 tests and light, dark and largest-text checks. Four review findings are fixed in source:
+pin metadata, bulk placement actions, stale picker membership and concurrent account-data writes.
+The scoped follow-up review found no new actionable defects. Combined runtime tests passed 38/39,
+including all ten Labels tests. The archive test failure was reproduced on isolated main `8904255`
+and the Labels snapshot: inbox membership did not establish arrival of the exact prior own event,
+so that event could arrive after re-archiving and remove the mark before the muted message.
+The reply-preview timeout separately assumed a queued send was acknowledged. The test now checks
+remote event identity and send acknowledgement, preserving archive behavior and wait limits.
+Twelve corrected repetitions passed in 147.522 s; the exact worktree focused test passed in
+99.199 s. The test-only correction is committed as `af5c49e`, with a clean scoped review.
+Authenticated UI checks covered rename, duplicate validation, assignment/removal, filtering and
+deletion preserving chats, including dark mode and largest text. The test user signed out.
+Final iOS verification passed in 93.6 s after shortening the picker action to New Label:
+9 tests, light/dark checks and 11 largest-text screens (`/tmp/mx-labels-final-verify2.log`).
+The coordinator owns integration; no main merge is performed by this lane.
+
+Labels storage uses independent account-data fields and permanent deletion tombstones. A fresh
+device discovers existing fields once; the SDK-local change marker invalidates cached reads after
+changes. There is no recurring HTTP discovery timer, second sync cursor or local durable state.
+Legacy documents remain readable and are not rewritten. Same-field writes follow server order;
+simultaneous duplicate-name creates both survive. Bulk assignment can partially succeed on a
+transport failure and is retryable. Older builds do not understand the new field overrides.
+
 Rami lifted the pause and requested GPT-6 Astra and GPT-6.1 Sol for the continuing conversations.
 Labels (`work/labels`) and Later (`work/later-camera`) use GPT-6.1 Sol; the Exact/UI lane uses
 GPT-6 Astra. The push lane uses GPT-6.1 Sol, preserves its duplicate Labels work in
