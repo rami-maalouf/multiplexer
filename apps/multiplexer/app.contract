@@ -877,9 +877,12 @@ component Multiplexer
               position="absolute" inset=0 display="flex" flex-direction="column"
               // the title names the network the filter sheet chose, and opens Beeper's menu.
               if selecting
-                SelectTitle(count=chosenIds.length, done=stopSelecting)
+                SelectTitle(count=chosenIds.length, done=stopSelecting, busy=pending(changedChats))
               else if not searching
                 TitleMenu(title=listTitle(chatList, network), select=startSelecting, settings=showSettings, largeText=viewport.accessibilityTextSize)
+              if selecting and selectionProblem != ""
+                text selectionProblem role="alert" font="-exact-footnote" color="-exact-system-red" padding="8px 16px"
+                  background-color="-exact-background" testId="select-error"
               // the list stays under the search, covered, so closing the search finds it where it was.
               if roomsShown
                 if listedRooms.length == 0 and not gridShown and not searching
@@ -907,11 +910,11 @@ component Multiplexer
                     inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=tapPinned, aim=aim, menu="chat-menu", selecting=selecting,
-                        chosen=selectedChats)
+                        chosen=selectedChats, busy=pending(changedChats))
                     for r in listedRooms key=r.id
                       // choosing chats, a tap chooses the row's chat; else it opens it, and a long press holds it.
                       if selecting
-                        button appearance="none" press=toggleChosen(r.id) role="checkbox" aria-checked=selectedChats.includes(r.id)
+                        button appearance="none" press=toggleChosen(r.id) disabled=pending(changedChats) role="checkbox" aria-checked=selectedChats.includes(r.id)
                           aria-label=r.name id=`room-${r.id}` testId=`room-${r.id}` display="flex" flex-direction="row" align-items="center"
                           width="100%" min-width=0 text-align="start"
                           // at the accessibility text sizes the mark takes the picture's place, so the name keeps its width.
@@ -940,7 +943,7 @@ component Multiplexer
                   reduced=viewport.prefersReducedMotion)
               else if roomsShown and selecting
                 SelectBar(count=chosenIds.length, list=chatList, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
-                  change=changeChosen, delete=askDeleteChosen, largeText=viewport.accessibilityTextSize)
+                  change=changeChosen, delete=askDeleteChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats))
               else if roomsShown
                 BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=chatList, network=network,
                   sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize)
@@ -1520,9 +1523,9 @@ component RoomFace
     picture: bool
   view
     row align-items="center" flex=1 min-width=0
-      // a fixed 44-point picture, as Messages has; initials grow with the text size, to a cap.
-      // a bridged chat's network logo sits on its corner, outside the clipped circle. The
-      // margin keeps a chat with no message as tall as Messages' rows.
+      // a fixed 44-point picture, as messages has; initials grow with the text size, to a cap.
+      // a bridged chat's network logo sits on its corner, outside the clipped circle. the
+      // margin keeps a chat with no message as tall as messages' rows.
       if picture
         view position="relative" flex-shrink=0 margin="8px 12px 8px 0"
           view width=44 height=44 border-radius=22 overflow="hidden"
@@ -1537,7 +1540,7 @@ component RoomFace
       column flex=1 min-width=0 gap=2 padding="10px 0"
         // at large text sizes the time wraps under the name instead of covering it.
         row flex-wrap="wrap" column-gap=6 align-items="baseline"
-          // a muted chat: a crossed bell after its name's last word, as Beeper shows it.
+          // a muted chat: a crossed bell after its name's last word, as beeper shows it.
           text font="-exact-headline" font-weight=(loud(r) ? 700 : 600) flex="1 1 10rem" min-width=0
             text r.name
             if r.muted
@@ -1551,7 +1554,7 @@ component RoomFace
             if chevron
               image "symbol:forward-chevron" font="-exact-footnote" color="-exact-tertiary-label"
         // an unread chat: a bold name and a count beside the preview; muted, a grey
-        // count; with a mention, "@" and the accent. Marked unread by hand: a dot.
+        // count; with a mention, "@" and the accent. marked unread by hand: a dot.
         row gap=8 align-items="flex-start"
           text (r.lastMessage != "" ? preview(r) : "") font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
             flex=1 min-width=0 testId=`room-preview-${r.id}`
@@ -1564,7 +1567,7 @@ component RoomFace
           else if r.markedUnread
             view width=12 height=12 border-radius=6 margin="4px 4px 0"
               background-color=(r.muted ? "-exact-tertiary-label" : "AccentColor") aria-label="Unread" testId=`marked-${r.id}`
-        // a reminder to answer it: when, in the accent once it is due (Remind Me).
+        // a reminder to answer it: when, in the accent once it is due (remind me).
         if r.reminder > 0
           row gap=4 align-items="center" testId=`reminder-${r.id}`
             image "symbol:icon.alarm" width="0.9em" height="0.9em" font="-exact-footnote" aria-hidden=true

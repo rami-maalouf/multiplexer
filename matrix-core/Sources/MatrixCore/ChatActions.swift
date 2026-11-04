@@ -98,12 +98,12 @@ extension MatrixAccount {
         readyTimeline(roomId)?.items.since = newest
     }
 
-    /// One of a chat's actions, by name, for one chat or several (Select Chats).
+    /// one of a chat's actions, by name, for one chat or several (select chats).
     public enum ChatChange: String, CaseIterable, Sendable {
         case read, unread, mute, unmute, lowPriority, inbox, archive, unarchive, delete, pin, unpin
     }
 
-    /// Does `change` to one chat, as its long-press menu does.
+    /// does `change` to one chat, as its long-press menu does.
     public func change(roomId: String, _ change: ChatChange, timeout: TimeInterval = 30) async throws {
         switch change {
         case .read: try await markRead(roomId: roomId, timeout: timeout)
@@ -120,9 +120,9 @@ extension MatrixAccount {
         }
     }
 
-    /// Does `change` to several chats (Select Chats). Archive, Unarchive and Delete write the
-    /// account's marks once for all of them; the others go chat by chat, in the given order (so
-    /// pins keep it). Every chat is tried; the first failure is thrown after the rest.
+    /// does `change` to several chats (select chats). archive, unarchive and delete write the
+    /// account's marks once after resolving every room. the others go chat by chat, in the given
+    /// order (so pins keep it), trying every chat and throwing the first failure after the rest.
     public func change(roomIds: [String], _ change: ChatChange, timeout: TimeInterval = 30) async throws {
         let ids = roomIds.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         switch change {

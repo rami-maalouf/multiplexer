@@ -15,7 +15,7 @@ final class ChatActionsTests: XCTestCase {
     private let choicesDeleteName = "Multiplexer choices test delete"
     private let choicesArchiveName = "Multiplexer choices test archive"
     private let choicesWhatsAppName = "Multiplexer choices test WhatsApp"
-    /// Select Chats acts on these two together.
+    /// select chats acts on these two together.
     private let selectNames = ["Multiplexer select test one", "Multiplexer select test two"]
 
     func testMarkedUnreadClearsOnReadAndAMutedChatStillCountsMentions() async throws {
@@ -87,7 +87,7 @@ final class ChatActionsTests: XCTestCase {
         try await owner.unarchive(roomId: archived)
     }
 
-    /// Select Chats: each action reaches every selected chat, here and on another device.
+    /// select chats: each action reaches every selected chat, here and on another device.
     func testSelectedChatsChangeTogether() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
         let owner = try await signIn(homeserver, user, password)

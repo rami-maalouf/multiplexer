@@ -12,7 +12,7 @@ shape PinnedChat
   initials: string
   unread: bool
 
-// Select Chats' change on several chats (app.ts's changeChats).
+// select chats' change on several chats (app.ts's changechats).
 shape ChatsChanged
   ok: bool
 
@@ -30,7 +30,7 @@ fn listEmptyTitle(l: string): string = l == "archive" ? "No Archived Chats" : (l
 fn listEmptyMessage(l: string, network: string): string = l == "reminders" ? `Chats you ask to be reminded about${network == "" ? "" : ` from ${networkName(network)}`} show here until you answer them.` : `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${network == "" ? "" : ` from ${networkName(network)}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
 // what Delete's alert says: the chat leaves this app only.
 fn deleteMessage(network: string): string = `It leaves Multiplexer on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
-// Select Chats' Delete: the same, for several chats.
+// select chats' delete: the same, for several chats.
 fn deleteChatsTitle(n: number): string = n == 1 ? "Delete 1 Chat?" : `Delete ${n} Chats?`
 fn deleteChatsMessage(n: number): string = `${n == 1 ? "It leaves" : "They leave"} Multiplexer on all your devices, but ${n == 1 ? "stays" : "stay"} on ${n == 1 ? "its" : "their"} network. A new message brings ${n == 1 ? "it" : "each"} back.`
 fn selectedTitle(n: number): string = n == 0 ? "Select Chats" : `${n} Selected`
@@ -102,13 +102,14 @@ component PinnedGrid
     open: action
     aim: action
     menu: string
-    // Select Chats: `open` chooses a chat then, and a mark on its picture says so.
+    // select chats: `open` chooses a chat then, and a mark on its picture says so.
     selecting: bool
     chosen: string[]
+    busy: bool
   view
     row id="pinned" flex-wrap="wrap" justify-content="center" padding="4px 8px 12px" border-bottom="none" testId="pinned"
       for r in rooms key=r.id
-        button appearance="none" press=open(r.id) contextmenu=aim(r.id) contextPopover=(selecting ? "" : menu)
+        button appearance="none" press=open(r.id) disabled=busy contextmenu=aim(r.id) contextPopover=(selecting ? "" : menu)
           width="33.333%" aria-label=(r.unread ? `${r.name}, unread` : r.name) testId=`pinned-${r.id}`
           role=(selecting ? "checkbox" : "button") aria-checked=(selecting and chosen.includes(r.id))
           display="flex" flex-direction="column" align-items="center" gap=6 padding="8px 4px"
@@ -128,7 +129,7 @@ component PinnedGrid
           text r.shortName font="-exact-subheadline" color="-exact-secondary-label" line-clamp=1 max-width="100%"
 
 // the inbox's title, as Beeper's: its words and a chevron at the top left, which open a menu.
-// Merge Chats comes later, so it shows greyed. The route draws this row in
+// merge chats comes later, so it shows greyed. the route draws this row in
 // place of the system bar, whose large title cannot open a menu.
 component TitleMenu
   props
@@ -156,7 +157,7 @@ component TitleMenu
           image "symbol:settings"
           text "Settings"
 
-// Select Chats' mark on a row or a pinned picture: an empty circle, or the accent's filled check.
+// select chats' mark on a row or a pinned picture: an empty circle, or the accent's filled check.
 component ChooseMark
   props
     on: bool
@@ -165,22 +166,26 @@ component ChooseMark
     image (on ? "symbol:select-fill" : "symbol:circle") font-size="min(-exact-title2, 28px)" color=(on ? "AccentColor" : "-exact-tertiary-label")
       aria-hidden=true testId=identifier
 
-// the title row while choosing chats: how many are chosen, and Done, which ends the mode. At the
-// largest text sizes Done goes under the count rather than squeezing it.
+// the title row while choosing chats: how many are chosen, and done, which ends the mode. at the
+// largest text sizes done goes under the count rather than squeezing it.
 component SelectTitle
   props
     count: number
     done: action
+    busy: bool
   view
     row padding="2px 16px 6px" align-items="center" flex-wrap="wrap" column-gap=12 row-gap=4 min-height=50 testId="select-title"
+      background-color="-exact-background"
       text selectedTitle(count) role="heading" aria-level=1 font="-exact-title1" font-weight=700 color="-exact-label" flex="1 1 12rem"
         min-width=0 testId="select-count"
-      button press=done buttonStyle="glass" margin-left="auto" testId="select-done"
+      if busy
+        progress aria-label="Updating chats" testId="select-progress"
+      button press=done disabled=busy buttonStyle="glass" margin-left="auto" testId="select-done"
         text "Done" font-weight=600
 
-// the bar under the list while choosing chats, in the place of the inbox's bar: Archive (or
-// Unarchive in the Archive), Mark as Read (or Unread), Mute (or Unmute), More (Low Priority and
-// Pin), and Delete in red. With nothing chosen, all are off.
+// the bar under the list while choosing chats, in the place of the inbox's bar: archive (or
+// unarchive in the archive), mark as read (or unread), mute (or unmute), more (low priority and
+// pin), and delete in red. with nothing chosen, all are off.
 component SelectBar
   props
     count: number
@@ -191,7 +196,8 @@ component SelectBar
     change: action
     delete: action
     largeText: bool
-  derive off = count == 0
+    busy: bool
+  derive off = count == 0 or busy
   derive symbolSize = largeText ? 24 : 20
   view
     row position="absolute" left=0 right=0 bottom=0 padding="0 16px" align-items="center" justify-content="space-between"

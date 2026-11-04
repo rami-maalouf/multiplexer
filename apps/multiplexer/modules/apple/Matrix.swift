@@ -62,7 +62,7 @@ final class Matrix: ExactModule {
                     if request["op"] as? String == "pin" { try await account.pin(roomId: roomId) } else { try await account.unpin(roomId: roomId) }
                     reply.send(["ok": true])
                 case "chat", "chats":
-                    // a chat's long-press actions, or Select Chats' on several (MatrixCore's ChatActions.swift).
+                    // a chat's long-press actions, or select chats' on several (matrixcore's chatactions.swift).
                     let account = try await signedIn()
                     guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
                     let action = request["action"] as? String ?? "", roomId = request["roomId"] as? String ?? ""
