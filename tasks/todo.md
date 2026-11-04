@@ -1367,9 +1367,13 @@ until everything is done"). Act on several chats at once, as Messages' and Beepe
 **Acceptance criteria:**
 - [x] `testSelectedChatsChangeTogether`: each action reaches every chosen chat, here and on another device.
   Passed in 90 s on 2026-11-03 (`~/.mx-logs/select-core.log`).
+  Rechecked after merging the latest main (including message expiry): passed in 88 s
+  (`~/.mx-logs/select-core-integrated.log`).
 - [x] Drives as `@test1`, dark, light and the largest text size: both ways in, choosing, each action,
   Delete's alert; real menus with `--touch platform`; `check both` clean but for the floating bars
   over a scrolled list (as the inbox's own bar). `verify ios` clean.
+  The final integrated `verify ios` also passed all 6 tests, both schemes and the largest text
+  checks, including its fresh native build (144 s; `~/.mx-logs/select-verify-integrated.txt`).
 - [x] A simulated server refusal reproduced the old mode closing without a visible error. The fixed
   drive kept its selected chat and showed the retry message. The fault was removed afterward.
 - [x] The selection title has an opaque background: scrolled chat text no longer shows through it.
