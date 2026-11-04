@@ -19,6 +19,14 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   pending and failed states truthful. Cover merged rows and supported list surfaces. Owner: Labels lane.
 - [ ] Coordinator reviews and integrates tested commits, checks the combined native app,
   records remaining limits and retains all Exact feedback locally.
+- [ ] Settings provides accent presets and an arbitrary custom color picker, immediately
+  applied and retained after relaunch, with reset to default blue. Check readable foregrounds
+  for light/dark accents without recoloring semantic error/destructive states. Owner: Appearance lane.
+- [ ] Chat header, bottom composer and text input use genuine translucent blur/glass so
+  messages remain visible behind them while scrolling. Preserve keyboard and gesture behavior,
+  readable controls and reduced-transparency fallback. Owner: Exact/UI lane.
+- [ ] Reduce the oversized inbox header and use matching translucent material for inbox top
+  and bottom bars. Keep accessible touch targets and largest-text layout. Owner: Push lane.
 
 ## Phase 0: prove the server (M0)
 

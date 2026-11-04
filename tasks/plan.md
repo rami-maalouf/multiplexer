@@ -28,6 +28,14 @@ seen evidence from unavailable status. The coordinator integrates tested lane co
 Authenticated drives share `/tmp/mx-auth-drive.lock`; core tests retain their existing lock.
 Each lane uses its own simulator and shuts it down when idle. All feedback stays local.
 
+Additional appearance requirements from Rami: Settings offers arbitrary custom accent colors
+with convenient presets and a reset to default blue; the choice persists and updates the app.
+The former Bookmarks conversation now owns this feature on GPT-6.1 Sol. Exact/UI owns chat
+header and composer materials; Push owns compact inbox header and inbox bar materials, each
+after its gesture fix. Replace overly opaque black surfaces with actual backdrop blur/glass
+that shows scrolling content behind controls, with readable light/dark and accessibility
+fallbacks. Coordinate shared tint and material choices before integration.
+
 Labels progress: integrated `8904255` into `work/labels` (`673efb5`), preserving communities,
 network-aware selection labels and SessionStore migration. The earlier integrated iOS verification
 passed 8 tests and light, dark and largest-text checks. Four review findings are fixed in source:
