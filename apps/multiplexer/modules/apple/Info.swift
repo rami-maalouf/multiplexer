@@ -23,6 +23,14 @@ extension Matrix {
                  "picture": cached(member.pictureName, then: .info(roomId)) {
                      _ = try await account.pictureFile(url: member.pictureUrl, directory: self.media) }]
             }]
+        case "expiry":
+            let expiry = try await account.messageExpiry(roomId: roomId)
+            return ["offered": expiry != nil, "timer": expiry?.timer ?? 0, "choices": expiry?.choices ?? []]
+        case "setExpiry":
+            // the timer is for everyone in the chat: a drive sets one only as a test user.
+            guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive sets message expiry only as a test user") }
+            try await account.setMessageExpiry(roomId: roomId, timer: int(request["timer"]))
+            return ["ok": true]
         case "chatMedia":
             let media = try await account.recentMedia(roomId: roomId, limit: int(request["limit"]))
             return ["media": media.map { item in
