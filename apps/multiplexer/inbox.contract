@@ -162,7 +162,7 @@ component ChooseMark
     on: bool
     identifier: string
   view
-    image (on ? "symbol:select-fill" : "symbol:circle") font-size=24 color=(on ? "AccentColor" : "-exact-tertiary-label")
+    image (on ? "symbol:select-fill" : "symbol:circle") font-size="min(-exact-title2, 28px)" color=(on ? "AccentColor" : "-exact-tertiary-label")
       aria-hidden=true testId=identifier
 
 // the title row while choosing chats: how many are chosen, and Done, which ends the mode. At the
