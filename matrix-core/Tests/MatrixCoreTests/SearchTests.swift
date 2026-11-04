@@ -345,13 +345,8 @@ final class SearchTests: XCTestCase {
         return try XCTUnwrap(image.jpegData(compressionQuality: 0.9))
     }
 
-    /// Signs in as a new device with its own search index, which the test signs out at its end,
-    /// even when it fails.
+    /// A new device of a test user, with its own search index, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password, deviceName: "Multiplexer test",
-                                                     storeDirectory: FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)"),
-                                                     searchIndexKey: SearchIndex.newKey())
-        addTeardownBlock { try? await account.signOut() }
-        return account
+        try await signInTestDevice(homeserver, user, password, searchIndexKey: SearchIndex.newKey())
     }
 }

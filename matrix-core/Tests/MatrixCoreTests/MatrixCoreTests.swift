@@ -793,13 +793,9 @@ final class MatrixCoreTests: XCTestCase {
         return try await account.createRoom(name: roomName)
     }
 
-    /// Signs in as a new device that the test signs out at its end, even when the test
-    /// fails, so a failed run leaves no device on the account.
+    /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                     deviceName: "Multiplexer test", storeDirectory: freshDirectory())
-        addTeardownBlock { try? await account.signOut() }
-        return account
+        try await signInTestDevice(homeserver, user, password)
     }
 
     private func freshDirectory() -> URL {

@@ -215,11 +215,8 @@ final class InboxTests: XCTestCase {
         return (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
 
-    /// Signs in as a new device that the test signs out at its end, even when it fails.
+    /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password, deviceName: "Multiplexer test",
-                                                     storeDirectory: FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)"))
-        addTeardownBlock { try? await account.signOut() }
-        return account
+        try await signInTestDevice(homeserver, user, password)
     }
 }

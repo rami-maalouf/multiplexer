@@ -519,8 +519,10 @@ final class LiveTimeline: @unchecked Sendable {
     private let lock = NSLock()
     /// The oldest message the chat shows; older ones are loaded but not shown yet.
     private var firstShown: String?
-    /// The server has no older events: the timeline holds the room's first one.
-    private var reachedStart = false
+    /// The items' reset count when a page back reached the room's first event: a reset since (a
+    /// sync with a gap leaves only the newest events) makes the start unknown again.
+    private var startAtReset: Int?
+    private var reachedStart: Bool { lock.withLock { startAtReset } == items.resetCount }
     /// The read receipt's event the chat paged back to for its "New" line (`pageBackOnce`).
     private var pagedToReceipt: String?
 
@@ -556,10 +558,11 @@ final class LiveTimeline: @unchecked Sendable {
     /// True once the chat shows its first message, or the first after its delete.
     var atStart: Bool {
         let all = items.messages(), cut = items.reachesCut
+        let start = reachedStart
         return lock.withLock {
             // the first one shown can be from before the delete, which hides it.
             let hidden = cut && !all.contains { $0.id == firstShown }
-            return (reachedStart || cut) && (all.first == nil || all.first?.id == firstShown || hidden)
+            return (start || cut) && (all.first == nil || all.first?.id == firstShown || hidden)
         }
     }
 
@@ -579,9 +582,10 @@ final class LiveTimeline: @unchecked Sendable {
         for _ in 0..<20 {
             // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
             await items.settle()
-            if lock.withLock({ reachedStart }) || items.reachesCut || olderThanShown() >= count { return }
+            if reachedStart || items.reachesCut || olderThanShown() >= count { return }
+            let resets = items.resetCount
             let start = try await timeline.paginateBackwards(numEvents: 50)
-            lock.withLock { reachedStart = start }
+            lock.withLock { startAtReset = start ? resets : nil }
         }
         await items.settle()
     }
@@ -598,15 +602,16 @@ final class LiveTimeline: @unchecked Sendable {
                 if at - context < shownFrom { lock.withLock { firstShown = all[max(0, at - context)].id } }
                 return id
             }
-            if lock.withLock({ reachedStart }) || paged >= limit {
+            if reachedStart || paged >= limit {
                 // the last page's diffs may still be on their way.
                 await items.settle()
                 guard items.messageId(ofEvent: eventId) != nil else { return nil }
                 continue
             }
+            let resets = items.resetCount
             let start = try await timeline.paginateBackwards(numEvents: 50)
             paged += 50
-            lock.withLock { reachedStart = start }
+            lock.withLock { startAtReset = start ? resets : nil }
             await items.settle(quiet: 0.15, limit: 2)
         }
     }

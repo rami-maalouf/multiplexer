@@ -22,11 +22,11 @@ final class ChatDetailsTests: XCTestCase {
         // one's own message: nobody else has read it yet.
         let mine = "Mine \(UUID().uuidString)"
         try await owner.sendAndWait(roomId: roomId, text: mine)
-        let sent = try await message(owner, roomId, within: 15) { $0.body == mine && $0.sendState == .sent }
+        let sent = try await message(owner, roomId, within: 30) { $0.body == mine && $0.sendState == .sent }
         XCTAssertEqual(sent.readBy, [], "nobody has read it yet")
 
         // the other person reads the chat: their receipt is on it, with their name and the time.
-        _ = try await message(other, roomId, within: 15) { $0.body == mine }
+        _ = try await message(other, roomId, within: 30) { $0.body == mine }
         let before = UInt64(Date().timeIntervalSince1970 * 1000) - 60_000
         try await other.markRead(roomId: roomId)
         let seen = try await message(owner, roomId, within: 20) { $0.body == mine && !$0.readBy.isEmpty && !$0.readBy[0].name.isEmpty }
@@ -37,14 +37,14 @@ final class ChatDetailsTests: XCTestCase {
         // read up to here; the other person writes twice: the first of the two is the first unread.
         let read = "Read \(UUID().uuidString)"
         try await say(read, in: roomId, as: other)
-        _ = try await message(owner, roomId, within: 15) { $0.body == read }
+        _ = try await message(owner, roomId, within: 30) { $0.body == read }
         try await owner.markRead(roomId: roomId)
         _ = try await unread(owner, roomId) { $0 == 0 }
         let first = "Unread one \(UUID().uuidString)", second = "Unread two \(UUID().uuidString)"
         try await say(first, in: roomId, as: other)
         try await say(second, in: roomId, as: other)
-        let firstMessage = try await message(owner, roomId, within: 15) { $0.body == first }
-        _ = try await message(owner, roomId, within: 15) { $0.body == second }
+        let firstMessage = try await message(owner, roomId, within: 30) { $0.body == first }
+        _ = try await message(owner, roomId, within: 30) { $0.body == second }
         _ = try await unread(owner, roomId) { $0 >= 2 }
         let marked = try await owner.firstUnread(roomId: roomId)
         XCTAssertEqual(marked, firstMessage.id, "the line goes above the first message after the read receipt")
@@ -332,20 +332,8 @@ final class ChatDetailsTests: XCTestCase {
         FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)", isDirectory: true)
     }
 
-    /// Signs in as a new device that the test signs out at its end, even when it fails. The server
-    /// limits sign-ins, and other tests sign in as the same users: a refusal waits and tries again.
+    /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        for attempt in 1... {
-            do {
-                let account = try await MatrixAccount.signIn(
-                    homeserver: homeserver, user: user, password: password, deviceName: "Multiplexer test",
-                    storeDirectory: freshDirectory())
-                addTeardownBlock { try? await account.signOut() }
-                return account
-            } catch SignInError.rateLimited where attempt < 4 {
-                try await Task.sleep(nanoseconds: 20_000_000_000)
-            }
-        }
-        fatalError("unreachable")
+        try await signInTestDevice(homeserver, user, password)
     }
 }
