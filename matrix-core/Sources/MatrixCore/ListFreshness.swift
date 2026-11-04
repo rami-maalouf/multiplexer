@@ -61,11 +61,11 @@ final class LatestMessages: @unchecked Sendable {
 
 /// Watches the account data that another device of the account changes and the room list does
 /// not show: the archived and deleted chats (`ChatMarks`), the own names (`CustomNames`), the
-/// reminders (`ReminderStore`) and the bookmarks (`Bookmarks`). The sdk observes only its own
+/// reminders (`ReminderStore`), the merged chats (`MergeStore`) and the bookmarks (`Bookmarks`). The sdk observes only its own
 /// types, so this reads them from the store (no request) every `interval` seconds while the
 /// account syncs, and calls `changed` with the types that differ.
 final class AccountDataWatch: @unchecked Sendable {
-    static let types = [ChatMarks.type, CustomNames.type, ReminderStore.type, Bookmarks.type]
+    static let types = [ChatMarks.type, CustomNames.type, ReminderStore.type, MergeStore.type, Bookmarks.type]
     private var task: Task<Void, Never>?
     private let lock = NSLock()
 

@@ -4,7 +4,7 @@ import MatrixRustSDK
 #endif
 
 /// The account data only this account sees (its own names, archive and delete marks, reminders,
-/// frequent emojis, bookmarks) is one global event of each type, which a change writes whole. A
+/// merged chats, frequent emojis, bookmarks) is one global event of each type, which a change writes whole. A
 /// device just signed in has none of them in its store until some seconds after its first sync
 /// (seen 2026-11-03), so a change made then would start from nothing and replace what the other
 /// devices saved. A change starts from the server's event while the store has none.

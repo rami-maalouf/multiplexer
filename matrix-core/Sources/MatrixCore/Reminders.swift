@@ -108,7 +108,7 @@ extension MatrixAccount {
     /// deleted from this app shows nowhere. Narrowed to one `network` (nil: every network).
     public func reminderList(filter: RoomFilter = .all, network: String? = nil, timeout: TimeInterval = 30) async throws -> Inbox {
         let all = try await rooms(timeout: timeout)
-        let listed = all.filter { !$0.isHidden && $0.reminderAt != nil && $0.passes(filter) }
+        let listed = all.filter { !$0.isHidden && $0.foldedInto == nil && $0.reminderAt != nil && $0.passes(filter) }
         return Inbox(chats: all, listed: Set(listed.map(\.id)), pinned: Self.inPinOrder(all).filter(\.isInInbox)).on(network: network)
     }
 

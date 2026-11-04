@@ -22,6 +22,7 @@ public final class MatrixAccount: @unchecked Sendable {
     let reminderStates = ReminderStates()
     /// The account data events read from the server while the store had none (AccountData.swift).
     let serverAccountData = ServerAccountData()
+    let mergeStates = MergeStates()
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
@@ -198,6 +199,7 @@ public final class MatrixAccount: @unchecked Sendable {
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
         await fillReminders(&rooms)
+        await fillMerges(&rooms)
         return rooms
     }
 

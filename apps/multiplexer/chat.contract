@@ -18,6 +18,11 @@ fn unreadText(n: number): string = n > 999 ? "999+" : n.toString()
 // middle; "..." on the right, which opens the chat's actions. The picture and the name open
 // nothing yet: the chat's info page comes later. The bar passes touches between its parts on to
 // the transcript under it.
+// a room of a merged chat (Merge Chats), and its network.
+shape MergeTab
+  id: string
+  network: string
+
 component ChatBar
   props
     name: string
@@ -37,6 +42,10 @@ component ChatBar
     info: action
     // a held message's menu covers the bar.
     covered: bool
+    // a merged chat's rooms (none for any other chat), the one shown, and a tap on another.
+    tabs: MergeTab[]
+    shown: string
+    switchTo: action
     // the reader chose one of the accessibility text sizes.
     largeText: bool
   // Back's chevron and count grow a little at the accessibility sizes, as a system bar's stay put.
@@ -45,7 +54,7 @@ component ChatBar
     view position="absolute" top=0 left=0 right=0 pointer-events="none" inert=covered testId="chat-bar"
       // as iOS's scroll edge effect: the transcript fades out under the status bar and the bar. It
       // starts above the screen's top, where the list still draws rows past its frame.
-      view position="absolute" top=-120 left=0 right=0 height=232
+      view position="absolute" top=-120 left=0 right=0 height=(tabs.length > 1 ? (largeText ? 330 : 288) : 232)
         background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 62%, transparent 100%)"
       // the two sides share the room the title leaves, so the title stays in the middle of the screen
       // whatever Back's count, until a long name needs that room.
@@ -59,19 +68,35 @@ component ChatBar
               text unreadText(unread) font-size=labelSize
         // nothing in the middle until the chat's name is known (the list still loads).
         if name != ""
-          // a tap opens the chat's info page; the page zooms out of it (its id) and shrinks back into it.
-          button appearance="none" press=info id="chat-title" aria-label=`${name}, Chat Info` display="flex" flex-direction="column"
-            align-items="center" flex="0 1 auto" min-width=0 margin="0 8px" pointer-events="auto" testId="chat-title"
-            // the picture is opaque over the transcript, and sits on the name's capsule.
-            view position="relative" z-index=1 flex-shrink=0 border-radius=22 background-color="-exact-background"
-              Face(picture=picture, initials=initials, size=44)
-              if network != "matrix"
-                NetworkBadge(network=network, identifier="chat-network")
-            view backgroundMaterial="glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
-              // it grows with the text size to a cap, as a system bar's title stays put.
-              text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
-                line-clamp=2
-                testId="chat-name"
+          // the title, and a merged chat's networks under it.
+          column align-items="center" flex="0 1 auto" min-width=0 margin="0 8px" pointer-events="none"
+            // a tap opens the chat's info page; the page zooms out of it (its id) and shrinks back into it.
+            button appearance="none" press=info id="chat-title" aria-label=`${name}, Chat Info` display="flex" flex-direction="column"
+              align-items="center" max-width="100%" pointer-events="auto" testId="chat-title"
+              // the picture is opaque over the transcript, and sits on the name's capsule.
+              view position="relative" z-index=1 flex-shrink=0 border-radius=22 background-color="-exact-background"
+                Face(picture=picture, initials=initials, size=44)
+                if network != "matrix"
+                  NetworkBadge(network=network, identifier="chat-network")
+              view backgroundMaterial="glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
+                // it grows with the text size to a cap, as a system bar's title stays put.
+                text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
+                  line-clamp=2
+                  testId="chat-name"
+            // a merged chat: its networks under the name, the one shown chosen; a tap shows that network's chat.
+            if tabs.length > 1
+              row role="tablist" aria-label="Network" gap=4 margin-top=6 padding=3 border-radius=25 backgroundMaterial="glass"
+                pointer-events="auto" justify-content="center" max-width="100%" box-sizing="border-box" testId="merge-tabs"
+                for t in tabs key=t.id
+                  button appearance="none" role="tab" aria-selected=(t.id == shown) press=switchTo(t.id) aria-label=networkName(t.network)
+                    testId=`merge-tab-${t.network}`
+                    display="flex" flex-direction="row" align-items="center" gap=5 min-height=44 min-width=0 padding="4px 12px" border-radius=22
+                    background-color=(t.id == shown ? "-exact-tertiary-fill" : "transparent")
+                    image `assets/networks/${t.network}.svg` width=(largeText ? 22 : 16) height=(largeText ? 22 : 16) aria-hidden=true
+                    // capped, as the title's; at the accessibility sizes the logos alone, which keep their names.
+                    if not largeText
+                      text networkName(t.network) font="-exact-footnote" font-size="min(-exact-footnote, 17px)" font-weight=(t.id == shown ? 600 : 400)
+                        line-clamp=1 min-width=0 color="-exact-label"
         view flex="1 1 0" display="flex" justify-content="flex-end"
           button popovertarget="chat-actions" buttonStyle="glass" width=44 height=44 flex-shrink=0 pointer-events="auto"
             aria-label="More" testId="chat-more"

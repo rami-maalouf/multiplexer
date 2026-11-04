@@ -1,0 +1,87 @@
+// Merge Chats (B21, "Later"): one person's chats on several networks shown as one chat. A merge is
+// kept in the account's data (MatrixCore's Merges.swift), with its name and the network a new
+// message goes to by default, so the account's other devices show it too. The list shows one row
+// with every network's logo and the unread counts added; it opens the network of the newest message
+// from the other person (else the default), and the chat bar's tabs switch networks. Its state and
+// actions: merge-members.contract.
+use Face from "./bubble.contract"
+use NetworkBadge, networkName from "./network.contract"
+
+// a chat the merge sheet offers.
+shape MergeCandidate
+  id: string
+  name: string
+  network: string
+  avatar: string
+  initials: string
+
+// a merge made or taken apart: its chat's id ("" for an unmerge).
+shape MergeReply
+  ok: bool
+  id: string
+
+// the sheet: a name, the chats (two or more, found by name), and the default network.
+component MergeSheet
+  props
+    route: string
+    chats: MergeCandidate[]
+    picked: string[]
+    name: string
+    defaultRoom: string
+    query: string
+    saving: bool
+    typeName: action
+    typeQuery: action
+    toggle: action
+    chooseDefault: action
+    close: action
+    save: action
+  derive chosen = chats.filter(c => picked.includes(c.id))
+  view
+    column navigationKey=route navigationPresentation="modal" navigationScroll="merge-sheet" position="absolute" inset=0
+      display="flex" flex-direction="column" testId="merge-sheet"
+      header display="flex" align-items="center"
+        button id="back" press=close testId="merge-cancel"
+          text "Cancel"
+        text "Merge Chats" role="heading" aria-level=1 flex=1
+        button press=save disabled=(picked.length < 2 or name.trim() == "" or saving) buttonStyle="filled" testId="merge-save"
+          text "Merge"
+      list id="merge-sheet" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        section
+          row
+            input value=name input=typeName placeholder="Chat Name" aria-label="Chat Name" autocapitalize="words"
+              testId="merge-name" flex=1 min-width=0
+          footer
+            text "The name the merged chat shows. Each chat keeps its own on its network."
+        if chosen.length >= 2
+          section role="radiogroup" aria-label="Default Network"
+            header
+              text "Default Network"
+            for c in chosen key=c.id
+              button role="radio" aria-checked=(c.id == defaultRoom) press=chooseDefault(c.id) testId=`merge-default-${c.id}`
+                display="flex" flex-direction="row" align-items="center" gap=10
+                image `assets/networks/${c.network}.svg` width=22 height=22 aria-hidden=true
+                text `${networkName(c.network)}: ${c.name}` flex=1 min-width=0 line-clamp=2
+                if c.id == defaultRoom
+                  image "symbol:checkmark" color="AccentColor" aria-hidden=true
+            footer
+              text "A new message goes here, unless the other person wrote last on another network."
+        section
+          header
+            text "Chats"
+          row
+            input type="search" value=query input=typeQuery placeholder="Search" aria-label="Search chats" testId="merge-search"
+              flex=1 min-width=0
+          for c in chats key=c.id
+            button role="checkbox" aria-checked=picked.includes(c.id) press=toggle(c.id) testId=`merge-pick-${c.id}`
+              aria-label=`${c.name}, ${networkName(c.network)}`
+              display="flex" flex-direction="row" align-items="center" gap=12
+              view position="relative" flex-shrink=0
+                Face(picture=c.avatar, initials=c.initials, size=36)
+                if c.network != "matrix"
+                  NetworkBadge(network=c.network, identifier=`merge-network-${c.id}`)
+              text c.name flex=1 min-width=0 line-clamp=2
+              if picked.includes(c.id)
+                image "symbol:checkmark" color="AccentColor" aria-hidden=true
+          footer
+            text "Pick two or more chats with the same person, on different networks."

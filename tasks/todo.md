@@ -1416,8 +1416,32 @@ Rami wants these, after the tasks above (2026-11-02):
   - MatrixCore `RemindersTests` (as `@test1` and `@test2`, under the lock): 3 passed. A reminder shows at once, reaches
     a second device of the account and not the other person; their message leaves it; your answer ends it on both
     devices and in the account's data; Clear takes it away.
-- Merge Chats: one person on two networks as one chat (B21). Designed 2026-11-03, not built: it waits on Rami's
-  choice (plan.md Q6).
+- Merge Chats: one person on two networks as one chat (B21). Built 2026-11-03 as Way A, the switchable chat (the
+  coordinator's choice under Rami's "continue as you see fit"; plan.md's log). What is built:
+  - Merge: the title menu's Merge Chats, or Select Chats' More > Merge Chats with two or more chosen. A sheet: the
+    name (the first chat's at first), the chats (search by name; a chat in a merge is not offered), and the default
+    network (a radio among those picked). Merge needs two chats and a name.
+  - Kept in the account's data (`com.ramimaalouf.multiplexer.merges`), the default with it, so the account's other
+    devices show the same merged chat; MatrixCore's `Merges.swift` (`merge`, `unmerge`, `roomsOf`, the list's fold).
+  - The list: one row, `merge:<id>`, with the merge's name, every network's logo on the picture, the newest message,
+    the unread counts added; it shows under each of its networks, and its rooms are in no list of their own. Every
+    chat action on it (Archive, Low Priority, Pin, Mute, Mark as Read or Unread, Delete, Select Chats' actions) acts on
+    each of its rooms; Remind Me is on the room it opens.
+  - Opening it: the room of the other person's newest message, else the default. The chat bar shows the networks as
+    tabs under the name; a tap shows that network's chat. Each network's chat is the room it was, so every chat
+    feature works as before.
+  - Unmerge: the info page's More > Unmerge; the rooms show as their own chats again.
+  - Checked (2026-11-03, as `@test1`): merged the "Multiplexer bar test" WhatsApp and Instagram chats from the title
+    menu and from Select Chats; the row showed both logos; the chat opened the WhatsApp room and the Instagram tab
+    showed the other in place, Back to the list; Unmerge in More brought both rows back. `check both` on the sheet clean;
+    on the chat at the default and largest sizes no overflow, size or clipping finding; the overlaps and dark contrast
+    it reports there are the floating bar's own (the same chat unmerged shows the same kinds; Exact finding 55). At
+    the accessibility sizes the tabs show the logos only. `verify ios` clean (6 tests).
+  - MatrixCore: `MergesTests` 3 passed (two offline; one end to end with a second device of `@test1`, whose first
+    sync took 27 s, so that test waits up to 90 s for it); `NetworkFilterTests`, `InboxTests`, `RemindersTests` and
+    `ChatActionsTests` passed with the change (one ChatActions test failed once and passed on its rerun).
+  - Not done: Beeper's suggestions (same phone number or name), and renaming a merge (unmerge and merge again).
+  - The design notes below were written before the choice.
   - What Beeper does (its help page, "Merge chats getting started guide"; our recording shows only the greyed menu
     row): Inbox menu > Merge Chats > pick the chats > a name and a default network. The merged chat replaces its chats
     in the list as one row; its unread count is their sum; Mark as Read, pins and labels act on the whole. Inside, one
