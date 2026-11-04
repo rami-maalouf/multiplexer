@@ -288,3 +288,38 @@ chats only (`network.sync.create_limit: 10`, the playbook's default).
 - Result (00:27 UTC on 11-03): 1 login, 20 chats known, 10 with rooms (`create_limit`),
   61 messages. Logs since 23:50: only the 2 `native login did not complete` warnings and 2
   `mpName is not voyager-web, using default xLiTrack`; no `ERR`.
+
+## 2026-11-03: Rami's answers to M0's questions, and B2
+
+Rami (2026-11-03): "go ahead and do whatever you think is best" on the five questions of
+M0's recheck, B2 and P3.3 (`tasks/todo.md`).
+
+- **Off-server copy.** `server/pull-backup.sh` copies, over `ssh oracle` and read only, the
+  dump folder (a mirror, hard links kept), the media store (added to, never deleted) and
+  Synapse's signing key to `~/Backups/multiplexer-server` on the Mac (mode 0700; not in git,
+  not synced, in Time Machine). `server/install-backup-pull.sh` runs it from launchd every
+  day at 21:30 (at wake when the Mac slept), from a copy in `~/Library/Application Support/
+  multiplexer`. First pull: 1.9 GB in 3.5 min (383 MB dumps, 1.5 GB media, 23,848 files as on
+  the server). A run through launchd: exit 0, `ssh` reads its key in `~/Documents/auth`.
+- **Instagram's debug log off, and B2.** `config.yml`: the `debug` line deleted (warn, the
+  default), and the three name templates without " (WA)", " (IG)", " (LinkedIn)". Install
+  (`--tags=install-all,ensure-matrix-users-created,start`): `ok=262 changed=5 failed=0`; the
+  three bridge configs changed and the three bridges restarted at 22:46:21 UTC; Synapse did
+  not. After: Instagram 0 debug lines; WhatsApp no `WRN` or `ERR`, and its connection to
+  WhatsApp (a Meta address, port 443) is open.
+- **Names.** `!wa sync contacts` from a short-lived `@rami` session (logged out after) in the
+  WhatsApp bot chat at 22:47:28 UTC. The bot does not answer, but it renames: ghosts in the
+  bridge's database with " (WA)" went from 14,529 to 2,250 by 23:03 UTC (about 900 a
+  minute), then stopped. The 2,250 left are people the bridge has no contact info for
+  (`contact_info_set` false; 26 of them have a DM room, of 279). They change when they change
+  their WhatsApp name, or when they send a message and their info is more than 7 days old.
+  Instagram and LinkedIn names change on each contact's next update. A WhatsApp message
+  arrived at 23:03:51 UTC, after the restart.
+- **Deletions** (Rami's yes). By hand, because the playbook's tools reach further: its
+  `run-docker-prune` runs `docker system prune -a -f`, and its `cleanup` role removes all
+  stopped containers. Both would delete the stopped containers and images of other projects
+  on this machine (n8n, postiz, spotlight). Deleted: the images
+  `localhost/mautrix/meta:ig-bce18b56...-arm64` (our old fork) and
+  `dock.mau.dev/mautrix/meta:ig-v0.2610.0` (no container used them), and the build cache of
+  our fork's build (15 entries, 1.17 GB, by id). Kept: the other project's Caddy build cache
+  (1.4 GB, 14 months old) and all of its containers and images. Disk: 60 of 96 GB.

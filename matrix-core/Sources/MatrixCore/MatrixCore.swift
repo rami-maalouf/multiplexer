@@ -29,6 +29,8 @@ public enum MatrixChange: Hashable, Sendable {
     case search
     /// The messages waiting on the server changed (Send Later, ScheduledMessages.swift).
     case scheduled
+    /// The saved messages changed (Bookmarks.swift).
+    case bookmarks
 }
 
 /// What the app keeps (in the Keychain) to sign in again without a password.
@@ -81,11 +83,16 @@ public struct RoomSummary: Equatable, Sendable {
     public var isArchived: Bool = false
     /// Deleted from this app (`MatrixAccount.hide`), and no newer message since: shown nowhere.
     public var isHidden: Bool = false
+    /// When the account asked to be reminded to answer this chat (`setReminder`), in milliseconds
+    /// since 1970; nil for none, or once answered.
+    public var reminderAt: UInt64? = nil
 }
 
 public struct Message: Equatable, Sendable {
     /// The timeline's id for the message: the same while it is sent and after.
     public var id: String
+    /// Its event id once the server has it ("" before): what a bookmark keeps.
+    public var eventId: String = ""
     public var sender: String
     public var senderName: String
     public var body: String
@@ -274,6 +281,8 @@ public enum MatrixCoreError: Error, Equatable {
     case scheduleRefused(String)
     /// Send Later: the scheduled message is no longer waiting: it went, or was cancelled.
     case scheduleGone(String)
+    /// A bookmark needs a message the server has, in the open chat.
+    case notBookmarkable(String)
 }
 
 /// Why `MatrixAccount.signIn` failed.

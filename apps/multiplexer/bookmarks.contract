@@ -1,0 +1,151 @@
+// Bookmarks (Rami, 2026-11-02: "in each chat's info page and in one list"). A held message's
+// Bookmark saves it; the filter sheet's Bookmarks row opens every saved message, and a chat's info
+// page opens its own. A tap opens the chat at the message. They are kept in the account's data
+// on its server, so every device has them and no one in the chat sees them. Its state and
+// actions: bookmarks-members.contract.
+use Face from "./bubble.contract"
+use NetworkBadge from "./network.contract"
+
+// a saved message as it was when saved: its chat (room, chatName, its picture and network), the
+// event the chat opens at, who sent it, its text (a caption, or "" for none), what it is (kind:
+// text, image, video, voice, audio, file, sticker or other), a file's name, and when it was sent.
+shape BookmarkItem
+  room: string
+  event: string
+  chatName: string
+  avatar: string
+  initials: string
+  network: string
+  senderName: string
+  isOwn: bool
+  body: string
+  kind: string
+  fileName: string
+  time: number
+
+// the saved messages of owner's account, the last saved first.
+shape BookmarkList
+  owner: string
+  bookmarks: BookmarkItem[]
+
+// a bookmark saved or removed (app.contract's Reply, which a members file cannot name).
+shape BookmarkReply
+  ok: bool
+
+// what a saved message is when it has no text: "Photo", a file's name, "Voice message".
+fn bookmarkKind(b: BookmarkItem): string = b.kind == "image" ? "Photo" : (b.kind == "video" ? "Video" : (b.kind == "voice" ? "Voice message" : (b.kind == "audio" ? (b.fileName != "" ? b.fileName : "Audio") : (b.kind == "file" ? (b.fileName != "" ? b.fileName : "File") : (b.kind == "sticker" ? "Sticker" : "Message")))))
+// its line: the text, else what it is; a caption follows a file's name.
+fn bookmarkLine(b: BookmarkItem): string = b.kind == "text" or b.kind == "other" ? (b.body != "" ? b.body : bookmarkKind(b)) : (b.body != "" ? (b.kind == "file" or b.kind == "audio" ? `${bookmarkKind(b)} · ${b.body}` : b.body) : bookmarkKind(b))
+fn bookmarkSender(b: BookmarkItem): string = b.isOwn ? "You" : b.senderName
+// the symbol before a photo's, video's, voice message's or file's line.
+fn bookmarkSymbol(b: BookmarkItem): string = b.kind == "image" ? "symbol:photo" : (b.kind == "video" ? "symbol:icon.video" : (b.kind == "voice" or b.kind == "audio" ? "symbol:icon.waveform" : (b.kind == "file" ? "symbol:document" : "")))
+// the words typed narrow them: each word starts a word of the text, the file's name or the sender's name.
+fn bookmarkHas(b: BookmarkItem, words: string[]): bool = not words.map(w => ` ${b.body} ${b.fileName} ${bookmarkSender(b)}`.toLowerCase().includes(` ${w}`)).includes(false)
+fn bookmarkLabel(b: BookmarkItem, inChat: bool): string = `${inChat ? "" : `${b.chatName}. `}${bookmarkSender(b)}: ${bookmarkLine(b)}`
+
+// one saved message: in the list of all, its chat's picture and name, the time, then who sent it
+// and its text; in one chat's (inChat), who sent it in the chat's place. A long press offers Copy
+// and Remove Bookmark; a swipe removes it, as Mail's swipe does (it is saved again in a moment).
+component BookmarkRow
+  props
+    item: BookmarkItem
+    inChat: bool
+    now: number
+    offset: number
+    open: action
+    aim: action
+    remove: action
+    identifier: string
+  derive symbol = bookmarkSymbol(item)
+  view
+    row delete=remove(item.room, item.event) contextmenu=aim(item.event) contextPopover="bookmark-menu" testId=`${identifier}-row`
+      button appearance="none" press=open(item.room, item.event) aria-label=bookmarkLabel(item, inChat) testId=identifier
+        display="flex" flex-direction="row" align-items="flex-start" gap=12 flex=1 min-width=0 text-align="start" padding="8px 0"
+        if not inChat
+          view position="relative" flex-shrink=0
+            Face(picture=item.avatar, initials=item.initials, size=40)
+            if item.network != "matrix"
+              NetworkBadge(network=item.network, identifier=`${identifier}-network`)
+        column flex=1 min-width=0 gap=2
+          // at large text sizes the time wraps under the name instead of narrowing it.
+          row flex-wrap="wrap" column-gap=6 align-items="baseline"
+            text (inChat ? bookmarkSender(item) : item.chatName) font="-exact-subheadline" font-weight=600 color="-exact-label"
+              flex="1 1 6rem" min-width=0 line-clamp=1
+            text formatDay(item.time, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label" margin-left="auto"
+          text font="-exact-subheadline" color="-exact-secondary-label" line-clamp=3 testId=`${identifier}-text`
+            if not inChat
+              text `${bookmarkSender(item)}: ` color="-exact-secondary-label"
+            if symbol != ""
+              image symbol width="1em" height="1em" vertical-align="-0.125em" color="-exact-secondary-label" aria-hidden=true
+              text " "
+            text bookmarkLine(item)
+
+// a saved message's long-press menu (BookmarkRow's), beside the list that holds the rows: a
+// popover inside a section would be its cells. Copy for a text or a caption.
+component BookmarkMenu
+  props
+    aimedText: string
+    copy: action
+    remove: action
+  view
+    column id="bookmark-menu" popover="auto" role="menu"
+      if aimedText != ""
+        button press=copy popovertarget="bookmark-menu" popovertargetaction="hide" testId="bookmark-copy"
+          image "symbol:copy"
+          text "Copy"
+      button press=remove destructive=true popovertarget="bookmark-menu" popovertargetaction="hide" testId="bookmark-remove"
+        image "symbol:icon.bookmark-slash"
+        text "Remove Bookmark"
+
+// no saved message yet: what a bookmark is, and how to make one.
+component EmptyBookmarks
+  props
+    inChat: bool
+  view
+    column flex=1 justify-content="center" align-items="center" gap=8 padding=32 text-align="center" testId="bookmarks-empty"
+      image "symbol:bookmark" font-size="min(-exact-title1, 44px)" color="-exact-tertiary-label" aria-hidden=true
+      text (inChat ? "No Bookmarks in This Chat" : "No Bookmarks") font="-exact-title3" font-weight=600 color="-exact-label"
+      text "Hold a message and choose Bookmark to find it here later." font="-exact-subheadline" color="-exact-secondary-label"
+
+// the saved messages, the last saved first: every chat's from the filter sheet, or one chat's
+// (inChat) from its info page.
+component BookmarksScreen
+  props
+    route: string
+    items: BookmarkItem[]
+    loaded: bool
+    inChat: bool
+    now: number
+    offset: number
+    // the message a long press is on: its menu's Copy needs a text.
+    aimedText: string
+    close: action
+    open: action
+    aim: action
+    copy: action
+    remove: action
+    // a row's swipe: its chat and event.
+    removeOne: action
+  view
+    column navigationKey=route navigationScroll="bookmarks" position="absolute" inset=0 display="flex" flex-direction="column"
+      testId="bookmarks-screen"
+      header display="flex" align-items="center"
+        button id="back" press=close aria-label="Back" testId="bookmarks-back"
+          image "symbol:back"
+        // inline, as a page under the inbox: a large title showed inline over rows and large over
+        // the empty state.
+        text "Bookmarks" role="heading" aria-level=2
+      BookmarkMenu(aimedText=aimedText, copy=copy, remove=remove)
+      if items.length == 0
+        if loaded
+          EmptyBookmarks(inChat=inChat)
+        else
+          column flex=1 justify-content="center" align-items="center"
+            progress aria-label="Loading bookmarks" testId="bookmarks-loading"
+      else
+        list id="bookmarks" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="bookmarks-list"
+          section
+            for b in items key=b.event
+              BookmarkRow(item=b, inChat=inChat, now=now, offset=offset, open=open, aim=aim, remove=removeOne, identifier=`bookmark-${b.event}`)
+            footer
+              text "Bookmarks are kept on your server, on all your devices. No one in the chat sees them."

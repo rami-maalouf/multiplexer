@@ -17,14 +17,16 @@ public final class MatrixAccount: @unchecked Sendable {
     let search = SearchState()
     /// The chats' media timelines and own names (ChatInfo.swift).
     let infoStates = ChatInfoStates()
+    /// The bookmarks this device wrote and the server has not confirmed (Bookmarks.swift).
+    let bookmarkStates = BookmarkStates()
+    let reminderStates = ReminderStates()
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
     let accountDataWatch = AccountDataWatch()
     private var syncService: SyncService?
-    /// The one start of the sync, which every caller waits on: two callers at once (the list and
-    /// another source at launch) must not each make a sync service and a room list (that crashed
-    /// in the sdk's room list, 2026-11-03).
+    /// The sync's start, shared: callers at launch (the list, Send Later, Bookmarks) ask at once,
+    /// and a second sync service with its own room list crashed the sdk.
     private var syncStart: Task<Void, Error>?
     private let lock = NSLock()
     private var changeHandler: (@Sendable (MatrixChange) -> Void)?
@@ -99,6 +101,9 @@ public final class MatrixAccount: @unchecked Sendable {
             // every chat (`startSearchBackfill`), which needs automatic back-pagination.
             .withSearchIndexStore(path: search.path, key: searchIndexKey)
             .enableAutomaticBackPagination(enableAutomaticBackPagination: true)
+            // once the account's backup is open (`recover`), a message this device has no key
+            // for fetches its key from the backup, as Element X does.
+            .backupDownloadStrategy(backupDownloadStrategy: .afterDecryptionFailure)
     }
 
     public var userId: String {
@@ -164,6 +169,7 @@ public final class MatrixAccount: @unchecked Sendable {
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
+        await fillReminders(&rooms)
         return rooms
     }
 
@@ -179,6 +185,9 @@ public final class MatrixAccount: @unchecked Sendable {
         lookUpNames(roomId, live.items.names)
         return shown
     }
+
+    /// The chats whose timeline is open (or opening).
+    func openRoomIds() -> [String] { lock.withLock { Array(timelines.keys) } }
 
     /// The chat's live timeline, opened the first time with its last `limit` messages.
     func liveTimeline(_ roomId: String, limit: Int, timeout: TimeInterval) async throws -> LiveTimeline {
@@ -368,7 +377,10 @@ public final class MatrixAccount: @unchecked Sendable {
         switch encryption.recoveryState() {
         case .enabled: return .enabled
         case .disabled: return .disabled
-        case .incomplete: return .incomplete
+        // the sdk says incomplete while the account's cross-signing secrets are missing here,
+        // even after the recovery key opened the backup: with the backup open, this device reads
+        // its older messages, which is what recovery is for.
+        case .incomplete: return encryption.backupState() == .enabled ? .enabled : .incomplete
         case .unknown: return .unknown
         }
     }
@@ -385,31 +397,35 @@ public final class MatrixAccount: @unchecked Sendable {
         }
         search.stop()
         accountDataWatch.stop()
-        await syncService?.stop()
-        syncService = nil
+        let service = lock.withLock {
+            syncStart = nil
+            return syncService
+        }
+        await service?.stop()
+        lock.withLock { syncService = nil }
         try await client.logout()
     }
 
+    /// Starts the sync once, for every caller; a start that failed is tried again at the next call.
     func startSync(timeout: TimeInterval) async throws {
         let start: Task<Void, Error> = lock.withLock {
             if let started = syncStart { return started }
-            let task = Task { try await self.runSync(timeout: timeout) }
+            let task = Task { try await self.openSync(timeout: timeout) }
             syncStart = task
             return task
         }
         do {
             try await start.value
         } catch {
-            // the next caller tries again (as before, a sync service made stays made).
             lock.withLock { if syncStart == start { syncStart = nil } }
             throw error
         }
     }
 
-    private func runSync(timeout: TimeInterval) async throws {
-        guard syncService == nil else { return }
+    private func openSync(timeout: TimeInterval) async throws {
+        if lock.withLock({ syncService != nil }) { return }
         let service = try await client.syncService().finish()
-        syncService = service
+        lock.withLock { syncService = service }
         let state = RoomListState()
         let handle = service.roomListService().state(listener: state)
         defer { handle.cancel() }
@@ -556,11 +572,15 @@ final class LiveTimeline: @unchecked Sendable {
     /// shown (all of them when none is shown yet), or the room's start; at most 5 pages,
     /// since a page holds state events too (joins, names).
     func pageBack(until count: Int) async throws {
-        for _ in 0..<5 {
+        // a page is 50 events, at most 20 pages (1,000 events): a room whose newest events are
+        // mostly ones the chat does not show (a bridge's members joining or renamed) needs many
+        // pages for a few messages; before, 100 events of them opened the chat empty, and an
+        // empty chat has no list to ask for more.
+        for _ in 0..<20 {
             // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
             await items.settle()
             if lock.withLock({ reachedStart }) || items.reachesCut || olderThanShown() >= count { return }
-            let start = try await timeline.paginateBackwards(numEvents: UInt16(clamping: count))
+            let start = try await timeline.paginateBackwards(numEvents: 50)
             lock.withLock { reachedStart = start }
         }
         await items.settle()

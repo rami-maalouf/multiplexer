@@ -71,10 +71,10 @@ component SheetRow
           text unread.toString() font="-exact-body" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
             testId=`${identifier}-unread`
 
-// the sheet's rows, in Beeper's order. list: the list shown (inbox, archive or lowPriority);
-// chosen: the network it shows ("" for every network); community: the community it shows ("" for
-// none). A list's row shows that list on every network (chooseList); a network's or a
-// community's row shows its chats in the list shown (choose, chooseCommunity).
+// the sheet's rows, in Beeper's order. list: the list shown (inbox, archive, lowPriority or
+// reminders); chosen: the network it shows ("" for every network); community: the community it
+// shows ("" for none). A list's row shows that list on every network (chooseList); a network's or
+// a community's row shows its chats in the list shown (choose, chooseCommunity).
 component InboxSheet
   props
     networks: NetworkCount[]
@@ -88,12 +88,16 @@ component InboxSheet
     chosen: string
     choose: action
     chooseList: action
+    // the chats with a reminder (Remind Me).
+    reminders: number
     // the chats this account is invited to, and the list of them (Requests).
     requests: number
     openRequests: action
     // messages waiting on the server, and the list of them (Send Later).
     scheduled: number
     openScheduled: action
+    // the saved messages (Bookmarks).
+    openBookmarks: action
     largeText: bool
   view
     scroll id="inboxes" flex=1 min-height=0 testId="inboxes"
@@ -102,10 +106,15 @@ component InboxSheet
           value="inbox", choose=chooseList, largeText=largeText, identifier="inboxes-inbox")
         SheetRow(rounded=false, picture="symbol:icon.archive", logo=false, name="Archive", unread=archiveUnread, noun="unread", chosen=(list == "archive"),
           value="archive", choose=chooseList, largeText=largeText, identifier="inboxes-archive")
-        // Beeper's next rows come here with their tasks, in its order: Create Label and the
-        // labels, Reminders, then Send Later; Bookmarks after it, then Requests.
+        // Create Label and the labels come here with their task, then Reminders, Send Later and
+        // Bookmarks; Requests after them, as Beeper orders it.
+        SheetRow(rounded=false, picture="symbol:icon.alarm", logo=false, name="Reminders", unread=reminders, noun="chats", chosen=(list == "reminders"),
+          value="reminders", choose=chooseList, largeText=largeText, identifier="inboxes-reminders")
         SheetRow(rounded=false, picture="symbol:icon.clock", logo=false, name="Send Later", unread=scheduled, noun="scheduled", chosen=false,
           value="scheduled", choose=openScheduled, largeText=largeText, identifier="inboxes-send-later")
+        // no count: the sheet's numbers are for what waits (unread chats, scheduled messages).
+        SheetRow(rounded=false, picture="symbol:bookmark", logo=false, name="Bookmarks", unread=0, noun="", chosen=false,
+          value="bookmarks", choose=openBookmarks, largeText=largeText, identifier="inboxes-bookmarks")
         SheetRow(rounded=false, picture="symbol:icon.person-badge-plus", logo=false, name="Requests", unread=requests, noun="waiting",
           chosen=false, value="requests", choose=openRequests, largeText=largeText, identifier="inboxes-requests")
         SheetRow(rounded=false, picture="symbol:icon.arrow-down-circle", logo=false, name="Low Priority", unread=lowPriorityUnread, noun="unread",

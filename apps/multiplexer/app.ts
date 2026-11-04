@@ -1,5 +1,6 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
 import { ClipboardItem, write } from '@exact/clipboard';
+import { closeNotification, notificationStatus, showNotification } from '@exact/notifications';
 import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
@@ -13,7 +14,9 @@ export const appId = 'com.ramimaalouf.multiplexer';
 export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/camera', 'device.camera purpose.camera', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
   'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
-  'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs'].join('\n');
+  'device.speech-recognition purpose.recognition', 'fs.read app:/data/transcripts.json', 'fs.write app:/data/transcripts.json',
+  'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs',
+  'device.notifications purpose.notifications', 'fs.read app:/data/reminders', 'fs.write app:/data/reminders'].join('\n');
 
 // GIFs (gif.contract): the phone calls KLIPY itself, as KLIPY requires (D10). Its app key is set at
 // build from the Keychain (scripts/setup-klipy-key.sh); it ships in the app, as an app key does.
@@ -24,6 +27,13 @@ const GIFS_PER_PAGE = 30;
 const GIF_SEND_BYTES = 4_000_000;
 type KlipyFile = { url: string; width: number; height: number; size: number };
 type KlipyItem = { slug: string; title?: string; type: string; file: Record<string, Partial<Record<'gif' | 'webp' | 'mp4' | 'jpg', KlipyFile>>> };
+// voice messages' transcripts, by account (transcribe-members.contract).
+const TRANSCRIPTS = 'app:/data/transcripts.json';
+type Transcript = { key: string; text: string; problem: string };
+const readTranscripts = (storage: Storage): Promise<Record<string, Transcript[]>> => storage.fs.readFile(TRANSCRIPTS).then(
+  (bytes) => JSON.parse(new TextDecoder().decode(bytes)) as Record<string, Transcript[]>,
+  (e: { code?: string }) => { if (e?.code === 'ENOENT') return {}; throw e; });
+
 // the GIFs the grid shows, by slug, so a tap sends the one it shows.
 const shownGifs = new Map<string, KlipyItem>();
 
@@ -41,7 +51,47 @@ type RoomsAnswer = {
   unread: number;
   archiveUnread: number;
   lowPriorityUnread: number;
+  reminders: number;
 };
+
+// Remind Me: a reminder lives in the account's data (MatrixCore's Reminders.swift), and its
+// notification on this iPhone, tagged by the chat. What this iPhone scheduled is kept in a file, so
+// a reminder answered or cleared on another device has its notification taken away here.
+const REMINDERS = 'app:/data/reminders', SCHEDULED = `${REMINDERS}/scheduled.json`;
+export const reminderTag = (roomId: string) => `reminder-${roomId}`;
+type ReminderChat = { id: string; name: string; reminder: number; lastMessage: string; lastSender: string; lastIsOwn: boolean };
+let syncing: Promise<void> = Promise.resolve();
+const syncReminders = (rooms: ReminderChat[], storage: Storage) => (syncing = syncing.then(() => syncNow(rooms, storage), () => syncNow(rooms, storage)));
+async function syncNow(rooms: ReminderChat[], storage: Storage) {
+  const wanted = new Map(rooms.filter((r) => r.reminder > 0).map((r) => [r.id, r]));
+  let scheduled: Record<string, number> = {};
+  try { scheduled = JSON.parse(new TextDecoder().decode(await storage.fs.readFile(SCHEDULED))); } catch { /* none yet */ }
+  let changed = false;
+  for (const id of Object.keys(scheduled)) {
+    if (wanted.has(id)) continue;
+    await closeNotification({ tag: reminderTag(id) });
+    delete scheduled[id];
+    changed = true;
+  }
+  const missing = [...wanted.values()].filter((r) => scheduled[r.id] !== r.reminder);
+  // a post asks for the permission while it is not given yet: here only when it is, as the
+  // first reminder's press asks for it (app.contract's afterRemind).
+  if (missing.length && (await notificationStatus({})).state === 'granted') {
+    for (const r of missing) {
+      await showNotification(reminderNotice(r));
+      scheduled[r.id] = r.reminder;
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  await storage.fs.mkdir(REMINDERS).catch((e: { code?: string }) => { if (e?.code !== 'EEXIST') throw e; });
+  await storage.fs.atomicWriteFile(SCHEDULED, new TextEncoder().encode(JSON.stringify(scheduled)));
+}
+const reminderNotice = (r: ReminderChat) => ({
+  title: `Reply to ${r.name}`,
+  body: r.lastMessage === '' ? 'You asked to be reminded.' : `${r.lastIsOwn ? 'You' : r.lastSender}: ${r.lastMessage}`,
+  tag: reminderTag(r.id), data: r.id, showTrigger: r.reminder,
+});
 
 // a chat with no picture shows the first letters of its first two words, as Messages does.
 const initials = (name: string): string =>
@@ -55,7 +105,8 @@ type MessagesAnswer = {
   // the first message after this account's read receipt, or "".
   firstUnread: string;
   messages: {
-    id: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
+    // event: its event id once the server has it, else "".
+    id: string; event: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
     isImage: boolean; image: string; imageWidth: number; imageHeight: number; waitingForKey: boolean;
     isEdited: boolean; senderPicture: string;
     // deleted for everyone (body ""); your own text message, which an edit can change.
@@ -73,7 +124,7 @@ type MessagesAnswer = {
     // a video's poster once it is downloaded, else "".
     poster: string;
     // empty when the message is no voice message or audio file; duration in milliseconds, waveform from 0 to 1.
-    audio: { isVoice?: boolean; duration?: number; waveform?: number[] };
+    audio: { isVoice?: boolean; duration?: number; waveform?: number[]; key?: string };
     // who has read the chat up to it, besides its sender and you; name "" until it is known, time 0 when unknown.
     readers: { name: string; time: number }[];
   }[];
@@ -226,17 +277,19 @@ const sources: Sources = {
   // unanswered, people or groups; network: one network's chats, or "" for every network;
   // community: one community's chats instead, a space's id or ""); in the inbox under all, the
   // pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter, network, community, list], _store, _storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+  loadRoomsByRecency: async ([userId, filter, network, community, list], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
     if (userId === '' || !native?.available) {
       return { owner: userId, filter, network, community, list, rooms: [], pinned: [], networks: [], communities: [], unread: 0,
-        archiveUnread: 0, lowPriorityUnread: 0 };
+        archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
     }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
     const answer = (await native.later({ op: 'rooms', filter, network, community, list })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
+    // the reminders' notifications follow the account's reminders; a failure leaves the list as it is.
+    syncReminders(answer.rooms, storage).catch((e) => console.log(`reminders: ${e}`));
     return {
       owner: userId, filter, network, community, list, networks: answer.networks, communities: answer.communities, unread: answer.unread,
-      archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread,
+      archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread, reminders: answer.reminders,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
         const r = byId.get(id);
@@ -254,6 +307,10 @@ const sources: Sources = {
   },
   // a chat's long-press actions: read, unread, mute, unmute, lowPriority, inbox (out of Low
   // Priority), archive, unarchive and delete (from this app only; the chat stays on its network).
+  // Remind Me (B7, B20): when is "tomorrow", "monday" or a picked time without a zone, as Send
+  // Later's; a time not ahead is refused with problem "past".
+  remindChat: async ([roomId, when], _store, _storage, native): Promise<Result<'remindChat'>> =>
+    (await native!.later({ op: 'chat', roomId, action: 'remind', when })) as { ok: boolean; at: number; problem: string },
   changeChat: async ([roomId, action], _store, _storage, native): Promise<Result<'changeChat'>> => {
     await native!.later({ op: 'chat', roomId, action });
     return { ok: true };
@@ -263,7 +320,8 @@ const sources: Sources = {
   // With room, the search in that chat (its info page's): its messages and links, or a kind's.
   loadSearch: async ([userId, searching, query, kind, recent, room], _store, _storage, native): Promise<Result<'loadSearch'>> => {
     const none = { owner: userId, room, query, kind, chats: [], messages: [], links: [] };
-    if (userId === '' || !searching || !native?.available || (room !== '' && query === '' && kind === '')) return none;
+    // a chat's Bookmarks kind shows its saved messages (loadBookmarks), which no search finds.
+    if (userId === '' || !searching || !native?.available || (room !== '' && query === '' && kind === '') || kind === 'bookmarks') return none;
     // a found photo's or sender's picture, once downloaded, and a chat's new file, link or voice
     // message on a kind's page; a chat's new photo or video (the info page's); the recent chats'
     // last messages as they change.
@@ -314,6 +372,25 @@ const sources: Sources = {
     const answer = (await native!.later({ op: 'scheduledAction', id, action })) as { ok: boolean; problem?: string };
     return { ok: answer.ok, problem: answer.problem ?? '' };
   },
+  // the saved messages, the last saved first, each with its chat; read again each minute (minute),
+  // as another device's reach the store with no word, and when one is saved or removed.
+  loadBookmarks: async ([userId, _minute], _store, _storage, native): Promise<Result<'loadBookmarks'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, bookmarks: [] };
+    native.watch('bookmarks');
+    const answer = (await native.later({ op: 'bookmarks' })) as {
+      bookmarks: Omit<Result<'loadBookmarks'>['bookmarks'][number], 'initials'>[];
+    };
+    return { owner: userId, bookmarks: answer.bookmarks.map((b) => ({ ...b, initials: initials(b.chatName) })) };
+  },
+  // a message of the open chat (its id there) saved, or a saved one (its event) removed.
+  addBookmark: async ([roomId, messageId], _store, _storage, native): Promise<Result<'addBookmark'>> => {
+    await native!.later({ op: 'bookmark', roomId, messageId });
+    return { ok: true };
+  },
+  removeBookmark: async ([roomId, eventId], _store, _storage, native): Promise<Result<'removeBookmark'>> => {
+    await native!.later({ op: 'removeBookmark', roomId, eventId });
+    return { ok: true };
+  },
   // a found message's chat pages back to it: its id there, or "" when it is further back.
   showMessage: async ([roomId, eventId], _store, _storage, native): Promise<Result<'showMessage'>> =>
     (await native!.later({ op: 'showMessage', roomId, eventId })) as { id: string },
@@ -345,11 +422,11 @@ const sources: Sources = {
       const bigEmoji = !media && !m.waitingForKey && isBigEmoji(m.body);
       const status = i === answer.messages.length - 1 ? statusOf(m, group) : { status: '', statusTime: 0 };
       return {
-        id: m.id, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
+        id: m.id, event: m.event, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
         isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),
-        isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [],
+        isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [], audioKey: m.audio.key ?? '',
         balloon: !m.waitingForKey && !m.isDeleted && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
         isDeleted: m.isDeleted, isEditable: m.isEditable,
@@ -471,6 +548,26 @@ const sources: Sources = {
   forwardMessage: async ([roomId, messageId, to], _store, _storage, native): Promise<Result<'forwardMessage'>> => {
     await native!.later({ op: 'forward', roomId, messageId, to });
     return { ok: true };
+  },
+  // Settings' Encryption: the account's recovery (on, off, key: this iPhone needs the recovery
+  // key), and the key entered to read older encrypted messages.
+  loadRecovery: async ([userId], _store, _storage, native): Promise<Result<'loadRecovery'>> => {
+    if (userId === '' || !native?.available) return { owner: userId, status: '' };
+    const answer = (await native.later({ op: 'recovery' })) as { status: string };
+    return { owner: userId, status: answer.status };
+  },
+  recover: async ([key], _store, _storage, native): Promise<Result<'recover'>> =>
+    (await native!.later({ op: 'recover', key })) as { ok: boolean; problem: string },
+  // voice messages' transcripts, kept in a file on this iPhone, by account and by the sound file's
+  // name, newest first, at most 500 (transcribe-members.contract).
+  loadTranscripts: async ([userId], _store, storage): Promise<Result<'loadTranscripts'>> =>
+    userId === '' ? [] : ((await readTranscripts(storage))[userId] ?? []),
+  saveTranscript: async ([userId, key, text, problem], _store, storage): Promise<Result<'saveTranscript'>> => {
+    const all = await readTranscripts(storage);
+    const mine = [{ key, text, problem }, ...(all[userId] ?? []).filter((t) => t.key !== key)].slice(0, 500);
+    all[userId] = mine;
+    await storage.fs.writeFile(TRANSCRIPTS, new TextEncoder().encode(JSON.stringify(all)));
+    return mine;
   },
   // a held photo's Copy: its original (downloaded once), as a PNG on the clipboard, which takes
   // PNG only; a large photo is made smaller to fit the clipboard's 2 MB.
