@@ -44,3 +44,13 @@ window), which left it near the bottom; the menu opened under it, and `tap menu-
 scroll put the menu off screen. Workaround: make the row the list's first (a new message in
 that chat), then hold it. About 2 minutes. A scroll that leaves room for the row's menu, or a
 tap that scrolls the open menu, would remove it.
+
+## seen again while adding a filter (2026-11-03)
+
+At the largest system text size, a list's eight-action context menu again refused its lower
+row with "its middle is outside the viewport". Dragging a visible action was also refused
+because the synthetic menu's coordinates started above the viewport. With `--touch platform`,
+the injected `contextmenu` was not UIKit's open menu, and the row was refused as "not the menu
+UIKit shows". About 5 minutes. The same action was also exposed as a normal, scrollable
+grouped row on an info page; that route passed light and dark checks at the largest text size.
+This does not establish that the real menu's scrolling is broken.

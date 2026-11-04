@@ -23,11 +23,12 @@ fn emptyTitle(f: string): string = f == "unread" ? "No Unread Chats" : (f == "un
 fn emptyMessage(f: string): string = f == "unread" ? "You’ve read every chat." : (f == "unanswered" ? "You answered the last message in every chat." : (f == "people" ? "Chats with one other person show here." : "Chats with more than one other person show here."))
 // the lists besides the inbox: the filter sheet's rows and the screen's title.
 fn listName(l: string): string = l == "archive" ? "Archive" : (l == "lowPriority" ? "Low Priority" : (l == "reminders" ? "Reminders" : "Inbox"))
-// the screen's title: the list, and the filter sheet's network ("": every network).
-fn listTitle(l: string, network: string): string = l == "inbox" ? (network == "" ? "Inbox" : networkName(network)) : (network == "" ? listName(l) : `${networkName(network)} ${listName(l)}`)
+// the screen's title: the list, and the name of the filter sheet's network or community
+// (scope; "": every chat).
+fn listTitle(l: string, scope: string): string = l == "inbox" ? (scope == "" ? "Inbox" : scope) : (scope == "" ? listName(l) : `${scope} ${listName(l)}`)
 // what an empty Archive, Low Priority or Reminders says.
 fn listEmptyTitle(l: string): string = l == "archive" ? "No Archived Chats" : (l == "reminders" ? "No Reminders" : "No Low Priority Chats")
-fn listEmptyMessage(l: string, network: string): string = l == "reminders" ? `Chats you ask to be reminded about${network == "" ? "" : ` from ${networkName(network)}`} show here until you answer them.` : `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${network == "" ? "" : ` from ${networkName(network)}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
+fn listEmptyMessage(l: string, scope: string): string = l == "reminders" ? `Chats you ask to be reminded about${scope == "" ? "" : ` from ${scope}`} show here until you answer them.` : `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${scope == "" ? "" : ` from ${scope}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
 // what Delete's alert says: the chat leaves this app only.
 fn deleteMessage(network: string): string = `It leaves Multiplexer on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
 // select chats' delete: the same, for several chats.
@@ -51,6 +52,9 @@ component BottomBar
     // network), and what opens the sheet.
     list: string
     network: string
+    // the filter sheet's community instead of a network: its name ("" for none) and its picture.
+    communityName: string
+    communityPicture: string
     sheet: action
     search: action
     // the reader chose one of the accessibility text sizes.
@@ -73,10 +77,14 @@ component BottomBar
           aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
           image "symbol:filter" font-size=symbolSize
         row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
-          button appearance="none" press=top aria-label=(network == "" ? "Inbox" : networkName(network)) aria-selected=inInbox
+          button appearance="none" press=top aria-label=(communityName != "" ? communityName : (network == "" ? "Inbox" : networkName(network))) aria-selected=inInbox
             testId="inbox" min-width=68 height=44 border-radius=22 background-color=(inInbox ? "-exact-tertiary-fill" : "transparent")
             display="flex" align-items="center" justify-content="center"
-            if network == ""
+            if communityName != "" and communityPicture != ""
+              image communityPicture width=(symbolSize + 4) height=(symbolSize + 4) border-radius=6 object-fit="cover" aria-hidden=true
+            else if communityName != ""
+              image "symbol:people" font-size=symbolSize color="-exact-label"
+            else if network == ""
               image "symbol:icon.tray" font-size=symbolSize color="-exact-label"
             else
               image `assets/networks/${network}.svg` width=(symbolSize + 4) height=(symbolSize + 4) aria-hidden=true

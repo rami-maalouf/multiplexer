@@ -46,20 +46,27 @@ final class Matrix: ExactModule {
                     // every chat, each saying whether the list (inbox, archive or lowPriority) shows it
                     // under the filter menu's choice and the filter sheet's network ("": every network),
                     // the pinned ones' ids in their pin order, and the sheet's rows with their unread chats.
+                    // a community (a space's id) narrows it instead of a network.
                     let started = Date(), account = try await signedIn()
-                    let network = request["network"] as? String ?? "", filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
+                    let network = request["network"] as? String ?? "", chosen = request["community"] as? String ?? ""
+                    let filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
                     // Reminders is not a list a chat is in: it shows the chats with a reminder, from every list.
-                    let inbox = request["list"] as? String == "reminders"
-                        ? try await account.reminderList(filter: filter, network: network.isEmpty ? nil : network)
-                        : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox,
-                                                  network: network.isEmpty ? nil : network)
+                    let all = request["list"] as? String == "reminders"
+                        ? try await account.reminderList(filter: filter)
+                        : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox)
+                    let communities = await account.communities(among: all.chats)
+                    let community = communities.first { $0.id == chosen }
+                    let inbox = community != nil ? all.on(community: community) : all.on(network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
                     print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
                        "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
                        "reminders": rooms.filter { !$0.isHidden && $0.foldedInto == nil && $0.reminderAt != nil }.count,
-                       "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] }])
+                       "networks": inbox.networks.map { ["network": $0.network, "unread": $0.unread] },
+                       "communities": inbox.counts(of: communities).map { c in
+                           ["id": c.id, "name": c.name, "unread": c.unread,
+                            "avatar": cached(c.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: c.id, directory: self.media) }] }])
                 case "pin", "unpin":
                     // a merged chat pins or unpins each of its rooms.
                     let chatId = request["roomId"] as? String ?? "", account = try await signedIn()
@@ -107,6 +114,39 @@ final class Matrix: ExactModule {
                         for id in chosen { rooms += await account.roomsOf(id) }
                         if rooms.count == 1 { try await account.change(roomId: rooms[0], change) } else { try await account.change(roomIds: rooms, change) }
                     }
+                    reply.send(["ok": true])
+                case "spaceChoices":
+                    let account = try await signedIn(), roomId = request["roomId"] as? String ?? ""
+                    let spaces = try await account.editableCommunities(for: roomId)
+                    let children = await account.roomsOf(roomId)
+                    reply.send(["spaces": spaces.map { space in
+                        ["id": space.id, "name": space.name,
+                         "added": !children.isEmpty && children.allSatisfy { space.rooms.contains($0) }]
+                    }])
+                case "createSpace", "addToSpace":
+                    let account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    if request["op"] as? String == "createSpace" {
+                        let path = request["path"] as? String ?? ""
+                        let id = try await account.createSpace(name: request["name"] as? String ?? "",
+                            picture: path.isEmpty ? nil : appFile(path), mimetype: request["mimetype"] as? String ?? "image/jpeg")
+                        reply.send(["id": id])
+                    } else {
+                        try await account.addToSpace(roomId: request["roomId"] as? String ?? "", spaceId: request["spaceId"] as? String ?? "")
+                        reply.send(["ok": true])
+                    }
+                case "requests":
+                    // the chats this account is invited to (MatrixCore's Requests.swift), newest first.
+                    let account = try await signedIn()
+                    let requests = try await account.requests()
+                    reply.send(["requests": requests.map { r in
+                        ["id": r.id, "name": r.name, "isDirect": r.isDirect, "inviterId": r.inviterId, "inviterName": r.inviterName,
+                         "avatar": cached(r.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: r.id, directory: self.media) }] }])
+                case "answerRequest":
+                    // Accept joins the chat; Decline refuses the invite. A drive answers only a test user's.
+                    let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive changes only a test user's chats") }
+                    if request["accept"] as? Bool == true { try await account.accept(request: roomId) } else { try await account.decline(request: roomId) }
                     reply.send(["ok": true])
                 case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":
                     // Send Later (MatrixCore's ScheduledMessages.swift): messages that wait on the server.

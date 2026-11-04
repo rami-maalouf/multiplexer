@@ -44,6 +44,46 @@ final class ChatInfoTests: XCTestCase {
         XCTAssertFalse(theirs.canRename)
     }
 
+    func testAnUnresolvedPreviewSenderFallsBackToTheId() {
+        let sender = "@sender:example.org"
+        for memberName: String? in [nil, "", " \n", "Room sender"] {
+            var room = RoomSummary(id: "!room:example.org", name: "Group", isDirect: false,
+                lastMessage: "Hello", lastSenderName: " ", lastIsOwn: false, lastTimestamp: 1)
+            room.fillPreviewSender(sender: sender, memberName: memberName)
+            XCTAssertEqual(room.lastSenderName, memberName == "Room sender" ? "Room sender" : sender)
+        }
+    }
+
+    // a list preview uses the room's name for the sender before this device opens the chat.
+    func testAPreviewNamesTheSenderFromTheRoomMember() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let sender = try await signIn(homeserver, user2, password2)
+        let roomId = try await testRooms(owner, sender, user2: user2)[infoName]!
+        let session = try sender.savedSession()
+        let memberPath = ["rooms", roomId, "state", "m.room.member", user2]
+        let before = try await api("GET", memberPath, session: session)
+        addTeardownBlock { _ = try? await self.api("PUT", memberPath, before, session: session) }
+        var member = before
+        let name = "Room sender \(UUID().uuidString.prefix(8))"
+        member["displayname"] = name
+        let changed = try await api("PUT", memberPath, member, session: session)
+        XCTAssertNotNil(changed["event_id"])
+        let text = "Sender preview \(UUID().uuidString)"
+        try await sender.sendAndWait(roomId: roomId, text: text)
+        let reader = try await signIn(homeserver, user, password)
+        var seen: RoomSummary?
+        for _ in 0..<40 {
+            seen = try await reader.rooms().first { $0.id == roomId }
+            if seen?.lastMessage == text { break }
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+        XCTAssertEqual(seen?.lastMessage, text)
+        XCTAssertEqual(seen?.lastSenderName, name)
+        XCTAssertFalse(seen?.lastIsOwn ?? true)
+        XCTAssertNil(reader.readyTimeline(roomId), "the list must name the sender without opening the chat")
+    }
+
     /// A new name and a new picture reach the other person.
     func testANewNameAndPictureReachTheOther() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()

@@ -265,6 +265,7 @@ public enum SendState: String, Sendable {
 
 public enum MatrixCoreError: Error, Equatable {
     case noRoom(String)
+    case invalidSpaceName
     /// A merge needs two chats or more.
     case mergeNeedsTwo
     case timedOut(String)

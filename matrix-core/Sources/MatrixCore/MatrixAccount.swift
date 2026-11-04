@@ -185,6 +185,11 @@ public final class MatrixAccount: @unchecked Sendable {
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
+                // the latest event may have no profile even though the room member has a name.
+                if !isOwn, !summary.isDirect, !summary.lastMessage.isEmpty,
+                   summary.lastSenderName == sender || summary.lastSenderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    summary.fillPreviewSender(sender: sender, memberName: try? await room.memberDisplayName(userId: sender))
+                }
                 latest.fill(&summary)
             case .local(let timestamp, let sender, let profile, let content, _):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: true, profile: profile, content: content)
@@ -423,6 +428,7 @@ public final class MatrixAccount: @unchecked Sendable {
             roomOrder = nil
             timelines = [:]
             readyTimelines = [:]
+            syncStart = nil
         }
         search.stop()
         accountDataWatch.stop()
@@ -462,7 +468,8 @@ public final class MatrixAccount: @unchecked Sendable {
         try await poll(timeout: timeout, what: "the first sync") { state.current == .running }
         let order = RoomEntries { [weak self] in self?.notify(.rooms) }
         let entries = try await service.roomListService().allRooms().entriesWithDynamicAdapters(pageSize: 1000, listener: order)
-        _ = entries.controller().setFilter(kind: .all(filters: [.joined, .nonSpace]))
+        // invites and spaces must notify too; rooms() keeps spaces out of the chat list.
+        _ = entries.controller().setFilter(kind: .any(filters: [.joined, .invite]))
         lock.withLock {
             roomEntries = entries
             roomOrder = order
@@ -475,6 +482,9 @@ public final class MatrixAccount: @unchecked Sendable {
             if !types.subtracting([Bookmarks.type]).isEmpty { self?.notify(.rooms) }
         }
     }
+
+    /// The room list service's order of the rooms (the most recent activity first), once synced.
+    func rankedRoomIds() -> [String] { lock.withLock { roomOrder }?.ids() ?? [] }
 
     /// A room the client knows; a room created a moment ago appears once its sync has run.
     func room(_ roomId: String, timeout: TimeInterval) async throws -> Room {
@@ -874,6 +884,14 @@ extension SignInError {
 }
 
 extension RoomSummary {
+    mutating func fillPreviewSender(sender: String, memberName: String?) {
+        if let memberName, !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lastSenderName = memberName
+        } else {
+            lastSenderName = sender
+        }
+    }
+
     mutating func fillLast(timestamp: Timestamp, sender: String, isOwn: Bool, profile: ProfileDetails, content: TimelineItemContent) {
         // the newest event orders the list even when it is no message (a new picture, a
         // join); then there is no preview.

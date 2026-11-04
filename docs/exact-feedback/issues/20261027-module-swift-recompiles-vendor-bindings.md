@@ -31,6 +31,11 @@ edit to `app.contract` or `app.ts` took seconds.
 
 Seen at exact2 `65577096ed`. `host/apple/build.mjs` is unchanged at `cee509ac82`.
 
+## seen again (2026-11-03)
+
+Adding two small operations to a native module triggered a roughly 90-second build, including
+the unchanged vendor bindings. Subsequent view-only updates used the new plan in seconds.
+
 ## Further build-cost evidence (2026-11-03)
 
 At exact2 `ed43ad09a0`, integrating another feature with native changes required 76.8 s of iOS
@@ -46,3 +51,10 @@ reported in host arms. The complete six-test verify took 155.0 s, versus the ini
 of about 85 s. The build log gave no intermediate stage progress after "the app's Swift modules
 compile as they are now" until compilation ended. This measures the overall native rebuild,
 not vendor compilation separately. The existing cached-vendor proposal still applies.
+
+## Integration evidence (2026-11-04)
+
+A combined native-module rebuild took 102.4 seconds before verification on the normal
+framework checkout. The full verification took 186.9 seconds, versus the initial 65-second
+estimate based on its previous run. Including invalidated native modules in the estimate
+would make that waiting time clearer. No additional workaround was needed.

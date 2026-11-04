@@ -8,7 +8,7 @@ use Balloon, Face from "./bubble.contract"
 use Attachment, chosenOf, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, ChooseMark, SelectTitle, SelectBar, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage, deleteChatsTitle, deleteChatsMessage from "./inbox.contract"
 use NetworkBadge, NetworkBadges, networkName from "./network.contract"
-use InboxSheet, NetworkCount from "./sheet.contract"
+use InboxSheet, NetworkCount, CommunityCount from "./sheet.contract"
 use ChatBar, MergeTab, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
@@ -22,6 +22,8 @@ use BookmarksScreen, BookmarkMenu from "./bookmarks.contract"
 use MergeSheet from "./merge.contract"
 use GifSheet from "./gif.contract"
 use CameraScreen from "./camera.contract"
+use RequestsScreen from "./requests.contract"
+use NewSpaceSheet, AddToSpaceSheet from "./spaces.contract"
 
 shape Session
   userId: string
@@ -65,16 +67,19 @@ shape Room
 // the filter menu's choice the list is for, network the filter sheet's ("": every network), list
 // the list shown (inbox, archive or lowPriority). pinned: the network's pinned chats in the inbox,
 // in their pin order; they are not in rooms in the inbox under "all". networks: the filter
-// sheet's rows, each network the account has chats on; unread, archiveUnread,
+// sheet's rows, each network the account has chats on; community the sheet's community ("" for
+// none), communities its rows; unread, archiveUnread,
 // lowPriorityUnread: each list's unread chats on every network.
 shape RoomList
   owner: string
   filter: string
   network: string
+  community: string
   list: string
   rooms: Room[]
   pinned: PinnedChat[]
   networks: NetworkCount[]
+  communities: CommunityCount[]
   unread: number
   archiveUnread: number
   lowPriorityUnread: number
@@ -238,11 +243,14 @@ routes nav
     bookmarks "/bookmarks"
     scheduled "/scheduled"
       laterChange "/scheduled/:delay/time"
+    requests "/requests"
+    newSpace "/spaces/new"
+    addSpace "/spaces/add"
     remind "/remind/:id"
     merge "/merge"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
-fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender}: ${r.lastMessage}`)
+fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender.replaceAll(":", ":\u200B").replaceAll(".", ".\u200B")}: ${r.lastMessage}`)
 // an unread chat that is not muted: its name is bolder and its time in the accent.
 fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
 // the inbox's unread count counts it (matrixcore's isInInbox and isLoudlyUnread): in the inbox,
@@ -312,6 +320,9 @@ component Multiplexer
   // the filter sheet's choice: the network whose chats the list shows ("": every network), kept
   // across launches. It works with the filter menu's: unread WhatsApp chats.
   state network = "" persist
+  // or the community whose chats it shows (a space's id; "": none), kept across launches. One of
+  // the two at a time: choosing one clears the other.
+  state community = "" persist
   // the list shown: the inbox, the Archive or Low Priority (inbox.contract's listName), kept
   // across launches. The filter menu and the network narrow any of them.
   state chatList = "inbox" persist
@@ -325,7 +336,7 @@ component Multiplexer
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
-  resource roomList = loadRoomsByRecency(session.userId, filter, network, chatList) as shape RoomList else empty()
+  resource roomList = loadRoomsByRecency(session.userId, filter, network, community, chatList) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
   resource profile = loadProfile(session.userId) as shape Profile else empty()
@@ -423,6 +434,11 @@ component Multiplexer
   derive openUnread = match openRoomInfo { case some(r) => r.unread + (r.markedUnread ? 1 : 0), case none => 0 }
   // the list under the filter menu's choice; the pinned grid shows above it only while no filter is on.
   derive listedRooms = roomList.rooms.filter(r => r.listed)
+  // the filter sheet's community, while the list knows it (a space left on another device is not).
+  derive shownCommunity = first(roomList.communities.filter(c => c.id == community))
+  // the name of what the list is narrowed to, for the title and the empty list: the community's,
+  // else the network's ("": every chat).
+  derive scopeName = match shownCommunity { case some(c) => c.name, case none => (network == "" ? "" : networkName(network)) }
   derive gridShown = roomList.filter == "all" and roomList.list == "inbox" and roomList.pinned.length > 0
   // the held chat's last messages, for its menu's preview. loading them reads nothing: only the
   // chat screen marks a chat read.
@@ -466,6 +482,8 @@ component Multiplexer
   members "./gif-members.contract"
   members "./bookmarks-members.contract"
   members "./camera-members.contract"
+  members "./requests-members.contract"
+  members "./spaces-members.contract"
   members "./encryption-members.contract"
   members "./transcribe-members.contract"
   members "./remind-members.contract"
@@ -534,6 +552,7 @@ component Multiplexer
     else
       password = ""
       network = ""
+      community = ""
       chatList = "inbox"
       allowNotifications()
   // the system asks once; after a no, the iPhone's Settings decides (Settings says so).
@@ -812,6 +831,7 @@ component Multiplexer
     nav = push(nav, path("inboxes"))
   action chooseNetwork(n: string)
     network = n
+    community = ""
     if top(nav).name == "inboxes"
       nav = back(nav)
     toTop()
@@ -828,9 +848,18 @@ component Multiplexer
       chatList = "archive"
     toTop()
   // the filter sheet's Inbox, Archive and Low Priority rows: that list on every network.
+  // a community's row: its chats in the list shown, as a network's row.
+  action chooseCommunity(id: string)
+    community = id
+    network = ""
+    if top(nav).name == "inboxes"
+      nav = back(nav)
+    toTop()
+    haptic("selection")
   action chooseList(l: string)
     chatList = l
     network = ""
+    community = ""
     if top(nav).name == "inboxes"
       nav = back(nav)
     toTop()
@@ -912,7 +941,7 @@ component Multiplexer
               if selecting
                 SelectTitle(count=chosenIds.length, done=stopSelecting, busy=pending(changedChats))
               else if not searching
-                TitleMenu(title=listTitle(chatList, network), select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize)
+                TitleMenu(title=listTitle(chatList, scopeName), select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize)
               if selecting and selectionProblem != ""
                 text selectionProblem role="alert" font="-exact-footnote" color="-exact-system-red" padding="8px 16px"
                   background-color="-exact-background" testId="select-error"
@@ -926,15 +955,15 @@ component Multiplexer
                   else if roomList.list != "inbox"
                     // an empty Archive, Low Priority or Reminders: the capsule's Inbox is the way back.
                     EmptyState(symbol=(roomList.list == "archive" ? "symbol:icon.archive" : (roomList.list == "reminders" ? "symbol:icon.alarm" : "symbol:icon.arrow-down-circle")),
-                      title=listEmptyTitle(roomList.list), message=listEmptyMessage(roomList.list, roomList.network))
-                      if roomList.network != ""
+                      title=listEmptyTitle(roomList.list), message=listEmptyMessage(roomList.list, scopeName))
+                      if roomList.network != "" or roomList.community != ""
                         button press=chooseNetwork("") buttonStyle="bordered" testId="show-every-network"
                           text "Show Every Network"
-                  else if roomList.network == ""
+                  else if roomList.network == "" and roomList.community == ""
                     EmptyState(symbol="symbol:messages", title="No Chats Yet", message="Chats you join on this account show here.")
                   else
-                    EmptyState(symbol="symbol:messages", title=`No ${networkName(roomList.network)} Chats`,
-                      message=`Chats from ${networkName(roomList.network)} show here.`)
+                    EmptyState(symbol="symbol:messages", title=`No ${scopeName} Chats`,
+                      message=`Chats from ${scopeName} show here.`)
                       button press=chooseNetwork("") buttonStyle="bordered" testId="show-every-network"
                         text "Show All Chats"
                 else
@@ -981,6 +1010,7 @@ component Multiplexer
                   merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats))
               else if roomsShown
                 BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=chatList, network=network,
+                  communityName=(community != "" ? scopeName : ""), communityPicture=(match shownCommunity { case some(c) => c.avatar, case none => "" }),
                   sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize)
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
               // messages (a tap opens the chat), then its actions.
@@ -1050,6 +1080,9 @@ component Multiplexer
                   testId="menu-mute"
                   image (aimedMuted ? "symbol:notifications" : "symbol:icon.bell-slash")
                   text (aimedMuted ? "Unmute" : "Mute")
+                button press=openAddToSpace(aimed) popovertarget="chat-menu" popovertargetaction="hide" testId="menu-add-space"
+                  image "symbol:people"
+                  text "Add to Space"
                 hr
                 button press=askDelete destructive=true popovertarget="chat-menu" popovertargetaction="hide" testId="menu-delete"
                   image "symbol:delete"
@@ -1059,6 +1092,17 @@ component Multiplexer
           ScheduledScreen(route=`${e.id}`, messages=scheduledShown, loaded=(scheduledList.owner == session.userId),
             busy=pending(scheduledChanged), refused=laterRefused, now=shown, offset=time.utcOffset, close=back,
             sendNow=sendScheduledNow, change=changeLaterTime, cancel=cancelScheduled)
+        if e.name == "newSpace"
+          NewSpaceSheet(route=`${e.id}`, name=spaceName, picture=spacePicture, saving=pending(spaceCreated),
+            refused=(spaceAsked and failed(spaceCreated)), type=typeSpaceName, choose=chooseSpacePicture, pick=pickSpacePicture,
+            close=back, save=saveNewSpace)
+        if e.name == "addSpace"
+          AddToSpaceSheet(route=`${e.id}`, spaces=spaceChoices.spaces, loaded=(spaceChoices.room == spaceRoom),
+            saving=pending(spaceAdded), refused=(spaceAddAsked and failed(spaceAdded)), close=back, add=addChatToSpace, create=openNewSpace)
+        if e.name == "requests"
+          RequestsScreen(route=`${e.id}`, requests=requestsShown, loaded=(requestList.owner == session.userId),
+            answering=answeringRequest, refused=requestRefused, close=back, accept=acceptRequest, decline=declineRequest,
+            largeText=viewport.accessibilityTextSize)
         // the saved messages: every chat's (the filter sheet's row), or the open chat's (its info page's).
         if e.name == "bookmarks"
           BookmarksScreen(route=`${e.id}`, items=bookmarksShown, loaded=bookmarksLoaded, inChat=false, now=shown, offset=time.utcOffset,
@@ -1097,7 +1141,8 @@ component Multiplexer
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
             position="absolute" inset=0 display="flex" flex-direction="column" testId="inboxes-sheet"
-            InboxSheet(networks=roomList.networks, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
+            InboxSheet(networks=roomList.networks, communities=roomList.communities, community=community, chooseCommunity=chooseCommunity,
+              requests=requestsShown.length, openRequests=openRequests, newSpace=openNewSpace, unread=roomList.unread, archiveUnread=roomList.archiveUnread,
               lowPriorityUnread=roomList.lowPriorityUnread, list=chatList, chosen=network, choose=chooseNetwork,
               chooseList=chooseList, reminders=roomList.reminders, scheduled=scheduledShown.length, openScheduled=chooseSendLater, openBookmarks=chooseBookmarks,
               largeText=viewport.accessibilityTextSize)
@@ -1147,7 +1192,7 @@ component Multiplexer
               column flex=1
         // the chat's info page (info.contract), full screen, zoomed out of the chat bar's picture and name.
         if e.name == "info"
-          InfoPage(route=`${e.id}`, info=infoShown, loaded=infoLoaded, members=chatMembers.members, total=chatMembers.total,
+          InfoPage(addToSpace=openAddToSpace(openRoom), route=`${e.id}`, info=infoShown, loaded=infoLoaded, members=chatMembers.members, total=chatMembers.total,
             media=chatMedia.items, mediaLoaded=(chatMedia.room == openRoom), moreMedia=allMedia, pinned=openPinned, archived=openArchived, lowPriority=openLowPriority,
             muted=openMuted, unread=(openUnread > 0), close=closeInfo, archive=archiveOpen, moveLowPriority=lowPriorityOpen,
             pin=togglePinOpen, read=readOpen, mute=toggleMuteOpen, reminder=openReminderAt, remind=remindOpen,

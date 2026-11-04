@@ -143,6 +143,7 @@ component InfoPage
     edit: action
     customize: action
     addMember: action
+    addToSpace: action
     seeMembers: action
     seeMedia: action
     open: action
@@ -267,6 +268,9 @@ component InfoPage
                 text info.topic white-space="pre-wrap" overflow-wrap="break-word" min-width=0 testId="info-topic"
           // the chat's saved messages (Bookmarks): their own list over the page.
           section
+            button press=addToSpace testId="info-add-space"
+              image "symbol:people"
+              text "Add to Space"
             button press=bookmarks testId="info-bookmarks" aria-label=(bookmarkCount > 0 ? `Bookmarks, ${bookmarkCount}` : "Bookmarks")
               image "symbol:bookmark"
               text "Bookmarks" flex=1

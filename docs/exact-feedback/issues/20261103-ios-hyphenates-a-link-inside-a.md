@@ -59,3 +59,11 @@ remedies do not fit. What worked: a zero-width space after the colon and each do
 parts. About 10 minutes. What would help as well: the `verify` finding naming what to do for an
 identifier, an address or a URL (a `wbr`, or break opportunities after punctuation, as Safari
 gives a URL).
+
+## More evidence (2026-11-03, a filter sheet's rows)
+
+The same hyphen on plain words, outside a link: a sheet row's name with `overflow-wrap="break-word"`
+(added so that one long word stops spilling at the largest text size) showed "Insta-gram" and
+"Commu-nity" on iOS, both words that broke only because of the hyphen rule. The row moved its
+count under the name at the accessibility sizes instead, without `break-word`. About 5 minutes and
+one drive. Seen at exact2 `ed43ad09a0`.
