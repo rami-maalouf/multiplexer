@@ -1139,7 +1139,7 @@ component Multiplexer
             clearReminder=clearOpenReminder, now=shown, offset=time.utcOffset, askDelete=askDeleteOpen, deleteChat=deleteOpen, edit=editGroup,
             customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,
             searching=chatSearching, returned=chatSearchClosed, search=openChatSearch, closeSearch=closeChatSearch,
-            bookmarkCount=chatBookmarks.length, bookmarks=openChatBookmarks,
+            bookmarkCount=chatBookmarks.length, bookmarks=openChatBookmarks, expiry=chatExpiry, chooseExpiry=chooseExpiry,
             largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion)
             // the search in this chat, in the page's place (chat-search-members.contract); its
             // Bookmarks kind's rows have the list's long-press menu.

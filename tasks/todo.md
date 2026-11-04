@@ -1292,7 +1292,13 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
 - [x] Bookmarks: a row under the four buttons with this chat's count; it opens the chat's own list
   (B14's), where a tap closes both pages and opens the chat at the message. (2026-11-03,
   `info.contract`.)
-- [ ] Message expiry: last of all (Rami: keep it, "not urgent"); see "Later".
+- [x] Message expiry: last of all (Rami: keep it, "not urgent"); see "Later". (2026-11-03: the info page's
+  "Disappearing Messages" section shows the chat's timer and a menu of the timers its network takes (WhatsApp:
+  24 hours, 7 days, 90 days), read from the bridge's `com.beeper.room_features` and set as
+  `com.beeper.disappearing_timer`, which the bridge passes on; no row for a plain Matrix chat. MatrixCore
+  `MessageExpiry.swift`, `testAMessageExpiryIsReadSetAndCleared`. In Rami's WhatsApp chat with himself (a test
+  chat) the timer was set to 24 hours and back to Off at about 19:25 local time: Rami checks that WhatsApp showed
+  both changes.)
 - [x] Gate: MatrixCore `ChatInfoTests` 5 passed and the whole suite 43 passed (1 skipped);
   drives as `@test1` in dark, light and the largest text size, `check both` clean on the page and
   its sheets; `verify ios` clean (2026-11-03). Screenshots in `apps/multiplexer/.exact/b20/`.

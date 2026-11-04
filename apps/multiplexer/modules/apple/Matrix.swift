@@ -233,7 +233,7 @@ final class Matrix: ExactModule {
                 case "bookmarks", "bookmark", "removeBookmark":
                     // saved messages (Bookmarks.swift).
                     reply.send(try await bookmarks(request))
-                case "chatInfo", "chatMembers", "chatMedia", "rename", "customName", "invite", "setPicture":
+                case "chatInfo", "chatMembers", "chatMedia", "rename", "customName", "invite", "setPicture", "expiry", "setExpiry":
                     // a chat's info page (Info.swift).
                     reply.send(try await info(request))
                 case "signOut":
