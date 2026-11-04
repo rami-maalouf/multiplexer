@@ -1394,7 +1394,7 @@ Rami wants these, after the tasks above (2026-11-02):
 - Transcribe voice notes (B16): check whether the iPhone can do it on the phone, at no cost.
 - Communities as filters ("whatever is easiest"): after B4. Done 2026-11-03 ("L2" below).
 - Requests and New Space in the filter sheet: look at what Beeper does first. Requests built
-  2026-11-03 ("L3" below); New Space waits for Rami's choice.
+  2026-11-03 ("L3" below); New Space was approved and built (2026-11-04).
 - Message expiry (B20): the very last.
 
 Not wanted for now: Poll.
@@ -1556,11 +1556,19 @@ looked up the sender through the room itself.
 profile name, resolve the sender with the room member's display name. Preserve the raw ID
 only as the final fallback. Keep Matrix details inside MatrixCore.
 
-- [ ] Resolve the room member when the latest event's sender profile has no name.
-- [ ] Core test as test users: a room-specific member display name appears in the preview on
-  a fresh device, before opening the chat.
-- [ ] Repeat the real-account read-only drive and compare all 29 affected previews.
-- [ ] Focused core tests, iOS verification, review, commit and merge with New Space.
+- [x] Resolve the room member when the latest event's sender profile has no name; a nil, blank
+  or failed lookup retains the raw ID as the final fallback.
+- [x] Core test as test users: a room-specific member display name appears in the preview on
+  a fresh device, before opening the chat. Two focused tests passed, including blank-name fallback.
+- [x] Prior authorized read-only after-drive: 315 chats, no raw group sender IDs. 28 of the
+  29 affected previews matched the recorded room member name; the remaining chat received a
+  new message and sender. Devices signed out. Cold list query 2.042 s; later mostly under 0.5 s.
+- [x] Pre-integration iOS verification: 7 tests passed, no findings. Full-ID preview wraps at
+  the largest system text size in light and dark; test account signed out. The UI lane’s
+  break opportunities after colons and dots are preserved.
+- [ ] Check current-main integration and Select Chats fallback wrapping, then report tested commits to
+  the coordinator for serialized integration. Code review completed; its blank-profile fallback
+  finding was fixed and tested. New Space is committed as `149843c`.
 
 ## Phase 3: push notifications (M3)
 

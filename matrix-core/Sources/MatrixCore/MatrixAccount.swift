@@ -156,6 +156,11 @@ public final class MatrixAccount: @unchecked Sendable {
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: isOwn, profile: profile, content: content)
+                // the latest event may have no profile even though the room member has a name.
+                if !isOwn, !summary.isDirect, !summary.lastMessage.isEmpty,
+                   summary.lastSenderName == sender || summary.lastSenderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    summary.fillPreviewSender(sender: sender, memberName: try? await room.memberDisplayName(userId: sender))
+                }
                 latest.fill(&summary)
             case .local(let timestamp, let sender, let profile, let content, _):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: true, profile: profile, content: content)
@@ -813,6 +818,14 @@ extension SignInError {
 }
 
 extension RoomSummary {
+    mutating func fillPreviewSender(sender: String, memberName: String?) {
+        if let memberName, !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lastSenderName = memberName
+        } else {
+            lastSenderName = sender
+        }
+    }
+
     mutating func fillLast(timestamp: Timestamp, sender: String, isOwn: Bool, profile: ProfileDetails, content: TimelineItemContent) {
         // the newest event orders the list even when it is no message (a new picture, a
         // join); then there is no preview.
