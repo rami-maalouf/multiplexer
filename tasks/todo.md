@@ -106,8 +106,8 @@ cutoff, packaging and host-link failures as historical evidence.
   Nested-read warnings, final-page delivery and deep-unread correctness remain open.
 - Prominent tint: nine corrected navigation lifecycle tests plus AppAccent 20 and BarFace 14
   passed on iOS 26.5, with no skips. The prior nil baseline failures were test setup, not
-  evidence against the ownership implementation. A test-owned off-main layer read is being
-  fixed separately; QoS diagnostics are not dismissed. Native DISPLAY and pre-26 remain open.
+  evidence against the ownership implementation. The test-owned off-main layer read is fixed;
+  QoS diagnostics are not dismissed. Native DISPLAY and pre-26 remain open.
 - Receipt adapter checkpoint `cbc2a5ee` is source-only/nonshipping, with 25 tests authored but
   unrun. Bounded cached membership/candidate lookup, resident scan limits and coherent evidence
   revisions require separate SDK source work; the validated artifact and production pin stay unchanged.
@@ -117,7 +117,10 @@ cutoff, packaging and host-link failures as historical evidence.
   from these passes. Both indexes remain; the comparator's retained-guard design is not accepted.
 - Native prominent candidate: cold yellow/light and mounted orange/light DISPLAY captures
   are positive. Reset after a system prompt produced a qualitative foreground mismatch;
-  state/dimming cause is unproved. Source-only alert/normal/disabled controls are next.
+  state/dimming cause is unproved. Three alert/normal/disabled controls passed in supported
+  ExactTestHost with no skips, including presentation/dismissal and dimming restoration.
+  The prior bare-host presentation failure is preserved. Public properties do not prove
+  native rendered ink; next capture isolates reset without an intervening alert.
   Dark, white, black and remaining navigation captures are still open. The fixture-only
   main-thread correction passed AppAccent 20/20 without Main Thread Checker reports.
 

@@ -452,7 +452,7 @@ The retained-item prominent tint candidate now passes 43 focused host tests on i
 (nine navigation lifecycle, 20 AppAccent, 14 BarFace; no skips). Earlier two failures were
 strict RGB reads of unset test-window baselines before ownership operations; explicit dynamic
 baselines plus a separate nil-restoration control passed. A test callback's off-main layer read
-is being corrected separately. Production QoS reports have no measured stall diagnosis yet.
+was corrected separately. Production QoS reports have no measured stall diagnosis yet.
 Native DISPLAY fill/foreground acceptance and pre-26 execution remain open.
 `exact2-navigation` remains frozen at `7529006ab9`.
 The test-owned main-thread violation is corrected and AppAccent 20/20 passes without that
@@ -460,6 +460,13 @@ warning. Candidate native cold yellow/light and mounted orange/light captures ar
 A reset capture after an unexpected system Save Password prompt shows qualitatively cyan
 label ink rather than expected white. Native enabled/highlighted/dimming state at capture
 was not recorded, so cause remains open. Dark and remaining navigation cases are unproved.
+Three foreground reset controls now pass in the supported scene-bearing ExactTestHost
+(3/3, no skips, iOS 26.5): no alert, completed alert, and disabled-alert/re-enable. Active
+scene/window, presentation/dismissal, dimmed/restored mode and strict foreground properties
+were exercised. The earlier bare-runner attempt failed presentation setup, not foreground
+assertions. Hosted logs retain 38 selected-state UIKit warnings; no cause is assigned.
+Public-property success does not resolve the native cyan pixels. The next native control
+isolates reset without an intervening alert on the unchanged candidate.
 
 Current validation limits: the shared-public-API unread control failed on unchanged
 `a09a33d` (23/25) and the cache branch (19/25), with every sent event present on the
