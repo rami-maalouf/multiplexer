@@ -68,6 +68,12 @@ Adapter checkpoint `cbc2a5ee` remains nonshipping: 25 authored tests have not ru
 member materialization, non-atomic eligibility reads and unbounded resident order scanning
 remain open. Separate SDK source work is authorized for bounded cached membership evidence,
 indexed receipt candidates and coherent evidence revisions; the validated SDK stays frozen.
+The isolated state-store units now pass 15 exact offline host tests (five Memory, ten SQLite)
+at `70280f77`, after preserving test-name and pinned enum-conversion compile failures.
+Both receipt indexes remain. These tests establish their selected budget, revision, alias,
+rollback and query assertions, not general planner/write-cost bounds. Comparator review
+withheld approval over lease loss and unbounded retained-guard writer impact; high-level
+composition remains paused pending a sound redesign.
 
 Appearance app commits `dbff982` and `01b070d7` are integrated on the coordinator branch.
 The follow-up fixes incoming-link contrast without changing chosen outgoing fills. Independent
@@ -449,6 +455,11 @@ baselines plus a separate nil-restoration control passed. A test callback's off-
 is being corrected separately. Production QoS reports have no measured stall diagnosis yet.
 Native DISPLAY fill/foreground acceptance and pre-26 execution remain open.
 `exact2-navigation` remains frozen at `7529006ab9`.
+The test-owned main-thread violation is corrected and AppAccent 20/20 passes without that
+warning. Candidate native cold yellow/light and mounted orange/light captures are positive.
+A reset capture after an unexpected system Save Password prompt shows qualitatively cyan
+label ink rather than expected white. Native enabled/highlighted/dimming state at capture
+was not recorded, so cause remains open. Dark and remaining navigation cases are unproved.
 
 Current validation limits: the shared-public-API unread control failed on unchanged
 `a09a33d` (23/25) and the cache branch (19/25), with every sent event present on the

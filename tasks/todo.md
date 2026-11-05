@@ -105,6 +105,15 @@ cutoff, packaging and host-link failures as historical evidence.
 - Receipt adapter checkpoint `cbc2a5ee` is source-only/nonshipping, with 25 tests authored but
   unrun. Bounded cached membership/candidate lookup, resident scan limits and coherent evidence
   revisions require separate SDK source work; the validated artifact and production pin stay unchanged.
+- Bounded state-store source passed 15 exact offline tests (Memory five, SQLite ten) on
+  isolated `70280f77`; compile setup failures remain preserved. General planner/write cost
+  and comparator guard coherence remain open. No high-level eligibility or app proof follows
+  from these passes. Both indexes remain; the comparator's retained-guard design is not accepted.
+- Native prominent candidate: cold yellow/light and mounted orange/light DISPLAY captures
+  are positive. Reset after a system prompt produced a qualitative foreground mismatch;
+  state/dimming cause is unproved. Source-only alert/normal/disabled controls are next.
+  Dark, white, black and remaining navigation captures are still open. The fixture-only
+  main-thread correction passed AppAccent 20/20 without Main Thread Checker reports.
 
 - Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
   and current code (19/25). Both server histories contain every event; receipt remains
