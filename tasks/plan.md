@@ -4,6 +4,12 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
+**Work halted early (2026-11-05, 07:30 UTC):** all related lanes and delegated tasks
+are idle; no queued/running child appeared in the project inventory. All five owned MX
+simulators are Shutdown and auth/core locks are absent. Both deadline alarms are disabled
+after verified early stop. No implementation, review, build or test resumes without fresh
+user authorization. Remaining work below is a handoff, not an active queue.
+
 **User hard deadline (2026-11-05):** stop feature work and wind down all lanes at
 07:44:48 UTC (02:44:48 Toronto); all related agents must halt by 07:49:48 UTC
 (02:49:48 Toronto), 90 minutes after the user's request. Persistent coordinator alarms

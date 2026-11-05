@@ -1,8 +1,11 @@
 # Multiplexer: tasks
 
-- [ ] Enforce the user's 2026-11-05 stop: wind down at 07:44:48 UTC, halt all related
+- [x] Enforce the user's 2026-11-05 stop: wind down at 07:44:48 UTC, halt all related
   lanes and delegated tasks by 07:49:48 UTC, verify cleanup, disable the one-time alarms
   and remain stopped until fresh user authorization. Deadline overrides remaining tasks.
+  Halted early at 07:30 UTC: only the coordinator's final receipt remained active, no child
+  or queued lane; all five owned simulators Shutdown, auth/core locks absent. Both alarms
+  disabled after verification. No automatic continuation from the remaining checklist.
 
 The plan, decisions and facts are in `tasks/plan.md`. Phases 0 and 1 are in
 detail. Later phases are rough. We detail each one at the checkpoint before it.

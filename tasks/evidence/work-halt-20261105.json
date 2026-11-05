@@ -1,0 +1,36 @@
+{
+  "halted_at_utc": "2026-11-05T07:30:21Z",
+  "hard_deadline_utc": "2026-11-05T07:49:48Z",
+  "early_stop": true,
+  "active_inventory": [
+    {
+      "threadId": "e0939d30-7927-436b-832b-a032626c71c8",
+      "status": "running",
+      "title": "multiplexer coordinator"
+    }
+  ],
+  "only_coordinator_final_receipt_active": true,
+  "owned_simulators_shutdown": 5,
+  "auth_and_core_locks_absent": true,
+  "alarms": [
+    {
+      "id": "scheduled-task:command:mcp:01c9f7c8-6cf2-4996-84cf-a9dd1a211440:schedule-task:multiplexer-pre-stop-20261105-074448",
+      "enabled": false,
+      "nextRunAt": null
+    },
+    {
+      "id": "scheduled-task:command:mcp:01c9f7c8-6cf2-4996-84cf-a9dd1a211440:schedule-task:multiplexer-hard-stop-20261105-074948",
+      "enabled": false,
+      "nextRunAt": null
+    }
+  ],
+  "cache_final_checkpoint": "d2371012ac95436d7ec47d74318e4315822933a7",
+  "cache_final_correction_status": "source only, uncompiled/unrun/unreviewed; browser setup failure remains preserved",
+  "resumption_requires": "fresh explicit user authorization",
+  "unfinished": [
+    "cache real search/navigation validation and final-page delivery/deep-unread",
+    "managed receipt owner/FFI/app integration",
+    "background extension vertical-scroller source defect and paint implementation",
+    "authenticated intermittent chat navigation corruption"
+  ]
+}
