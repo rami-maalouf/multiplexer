@@ -417,8 +417,13 @@ native Sign In button for persisted yellow in a cold light-mode DISPLAY capture.
 capture showed yellow with black text. A later host fixture initially failed because its
 encoded color pair was malformed; corrected decoding preconditions and the valid pair pass
 20/20 tests. That fixture does not reproduce the native pixel failure. A development-only
-observer is under review to compare root, window, bar and control colors around DISPLAY,
-without whole-state access or tint setters. `exact2-navigation` remains frozen at `7529006ab9`.
+observer now reproduces the blue capsule in DISPLAY while root, window and navigation bar
+all resolve the intended brown tint. Its traversal regression passed 3/3 host tests and the
+driver control passed 16 assertions. Capture bracketing was stable, but public UIButton
+configuration and unique item association were unavailable, so the specific native paint
+cause remains unproved. An earlier brown capture remains negative reproduction evidence.
+Next is a narrow public-API prominent-item styling/invalidation investigation, not another
+root-propagation assumption. `exact2-navigation` remains frozen at `7529006ab9`.
 
 Current validation limits: the shared-public-API unread control failed on unchanged
 `a09a33d` (23/25) and the cache branch (19/25), with every sent event present on the

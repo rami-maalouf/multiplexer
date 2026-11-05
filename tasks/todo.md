@@ -88,7 +88,10 @@ cutoff, packaging and host-link failures as historical evidence.
 - Tint host regression: baseline 18/19 passed with two assertions failing; reviewed candidate
   19/19 passed without skips. Cold light native DISPLAY still showed blue for persisted yellow.
   A later malformed color-pair fixture was corrected and passed 20/20 with decoding checks;
-  it is not a reproduction of the native pixel failure. A gated observer is under source review.
+  it is not a reproduction of the native pixel failure. The corrected gated observer then
+  reproduced blue in DISPLAY while root/window/bar tint was correct brown. Traversal and
+  bracketing were complete/stable; public button configuration and unique association were
+  unavailable. Investigate prominent-item styling/invalidation without assuming a cache cause.
 - Inbox native appearance stopped on sharp pinned content behind the clock at scroll `sy=179`.
   Material begins below the native top clearance. Largest text, Reduce Transparency, extreme
   accent and final verification remain unrun. The local decorative paint-extension capability
@@ -2174,5 +2177,7 @@ Navigation tint follow-up: local finding 125 records the stale prominent header.
 The reviewed logical-root candidate passes host tests, but cold light native DISPLAY still
 shows the stale blue prominent button. Corrected valid-pair lifecycle tests pass 20/20;
 the earlier malformed-fixture failure is preserved and is not lifecycle evidence.
-Native prominent fill/foreground acceptance remains open pending the diagnostic observer.
+The diagnostic observer now narrows the blue DISPLAY failure to below correct window/bar
+tint propagation. Native prominent fill/foreground acceptance remains open; a public-API
+item styling/invalidation correction needs source review and rendered verification.
 `exact2-navigation` stays clean at `7529006ab9` for Inbox.
