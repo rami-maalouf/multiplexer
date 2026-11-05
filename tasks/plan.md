@@ -74,6 +74,13 @@ Both receipt indexes remain. These tests establish their selected budget, revisi
 rollback and query assertions, not general planner/write-cost bounds. Comparator review
 withheld approval over lease loss and unbounded retained-guard writer impact; high-level
 composition remains paused pending a sound redesign.
+Writer audit found that raw/legacy writers bypass proposed event revisions, while detached
+persistence and resident publication lack an exact persisted baseline. New SQLite distinct-event,
+stored and custom ordering therefore remain unsupported; no broad epoch/migration repair is
+authorized. The next source design is bounded exact-identity receipt evidence using coherent
+state/session checks. Only an eligible public receipt matching the preview's physical room and
+exact event can establish Seen. Other cases remain unknown. This is limited positive coverage,
+not full feature acceptance; the existing validated API and SDK artifacts stay unchanged.
 
 Appearance app commits `dbff982` and `01b070d7` are integrated on the coordinator branch.
 The follow-up fixes incoming-link contrast without changing chosen outgoing fills. Independent

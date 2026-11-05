@@ -119,6 +119,10 @@ cutoff, packaging and host-link failures as historical evidence.
   isolated `70280f77`; compile setup failures remain preserved. General planner/write cost
   and comparator guard coherence remain open. No high-level eligibility or app proof follows
   from these passes. Both indexes remain; the comparator's retained-guard design is not accepted.
+  Writer audit also prevents claiming a coherent detached SQLite ordering snapshot: legacy/raw
+  writers and deferred persistence do not establish its required revision/baseline. Keep new
+  advanced/stored/custom ordering unsupported. Prepare a bounded exact-event positive-evidence
+  design with state/session checks and unknown otherwise; no implementation or completeness claim.
 - Native prominent candidate: cold yellow/light and mounted orange/light DISPLAY captures
   are positive. Reset after a system prompt produced a qualitative foreground mismatch;
   state/dimming cause is unproved. Three alert/normal/disabled controls passed in supported
