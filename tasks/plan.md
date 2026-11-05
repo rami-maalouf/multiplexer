@@ -558,3 +558,8 @@ on `d7028a98` / binary `91f1ab5f`; the original failed runner receipt remains un
 Owned processes ended and target-openers checks passed. This validates the admitted Rust
 capture subset, not allocator/latency bounds, FFI copies, session ownership or composition.
 The next source-only plan maps exact-identity composition against the tested state primitives.
+That source plan (`d9c68261`) passed five independent document-review lenses without findings.
+The isolated Rust-only composition unit is authorized in source: shared operation budgets,
+exact captured preview plus revision-checked eligibility, and terminal private session acceptance.
+No build, FFI export, native lifecycle hook, advanced ordering or app integration is authorized
+by this step. Implementation requires its own source review and later validation window.
