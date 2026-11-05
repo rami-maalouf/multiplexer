@@ -1,0 +1,226 @@
+{
+  "duration_seconds": 238.023333,
+  "resolution": [
+    1206,
+    2622
+  ],
+  "frame_rate": "60/1",
+  "sha256": "446c7bbaa254e320627765c265be39a4b5711009b0cf5a3a8860ac31f7f7ddf8",
+  "source_head_at_review": "3f793d0b4fb9488b84e90ef4c4c9433abe7b6580",
+  "app_build_identity": "not displayed/verified in recording; latest delivered development build is context only",
+  "transcription": "local mlx-community/whisper-large-v3-turbo; closing phrase second pass mlx-community/whisper-large-v3-mlx",
+  "privacy": "raw video, transcripts, page HTML and screenshots stay under gitignored research/",
+  "source": "user-provided Google Photos recording, URL retained in ignored local source manifest",
+  "recording_path": "research/iphone-feedback-20261105/source/walkthrough.mp4",
+  "report_path": "tasks/reviews/20261105-iphone-video-feedback.md",
+  "illustrated_report": "research/iphone-feedback-20261105/report/index.html",
+  "issue_count": 12,
+  "scope": "documentation only; no agents, implementation, app build or device/account action",
+  "screenshots": [
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/000s.png",
+      "source_seconds": 0,
+      "sha256": "484c82bbeaa59f7aa4759ff052587d93f7287a3e6905ca7a7ffc6da08bbf5c48"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/010s.png",
+      "source_seconds": 10,
+      "sha256": "8d853359a5f37ccf745730fbce7f42220c1cfe25a34ba009dfdcb5c8ad7b055c"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/012s.png",
+      "source_seconds": 12,
+      "sha256": "06b7b5d6febb1aaf7469da764ef2923bdac5f22861b7098af95829d606fc45a1"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/017s.png",
+      "source_seconds": 17,
+      "sha256": "254024e7c872af33d351c996b8caf62dfde56d15e52d3dffa0d1279783814753"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/024s.png",
+      "source_seconds": 24,
+      "sha256": "edac06cb84f51b6e897b88c2dfcf2859e36cf69a6e2288f0a396725f463da5ba"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/028s.png",
+      "source_seconds": 28,
+      "sha256": "79f0e3ffae0f00201611fa99ce720b5935674af151b2f8b89979ea1805665035"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/036s.png",
+      "source_seconds": 36,
+      "sha256": "0fdbac981b6bdc6a4d93b529daf1b3ba61c6fa8fb1b4dc0c8e0081061485e29e"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/040s.png",
+      "source_seconds": 40,
+      "sha256": "d54c75f591b5a5530c71ca87b23d51c578ae599b7f2d847f38bb8b1efd5087d2"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/042s.png",
+      "source_seconds": 42,
+      "sha256": "ddc24ca15d4f2324118b8901f83b2b13808cfeff950577cf5be241e5174b793d"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/044s.png",
+      "source_seconds": 44,
+      "sha256": "4c3b19b7894d4d3bc9925fd3d367e86a7ca8006bab78a81bfa532414597ea2c5"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/045s.png",
+      "source_seconds": 45,
+      "sha256": "6516870d85d3c9647a3498c7b9574fdab879fd73d9ed74261cbadd4f3fd06ef7"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/056s.png",
+      "source_seconds": 56,
+      "sha256": "97301f9aaea47c1272401918febc2d6fc3b9ee4284a55e8ccba129a029ea0360"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/060s.png",
+      "source_seconds": 60,
+      "sha256": "3721017a19d7d786e43c00446efcbffcda7e472da860e597cc48c396688ac770"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/063s.png",
+      "source_seconds": 63,
+      "sha256": "9aa734ed3a3ac0a71e5ccd8fdec839623413738bccf0a6e8a3479636e4062b6c"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/066s.png",
+      "source_seconds": 66,
+      "sha256": "f5686476b4f379c8ef25333256f56d75a4cbfc639656ccb0859eae58ac27b644"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/068s.png",
+      "source_seconds": 68,
+      "sha256": "49ebd79e453b8967f8c24ca869a968f203d601eb92617f3eede4f1d6df37e486"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/069s.png",
+      "source_seconds": 69,
+      "sha256": "53d9cefb8388d3dd6b0cbd8e8e85f00adb1506e772db1d4013539a1edab8fd32"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/070s.png",
+      "source_seconds": 70,
+      "sha256": "7bdf4bb4359404ee57456872a4c96a8e515460e464d74dcc6b79d29c507e084f"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/074s.png",
+      "source_seconds": 74,
+      "sha256": "2e627b086f309d1f4aec1331103630917f705eb6fac9e5d60a3a6ae76f68c0d7"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/092s.png",
+      "source_seconds": 92,
+      "sha256": "44b17ae0262822364f163b5ef599904282f870d0e96abed463d91afd6d783f48"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/101s.png",
+      "source_seconds": 101,
+      "sha256": "9be2c24fdc0dda12271c4f77f4a1ed4336165e915860d9a8c8e6be33a9320ddc"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/114s.png",
+      "source_seconds": 114,
+      "sha256": "6269ddf68ed16f1238e72bbf7e148ec98fa69b7d63db95e66f2dd78317583511"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/120s.png",
+      "source_seconds": 120,
+      "sha256": "c67840379dd873aed27b855c38efbc227386fcbf32d9203e9680ce96ff9b72a7"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/124s.png",
+      "source_seconds": 124,
+      "sha256": "56baef543622a0b255d830238821a936eb2e6eec32a542117d1488005424dc38"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/125s.png",
+      "source_seconds": 125,
+      "sha256": "fef1c7e6d3bb7dbd30a21dc329b96bb80bdae30436920566432349662ce517f3"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/126s.png",
+      "source_seconds": 126,
+      "sha256": "8199f343937669fdd4acd4db5b27ab8c77d4448610e6b4bb656b0b6cda0b8227"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/127s.png",
+      "source_seconds": 127,
+      "sha256": "2064a9c39e0a2b9b71c2cd5289d7c6e48f9563e8bb87a63c04f2a8c1c0c0890f"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/128s.png",
+      "source_seconds": 128,
+      "sha256": "7fe7b9a6b7fb13014525394d0ae52ecbb57ddc969a8e0da2bb6cac3fb1a5ef5b"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/129s.png",
+      "source_seconds": 129,
+      "sha256": "279a7bacad91fed0be386944ab2c25abed8505207463f9755c2794d8786b23db"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/136s.png",
+      "source_seconds": 136,
+      "sha256": "234a51d7ca8346425e350b9cd5ef3fdce9bda36b89798d52f34f98494e487e47"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/145s.png",
+      "source_seconds": 145,
+      "sha256": "222b354116436963aac6b3794131e7bbf4e37dbb6c1c9f40bd15855818da26d2"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/154s.png",
+      "source_seconds": 154,
+      "sha256": "9aac06da86eeb1b030a39bc55c84d5c60d482e44b9f2f2fff544b50334ee020a"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/164s.png",
+      "source_seconds": 164,
+      "sha256": "83d652c0611598a8dc0c97d6b18c41bd378bcde72946981a8cb41fe9d5d2e95a"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/179s.png",
+      "source_seconds": 179,
+      "sha256": "4a53e8fd095e172791209402ba91dae65185f7dbea34c6cac6e84f525fff0f90"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/186s.png",
+      "source_seconds": 186,
+      "sha256": "3d8e1a4554b0fe05dc22603e4b0358b5f0b10650869b7075d1622e9babcb3cbf"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/201s.png",
+      "source_seconds": 201,
+      "sha256": "18bce8afb8a9a138d5b39ba2f19bf841ed5220e95bcd90b9b5d76820812d57df"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/208s.png",
+      "source_seconds": 208,
+      "sha256": "74a825b8a661fff946ff30e55455b2bccafede19893c4e447a9677e16e52a997"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/215s.png",
+      "source_seconds": 215,
+      "sha256": "6df15129de30bc393f0facdb259446581446dc54745b4b838340344759ba4234"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/229s.png",
+      "source_seconds": 229,
+      "sha256": "5ae6f670b11c0b41c82e81b82fb642122a070d76271c6869487498b4934e0594"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/233s.png",
+      "source_seconds": 233,
+      "sha256": "24e12930cd66290c9a05c30f389e200e47e90a929c0a893a072703483f0cab25"
+    },
+    {
+      "path": "research/iphone-feedback-20261105/screenshots/236s.png",
+      "source_seconds": 236,
+      "sha256": "b934725c42b11d97230e9226c8e9f9fadfb820165114038c4c4c12096cf586c7"
+    }
+  ]
+}

@@ -4,6 +4,19 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
+**New user-recorded iPhone feedback documented (2026-11-05):** reviewed the 3:58
+Beeper/Multiplexer comparison, extracted 41 local-only source frames, and catalogued 12
+requirements/observations with timestamps and acceptance criteria. The highest-priority
+items are whole-list horizontal drift, missing row swipe actions, scrolling frozen after
+foregrounding, and visible chat loading. Material requirements cover both inbox edges,
+chat header/status area, composer field/actions and keyboard context. Keyboard parity is
+reference-only until Multiplexer is captured with its keyboard open; link previews and
+density are secondary observations. See `tasks/reviews/20261105-iphone-video-feedback.md`
+and `tasks/evidence/iphone-feedback-video-20261105.json`. Private illustrated comparisons
+live at `research/iphone-feedback-20261105/report/index.html`. This authorization was
+analysis/documentation only: no agents or implementation resumed. Previous narrow test
+passes do not close the newly recorded physical-phone defects.
+
 **Separate user-requested iPhone delivery (2026-11-05):** the current integrated app
 at `7ae795e`, framework `d0d66b1`, was built and installed on the paired iPhone 16 Pro.
 Development executable `998edc18` is signed and its provisioning profile covers the phone;

@@ -12,6 +12,25 @@ detail. Later phases are rough. We detail each one at the checkpoint before it.
 
 T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 
+## iPhone video review (2026-11-05, documentation only)
+
+- [x] Review the complete user recording, transcribe locally, preserve screenshots from
+  both apps, and separate explicit requests, visible facts and secondary observations.
+  Report: `tasks/reviews/20261105-iphone-video-feedback.md`; local illustrated report:
+  `research/iphone-feedback-20261105/report/index.html` (private, ignored).
+- [ ] R01-R04: resolve horizontal list drift, row swipe actions/full swipe, foreground
+  scrolling freeze, and avoid blank loading for already available conversations. Existing
+  navigation/cache tasks remain open; this new evidence is not a successful regression test.
+- [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
+  protection, translucent composer field and coherent Add/voice controls on actual hardware.
+- [ ] R10: capture Multiplexer keyboard parity first; current video shows only Beeper's
+  keyboard. Preserve system input behavior and accessibility.
+- [ ] Triage secondary R11-R12 rich link cards and typography/density separately from the
+  explicitly requested blockers. Do not infer missing pins or unread-count bugs from unmatched views.
+
+No implementation, agent work, runtime or device testing is authorized by this review.
+All detailed acceptance criteria and evidence limits are in the report.
+
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 
 - [ ] Home and conversation lists stay fixed horizontally under left/right drags; vertical
