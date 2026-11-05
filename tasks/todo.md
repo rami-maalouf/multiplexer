@@ -72,6 +72,14 @@ ran against the matching signed/loaded SDK image. Room methods, receipt-only cal
 recipient eligibility, merged identity and app wiring remain unproved. Preserve the earlier
 cutoff, packaging and host-link failures as historical evidence.
 
+- Stage B compiled after a typed optional comparator correction, then its first runtime
+  failed at HTTP login before SDK restore. No receipt method/callback was exercised.
+  Public discovery points to `matrix.ramimaalouf.com`; the harness posted to the account
+  domain. Original status/body are unavailable. A coordinator read-only Synapse query found
+  zero device/access-token rows for the exact requested test-device ID, resolving cleanup
+  uncertainty without login/deletion. Receipt: `/tmp/mx-preview-stage-b-runtime/coordinator-device-audit.json`.
+  Correct discovery and safe diagnostics, test them, and obtain a fresh runtime handoff.
+
 - [ ] Cache lifecycle review: fix and test deferred older work after same-visit reset,
   completed-search positioning ownership, empty-budget retry, and final-page delivery ordering.
   Three corrections are source-only. The SDK has no exported Swift delivery watermark;

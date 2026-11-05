@@ -49,6 +49,13 @@ generated initialization and real Rust ClientBuilder construction/destruction; l
 embedded SDK hashes match. Actual Room methods, receipt callbacks, eligibility, merged-preview
 and app integration proof remain pending. No production SDK pin changed.
 
+The first Stage B runtime stopped at its HTTP login response guard before SDK restore:
+the harness used the account domain instead of the discovered homeserver. The response
+status/body was not retained, so its exact failure is unknown. Coordinator queried Synapse
+read-only for the single requested test-device ID and found zero device and access-token
+rows, resolving the cleanup uncertainty without another login or deletion. Discovery and
+safe response diagnostics must be corrected before another Stage B run; no callback proof exists.
+
 Appearance app commits `dbff982` and `01b070d7` are integrated on the coordinator branch.
 The follow-up fixes incoming-link contrast without changing chosen outgoing fills. Independent
 review resolved its finding with no new actionable defects; the lane's exact final head passed
