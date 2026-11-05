@@ -1,0 +1,76 @@
+{
+  "status": "signed development build installed on paired iphone; app not launched",
+  "app_head": "7ae795e",
+  "framework_head": "d0d66b107e462af89d58445f3518c4d638f6df36",
+  "artifact": {
+    "bundle": "/Users/rami/Documents/code/multiplexer/apps/multiplexer/target/clients/908676bafda4201abb2224ec/com.ramimaalouf.multiplexer/ios/aarch64-apple-ios/embedded/development/standalone/Multiplexer.app",
+    "bundle_id": "com.ramimaalouf.multiplexer",
+    "version": "0.1.0",
+    "build_number": "1",
+    "architecture": "arm64",
+    "executable_sha256": "998edc18024a621d22ad9eb7b0469c15dee9011aa4e4e2ef49d4407b2cfac3f8",
+    "bundle_manifest_sha256": "f6baec076981354508e384a393647c6ec85c2ae9c24dc1ef190d111c0d88cf3e",
+    "codesign_valid": true,
+    "profile_covers_phone": true,
+    "profile_expires": "2027-07-15T06:55:38Z",
+    "team": [
+      "3V2UU7RRK9"
+    ],
+    "trust": "development",
+    "bundle_bytes": 126711812,
+    "installed": true
+  },
+  "development_build": {
+    "exit_code": 0,
+    "guard_reason": null,
+    "elapsed_seconds": 183.09767341699626,
+    "minimum_free_bytes": 28091207680,
+    "changed_sources": [],
+    "preserved_bundles_verified": true
+  },
+  "install": {
+    "exit_code": 0,
+    "elapsed_seconds": 8.127692666996154
+  },
+  "inventory_matches_installation_url_and_version": true,
+  "build_cleanup": {
+    "success": true,
+    "ownerReleased": true,
+    "owned_processes_gone": true,
+    "own_sim_shutdown": true,
+    "core_absent": true
+  },
+  "install_cleanup": {
+    "success": true,
+    "ownerReleased": true,
+    "owned_group_gone": true
+  },
+  "release_attempt": {
+    "result": {
+      "exit_code": 1,
+      "guard_reason": null,
+      "elapsed_seconds": 281.71384870899783,
+      "minimum_free_bytes": 30185529344,
+      "changed_sources": [],
+      "preserved_bundles_verified": true
+    },
+    "cleanup": {
+      "success": true,
+      "ownerReleased": true,
+      "owned_processes_gone": true,
+      "own_sim_shutdown": true,
+      "core_absent": true
+    },
+    "failure": "target-only in-app-browser Swift package cannot qualify through mac catalyst, simulator or macos roster route"
+  },
+  "private_evidence_paths": [
+    "/tmp/mx-iphone-build-20261105-1320",
+    "/tmp/mx-iphone-dev-build-20261105-1326"
+  ],
+  "limits": [
+    "development trust, not successful production release",
+    "no phone launch, account access or device UI acceptance",
+    "unfinished cache, receipts, background extension and chat corruption work excluded"
+  ],
+  "feedback": "local only, finding 126"
+}

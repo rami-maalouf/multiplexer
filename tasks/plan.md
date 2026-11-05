@@ -4,6 +4,15 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
+**Separate user-requested iPhone delivery (2026-11-05):** the current integrated app
+at `7ae795e`, framework `d0d66b1`, was built and installed on the paired iPhone 16 Pro.
+Development executable `998edc18` is signed and its provisioning profile covers the phone;
+the installation inventory matches its returned installation URL. The app was not launched
+and no account was accessed. A preceding release attempt failed only at native-module roster
+qualification for the target-only browser Swift package; preserve that failure separately.
+Receipt: `tasks/evidence/iphone-build-20261105.json`. This request reopened only phone delivery,
+not the halted feature lanes. Build and install resources were released afterward.
+
 **Work halted early (2026-11-05, 07:30 UTC):** all related lanes and delegated tasks
 are idle; no queued/running child appeared in the project inventory. All five owned MX
 simulators are Shutdown and auth/core locks are absent. Both deadline alarms are disabled

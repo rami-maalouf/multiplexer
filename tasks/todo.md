@@ -697,6 +697,12 @@ with other Matrix users usually are.
 
 ### T2.7 Run on my iPhone
 
+2026-11-05 delivery: current integrated `7ae795e` / Exact `d0d66b1` installed as a signed
+development build on the paired iPhone 16 Pro. Signature, arm64, profile device/expiry and
+post-install inventory checked; no app launch/account/UI test. The optimized release attempt
+failed at Swift-package module-roster qualification and is not claimed passed. Receipt:
+`tasks/evidence/iphone-build-20261105.json`; local Exact finding 126 records the blocker.
+
 **Description:** Build, sign and install on Rami's physical iPhone. Check the Keychain,
 the build size and the start time on a real device.
 
