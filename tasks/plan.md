@@ -64,6 +64,10 @@ Both created test devices logged out and their tokens returned 401; independent 
 was not queried. This supersedes the missing callback proof, not the preserved first failure.
 MatrixCore eligibility, merged-preview identity and UI integration remain pending; source-only
 adapter work is assigned to the receipt lane, with Cache coordinating shared-file ownership.
+Adapter checkpoint `cbc2a5ee` remains nonshipping: 25 authored tests have not run, and full
+member materialization, non-atomic eligibility reads and unbounded resident order scanning
+remain open. Separate SDK source work is authorized for bounded cached membership evidence,
+indexed receipt candidates and coherent evidence revisions; the validated SDK stays frozen.
 
 Appearance app commits `dbff982` and `01b070d7` are integrated on the coordinator branch.
 The follow-up fixes incoming-link contrast without changing chosen outgoing fills. Independent
@@ -438,8 +442,13 @@ all resolve the intended brown tint. Its traversal regression passed 3/3 host te
 driver control passed 16 assertions. Capture bracketing was stable, but public UIButton
 configuration and unique item association were unavailable, so the specific native paint
 cause remains unproved. An earlier brown capture remains negative reproduction evidence.
-Next is a narrow public-API prominent-item styling/invalidation investigation, not another
-root-propagation assumption. `exact2-navigation` remains frozen at `7529006ab9`.
+The retained-item prominent tint candidate now passes 43 focused host tests on iOS 26.5
+(nine navigation lifecycle, 20 AppAccent, 14 BarFace; no skips). Earlier two failures were
+strict RGB reads of unset test-window baselines before ownership operations; explicit dynamic
+baselines plus a separate nil-restoration control passed. A test callback's off-main layer read
+is being corrected separately. Production QoS reports have no measured stall diagnosis yet.
+Native DISPLAY fill/foreground acceptance and pre-26 execution remain open.
+`exact2-navigation` remains frozen at `7529006ab9`.
 
 Current validation limits: the shared-public-API unread control failed on unchanged
 `a09a33d` (23/25) and the cache branch (19/25), with every sent event present on the

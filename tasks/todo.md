@@ -92,6 +92,19 @@ cutoff, packaging and host-link failures as historical evidence.
   TimelineStart, Idle and initial listener Reset cannot prove pending ingestion was applied.
   A revision/generation plus controller/listener acknowledgement design is being assessed;
   no quiet-period workaround or production SDK change is accepted.
+- Cache controls: corrected fixture packaging passes composition/TypeScript, all eight authored
+  tests compile to 104 source-lined steps, and the pure web fixture bundles. Three nested
+  read-after-assign warnings remain behaviorally unproved. After correcting the build's simulator
+  architecture, exactly two auth-free controlled retry/exhaustion/reset/error tests passed with
+  no skips. The eight fixture tests have not run; real development build provenance is still
+  needed. Final-page delivery and deep-unread correctness remain open.
+- Prominent tint: nine corrected navigation lifecycle tests plus AppAccent 20 and BarFace 14
+  passed on iOS 26.5, with no skips. The prior nil baseline failures were test setup, not
+  evidence against the ownership implementation. A test-owned off-main layer read is being
+  fixed separately; QoS diagnostics are not dismissed. Native DISPLAY and pre-26 remain open.
+- Receipt adapter checkpoint `cbc2a5ee` is source-only/nonshipping, with 25 tests authored but
+  unrun. Bounded cached membership/candidate lookup, resident scan limits and coherent evidence
+  revisions require separate SDK source work; the validated artifact and production pin stay unchanged.
 
 - Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
   and current code (19/25). Both server histories contain every event; receipt remains
