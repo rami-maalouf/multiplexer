@@ -551,3 +551,10 @@ passed, but the runner rejected interleaved DEBUG output because it expected the
 and separate log-based first-test result. Matcher-only correction with offline parser controls
 is authorized, without product edits or rerunning the passing test. Capture composition,
 session revocation, FFI copy bounds and app integration remain unproved.
+Continuation result: matcher correction `73a336e` passed eight offline parser fixtures.
+The 18 unstarted selectors then passed once using the unchanged binary directly, with no
+Cargo invocation. Together with the preserved first pass, all 19 distinct capture tests pass
+on `d7028a98` / binary `91f1ab5f`; the original failed runner receipt remains unchanged.
+Owned processes ended and target-openers checks passed. This validates the admitted Rust
+capture subset, not allocator/latency bounds, FFI copies, session ownership or composition.
+The next source-only plan maps exact-identity composition against the tested state primitives.

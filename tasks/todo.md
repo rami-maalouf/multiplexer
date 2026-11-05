@@ -146,6 +146,10 @@ cutoff, packaging and host-link failures as historical evidence.
   formatting mismatch rejected interleaved DEBUG output. Remaining 18 tests never started.
   Correct only the matcher with offline positive/negative fixtures, preserve both raw failure
   and actual test result, then schedule the remaining selectors. No product/FFI/app readiness.
+  Follow-up completed: matcher fixtures 8/8; all remaining 18 exact selectors passed once on
+  the existing binary. Combined receipt proves 19 distinct passes, no failures/ignored cases
+  and no rerun of the first test. Rust composition, session lifecycle and FFI remain open;
+  next step is a bounded composition source plan, not further capture test repetition.
 - Cache checkpoint `63c5d6e` depends on unfinished foundation `6cf4151`; do not cherry-pick it
   alone onto root. Sixteen fixture controls pass, but full production search/navigation harness,
   current native rebuild, delivery fence and deep unread remain pending.
