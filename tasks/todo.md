@@ -28,6 +28,9 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   Settings edges. Product-only framework commit preparation is authorized; no app-only bridge.
   Candidate commit `40bafa7e` now contains exactly the four tested product files atop `7529006`;
   coordinator verified its diff hash. Separate test-class/hosted-routing integration is source-only.
+  Follow-up `d0d66b1` is now validated: 43 bare plus three hosted passes, zero skips/failures;
+  exact test diff verified. Clean integration framework checkout created at this head, excluding
+  observer/reference diagnostics. Root app dependency refresh and combined native build remain next.
 - Independent review of the appearance commit found an omitted light incoming-bubble surface:
   normal-size links could measure 4.14:1 with a white accent. A separate follow-up adds the
   actual light/dark incoming backgrounds to tint calculation and the independent contrast sweep.

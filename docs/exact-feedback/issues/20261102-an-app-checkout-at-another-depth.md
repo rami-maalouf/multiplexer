@@ -59,3 +59,12 @@ in `Cargo.toml`, `apple/Cargo.toml` and `web/Cargo.toml`, but not `package.json`
 to the framework's packages: `bun install --frozen-lockfile` then failed with `Could not find
 folder "file:../../../exact/exact2/packages/clipboard"`. The paths were edited by hand and kept out
 of git (`git update-index --skip-worktree`), with `bun.lock`. About 5 minutes.
+
+## Source-only preparation (2026-11-05)
+
+Preparing a clean framework worktree at `d0d66b1` required checking the supported
+path-refresh command before execution. `app-cli.mjs` maps `update` to `new --update`;
+`exact.mjs` then calls both `createApp` and `contract fmt --uses`. The latter can require
+compiler preparation in a fresh checkout. About three minutes of source lookup; no update
+or build was run. This is scheduling/documentation evidence for dependency refresh, not a
+new reproduction of the earlier path failure. The command card could name the compiler step.

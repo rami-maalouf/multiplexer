@@ -531,6 +531,13 @@ The product-only framework commit is now `40bafa7e`, directly atop row-cancellat
 Regression routing remains a separate source-only follow-up: move extension tests into the
 declaring class and mark the three scene-dependent entries for the supported hosted runner.
 Diagnostics and the interactive UIKit visual reference remain excluded from the product commit.
+Regression commit `d0d66b1` now follows `40bafa7e`; its complete two-file diff matches the
+validated patch `a6be089d`. Reorganized tests passed 43 bare and three hosted cases separately,
+with no failures or skips on iOS 26.5. QoS and selected-state warnings remain recorded; both
+runs had no Main Thread Checker reports. The coordinator created clean framework worktree
+`/Users/rami/Documents/code/exact/exact2-multiplexer-integration` at this head. Root app paths
+remain unchanged: supported `update` also runs the Contract formatter/compiler, so dependency
+refresh belongs to the next guarded integration build window, not source-only preparation.
 
 Reset blue retains pale cyan/light native text. The existing observer recorded correct white
 normal title attributes, and a UIKit-only hosted reference reproduced the qualitative hue

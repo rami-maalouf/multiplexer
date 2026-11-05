@@ -1,0 +1,20 @@
+surfaces: ios
+agent: codex gpt-6-astra
+task: prepare a tested native navigation framework stack for app integration
+
+### Rough
+
+- Following the generated dependency-update instruction required reading app-cli.mjs and exact.mjs to determine whether it was source-only. `update` calls `new --update`, which refreshes paths and invokes `contract fmt --uses`. About three minutes of source lookup, no update executed. Reserved the actual refresh for a guarded build window rather than assuming a new checkout has a compiler ready. A command card naming this compiler side effect would make scheduling clearer. Related path-management evidence belongs with existing finding 46; no new runtime defect claimed.
+
+### Lean in
+
+- Product and regression commits can be verified byte-for-byte against their tested patches and assembled in a clean worktree without carrying diagnostic hooks.
+
+### Needed
+
+- dependency refresh: provided; compiler side effect required source inspection before scheduling.
+
+### Checkpoints
+
+- framework source integration: smooth, clean checkout of tested stack.
+- app dependency refresh: not executed; compiler step identified first.
