@@ -547,6 +547,12 @@ and incorrectly sent a handoff after that check failed. Launch was immediately h
 checks verified the genuine file, parsed copy equality, full bundle and cleanup before reissue;
 the lane must confirm no prior launch. This was a coordinator validation-path error, not a
 producer defect. Preserve `tasks/evidence/cache-environment-producer-validation.json`.
+The first browser case then stopped during setup: the captured module URL correctly used
+`/.exact/gen/<generation>/modules/index.js`, but the harness asserted `/modules/index.js`.
+No controller connection or search/placement assertion ran; the other two cases were unstarted.
+Cleanup released resources at 07:24:17 UTC with no source/product changes. A final bounded
+source-only correction may validate the captured initial URL against the producer generation
+and origin, retaining its identity. No further producer/browser run is authorized in this window.
 The background owner resolver is frozen at source round 2 after attachment, equal-cover
 reparenting and fixture corrections. Scoped review remains pending; applied geometry must be
 acknowledged after deferred cover application, not inferred from cached cover values. No

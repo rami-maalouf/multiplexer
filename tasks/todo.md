@@ -183,6 +183,10 @@ cutoff, packaging and host-link failures as historical evidence.
   normal producer and actual grant normalization once. Freeze 650 inputs, receipt `76cd8545`
   and bundle `1959ec21`; retain 17 warnings. Cleanup verified at 07:09:41 UTC. The three real
   public-call-chain browser controls remain pending under a separate bounded handoff.
+  First browser attempt stopped before connection/search because a harness assertion rejected
+  the server's supported generation-prefixed module URL. Zero search assertions exercised,
+  later cases unstarted, cleanup verified. Correct URL identity validation in source only;
+  another producer/browser validation waits for a future work window.
 
 - Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
   and current code (19/25). Both server histories contain every event; receipt remains

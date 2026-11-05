@@ -1,5 +1,5 @@
 {
-  "status": "environment controls and producer passed; browser controls pending",
+  "status": "environment and producer passed; browser first case stopped at setup, no search assertions exercised",
   "source_checkpoint": "cb43e9f53cf13ee9e034628ae7988fdb3ff2d222",
   "production_target": "63c5d6ea5aea4b3a34bf80a82272eff39c45255f",
   "unfinished_foundation": "6cf4151015b0c8bc3ca8a433b2e9018c0ddc2b15",
@@ -67,5 +67,32 @@
     "deep unread",
     "native integration"
   ],
-  "hard_stop_utc": "2026-11-05T07:49:48Z"
+  "hard_stop_utc": "2026-11-05T07:49:48Z",
+  "browser_attempt": {
+    "case_results": {
+      "passed_ids": [],
+      "expected_ids": [
+        "public search keeps its position through highlight expiry and topic-driven late readiness",
+        "public in-chat selection of the same event rearms the real reveal task and placement deadline",
+        "an old public search reply cannot claim replacement A or erase its new same-event intent"
+      ],
+      "cases": {
+        "search": {
+          "failure": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '/.exact/gen/73e98ce53e58ec340769f18d522109e9/modules/index.js'\n- '/modules/index.js'\n",
+          "cleanupErrors": [],
+          "outstandingClock": null,
+          "trace_labels": []
+        }
+      },
+      "exit_code": 1,
+      "later_cases_unstarted_after_bail": true
+    },
+    "cleanup_sha256": "32e9a786b3bff2660f1d205068fca80d1145061fc514ae1cbc76e646822158b7",
+    "cleanup_verified_released": true,
+    "path": "/private/tmp/mx-cache-browser3-runtime-env2-20261105",
+    "cause_scope": "harness required root module path although supported generation server uses a pinned generation base",
+    "no_launch_before_coordinator_hold": true,
+    "source_correction_only_authorized": true,
+    "no_further_runtime_this_window": true
+  }
 }
