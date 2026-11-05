@@ -509,6 +509,10 @@ its material starts below the status band; a route/scroller-local paint-only ext
 being implemented in isolated source only. The proposed `backgroundExtend="safe-area-top"`
 affects decorative material and solid backing, not layout or hit bounds; it is unbuilt and
 not consumer-ready. No guessed inset or global viewport change is used.
+Source resumption confirmed only schema/lowering/compiler-test scaffolding exists; no host
+paint or lifecycle implementation has been validated. The next authorized source slice is
+logical owner/clip/edge resolution with lifecycle fixtures on the tested framework base.
+Material/solid projection, native display proof and inbox adoption remain later gates.
 
 Capacity recovery: builds stopped at ENOSPC with less than 200 MiB available. A fresh
 check later found about 69 GiB free without coordinator deletion; the cause is not attributed.

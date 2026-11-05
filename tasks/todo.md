@@ -178,6 +178,9 @@ cutoff, packaging and host-link failures as historical evidence.
   Material begins below the native top clearance. Largest text, Reduce Transparency, extreme
   accent and final verification remain unrun. The local decorative paint-extension capability
   has isolated schema/lowerer source, but host lifecycle proof and native validation remain open.
+  Exact is now assigned the source-only owner-local resolver and lifecycle fixtures, preserving
+  native wrapper behavior and authored clips. No supported app API or paint implementation claim
+  follows from that assignment; consumer source stays frozen until framework proof.
 - Capacity recovered externally to about 69 GiB after ENOSPC; no coordinator deletion.
   Keep test binaries/evidence and serialize fresh-capacity-checked build/runtime windows.
 
