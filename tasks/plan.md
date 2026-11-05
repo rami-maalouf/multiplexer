@@ -599,3 +599,10 @@ The isolated Rust-only composition unit is authorized in source: shared operatio
 exact captured preview plus revision-checked eligibility, and terminal private session acceptance.
 No build, FFI export, native lifecycle hook, advanced ordering or app integration is authorized
 by this step. Implementation requires its own source review and later validation window.
+Implementation `57fac7b5` passed the second scoped source review after test-only guard and
+qualifying-envelope corrections. A separate bounded host window is now authorized against
+manifest `a3247a4d`: one offline compile, then 31 exact direct-binary tests once if compilation
+succeeds. Historical state/capture binaries must be preserved first. Stop on the first failure;
+1200 seconds of work plus 120 seconds of cleanup must fit before the user's wind-down.
+This is execution authorization, not a result. Pending timer expiry, actual gate contention,
+SQLite composition, FFI and native lifecycle remain outside the selected proof.

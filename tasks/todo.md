@@ -161,6 +161,9 @@ cutoff, packaging and host-link failures as historical evidence.
   with no findings. Isolated Rust source implementation is authorized; build/runtime, FFI and
   native owner/install hooks remain separate gates. Review receipt is under
   `/tmp/compound-engineering-501/ce-doc-review/receipt-composition-source-r1-20261105/`.
+  Implementation source review is clear at `57fac7b5`; its separate 31-selector host window
+  is authorized under manifest `a3247a4d`, with no result yet. Preserve historical binaries,
+  stop first failure and complete cleanup before the user's absolute deadline.
 - Cache checkpoint `63c5d6e` depends on unfinished foundation `6cf4151`; do not cherry-pick it
   alone onto root. Sixteen fixture controls pass, but full production search/navigation harness,
   current native rebuild, delivery fence and deep unread remain pending.
