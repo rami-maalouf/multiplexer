@@ -22,10 +22,10 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   Outgoing bubbles and badges keep the chosen fill; links and controls use readable light/dark tints.
   No Matrix account-data writes. Verified with native custom white/black, cancel-after-black-draft,
   relaunch, reset, yellow, actual test-user chat/send-control captures and largest text size.
-- [ ] Appearance is not complete app-wide until Exact's dynamic navigation-root tint fix is
-  replayed: a prominent native header button can remain blue even when the palette and content
-  controls change. Framework owner and coordinator have the display evidence and reproduction.
-  The app's full native verify passes despite this visible defect. No app-only tint bridge.
+- [ ] Integrate the validated Exact prominent-item tint candidate and check the combined app.
+  Its bounded native appearance/Settings matrix now passes on executable `1ee10e7f`, including
+  cold/mounted color, dark yellow/white, light black/reset, plain Back and cancelled/completed
+  Settings edges. Product-only framework commit preparation is authorized; no app-only bridge.
 - Independent review of the appearance commit found an omitted light incoming-bubble surface:
   normal-size links could measure 4.14:1 with a white accent. A separate follow-up adds the
   actual light/dark incoming backgrounds to tint calculation and the independent contrast sweep.
@@ -34,7 +34,7 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   `fix/daily-chat-experience`. Final lane verification: 12/12 native tests, checks clear,
   14 body-53 screens without spill (124.7 s); Bun 9/9 with 45,145 assertions. The focused
   independent follow-up resolved the contrast finding and found no new actionable defects.
-  Native header tint remains open; native incoming-link replay was not part of the review.
+  Framework integration remains open; native incoming-link replay was not part of the review.
   Coordinator checks passed: Bun 9/9 (45,145 assertions), contract build `[]`, and diff-check.
   Functional app/core source matches the tested lane head; native verification was not rerun here.
 - Appearance verification (2026-11-04): 9 Bun tests passed; 12 native authored tests passed;
@@ -111,7 +111,8 @@ cutoff, packaging and host-link failures as historical evidence.
 - Prominent tint: nine corrected navigation lifecycle tests plus AppAccent 20 and BarFace 14
   passed on iOS 26.5, with no skips. The prior nil baseline failures were test setup, not
   evidence against the ownership implementation. The test-owned off-main layer read is fixed;
-  QoS diagnostics are not dismissed. Native DISPLAY and pre-26 remain open.
+  QoS diagnostics are not dismissed. Bounded native DISPLAY proof is now recorded below;
+  pre-26 execution remains open.
 - Receipt adapter checkpoint `cbc2a5ee` is source-only/nonshipping, with 25 tests authored but
   unrun. Bounded cached membership/candidate lookup, resident scan limits and coherent evidence
   revisions require separate SDK source work; the validated artifact and production pin stay unchanged.
@@ -131,8 +132,21 @@ cutoff, packaging and host-link failures as historical evidence.
   native rendered ink. Reset cyan reproduced without an observed alert through a documented
   disable/re-enable sequence. Next observation uses the existing gated diagnostic in the
   unchanged binary; no foreground fix or cause is established.
-  Dark, white, black and remaining navigation captures are still open. The fixture-only
-  main-thread correction passed AppAccent 20/20 without Main Thread Checker reports.
+  Follow-up observer brackets recorded correct normal item foreground inputs. A UIKit-only
+  reference reproduced pale blue/cyan ink without Exact projection objects, so no speculative
+  foreground override is justified. R3 completes dark white, light black, readable reset,
+  plain Back and visibly cancelled/completed Settings edges; prior dark yellow remains valid.
+  Coordinator inspected captures and motion frames. Literal raster-white, numerical contrast,
+  chat corruption and broader state/OS coverage are not claimed. Durable lane receipt: `c0f34f18`.
+  The fixture-only main-thread correction passed AppAccent 20/20 without Main Thread Checker reports.
+
+- Bounded capture host validation: `d7028a98` compiled; first exact test passed, then a runner
+  formatting mismatch rejected interleaved DEBUG output. Remaining 18 tests never started.
+  Correct only the matcher with offline positive/negative fixtures, preserve both raw failure
+  and actual test result, then schedule the remaining selectors. No product/FFI/app readiness.
+- Cache checkpoint `63c5d6e` depends on unfinished foundation `6cf4151`; do not cherry-pick it
+  alone onto root. Sixteen fixture controls pass, but full production search/navigation harness,
+  current native rebuild, delivery fence and deep unread remain pending.
 
 - Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
   and current code (19/25). Both server histories contain every event; receipt remains

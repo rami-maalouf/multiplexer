@@ -12,7 +12,7 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 | Blocked on Rami | Phase 3's Apple setup (P3.0 in `tasks/todo.md`): an App Group, two App IDs, an APNs key in the Keychain, two development profiles, and the DNS name `sygnal.ramimaalouf.com`. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | `/Users/rami/Documents/code/exact/exact2` at `ed43ad09a0` (2026-11-02) |
-| Last updated | 2026-11-04 |
+| Last updated | 2026-11-05 |
 
 Update this table at the end of every work session.
 
@@ -514,3 +514,35 @@ Capacity recovery: builds stopped at ENOSPC with less than 200 MiB available. A 
 check later found about 69 GiB free without coordinator deletion; the cause is not attributed.
 The rejected `rm -rf` incremental-cache cleanup was not retried. Runtime and heavy build
 windows remain serialized, with fresh capacity checks before resuming.
+
+### Coordinator checkpoint (2026-11-05)
+
+The prominent-item candidate now completes its bounded native appearance/Settings matrix.
+The coordinator inspected dark-white, light-black and reset DISPLAY captures plus partial
+and settled Settings edge-gesture frames. Dark-yellow proof is retained from the earlier run;
+R3 selected white and black through the real picker with fresh display-to-point geometry and
+exact saved-color gates. Plain native Back, one visibly cancelled edge and one completed edge
+passed. Candidate executable `1ee10e7f` and four-file framework patch `3d944845` stayed unchanged.
+The lane's durable receipt is `multiplexer-older` commit `c0f34f18`, file
+`docs/exact-feedback/proposals/prominent-native-r3-receipt.md`. Product-only commit preparation
+is authorized; framework integration and combined-app validation are still pending.
+
+Reset blue retains pale cyan/light native text. The existing observer recorded correct white
+normal title attributes, and a UIKit-only hosted reference reproduced the qualitative hue
+without Exact projection objects. Readable polarity passed the bounded matrix; neither literal
+white raster output nor numerical contrast is certified. PNG transfer metadata is unspecified.
+This evidence does not close intermittent authenticated chat corruption, pre-26 execution,
+symbol/highlight/focus behavior, or the inbox status-band/material work. R3 cleanup first blocked
+release while the simulator still reported Booted, then confirmed Shutdown and every owner/process
+check before releasing. No premature handoff occurred in that run.
+
+Cache placement is preserved as local checkpoints `6cf4151` and dependent `63c5d6e`.
+The latter's 16 passing controls do not make its unfinished foundation merge-ready. Full real
+search/navigation harness work is source-only; final-page delivery and deep unread remain open.
+
+Bounded receipt capture at isolated `d7028a98` compiled successfully. Its first exact test
+passed, but the runner rejected interleaved DEBUG output because it expected the test name and
+`ok` on one line. The run stopped: 18 tests did not start. Preserve the raw failed runner receipt
+and separate log-based first-test result. Matcher-only correction with offline parser controls
+is authorized, without product edits or rerunning the passing test. Capture composition,
+session revocation, FFI copy bounds and app integration remain unproved.
