@@ -164,6 +164,8 @@ cutoff, packaging and host-link failures as historical evidence.
   Implementation source review is clear at `57fac7b5`; its separate 31-selector host window
   is authorized under manifest `a3247a4d`, with no result yet. Preserve historical binaries,
   stop first failure and complete cleanup before the user's absolute deadline.
+  Result: compile plus all 31 exact tests passed, no retries/ignored cases; cleanup verified.
+  Managed owner, foreign transfer and actual native installation are still design/integration gates.
 - Cache checkpoint `63c5d6e` depends on unfinished foundation `6cf4151`; do not cherry-pick it
   alone onto root. Sixteen fixture controls pass, but full production search/navigation harness,
   current native rebuild, delivery fence and deep unread remain pending.
@@ -198,6 +200,9 @@ cutoff, packaging and host-link failures as historical evidence.
   Resolver round 2 is under source review, including deferred applied-cover acknowledgement,
   empty/cancelled work and identity-equal reparenting. Nested callback/owner coverage remains
   explicit; material and solid projection have not started.
+  Third review found horizontal-only scroll wrappers incorrectly selected as owners. Further
+  background work is descoped from this window under the framework's three-round rule. Preserve
+  the unaccepted source and vertical-owner proposal; no fourth review or consumer handoff.
 - Capacity recovered externally to about 69 GiB after ENOSPC; no coordinator deletion.
   Keep test binaries/evidence and serialize fresh-capacity-checked build/runtime windows.
 

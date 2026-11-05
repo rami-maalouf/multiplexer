@@ -18,3 +18,4 @@ task: prepare a tested native navigation framework stack for app integration
 
 - framework source integration: smooth, clean checkout of tested stack.
 - app dependency refresh: not executed; compiler step identified first.
+- follow-up: official update passed after preserving a local preflight failure on the tracked documentation symlink. six generated dependency/schema files changed; authored contracts did not. the new checkout needed its declared bun dependencies installed with its frozen lock. an earlier type gate produced no diagnostics and was stopped after the missing installation was identified; its exact cpu-spin cause is unproven. the subsequent contract/typescript gate passed with `[]`. all 30 copied core swift sources match canonical files. native rebuild remains pending.

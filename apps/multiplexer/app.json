@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../exact/exact2/scripts/app.schema.json",
+  "$schema": "../../../exact/exact2-multiplexer-integration/scripts/app.schema.json",
   "name": "Multiplexer",
   "short_name": "Multiplexer",
   "id": "com.ramimaalouf.multiplexer",

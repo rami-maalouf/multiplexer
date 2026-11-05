@@ -567,6 +567,13 @@ runs had no Main Thread Checker reports. The coordinator created clean framework
 `/Users/rami/Documents/code/exact/exact2-multiplexer-integration` at this head. Root app paths
 remain unchanged: supported `update` also runs the Contract formatter/compiler, so dependency
 refresh belongs to the next guarded integration build window, not source-only preparation.
+That dependency integration now passed: official `update` changed six generated path/schema
+files only, then the Contract/TypeScript gate returned `[]`. The new framework's declared Bun
+dependencies were installed with the frozen lock; its tracked sources remain clean. App package
+paths still use the normal checkout's identical package tree, and all 30 native MatrixCore copies
+match canonical sources. Preserve the initial documentation-symlink preflight failure and stopped
+gate before dependency setup. Receipt: `tasks/evidence/framework-dependency-integration.json`.
+A fresh native app build and combined-app proof remain pending.
 
 Reset blue retains pale cyan/light native text. The existing observer recorded correct white
 normal title attributes, and a UIKit-only hosted reference reproduced the qualitative hue
@@ -606,3 +613,7 @@ succeeds. Historical state/capture binaries must be preserved first. Stop on the
 1200 seconds of work plus 120 seconds of cleanup must fit before the user's wind-down.
 This is execution authorization, not a result. Pending timer expiry, actual gate contention,
 SQLite composition, FFI and native lifecycle remain outside the selected proof.
+Host result: the one compile and all 31 exact selectors passed on `57fac7b5`, binary
+`3020ad05`, with no retry or ignored test. All owned groups ended and target-openers check
+passed. The proposed managed-owner/foreign-transfer plan remains unaccepted; a custom string
+packet versus bounded typed record needs an explicit design decision before implementation.

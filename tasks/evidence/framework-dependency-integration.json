@@ -1,0 +1,105 @@
+{
+  "status": "dependency integration and contract/typescript gate passed; native rebuild pending",
+  "framework_head": "d0d66b107e462af89d58445f3518c4d638f6df36",
+  "product_head": "40bafa7e0e0da5978290adcec8a944aae8c14042",
+  "navigation_head": "7529006ab992ff021f790291fedd05b189250e81",
+  "identical_package_tree_old_and_new": "23faf1bf7dfc35b521d9788a1f1fb79054676a30",
+  "app_package_paths": "unchanged normal exact2 packages, byte-identical tree",
+  "core_copies": {
+    "matched": 30,
+    "path": "/tmp/mx-root-framework-gate-20261105/core-copy-check.json"
+  },
+  "receipts": {
+    "update": {
+      "path": "/tmp/mx-root-framework-update-r2-20261105",
+      "result": {
+        "exit_code": 0,
+        "guard_reason": null,
+        "elapsed_seconds": 60.26745462499093,
+        "minimum_free_bytes": 35994214400,
+        "changed_tracked_files": {
+          "apps/multiplexer/AGENTS.md": {
+            "before": "12459b77b97e7c2d37a42ea1fa1f97d80c3c0cf1eae34aacee4538d694bdc284",
+            "after": "5d8a7658517afbb1f60ba19bc779b106b8c02d1b274eaeeb7740301fcb39c870"
+          },
+          "apps/multiplexer/Cargo.toml": {
+            "before": "62d51b7b8e7afc631eaae45be4d159c41321951fa72e035b61c32c88d6408ebe",
+            "after": "80767d0758f3f8fb2dc5050f17be012f1fd7c1c9e6c6c59f1605c72758ca5621"
+          },
+          "apps/multiplexer/app.json": {
+            "before": "b8bf9e32ba66e711728c983630bc67b615788fdb40cfe25cc10e296d7d255cef",
+            "after": "2e310499071795302c72c156ac8d637765d130c2292630838dd86a7c0eadc521"
+          },
+          "apps/multiplexer/apple/Cargo.toml": {
+            "before": "7098e7d6627f26f39c788c80c61893b4ba83392eecaac0e9c54835bd24566906",
+            "after": "b25ed9bbda57ccba5dc6716cd7431f0b0a14e85e5ecf35638cfd685126de6f80"
+          },
+          "apps/multiplexer/exact.mjs": {
+            "before": "4d8e31ebfae42e5762769eaf3caefe20501d5fcfc91ebbac0ea3ba2875f23e30",
+            "after": "02acb2f3b2d5f2361cea6599cf9fe834139721e550aa2d0f95c0b2efef2e8c16"
+          },
+          "apps/multiplexer/web/Cargo.toml": {
+            "before": "6e80841200e7a1182a440f729b7a0a43b8b61ecd818720a5641077c07b003147",
+            "after": "d8bb44b97b82f872f00735e008979367e37ce5fd8ab1f869a26783332bc6a90d"
+          }
+        },
+        "group_ended": true,
+        "log_sha256": "124b596edd1afed621ead95b82fb5171240892a4d9840b141cc70b2db609ae24"
+      },
+      "cleanup": {
+        "success": true,
+        "owned_group_ended": true,
+        "ownerReleased": true,
+        "core_lock_absent": true
+      }
+    },
+    "dependencies": {
+      "path": "/tmp/mx-root-framework-dependencies-20261105",
+      "result": {
+        "exit_code": 0,
+        "guard_reason": null,
+        "elapsed_seconds": 2.0669886660034535,
+        "minimum_free_bytes": 35850874880,
+        "changed_tracked_files": {},
+        "group_ended": true,
+        "log_sha256": "4bc33251b2cd32ad9567270a36a1ef2f254c70d422a794e3d44e665ff29bf543"
+      },
+      "cleanup": {
+        "success": true,
+        "owned_group_ended": true,
+        "ownerReleased": true,
+        "core_lock_absent": true
+      }
+    },
+    "gate": {
+      "path": "/tmp/mx-root-framework-gate-r2-20261105",
+      "result": {
+        "exit_code": 0,
+        "guard_reason": null,
+        "elapsed_seconds": 50.63685270899441,
+        "minimum_free_bytes": 35383611392,
+        "changed_tracked_files": {},
+        "group_ended": true,
+        "log_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      "cleanup": {
+        "success": true,
+        "owned_group_ended": true,
+        "ownerReleased": true,
+        "core_lock_absent": true
+      }
+    }
+  },
+  "preserved_failures": [
+    {
+      "path": "/tmp/mx-root-framework-update-20261105/preflight-failure.json",
+      "meaning": "tracked documentation symlink rejected before update/lock"
+    },
+    {
+      "path": "/tmp/mx-root-framework-gate-20261105/coordinator-stop.json",
+      "meaning": "gate stopped after missing framework dependency installation identified; precise spin cause unproven"
+    }
+  ],
+  "native_build_or_runtime": false,
+  "user_hard_stop": "2026-11-05T07:49:48Z"
+}
