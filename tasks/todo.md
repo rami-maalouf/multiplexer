@@ -56,12 +56,27 @@ horizontal scroll offsets remain zero and no node exceeds the viewport width. Ex
 the framework cancellation fix and local feedback finding 124; Push owns the shared native
 reproduction bundle. No app overflow workaround is justified. Cached-opening baseline also
 confirmed usable rows in 3 ms waiting until a 1,178 ms reply, plus a brief resource-reset
-spinner on repeat opening. Fixes and native after-checks remain pending.
+spinner on repeat opening. Row cancellation is validated on isolated Exact `7529006`
+(77 host passes, six scene-dependent skips, native controls passed); combined app adoption
+and the separate intermittent swipe-back defect remain pending. Cache after-checks remain pending.
 
-Receipt SDK capacity checkpoint: isolated candidate `bf8aaf2b` is not ready for integration.
+Receipt SDK capacity checkpoint: isolated candidate `a2513d51` is not ready for integration.
 The final host run never launched at 7.83 GiB free. Earlier 13/13 results apply to an earlier
-snapshot. On resume, correct the cancellation test's masking second cancel, then validate
-and review the final redaction/callback changes before any generated simulator build.
+snapshot. The masking second cancel is corrected and scoped review cleared the finding;
+final host validation is still required before any generated simulator build.
+
+- Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
+  and current code (19/25). Both server histories contain every event; receipt remains
+  at the anchor. This proves the failure class exists without the new cache implementation,
+  but does not rule out additional contributions. A same-binary selected-room subscription
+  experiment is diagnostic only; no wait/assertion changes or production workaround.
+- Tint host regression: baseline 18/19 passed with two assertions failing; reviewed candidate
+  19/19 passed without skips. Native header fill/foreground replay still required.
+- Inbox native appearance stopped on sharp pinned content behind the clock at scroll `sy=179`.
+  Material begins below the native top clearance. Largest text, Reduce Transparency, extreme
+  accent and final verification remain unrun. A local paint-extension capability is in design.
+- Capacity recovered externally to about 69 GiB after ENOSPC; no coordinator deletion.
+  Keep test binaries/evidence and serialize fresh-capacity-checked build/runtime windows.
 
 ## Phase 0: prove the server (M0)
 
@@ -357,6 +372,39 @@ the native module.
 - [x] Write Phase 2 in detail here, with what we learned.
 
 ## Phase 2: daily reading and sending (M2)
+
+### Current navigation and material follow-up (2026-11-04, Exact lane)
+
+- [ ] Reproduce intermittent interactive Back layout corruption with keyboard
+  hidden/visible, completion, cancellation, reversal and repeated open/close.
+  First native cancelled/reversed and completed swipes were clean; screenshots
+  and recording are in `.exact/swipe-back/`. This is not yet a reproduced defect.
+- [x] Fix horizontal list-row drag activating its link on lift (local Exact
+  finding 124). Push's native controls rule out overflow: left/right row drags
+  navigate, gap drags do not, and vertical drags scroll without navigating.
+  Isolated `RowCellsIOSTests` regression covers left/right/reversal and a later
+  small-movement tap. Baseline runtime failed as expected: three drags activated
+  the row three times. Isolated row-only cancellation passed focused host tests:
+  77 passed, six scene-dependent skips, zero failures. Partial native replay passed
+  both row-pan directions, vertical scroll, tap, reply/cancel and one keyboard-visible
+  edge Back. Named-store retry proved reversal with zero pushes, 2 pt tap with one push, and
+  native menu-button drag-out/back. Prior attempts remain invalid and preserved.
+  Framework commit `7529006ab992ff021f790291fedd05b189250e81` is isolated in
+  `exact2-navigation`; normal exact2 is unchanged.
+  Preserve ordinary button tracking, row actions,
+  swipe-to-reply and edge Back. Native Sign Out cleared the session, size/appearance
+  restored, own simulator stopped and owned lock released. Server device identity
+  was not captured; no server absence claim.
+- [ ] After navigation proof, separately replace chat bar/composer opaque backing
+  with native material, inspect light/dark scrolling, keyboard, largest text and
+  reduced transparency. Preserve unread positioning and Appearance palette props.
+  Inbox owner controls home-only header/list composition and compact inbox bars.
+
+Evidence/builds: `/tmp/mx-navigation-tests-build.log` passed;
+`/tmp/mx-navigation-framework-build.log` built and signed the baseline framework
+consumer with `--no-install`. No simulator was booted for these builds. Worktree
+`multiplexer-older` is explicit on commands; T3's detached `work-exact-gaps`
+binding is unchanged. No auth lock is held. All feedback stays local.
 
 Written at the M1 checkpoint (2026-10-27). The client work runs on the practice account
 until the server is ready (D8). What we learned in Phase 1:
@@ -2103,3 +2151,9 @@ notifications reach no app code (no `willPresent` / `didReceive` hatch).
 
 - A guided setup from a new VPS and a domain to a working server.
 - Oracle Always Free as one supported target among others.
+
+Navigation tint follow-up: local finding 125 records the stale prominent header.
+The isolated baseline failed two reparented-root assertions; the reviewed logical-root
+candidate passed all 19 host tests with no skips. Native prominent fill/foreground
+remain unproven after the app build stopped on ENOSPC before its simulator probe.
+`exact2-navigation` stays clean at `7529006ab9` for Inbox.

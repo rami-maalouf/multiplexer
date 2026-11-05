@@ -39,10 +39,11 @@ fallbacks. Coordinate shared tint and material choices before integration.
 Measured findings: sideways row drags activate navigation on release rather than overflowing
 the inbox width (shared Exact finding 124, owned by Exact/UI). Cached rows were usable in
 3 ms but first native reply waited 1,178 ms; repeat opens also clear the UI resource briefly.
-The receipt SDK candidate is preserved in isolation at `bf8aaf2b`. An earlier snapshot passed
+The receipt SDK candidate is preserved in isolation at `a2513d51`. An earlier snapshot passed
 13 host tests; the final redaction and callback-test changes are runtime-unvalidated. The
-8 GiB free-space guard refused the final run before Cargo started. A cancellation-test review
-finding remains to fix on resume. Generated iOS proof and app integration remain pending;
+8 GiB free-space guard refused the final run before Cargo started. The cancellation-test review
+finding is corrected and cleared by scoped review; runtime validation remains pending.
+Generated iOS proof and app integration remain pending;
 no production SDK pin has changed.
 
 Appearance app commits `dbff982` and `01b070d7` are integrated on the coordinator branch.
@@ -50,6 +51,28 @@ The follow-up fixes incoming-link contrast without changing chosen outgoing fill
 review resolved its finding with no new actionable defects; the lane's exact final head passed
 12 native tests and 14 body-53 screens in 124.7 s. The navigation-root header tint defect is
 still open, so this is app source integration rather than full appearance acceptance.
+
+Exact navigation lane: actual checkout `multiplexer-older`, branch
+`fix/interactive-back-layout`, app base `a09a33d`. T3 still binds the thread to
+`work-exact-gaps` at detached `9da752c`; that checkout remains untouched. A first
+native cancelled/reversed Back and completed Back passed visually; intermittent
+corruption remains unproven and needs keyboard/repeated-transition coverage.
+Push's controlled native horizontal row drags confirmed a distinct release-time
+link activation bug, tracked locally as finding 124. Its host regression builds in
+isolated `exact2-navigation` on `local/interactive-navigation` at `ed43ad09a0`;
+baseline runtime failed as expected (three drag activations). The isolated row-only
+candidate passed 77 focused host tests with six scene-dependent skips. Partial
+native replay passed left/right cancellation, vertical scrolling, ordinary tap,
+reply/cancel and one keyboard-visible edge Back. The remaining named-store drive proved reversal cancellation (zero pushes), a
+2 pt movement tap (one push), and native menu-button drag-out/back. The isolated
+framework fix is committed as `7529006ab992ff021f790291fedd05b189250e81`; its diff
+hash matches the tested candidate. Initial invalid attempts and capture provenance
+remain recorded. Native Sign Out cleared the session; no exact server device ID
+was captured, so server absence is not claimed. Normal
+framework sources are unchanged. Normal exact2 and the `befb32d3cd` separator
+experiment remain preserved. Chat material work follows navigation as a separate
+change; the inbox lane owns home-only header/list composition. The lane holds no
+auth lock and its simulator is off.
 
 Labels progress: integrated `8904255` into `work/labels` (`673efb5`), preserving communities,
 network-aware selection labels and SessionStore migration. The earlier integrated iOS verification
@@ -384,3 +407,24 @@ black or white foreground is selected by contrast. The app computes readable lig
 control tints separately. The native iOS picker edits a draft: Cancel discards it, Use Color
 commits it. Default/reset is blue (`#007aff`). Native tests and verify pass, but app-wide
 acceptance remains open for the separately owned framework navigation-root tint defect.
+
+Navigation tint follow-up: local finding 125 records the stale prominent header.
+The isolated baseline failed two reparented-root assertions; the reviewed logical-root
+candidate then passed all 19 host tests with no skips. Native header fill and foreground
+remain unproven: the app build stopped on disk exhaustion before its simulator probe.
+`exact2-navigation` stays clean at `7529006ab9` for Inbox.
+
+Current validation limits: the shared-public-API unread control failed on unchanged
+`a09a33d` (23/25) and the cache branch (19/25), with every sent event present on the
+server and the reader's receipt still at its pre-batch anchor. The SDK contains an
+upstream gappy-sync recount regression compatible with this behavior, but the executed
+pipeline is not established. An isolated selected-room subscription diagnostic is next;
+a passing treatment could avoid that defect rather than repair it. Cache performance
+acceptance remains paused. Inbox's compact header failed native scroll inspection because
+its material starts below the status band; a route/scroller-local paint-only extension is
+being specified before implementation. No guessed inset or global viewport change is used.
+
+Capacity recovery: builds stopped at ENOSPC with less than 200 MiB available. A fresh
+check later found about 69 GiB free without coordinator deletion; the cause is not attributed.
+The rejected `rm -rf` incremental-cache cleanup was not retried. Runtime and heavy build
+windows remain serialized, with fresh capacity checks before resuming.
