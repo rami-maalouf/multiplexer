@@ -4,6 +4,14 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
+**User hard deadline (2026-11-05):** stop feature work and wind down all lanes at
+07:44:48 UTC (02:44:48 Toronto); all related agents must halt by 07:49:48 UTC
+(02:49:48 Toronto), 90 minutes after the user's request. Persistent coordinator alarms
+are scheduled for 07:44:48.167Z and 07:49:48.089Z. Cancel delegated children, finish
+owned-resource cleanup before the deadline, preserve incomplete evidence and do not
+resume from late notifications without fresh user authorization. Disable both alarms
+after the one-time stop. This deadline overrides the work queue below.
+
 | | |
 |---|---|
 | Current phase | Phase 0 done: M0 passed on 2026-10-28 (Synapse and WhatsApp on our server). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
