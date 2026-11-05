@@ -466,7 +466,11 @@ scene/window, presentation/dismissal, dimmed/restored mode and strict foreground
 were exercised. The earlier bare-runner attempt failed presentation setup, not foreground
 assertions. Hosted logs retain 38 selected-state UIKit warnings; no cause is assigned.
 Public-property success does not resolve the native cyan pixels. The next native control
-isolates reset without an intervening alert on the unchanged candidate.
+reproduced cyan-looking reset text without an observed alert, through a documented
+disable/re-enable sequence. Enabled brackets passed; exact native state and cause remain
+unproved. A premature cleanup notice was corrected before handoff, then no-opener/process/
+shutdown checks and owner release completed. The next observation reuses the existing gated
+diagnostic in the same binary to separate item attributes, public button facts and pixels.
 
 Current validation limits: the shared-public-API unread control failed on unchanged
 `a09a33d` (23/25) and the cache branch (19/25), with every sent event present on the
@@ -485,10 +489,14 @@ Focused correction validation now includes two passing controlled core tests and
 pure Contract fixture tests on a genuine development build. Separate timer controls passed
 three cases and reproduced replacement-placement expiry at the old visit's deadline: at the
 authored 801 probe, placing was false although the replacement deadline was 902. All production
-inputs remained unchanged. A focused timer-ownership correction is assigned source-only;
-same-visit replacement must be covered as well. Later failed-case assertions advanced mutation
-ticks, so no absolute later send timing is inferred. Exact's three reviewed foreground alert
-controls receive the next serialized host-validation window after timer cleanup.
+inputs remained unchanged. Later failed-case assertions advanced mutation ticks, so no
+absolute later send timing is inferred. The reviewed placement-operation correction now
+passes all 16 controls: original eight, unchanged four timer regressions, and four new
+same-visit/repeated-event/late-unread/readiness-reset controls (329 compiled steps). The prior
+replacement RED is green. Authored boundaries verify queue retention, one deferred send and
+no duplicate. The current producer emits no warnings; historical nested-read diagnostics
+remain recorded, with no broader native/search acceptance inferred. Real search/navigation,
+final-page delivery and deep-unread checks remain open.
 Inbox's compact header failed native scroll inspection because
 its material starts below the status band; a route/scroller-local paint-only extension is
 being implemented in isolated source only. The proposed `backgroundExtend="safe-area-top"`

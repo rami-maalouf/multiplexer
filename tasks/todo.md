@@ -103,7 +103,11 @@ cutoff, packaging and host-link failures as historical evidence.
   before its new 902 deadline. Preserve this unchanged-production failure before fixing timer
   ownership, including same-visit replacement semantics. The driver continued later assertions
   in the failed case, so their mutation ticks do not establish absolute later send times.
-  Nested-read warnings, final-page delivery and deep-unread correctness remain open.
+  The reviewed placement-operation fix now passes all 16 controls (329 compiled steps),
+  including unchanged replacement RED-to-green and four new operation/readiness cases.
+  Observed authored boundaries retain the queue then send once without duplicates. Current
+  producer warnings are zero; historical warnings and untested real search/navigation paths
+  remain explicit. Final-page delivery and deep-unread correctness remain open.
 - Prominent tint: nine corrected navigation lifecycle tests plus AppAccent 20 and BarFace 14
   passed on iOS 26.5, with no skips. The prior nil baseline failures were test setup, not
   evidence against the ownership implementation. The test-owned off-main layer read is fixed;
@@ -120,7 +124,9 @@ cutoff, packaging and host-link failures as historical evidence.
   state/dimming cause is unproved. Three alert/normal/disabled controls passed in supported
   ExactTestHost with no skips, including presentation/dismissal and dimming restoration.
   The prior bare-host presentation failure is preserved. Public properties do not prove
-  native rendered ink; next capture isolates reset without an intervening alert.
+  native rendered ink. Reset cyan reproduced without an observed alert through a documented
+  disable/re-enable sequence. Next observation uses the existing gated diagnostic in the
+  unchanged binary; no foreground fix or cause is established.
   Dark, white, black and remaining navigation captures are still open. The fixture-only
   main-thread correction passed AppAccent 20/20 without Main Thread Checker reports.
 
