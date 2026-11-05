@@ -56,6 +56,15 @@ read-only for the single requested test-device ID and found zero device and acce
 rows, resolving the cleanup uncertainty without another login or deletion. Discovery and
 safe response diagnostics must be corrected before another Stage B run; no callback proof exists.
 
+Stage B follow-up: discovery correction passed 12 injected Python tests and six auth-free
+Swift endpoint tests. The corrected real boundary test then passed (12.440 s): exact preview
+identity/readers, receipt-only Rust-to-Swift notification with unchanged preview, cancellation,
+listener release and a fresh live control. The distinct-event comparator exercised -1/+1.
+Both created test devices logged out and their tokens returned 401; independent device absence
+was not queried. This supersedes the missing callback proof, not the preserved first failure.
+MatrixCore eligibility, merged-preview identity and UI integration remain pending; source-only
+adapter work is assigned to the receipt lane, with Cache coordinating shared-file ownership.
+
 Appearance app commits `dbff982` and `01b070d7` are integrated on the coordinator branch.
 The follow-up fixes incoming-link contrast without changing chosen outgoing fills. Independent
 review resolved its finding with no new actionable defects; the lane's exact final head passed

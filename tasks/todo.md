@@ -79,6 +79,12 @@ cutoff, packaging and host-link failures as historical evidence.
   zero device/access-token rows for the exact requested test-device ID, resolving cleanup
   uncertainty without login/deletion. Receipt: `/tmp/mx-preview-stage-b-runtime/coordinator-device-audit.json`.
   Correct discovery and safe diagnostics, test them, and obtain a fresh runtime handoff.
+- Stage B correction now validated: injected Python 12/12, auth-free Swift endpoint 6/6,
+  then real boundary 1/1 (12.440 s). Exact snapshot/readers, receipt-only callback with unchanged
+  preview, cancel/isFinished/weak release and fresh live-control callback passed; distinct
+  comparator pair returned -1/+1. Both own devices have logout and token-401 records.
+  No independent absence claim. MatrixCore adapter/eligibility, merged source and UI tests
+  remain open, as does device-slice distribution for the simulator-only SDK artifact.
 
 - [ ] Cache lifecycle review: fix and test deferred older work after same-visit reset,
   completed-search positioning ownership, empty-budget retry, and final-page delivery ordering.
