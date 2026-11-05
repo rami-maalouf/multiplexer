@@ -474,6 +474,14 @@ work after reset, late unread positioning after search, empty-budget retry and f
 delivery ordering. Three corrections are drafted; the fourth needs a sound SDK delivery
 boundary. Neither TimelineStart, Idle nor a fresh listener snapshot proves pending cache
 events reached Swift. Current source is unaccepted; old measurements remain historical.
+Focused correction validation now includes two passing controlled core tests and eight passing
+pure Contract fixture tests on a genuine development build. Separate timer controls passed
+three cases and reproduced replacement-placement expiry at the old visit's deadline: at the
+authored 801 probe, placing was false although the replacement deadline was 902. All production
+inputs remained unchanged. A focused timer-ownership correction is assigned source-only;
+same-visit replacement must be covered as well. Later failed-case assertions advanced mutation
+ticks, so no absolute later send timing is inferred. Exact's three reviewed foreground alert
+controls receive the next serialized host-validation window after timer cleanup.
 Inbox's compact header failed native scroll inspection because
 its material starts below the status band; a route/scroller-local paint-only extension is
 being implemented in isolated source only. The proposed `backgroundExtend="safe-area-top"`

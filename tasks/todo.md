@@ -88,7 +88,8 @@ cutoff, packaging and host-link failures as historical evidence.
 
 - [ ] Cache lifecycle review: fix and test deferred older work after same-visit reset,
   completed-search positioning ownership, empty-budget retry, and final-page delivery ordering.
-  Three corrections are source-only. The SDK has no exported Swift delivery watermark;
+  Three corrections have focused control coverage but remain unaccepted as a complete feature.
+  The SDK has no exported Swift delivery watermark;
   TimelineStart, Idle and initial listener Reset cannot prove pending ingestion was applied.
   A revision/generation plus controller/listener acknowledgement design is being assessed;
   no quiet-period workaround or production SDK change is accepted.
@@ -96,8 +97,13 @@ cutoff, packaging and host-link failures as historical evidence.
   tests compile to 104 source-lined steps, and the pure web fixture bundles. Three nested
   read-after-assign warnings remain behaviorally unproved. After correcting the build's simulator
   architecture, exactly two auth-free controlled retry/exhaustion/reset/error tests passed with
-  no skips. The eight fixture tests have not run; real development build provenance is still
-  needed. Final-page delivery and deep-unread correctness remain open.
+  no skips. A genuine development build then passed all eight fixture tests once, with original
+  inputs unchanged. Four separate placement-timer controls compiled to 118 steps: three passed,
+  and replacement placement failed at the authored 801 probe because placing was already false
+  before its new 902 deadline. Preserve this unchanged-production failure before fixing timer
+  ownership, including same-visit replacement semantics. The driver continued later assertions
+  in the failed case, so their mutation ticks do not establish absolute later send times.
+  Nested-read warnings, final-page delivery and deep-unread correctness remain open.
 - Prominent tint: nine corrected navigation lifecycle tests plus AppAccent 20 and BarFace 14
   passed on iOS 26.5, with no skips. The prior nil baseline failures were test setup, not
   evidence against the ownership implementation. A test-owned off-main layer read is being
