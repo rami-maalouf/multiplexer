@@ -517,8 +517,19 @@ The full-root cached-search harness source is checkpointed at `cb97600` after tw
 reviews. Its first producer-only attempt staged successfully, then composition rejected a
 declared environment key absent from the wrapper entry point's static reads. No producer or
 browser control ran. Cleanup verified owned descendants/openers and released the slot.
-The harness owner is tracing the supported environment handling of the byte-identical renamed
-production Answer before a narrow source correction; no dummy-read-only bypass is accepted.
+Source tracing confirmed Exact transforms environment reads only in root `app.ts`; imported
+modules reject remaining reads. Failed-attempt evidence is preserved in lane docs commit
+`0b95198`. A narrow test-artifact boundary is now authorized in source: retain and hash the
+byte-identical production input, then use the pinned official `inlineSettings` transform with
+an explicit empty synthetic key and a fresh descriptor directory without environment files.
+The wrapper must enforce the same synthetic value, and later genuine producer settings must
+agree with the transformation record. No manual replacement or unused dummy read is accepted.
+This revises executable-byte equality to verified official-transform equality; it does not
+change production code. Source review precedes any new staging, producer or browser run.
+The background owner resolver is frozen at source round 2 after attachment, equal-cover
+reparenting and fixture corrections. Scoped review remains pending; applied geometry must be
+acknowledged after deferred cover application, not inferred from cached cover values. No
+material/solid projection or consumer readiness follows from this source slice.
 
 Capacity recovery: builds stopped at ENOSPC with less than 200 MiB available. A fresh
 check later found about 69 GiB free without coordinator deletion; the cause is not attributed.

@@ -162,8 +162,11 @@ cutoff, packaging and host-link failures as historical evidence.
   current native rebuild, delivery fence and deep unread remain pending.
   Full-root harness `cb97600` staged, but composition failed on the wrapper's declared
   `KLIPY_KEY` environment read. Producer/normalizer/browser three were not started. Correct the
-  supported environment seam without modifying production bytes or reading real keys; preserve
-  failed artifacts and revalidate through a fresh window after source disposition.
+  supported environment seam without modifying raw production bytes or reading real keys.
+  Source-only correction may use pinned official `inlineSettings` to create the delegated test
+  artifact with explicit empty synthetic configuration, exact transform provenance and a
+  wrapper consistency guard. This replaces executable-byte equality, not raw-source equality.
+  Review the correction before a fresh producer window; failed artifacts remain preserved.
 
 - Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
   and current code (19/25). Both server histories contain every event; receipt remains
@@ -185,6 +188,9 @@ cutoff, packaging and host-link failures as historical evidence.
   Exact is now assigned the source-only owner-local resolver and lifecycle fixtures, preserving
   native wrapper behavior and authored clips. No supported app API or paint implementation claim
   follows from that assignment; consumer source stays frozen until framework proof.
+  Resolver round 2 is under source review, including deferred applied-cover acknowledgement,
+  empty/cancelled work and identity-equal reparenting. Nested callback/owner coverage remains
+  explicit; material and solid projection have not started.
 - Capacity recovered externally to about 69 GiB after ENOSPC; no coordinator deletion.
   Keep test binaries/evidence and serialize fresh-capacity-checked build/runtime windows.
 
