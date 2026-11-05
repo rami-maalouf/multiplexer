@@ -26,6 +26,8 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   Its bounded native appearance/Settings matrix now passes on executable `1ee10e7f`, including
   cold/mounted color, dark yellow/white, light black/reset, plain Back and cancelled/completed
   Settings edges. Product-only framework commit preparation is authorized; no app-only bridge.
+  Candidate commit `40bafa7e` now contains exactly the four tested product files atop `7529006`;
+  coordinator verified its diff hash. Separate test-class/hosted-routing integration is source-only.
 - Independent review of the appearance commit found an omitted light incoming-bubble surface:
   normal-size links could measure 4.14:1 with a white accent. A separate follow-up adds the
   actual light/dark incoming backgrounds to tint calculation and the independent contrast sweep.

@@ -526,6 +526,11 @@ passed. Candidate executable `1ee10e7f` and four-file framework patch `3d944845`
 The lane's durable receipt is `multiplexer-older` commit `c0f34f18`, file
 `docs/exact-feedback/proposals/prominent-native-r3-receipt.md`. Product-only commit preparation
 is authorized; framework integration and combined-app validation are still pending.
+The product-only framework commit is now `40bafa7e`, directly atop row-cancellation fix
+`7529006`. Coordinator independently verified its complete diff hash equals tested `3d944845`.
+Regression routing remains a separate source-only follow-up: move extension tests into the
+declaring class and mark the three scene-dependent entries for the supported hosted runner.
+Diagnostics and the interactive UIKit visual reference remain excluded from the product commit.
 
 Reset blue retains pale cyan/light native text. The existing observer recorded correct white
 normal title attributes, and a UIKit-only hosted reference reproduced the qualitative hue
