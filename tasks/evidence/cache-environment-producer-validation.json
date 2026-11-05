@@ -1,0 +1,71 @@
+{
+  "status": "environment controls and producer passed; browser controls pending",
+  "source_checkpoint": "cb43e9f53cf13ee9e034628ae7988fdb3ff2d222",
+  "production_target": "63c5d6ea5aea4b3a34bf80a82272eff39c45255f",
+  "unfinished_foundation": "6cf4151015b0c8bc3ca8a433b2e9018c0ddc2b15",
+  "exact_toolchain": "/Users/rami/Documents/code/exact/exact2 at ed43ad09a0ee6297f20affb8199843e2918909e2",
+  "environment_controls": {
+    "ids": [
+      "synthetic setting guard rejects nonempty configuration without echoing it",
+      "fresh path identity accepts the Mac tmp alias without weakening exclusive creation",
+      "native binding boundary rejects a higher-priority ancestor universal package",
+      "synthetic transform record rejects mismatched value or source",
+      "descriptor rejects extra declarations and raw manifest hash drift",
+      "initializer inspection rejects extra environment reads",
+      "official artifact preserves raw bytes and reproduces only the allowed initializer change",
+      "transform validation rejects unrelated output edits",
+      "raw input and archived raw hash drift fail closed",
+      "generated artifact hash drift fails closed",
+      "descriptor refuses either env file before transformation reads it",
+      "producer settings validator rejects record and input provenance mismatch"
+    ],
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "once": true,
+    "source_sha256": "d4b6d553ae27abaee78920ec52e5ee197912f519647d6da49d1069535fedbc20"
+  },
+  "producer_checks": {
+    "builtAppMatches": true,
+    "webChanges": [],
+    "input_count": 650,
+    "inputs_before_sha256": "658dfd18215223852f279b9276b23427a0ee3f560c93d4cb8d956dd76036fc6c",
+    "inputs_after_sha256": "658dfd18215223852f279b9276b23427a0ee3f560c93d4cb8d956dd76036fc6c",
+    "receipt_sha256": "76cd8545a92fd91d3f017a7513aa8a8088502c3b26029e2ff56f911b031aafde",
+    "bundle_file_count": 285,
+    "bundle_tree_sha256": "1959ec21a1ef806337e3368e6dad0e18b81f7df25748b34174cb0c1c8dfa7b75",
+    "normalized_grants_equal": true,
+    "normalized_grants_sha256": "7c2c53ad796735217915b9bcffe25734797338e3cccfa99d384d30dcd437f8be",
+    "artifact_checks_sha256": "db4dd12a8291b9c6975ed21edc0e060788d82419800ddd8644c02dc47f8ab1c9",
+    "browser_controls_run": false
+  },
+  "cleanup": {
+    "path": "/private/tmp/mx-cache-search-env-products-env2-20261105/cleanup-release.json",
+    "sha256": "fff3654e1a4fd94e211aad25f1ebe250e8bff469655cb3df7f03a282c1e854d5",
+    "released": true,
+    "finished_utc": "2026-11-05T07:09:41Z"
+  },
+  "coordinator_preflight": {
+    "success": true,
+    "checks": {
+      "genuine_receipt_hash": true,
+      "reformatted_copy_semantically_equal": true,
+      "full_bundle_285": true,
+      "input_maps_hashes": true,
+      "commands_hash": true,
+      "cleanup_hash_and_all_checks": true,
+      "locks_absent": true
+    },
+    "initial_check_error": "coordinator compared reported genuine receipt hash against reformatted JSON copy, then sent handoff despite failed check; immediately held launch",
+    "copy_sha256": "794ed945b7656503decbe53db58abcee01a246448450fd509bebd59d5c821d63",
+    "genuine_sha256": "76cd8545a92fd91d3f017a7513aa8a8088502c3b26029e2ff56f911b031aafde"
+  },
+  "warning_count": 17,
+  "remaining": [
+    "browser three controls",
+    "delivery fence",
+    "deep unread",
+    "native integration"
+  ],
+  "hard_stop_utc": "2026-11-05T07:49:48Z"
+}

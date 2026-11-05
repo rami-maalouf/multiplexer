@@ -534,6 +534,19 @@ The wrapper must enforce the same synthetic value, and later genuine producer se
 agree with the transformation record. No manual replacement or unused dummy read is accepted.
 This revises executable-byte equality to verified official-transform equality; it does not
 change production code. Source review precedes any new staging, producer or browser run.
+Environment correction `cb43e9f` now passes its separate bounded validation: 12 exact
+environment controls, fresh staging, composition/TypeScript, normal development producer,
+official artifact equality and actual compiled grant normalization. Normal Exact `ed43ad09`
+and pinned Rolldown 1.2.9 remain this harness's toolchain, separate from root's native `d0d66b1`.
+All 650 actual producer inputs match before/after; genuine receipt `76cd8545` and 285-file
+bundle manifest `1959ec21` are frozen. Seventeen producer warnings remain recorded. Cleanup
+released the scheduling lock at 07:09:41 UTC after process/openers/source checks. The three
+browser cases now have a separate bounded handoff; they are not yet reported passed.
+Coordinator initially compared the genuine receipt hash against its reformatted JSON copy
+and incorrectly sent a handoff after that check failed. Launch was immediately held. Corrected
+checks verified the genuine file, parsed copy equality, full bundle and cleanup before reissue;
+the lane must confirm no prior launch. This was a coordinator validation-path error, not a
+producer defect. Preserve `tasks/evidence/cache-environment-producer-validation.json`.
 The background owner resolver is frozen at source round 2 after attachment, equal-cover
 reparenting and fixture corrections. Scoped review remains pending; applied geometry must be
 acknowledged after deferred cover application, not inferred from cached cover values. No

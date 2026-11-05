@@ -179,6 +179,10 @@ cutoff, packaging and host-link failures as historical evidence.
   artifact with explicit empty synthetic configuration, exact transform provenance and a
   wrapper consistency guard. This replaces executable-byte equality, not raw-source equality.
   Review the correction before a fresh producer window; failed artifacts remain preserved.
+  Correction `cb43e9f` subsequently passed 12 environment controls, staging, composition/TS,
+  normal producer and actual grant normalization once. Freeze 650 inputs, receipt `76cd8545`
+  and bundle `1959ec21`; retain 17 warnings. Cleanup verified at 07:09:41 UTC. The three real
+  public-call-chain browser controls remain pending under a separate bounded handoff.
 
 - Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
   and current code (19/25). Both server histories contain every event; receipt remains
