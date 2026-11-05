@@ -513,6 +513,12 @@ Source resumption confirmed only schema/lowering/compiler-test scaffolding exist
 paint or lifecycle implementation has been validated. The next authorized source slice is
 logical owner/clip/edge resolution with lifecycle fixtures on the tested framework base.
 Material/solid projection, native display proof and inbox adoption remain later gates.
+The full-root cached-search harness source is checkpointed at `cb97600` after two scoped
+reviews. Its first producer-only attempt staged successfully, then composition rejected a
+declared environment key absent from the wrapper entry point's static reads. No producer or
+browser control ran. Cleanup verified owned descendants/openers and released the slot.
+The harness owner is tracing the supported environment handling of the byte-identical renamed
+production Answer before a narrow source correction; no dummy-read-only bypass is accepted.
 
 Capacity recovery: builds stopped at ENOSPC with less than 200 MiB available. A fresh
 check later found about 69 GiB free without coordinator deletion; the cause is not attributed.

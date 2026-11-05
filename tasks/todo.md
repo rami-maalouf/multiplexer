@@ -160,6 +160,10 @@ cutoff, packaging and host-link failures as historical evidence.
 - Cache checkpoint `63c5d6e` depends on unfinished foundation `6cf4151`; do not cherry-pick it
   alone onto root. Sixteen fixture controls pass, but full production search/navigation harness,
   current native rebuild, delivery fence and deep unread remain pending.
+  Full-root harness `cb97600` staged, but composition failed on the wrapper's declared
+  `KLIPY_KEY` environment read. Producer/normalizer/browser three were not started. Correct the
+  supported environment seam without modifying production bytes or reading real keys; preserve
+  failed artifacts and revalidate through a fresh window after source disposition.
 
 - Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
   and current code (19/25). Both server histories contain every event; receipt remains
