@@ -19,7 +19,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; push (P3.0) waits for Rami's Apple setup. Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is prepared on `server/p3.3-sygnal`, not merged: it installs once P3.0's APNs key and DNS record exist (Rami's OK). |
 | Blocked on Rami | Phase 3's Apple setup (P3.0 in `tasks/todo.md`): an App Group, two App IDs, an APNs key in the Keychain, two development profiles, and the DNS name `sygnal.ramimaalouf.com`. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
-| Exact | `/Users/rami/Documents/code/exact/exact2` at `ed43ad09a0` (2026-11-02) |
+| Exact | Root host/compiler: clean `exact2-multiplexer-integration` at `d0d66b107e`; package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
 | Last updated | 2026-11-05 |
 
 Update this table at the end of every work session.
@@ -573,7 +573,20 @@ dependencies were installed with the frozen lock; its tracked sources remain cle
 paths still use the normal checkout's identical package tree, and all 30 native MatrixCore copies
 match canonical sources. Preserve the initial documentation-symlink preflight failure and stopped
 gate before dependency setup. Receipt: `tasks/evidence/framework-dependency-integration.json`.
-A fresh native app build and combined-app proof remain pending.
+A fresh native build and combined-app verification now passed at app `6a333a41` with
+framework `d0d66b1`. The no-install build took 383.132 seconds; its roster probe briefly
+booted only MX main, then shut it down, with no app installation during that build.
+Executable `88cdd9c2` and complete bundle manifest `8664c4c4` were verified before runtime
+and after installation. Native verify passed all 12 authored tests in 122.8 seconds and
+reported no findings on light/dark checks or spill across 14 body-53 screens. The coordinator
+inspected saved light, dark and appearance screens. A later direct Device capture showed
+SpringBoard because verify had closed the app; it supplies no additional live app proof.
+The separate symbolic verifier delivered three scripts and skipped nine unsupported scripts;
+that limitation is distinct from the 12 native test passes. Lean semantics was unavailable.
+All 99 tracked runtime processes ended, large/light was restored and read back, MX main
+was confirmed Shutdown, and the owner-checked scheduling lock was released at 06:56:39 UTC.
+Receipt: `tasks/evidence/framework-integrated-native-validation.json`. This closes the bounded
+dependency/build/auth-free integration check, not authenticated chat, status-band or cache proof.
 
 Reset blue retains pale cyan/light native text. The existing observer recorded correct white
 normal title attributes, and a UIKit-only hosted reference reproduced the qualitative hue

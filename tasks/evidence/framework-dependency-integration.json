@@ -1,5 +1,5 @@
 {
-  "status": "dependency integration and contract/typescript gate passed; native rebuild pending",
+  "status": "dependency and contract gate passed; subsequent native validation recorded separately",
   "framework_head": "d0d66b107e462af89d58445f3518c4d638f6df36",
   "product_head": "40bafa7e0e0da5978290adcec8a944aae8c14042",
   "navigation_head": "7529006ab992ff021f790291fedd05b189250e81",
@@ -101,5 +101,6 @@
     }
   ],
   "native_build_or_runtime": false,
-  "user_hard_stop": "2026-11-05T07:49:48Z"
+  "user_hard_stop": "2026-11-05T07:49:48Z",
+  "subsequent_native_receipt": "tasks/evidence/framework-integrated-native-validation.json"
 }

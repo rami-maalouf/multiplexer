@@ -1,0 +1,92 @@
+{
+  "status": "bounded integrated native build and auth-free verification passed",
+  "app_head_tested": "6a333a416ffc67621f91e476266381b0392fecf0",
+  "framework_head": "d0d66b107e462af89d58445f3518c4d638f6df36",
+  "executable_sha256": "88cdd9c261c842d8fc479224db66cbbca89f5d5c955e0fba37beab43d4aab45b",
+  "bundle_manifest_sha256": "8664c4c450b0c7b7ebeb4e858881d55604c3841e610de7d4c87f59712510a316",
+  "build": {
+    "exit_code": 0,
+    "elapsed_seconds": 383.132340540993,
+    "minimum_free_bytes": 31789412352,
+    "sampled_own_simulator_states": [
+      "Booted",
+      "Shutdown",
+      "Shutting Down"
+    ],
+    "installed_during_build": false,
+    "old_bundles_preserved": 3,
+    "receipt_path": "/tmp/mx-root-framework-native-20261105"
+  },
+  "verify": {
+    "result": {
+      "exit_code": 0,
+      "guard_reason": null,
+      "elapsed_seconds": 123.87469604199578,
+      "minimum_free_bytes": 31123918848,
+      "changed_tracked_files": {},
+      "group_ended": true,
+      "log_sha256": "9ef0a8ad84612d7abb76d5b31cbc2fee4d4e16668a5e90c2625a512bd888cec7"
+    },
+    "native_authored_tests": {
+      "passed": 12,
+      "failed": 0
+    },
+    "largest_text_screens": 14,
+    "body_points": 53,
+    "reported_findings": 0,
+    "saved_images_inspected": [
+      "ios-402x874-light.png",
+      "ios-402x874-dark.png",
+      "ios-t11-appearance-follows-the.png"
+    ],
+    "post_exit_direct_display": "springboard; no live app proof",
+    "symbolic_scripts": {
+      "delivered": 3,
+      "skipped_unsupported": 9
+    },
+    "lean_semantics": "not run; lake unavailable",
+    "log_sha256": "9ef0a8ad84612d7abb76d5b31cbc2fee4d4e16668a5e90c2625a512bd888cec7",
+    "receipt_path": "/tmp/mx-root-integrated-verify-20261105"
+  },
+  "screens": {
+    "ios-402x874-dark.png": "56a37f1819b693409017a467462e1bde4a872420136b707900eac747cb0a63c3",
+    "ios-402x874-light.png": "253d209d5ab4ec1b6671c390a1ce35b9316971fefc2a3f26b289b1f0aa728c58",
+    "ios-relaunch.png": "a05f235090ff5aecebbbafd8229ab265bf45ce9b2c236709a7dbcad14f2dcc04",
+    "ios-t1-sign-in-waits-for-the-server.png": "d7ba5070f73d6af7314ebe3ad00fffd33908dcd4e24ff1f3294a61ef737d2805",
+    "ios-t10-appearance-resets-to-default.png": "ba94d36eb27c141be688a086772a7e8d5c08eb28c019f60533fe24e7ecc0e662",
+    "ios-t11-appearance-follows-the.png": "1e050c35636e50cddb2434b5029baf6fee6e840bbd496a63d09ec6ca44e460a4",
+    "ios-t12-new-space-needs-a-name-and.png": "b796184faf424bed0d11ed7a3c23854f796fdb3f68c96bdea012d8df50ac9115",
+    "ios-t2-a-server-that-does-not.png": "625df762f6682dcb24de8a3c8676e496dd95b14010c0d0cc0386fffb9e576d09",
+    "ios-t3-a-wrong-password-is-named-in.png": "d7b33ef57216cf4739ccf27e149b06c436d5a0eeba53a087cc98a454ce935681",
+    "ios-t4-bookmarks-with-none-saved.png": "bf19dafac454ef57846785b83b1bc170fd2b6d70d9f15373718e9bb8dc7840c3",
+    "ios-t5-a-label-needs-a-name-before.png": "e564818a1caf1ef80db6d9715f2afceda0147f3252588702a836faaaedf3d73c",
+    "ios-t6-an-empty-label-picker-offers.png": "aef8ec3990587b9af2a1a940e8fd9a5e6a59e397c62e913c981994d87d22ab56",
+    "ios-t7-settings-changes-the-one.png": "b88a952e8d6999539b7173df3d13192ad3902bc3f328f850017468b5b6a0c8fa",
+    "ios-t8-each-of-settings-speeds-is.png": "d122885542979a01fe1dd0bd4a5b69c0df2d4c0a1f2ee06177fbadc4446113e0",
+    "ios-t9-appearance-keeps-a-chosen.png": "ac83e1093d208d427d727bc79483b296c03defcaeb0633ddf2af9653cf13a864"
+  },
+  "cleanup": {
+    "success": true,
+    "ownerReleased": true,
+    "checks": {
+      "owned_processes_gone": true,
+      "own_sim_shutdown": true,
+      "core_absent": true,
+      "source_unchanged": true,
+      "built_bundle_matches": true,
+      "installed_executable_matches": true,
+      "preferences_large_light_readback": true,
+      "owner_matched_then_removed": true
+    },
+    "verified_at": "2026-11-05T06:56:39.665143+00:00",
+    "installed_executable_sha256": "88cdd9c261c842d8fc479224db66cbbca89f5d5c955e0fba37beab43d4aab45b",
+    "known_process_count": 99
+  },
+  "limits": [
+    "no new authenticated chat or live appearance matrix",
+    "cache checkpoint and new receipt SDK not integrated",
+    "status-band background extension and intermittent chat corruption remain open",
+    "symbolic and screenshot checks do not certify material or raster contrast"
+  ],
+  "hard_stop_utc": "2026-11-05T07:49:48Z"
+}
