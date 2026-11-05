@@ -58,23 +58,41 @@ reproduction bundle. No app overflow workaround is justified. Cached-opening bas
 confirmed usable rows in 3 ms waiting until a 1,178 ms reply, plus a brief resource-reset
 spinner on repeat opening. Row cancellation is validated on isolated Exact `7529006`
 (77 host passes, six scene-dependent skips, native controls passed); combined app adoption
-and the separate intermittent swipe-back defect remain pending. Cache after-checks remain pending.
+and the separate intermittent swipe-back defect remain pending. Historical cache native timing
+showed an available row at 11 ms and reply at 68 ms, with correct cached content during push;
+it does not establish an aligned absolute tap-to-row measurement or current-source acceptance.
 
-Receipt SDK capacity checkpoint: isolated candidate `a2513d51` is not ready for integration.
-The final host run never launched at 7.83 GiB free. Earlier 13/13 results apply to an earlier
-snapshot. The masking second cancel is corrected and scoped review cleared the finding;
-final host validation is still required before any generated simulator build.
+Receipt SDK checkpoint: clean product `a2513d51` passed locked check and 13/13 focused host
+tests. Tooling `b50927bd` passed its two helper tests and the complete official single-simulator
+build. Generated Swift and a separate public-import module compile/link; a fresh explicit
+simulator SDK invocation has empty compiler/linker logs. The XCTest host stopped at missing
+`-L` for `MatrixRustSDK`; the isolated path correction built in 4.02 s and passed one auth-free
+XCTest in 0.107 s. Generated initialization and real Rust ClientBuilder construction/destruction
+ran against the matching signed/loaded SDK image. Room methods, receipt-only callbacks,
+recipient eligibility, merged identity and app wiring remain unproved. Preserve the earlier
+cutoff, packaging and host-link failures as historical evidence.
+
+- [ ] Cache lifecycle review: fix and test deferred older work after same-visit reset,
+  completed-search positioning ownership, empty-budget retry, and final-page delivery ordering.
+  Three corrections are source-only. The SDK has no exported Swift delivery watermark;
+  TimelineStart, Idle and initial listener Reset cannot prove pending ingestion was applied.
+  A revision/generation plus controller/listener acknowledgement design is being assessed;
+  no quiet-period workaround or production SDK change is accepted.
 
 - Cache diagnostics: paired public-API control failed on pristine `a09a33d` (23/25)
   and current code (19/25). Both server histories contain every event; receipt remains
   at the anchor. This proves the failure class exists without the new cache implementation,
-  but does not rule out additional contributions. A same-binary selected-room subscription
-  experiment is diagnostic only; no wait/assertion changes or production workaround.
+  but does not rule out additional contributions. The same-binary selected-room subscription
+  experiment passed 8/8, including the control. It did not reproduce the failure and proves
+  neither a fix nor subscription necessity; no production subscription was added.
 - Tint host regression: baseline 18/19 passed with two assertions failing; reviewed candidate
-  19/19 passed without skips. Native header fill/foreground replay still required.
+  19/19 passed without skips. Cold light native DISPLAY still showed blue for persisted yellow.
+  A later malformed color-pair fixture was corrected and passed 20/20 with decoding checks;
+  it is not a reproduction of the native pixel failure. A gated observer is under source review.
 - Inbox native appearance stopped on sharp pinned content behind the clock at scroll `sy=179`.
   Material begins below the native top clearance. Largest text, Reduce Transparency, extreme
-  accent and final verification remain unrun. A local paint-extension capability is in design.
+  accent and final verification remain unrun. The local decorative paint-extension capability
+  has isolated schema/lowerer source, but host lifecycle proof and native validation remain open.
 - Capacity recovered externally to about 69 GiB after ENOSPC; no coordinator deletion.
   Keep test binaries/evidence and serialize fresh-capacity-checked build/runtime windows.
 
@@ -2153,7 +2171,8 @@ notifications reach no app code (no `willPresent` / `didReceive` hatch).
 - Oracle Always Free as one supported target among others.
 
 Navigation tint follow-up: local finding 125 records the stale prominent header.
-The isolated baseline failed two reparented-root assertions; the reviewed logical-root
-candidate passed all 19 host tests with no skips. Native prominent fill/foreground
-remain unproven after the app build stopped on ENOSPC before its simulator probe.
+The reviewed logical-root candidate passes host tests, but cold light native DISPLAY still
+shows the stale blue prominent button. Corrected valid-pair lifecycle tests pass 20/20;
+the earlier malformed-fixture failure is preserved and is not lifecycle evidence.
+Native prominent fill/foreground acceptance remains open pending the diagnostic observer.
 `exact2-navigation` stays clean at `7529006ab9` for Inbox.

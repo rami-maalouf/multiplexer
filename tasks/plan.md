@@ -39,12 +39,15 @@ fallbacks. Coordinate shared tint and material choices before integration.
 Measured findings: sideways row drags activate navigation on release rather than overflowing
 the inbox width (shared Exact finding 124, owned by Exact/UI). Cached rows were usable in
 3 ms but first native reply waited 1,178 ms; repeat opens also clear the UI resource briefly.
-The receipt SDK candidate is preserved in isolation at `a2513d51`. An earlier snapshot passed
-13 host tests; the final redaction and callback-test changes are runtime-unvalidated. The
-8 GiB free-space guard refused the final run before Cargo started. The cancellation-test review
-finding is corrected and cleared by scoped review; runtime validation remains pending.
-Generated iOS proof and app integration remain pending;
-no production SDK pin has changed.
+The receipt SDK product `a2513d51` passed its locked host check and all 13 focused tests,
+including the final redaction and cancellation controls. Separate tooling `b50927bd` fixed
+the missing packaging destination parent; the official arm64 simulator build then passed.
+Generated Swift bindings and a separate public-import smoke module compile and link. The
+first isolated XCTest host build failed because its library search path omitted the SDK dylib
+directory. The isolated path correction then built and passed one auth-free XCTest exercising
+generated initialization and real Rust ClientBuilder construction/destruction; loaded and signed
+embedded SDK hashes match. Actual Room methods, receipt callbacks, eligibility, merged-preview
+and app integration proof remain pending. No production SDK pin changed.
 
 Appearance app commits `dbff982` and `01b070d7` are integrated on the coordinator branch.
 The follow-up fixes incoming-link contrast without changing chosen outgoing fills. Independent
@@ -409,20 +412,32 @@ commits it. Default/reset is blue (`#007aff`). Native tests and verify pass, but
 acceptance remains open for the separately owned framework navigation-root tint defect.
 
 Navigation tint follow-up: local finding 125 records the stale prominent header.
-The isolated baseline failed two reparented-root assertions; the reviewed logical-root
-candidate then passed all 19 host tests with no skips. Native header fill and foreground
-remain unproven: the app build stopped on disk exhaustion before its simulator probe.
-`exact2-navigation` stays clean at `7529006ab9` for Inbox.
+The logical-root candidate passed 19 host tests, but a rebuilt app still showed a blue
+native Sign In button for persisted yellow in a cold light-mode DISPLAY capture. One dark
+capture showed yellow with black text. A later host fixture initially failed because its
+encoded color pair was malformed; corrected decoding preconditions and the valid pair pass
+20/20 tests. That fixture does not reproduce the native pixel failure. A development-only
+observer is under review to compare root, window, bar and control colors around DISPLAY,
+without whole-state access or tint setters. `exact2-navigation` remains frozen at `7529006ab9`.
 
 Current validation limits: the shared-public-API unread control failed on unchanged
 `a09a33d` (23/25) and the cache branch (19/25), with every sent event present on the
 server and the reader's receipt still at its pre-batch anchor. The SDK contains an
 upstream gappy-sync recount regression compatible with this behavior, but the executed
-pipeline is not established. An isolated selected-room subscription diagnostic is next;
-a passing treatment could avoid that defect rather than repair it. Cache performance
-acceptance remains paused. Inbox's compact header failed native scroll inspection because
+pipeline is not established. The isolated selected-room subscription pair passed all eight
+cases, including its control, so it established neither a fix nor subscription necessity.
+Historical cache native evidence showed an available row at 11 ms and source reply at 68 ms,
+with cached content visible during the push. Video and source clocks do not establish an
+absolute tap-to-row time. A fresh review then found four lifecycle defects: deferred older
+work after reset, late unread positioning after search, empty-budget retry and final-page
+delivery ordering. Three corrections are drafted; the fourth needs a sound SDK delivery
+boundary. Neither TimelineStart, Idle nor a fresh listener snapshot proves pending cache
+events reached Swift. Current source is unaccepted; old measurements remain historical.
+Inbox's compact header failed native scroll inspection because
 its material starts below the status band; a route/scroller-local paint-only extension is
-being specified before implementation. No guessed inset or global viewport change is used.
+being implemented in isolated source only. The proposed `backgroundExtend="safe-area-top"`
+affects decorative material and solid backing, not layout or hit bounds; it is unbuilt and
+not consumer-ready. No guessed inset or global viewport change is used.
 
 Capacity recovery: builds stopped at ENOSPC with less than 200 MiB available. A fresh
 check later found about 69 GiB free without coordinator deletion; the cause is not attributed.
