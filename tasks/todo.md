@@ -86,6 +86,13 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   - Captured on the Simulator: the system keyboard's glass shows only the black page,
     because the page ends at the keyboard's top (`resizes-content`), so no message is
     under it. It differs from Beeper.
+  - [x] Fixed on the Simulator: while the chat is on top, the root's `interactive-widget` is
+    `overlays-content` and the composer is the keyboard's toolbar (`toolbarPlacement="keyboard"`),
+    so the transcript keeps its size and the keyboard's glass shows the messages; every other
+    screen keeps `resizes-content`. Needs the local Exact integration commit "a keyboard toolbar
+    insets a scroller that runs on under it" (the transcript reaches under the composer). Checked:
+    keyboard at the chat's end and scrolled, light, return from the info page, Back with the
+    keyboard open, inbox search, GIF search, the info page's search.
 - [ ] Triage secondary R11-R12 rich link cards and typography/density separately from the
   explicitly requested blockers. Do not infer missing pins or unread-count bugs from unmatched views.
 
@@ -1855,9 +1862,16 @@ title, site) for a shared link; we showed an underlined URL. Rami (2026-11-05): 
   resolved on the Simulator, which showed the failure fallback; example.com's page gave no title or
   picture to LinkPresentation.
 - [ ] Seen on the way, not R11's: in dark, the chat title's capsule over a white picture reads 3.8 to
-  4.4:1 (`check`; R07's bar material). Own bubbles on the default blue draw black text (`onFill`
-  picks black, as white on `#007aff` is 4.0:1), while `check` reads one of them as white: for the
-  accent work.
+  4.4:1 (`check`; R07's bar material).
+- [x] Own text is white again (2026-11-06, the coordinator for Rami, D9: Messages writes white on its
+  blue): white on any accent unless white is under 3:1 there, then black (yellow `#ffcc00`, mint).
+  Bubbles, link cards' title and site, and filled buttons (`onTint`) follow it (`appearance.ts`,
+  `appearance.test.ts`). `check` had read a bubble as white while it drew black: the paragraph had
+  no colour of its own (only its runs had), so `check` measured the default label; the paragraph
+  now carries its runs' ink. Drives: blue and purple white, yellow black, dark and light
+  (`.exact/links/white-*.png`). Accepted: `check` flags white on `#007aff` (4.0:1) and on purple
+  (4.1:1) against its 4.5:1, in own bubbles and Settings' preview (4 `verify ios` findings), the
+  pair Messages uses; Exact has no way to mark it.
 
 ### Later
 
