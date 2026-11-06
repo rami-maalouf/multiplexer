@@ -23,8 +23,20 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   navigation/cache tasks remain open; this new evidence is not a successful regression test.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
+  - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
+    shows the messages behind Back, the title and More, blurred and dimmed more toward the
+    status bar (two masked materials and a `chat.edge` tint, in place of a solid backing).
+    The transcript reaches under the composer and the home indicator; the field is a glass
+    capsule, + and voice (or Send) are 48-point glass circles beside it, and the messages
+    under them are blurred and dimmed (`chat.edge-bottom`). Reduce Transparency draws both
+    edges solid. Checked in dark, light, the largest text size and Reduce Transparency;
+    idle, typed, multiline, reply, recording and keyboard states. The voice draft state
+    could not be reached in a drive (the recorder stays `opening`): check it on the iPhone.
 - [ ] R10: capture Multiplexer keyboard parity first; current video shows only Beeper's
   keyboard. Preserve system input behavior and accessibility.
+  - Captured on the Simulator: the system keyboard's glass shows only the black page,
+    because the page ends at the keyboard's top (`resizes-content`), so no message is
+    under it. It differs from Beeper.
 - [ ] Triage secondary R11-R12 rich link cards and typography/density separately from the
   explicitly requested blockers. Do not infer missing pins or unread-count bugs from unmatched views.
 

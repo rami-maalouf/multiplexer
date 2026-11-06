@@ -48,6 +48,8 @@ component ChatBar
     switchTo: action
     // the reader chose one of the accessibility text sizes.
     largeText: bool
+    // Reduce Transparency: a solid backdrop in place of the blur.
+    solid: bool
   // Back's chevron and count grow a little at the accessibility sizes, as a system bar's stay put.
   derive labelSize = largeText ? 20 : 17
   view
@@ -59,13 +61,17 @@ component ChatBar
       // stronger one that fades out just below the status bar, and the page's colour over both, thicker
       // toward the top, so the materials' grey does not lift a black page.
       // They start above the screen's top, where the list still draws rows past its frame. With
-      // Reduce Transparency the system draws the materials opaque.
-      view position="absolute" top=-120 left=0 right=0 bottom=-24 backgroundMaterial="ultra-thin"
-        mask-image="linear-gradient(to bottom, black 0%, black 55%, transparent 100%)"
-      view position="absolute" top=-120 left=0 right=0 height=140 backgroundMaterial="thin"
-        mask-image="linear-gradient(to bottom, black 0%, black 75%, transparent 100%)"
-      view position="absolute" top=-120 left=0 right=0 bottom=-24
-        background-image="linear-gradient(to bottom, chat.edge 0%, chat.edge 50%, chat.edge-soft 80%, transparent 100%)"
+      // Reduce Transparency, the page's colour behind the bar, fading out just below it.
+      if solid
+        view position="absolute" top=-120 left=0 right=0 bottom=-32
+          background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 80%, transparent 100%)"
+      else
+        view position="absolute" top=-120 left=0 right=0 bottom=-24 backgroundMaterial="ultra-thin"
+          mask-image="linear-gradient(to bottom, black 0%, black 55%, transparent 100%)"
+        view position="absolute" top=-120 left=0 right=0 height=140 backgroundMaterial="thin"
+          mask-image="linear-gradient(to bottom, black 0%, black 75%, transparent 100%)"
+        view position="absolute" top=-120 left=0 right=0 bottom=-24
+          background-image="linear-gradient(to bottom, chat.edge 0%, chat.edge 50%, chat.edge-soft 80%, transparent 100%)"
       // the two sides share the room the title leaves, so the title stays in the middle of the screen
       // whatever Back's count, until a long name needs that room.
       row position="relative" padding="0 16px" align-items="flex-start"
@@ -129,6 +135,6 @@ component ComposerNetwork
   props
     network: string
   view
-    row align-items="center" flex-shrink=0 margin="0 8px 12px 0" aria-hidden=true testId="composer-network"
+    row align-items="center" flex-shrink=0 margin="0 8px 13px 0" aria-hidden=true testId="composer-network"
       text "M" font="-exact-body" width=0 overflow="hidden" visibility="hidden"
       image `assets/networks/${network}.svg` width=20 height=20
