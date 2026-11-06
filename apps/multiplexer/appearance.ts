@@ -10,7 +10,7 @@ const contrast = (a: string, b: string) => {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
 // white on a fill, as Messages writes on its blue (D9), unless white is under 3:1 there (a light
-// colour, such as yellow): then black.
+// colour, such as yellow): then black. For filled controls on the tint.
 const foreground = (fill: string) => contrast(fill, '#ffffff') >= 3 ? '#ffffff' : '#000000';
 const mix = (hex: string, end: number, fraction: number) => `#${rgb(hex).map(c =>
   Math.round(c + (end - c) * fraction).toString(16).padStart(2, '0')).join('')}`;
@@ -27,10 +27,26 @@ function tint(fill: string, dark: boolean) {
   }
   return mix(fill, dark ? 255 : 0, hi);
 }
+// how far own bubbles may deepen the accent toward black (keeping its hue) for white text.
+const DEEPEST = 0.25;
+/** Own bubbles' fill and ink: white on the accent, or on a slightly deeper shade of it (mixed
+ * toward black, so the hue stays) just enough for white to reach 4.5:1, as Messages writes white
+ * on its blue. A light accent that would need more than DEEPEST keeps its colour, with black. */
+function bubbleOf(fill: string): { bubble: string; onFill: string } {
+  if (contrast(fill, '#ffffff') >= 4.5) return { bubble: fill, onFill: '#ffffff' };
+  if (contrast(mix(fill, 0, DEEPEST), '#ffffff') < 4.5) return { bubble: fill, onFill: '#000000' };
+  let lo = 0, hi = DEEPEST;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (contrast(mix(fill, 0, mid), '#ffffff') >= 4.5) hi = mid;
+    else lo = mid;
+  }
+  return { bubble: mix(fill, 0, hi), onFill: '#ffffff' };
+}
 export function appearance(chosen: string) {
   const fill = /^#[0-9a-f]{6}$/i.test(chosen) ? chosen.toLowerCase() : DEFAULT;
   const lightTint = tint(fill, false), darkTint = tint(fill, true);
   const lightInk = foreground(lightTint), darkInk = foreground(darkTint);
-  return { fill, onFill: foreground(fill), tint: `light-dark(${lightTint}, ${darkTint})`,
+  return { fill, ...bubbleOf(fill), tint: `light-dark(${lightTint}, ${darkTint})`,
     onTint: `light-dark(${lightInk}, ${darkInk})` };
 }

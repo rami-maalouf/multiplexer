@@ -1,6 +1,8 @@
-// fill is the exact device preference; tint is readable against platform surfaces.
+// fill is the exact device preference; tint is readable against platform surfaces. bubble is own
+// messages' fill (the accent, or a slightly deeper shade of it for white text), onFill its ink.
 shape Appearance
   fill: string
+  bubble: string
   onFill: string
   tint: string
   onTint: string
@@ -27,7 +29,7 @@ component AccentBadge
     muted: bool
   view
     row flex-shrink=0 align-items="center"
-      row background-color=(muted ? "-exact-tertiary-fill" : appearance.fill) border="1px solid -exact-separator"
+      row background-color=(muted ? "-exact-tertiary-fill" : appearance.bubble) border="1px solid -exact-separator"
         border-radius=12 padding="2px 7px" min-width=20 box-sizing="border-box"
         text label font="-exact-caption1" font-weight=600 font-variant-numeric="tabular-nums" white-space="nowrap"
           color=(muted ? "-exact-label" : appearance.onFill)

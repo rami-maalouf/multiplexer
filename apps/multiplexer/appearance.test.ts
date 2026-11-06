@@ -19,9 +19,16 @@ test('chosen colors remain exact and their foregrounds stay readable', () => {
   for (const color of colors) {
     const p = appearance(color);
     expect(p.fill).toBe(color);
-    // white unless white is under 3:1 on the fill, then black (which is then over 7:1).
-    expect(p.onFill).toBe(contrast(color, '#ffffff') >= 3 ? '#ffffff' : '#000000');
-    expect(contrast(p.fill, p.onFill)).toBeGreaterThanOrEqual(3);
+    // own bubbles: 4.5:1 always; white on the accent or a shade of it at most 25% deeper (the same
+    // hue), else black on the accent itself.
+    expect(contrast(p.bubble, p.onFill)).toBeGreaterThanOrEqual(4.5);
+    if (p.onFill === '#000000') expect(p.bubble).toBe(color);
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16));
+    const [br, bg, bb] = [1, 3, 5].map(i => parseInt(p.bubble.slice(i, i + 2), 16));
+    for (const [c, d] of [[r, br], [g, bg], [b, bb]]) {
+      expect(d).toBeLessThanOrEqual(c);
+      expect(d).toBeGreaterThanOrEqual(Math.floor(c * 0.75) - 1);
+    }
     const [lightTint, darkTint] = sides(p.tint), [lightInk, darkInk] = sides(p.onTint);
     for (const [tint, ink, backgrounds] of [
       [lightTint, lightInk, ['#ffffff', '#f2f2f7', '#e9e9eb']],
@@ -35,7 +42,10 @@ test('chosen colors remain exact and their foregrounds stay readable', () => {
 
 test('own text is white on the default blue and on dark colours, black on light ones', () => {
   expect(appearance('#007aff').onFill).toBe('#ffffff');
+  expect(appearance('#007aff').fill).toBe('#007aff');
+  expect(appearance('#007aff').bubble).not.toBe('#007aff');
   expect(appearance('#5b2a86').onFill).toBe('#ffffff');
+  expect(appearance('#5b2a86').bubble).toBe('#5b2a86');
   expect(appearance('#ffcc00').onFill).toBe('#000000');
   expect(appearance('#7fd8be').onFill).toBe('#000000');
 });
