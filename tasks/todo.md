@@ -93,11 +93,27 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   kept the old style (now as the inbox's); the search field's query stayed at 22 points at the largest
   sizes (now up to 28); the bottom edge in dark mode was a grey band (about #25, now #0b or less, with the
   chat composer's "dark" material and chat.edge-bottom tint). `verify ios` clean (12 tests).
-- [ ] Some chats show no preview and no time in the list, though their chat has recent messages (seen on
-  two Instagram chats, one with 66 unread in search but 0 in the list's data). MatrixCore's latest event
-  for them is empty. Not fixed: reported to the coordinator.
-- [ ] Instagram messages still show raw markdown (`**…**`, `[url](url)`) after the chat lane's html-body
-  fix (ed95f6e): these events may carry the markdown in their plain body only. With the chat lane.
+- [x] Chats with no preview and no time in the list (2026-11-06, branch `fix/instagram-previews`). Cause:
+  the sdk's latest event comes from the events the device has, and the room list syncs only each room's
+  newest event; when that is no message (a reaction, a member's new picture, a redaction) the room has no
+  latest event until it is opened. On a new device: 132 of 187 chats on `@rami`. Fix: `NewestMessages`
+  asks the server once per launch for such a chat's newest message (`/messages`, filtered, no edits or
+  deleted ones), reads it through the sdk (which decrypts it), fills the row's preview and time, and keeps
+  it in the store folder. On `@rami` (read-only): 5 of 327 chats left without a time, all without messages
+  this account can read. The unread counts agreed: search shows the list's own record; the 0 was read
+  seconds after a sign-in, and the same chat shows 66 in both once synced. A sign-out stops the asks first.
+  Test: `NewestMessagesTests` checks the fallback itself (`@test2`'s message under its newer reaction is
+  found, then shown). It does not reproduce the fault: in one small test room the sdk has the latest
+  event (it passed with the fallback off), so the proof of the fault and the fix is the `@rami` count.
+- [x] Instagram raw markdown after ed95f6e (same branch). Cause: the messages are photos and videos with
+  a caption (`m.image` with `formatted_body`), and captions never went through `FormattedText`; search,
+  bookmarks, the info page and the list's text preview also read the plain body. The real html is
+  `<strong>title</strong><p><a href="address?query">address</a></p>`, so the link (its text is its address
+  without the query) was written twice, the paragraph had no line break, and the html's own line breaks
+  stayed. Fix: `FormattedText.words` for every kind and screen, links shown once, blocks on their own
+  lines, source line breaks as spaces (code blocks kept). Unit tests in `FormattedTextTests`.
+- [ ] Intermittent: once after the fix, a drive's sign-out left its `@test2` device (JXTKKHNGGJ) on the
+  server, with no error logged; 4 later sign-outs with logging all worked. Watch for it.
 - [ ] Minor: a preview that starts with a long link leaves "You:" alone on its first line (native text
   wraps whole words). Left as it is.
 - [ ] R03 scrolling frozen after a return to the app (2026-11-06, Simulator): not reproduced, so a

@@ -339,11 +339,11 @@ extension ChatMedia {
         case .image(let content):
             let image = MessageImage(content)
             self.init(id: item.uniqueId().id, isVideo: false, timestamp: event.timestamp, senderName: name, isOwn: event.sender == me,
-                      caption: content.caption ?? "", width: image.width, height: image.height, thumbnailName: image.thumbnailName, duration: 0)
+                      caption: FormattedText.caption(content.caption, content.formattedCaption), width: image.width, height: image.height, thumbnailName: image.thumbnailName, duration: 0)
         case .video(let content):
             let video = MessageVideo(content)
             self.init(id: item.uniqueId().id, isVideo: true, timestamp: event.timestamp, senderName: name, isOwn: event.sender == me,
-                      caption: content.caption ?? "", width: video.width, height: video.height, thumbnailName: video.posterName,
+                      caption: FormattedText.caption(content.caption, content.formattedCaption), width: video.width, height: video.height, thumbnailName: video.posterName,
                       duration: video.duration)
         default:
             return nil

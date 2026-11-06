@@ -472,16 +472,16 @@ extension FoundMessage {
         var image: MessageImage?, video: MessageVideo?, file: MessageFile?, audio: MessageAudio?
         switch message.msgType {
         case .image(let content):
-            (kind, body, image) = (.image, content.caption ?? "", MessageImage(content))
+            (kind, body, image) = (.image, FormattedText.caption(content.caption, content.formattedCaption), MessageImage(content))
         case .video(let content):
-            (kind, body, video) = (.video, content.caption ?? "", MessageVideo(content))
+            (kind, body, video) = (.video, FormattedText.caption(content.caption, content.formattedCaption), MessageVideo(content))
         case .file(let content):
-            (kind, body, file) = (.file, content.caption ?? "", MessageFile(content))
+            (kind, body, file) = (.file, FormattedText.caption(content.caption, content.formattedCaption), MessageFile(content))
         case .audio(let content):
-            (kind, body, audio) = (.audio, content.caption ?? "", MessageAudio(content))
+            (kind, body, audio) = (.audio, FormattedText.caption(content.caption, content.formattedCaption), MessageAudio(content))
             file = MessageFile(name: content.filename, size: Int(content.info?.size ?? 0), mimetype: content.info?.mimetype ?? "")
         case .text, .notice, .emote:
-            kind = .text
+            (kind, body) = (.text, FormattedText.words(message.msgType) ?? message.body)
         default:
             kind = .other
         }
