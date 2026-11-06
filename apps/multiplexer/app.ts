@@ -282,7 +282,9 @@ async function prepare(f: Chosen, photo: boolean, storage: Storage) {
 // the session's store folder, which the native side protects and keeps out of backups (Matrix.swift,
 // threadCopiesFile): read once when its chat list first loads; written when a chat gets its first
 // copy, else from the chat list's next answer, which comes with each change. Sign Out deletes them. servedCopy: the chats just answered
-// from their copy, whose next ask goes to the native side.
+// from their copy, by screen, whose next ask goes to the native side. showingLive: the chat each
+// screen (thread, peek) shows from a live answer; a change on it asks again, and that ask is live
+// too, so only an opening shows the copy (a copy behind a live answer still filling flickered).
 // the native module, as every source receives it.
 type Native = NonNullable<Parameters<Answer>[4]>;
 const THREAD_COPIES = 40;
@@ -291,6 +293,7 @@ const threadCopies = new Map<string, MessagesAnswer>();
 // shows its cards at once); loadMessages and loadLinkPreviews fill it from the module.
 const cards = new Map<string, Card>();
 const servedCopy = new Set<string>();
+const showingLive = new Map<string, string>();
 let copiesOwner = '';
 let copiesRead: Promise<void> | undefined;
 let copiesDirty = false;
@@ -312,6 +315,7 @@ function readThreadCopies(userId: string, native: Native): Promise<void> {
   threadCopies.clear();
   cards.clear();
   servedCopy.clear();
+  showingLive.clear();
   copiesRead = native.later({ op: 'readCopies' }).then((answer) => {
     const text = (answer as { text: string }).text;
     if (text === '') return;
@@ -575,14 +579,17 @@ const sources: Sources = {
   // network sets how long your own can be edited and deleted (limits.ts). A chat opened before in
   // this session answers at once from its last answer (R04: no spinner while the native side
   // answers); that answer says `cached`, and the screen asks again at once for the live one.
-  loadMessages: ([roomId, isDirect, roomName, utcOffset, network], _store, _storage, native) => {
+  // screen: which screen asks ("thread" or "peek"); a change on the chat it shows asks live.
+  loadMessages: ([roomId, isDirect, roomName, utcOffset, network, screen], _store, _storage, native) => {
     if (roomId === '' || !native?.available) {
+      showingLive.delete(screen);
       return { room: roomId, atStart: true, group: false, firstUnread: '', settling: false, cached: false, messages: [] };
     }
     native.watch(`thread:${roomId}`);
     const copy = threadCopies.get(roomId);
-    if (copy && !servedCopy.has(roomId)) {
-      servedCopy.add(roomId);
+    const served = `${screen} ${roomId}`;
+    if (copy && showingLive.get(screen) !== roomId && !servedCopy.has(served)) {
+      servedCopy.add(served);
       // its "New" line and its start are the live answer's to say.
       const thread = threadOf({ ...copy, firstUnread: '', atStart: false, settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
       // its links' kept previews, read at once, so the copy shows its cards too.
@@ -592,7 +599,8 @@ const sources: Sources = {
       for (const c of kept.items) cards.set(c.url, c);
       return { ...thread, messages: thread.messages.map((m) => ({ ...m, card: cards.get(m.previewUrl) ?? noCard })) };
     }
-    servedCopy.delete(roomId);
+    servedCopy.delete(served);
+    showingLive.set(screen, roomId);
     return (async (): Promise<Result<'loadMessages'>> => {
       const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
       const shown = withKeptOlder(answer, threadCopies.get(roomId));
@@ -836,6 +844,7 @@ const sources: Sources = {
     // the native side deletes the session's store folder, the kept copies' file with it.
     threadCopies.clear();
     servedCopy.clear();
+    showingLive.clear();
     copiesOwner = '';
     copiesRead = undefined;
     copiesDirty = false;
