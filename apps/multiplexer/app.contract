@@ -932,7 +932,7 @@ component Multiplexer
     haptic("success")
 
   view
-    main accent-color=appearance.tint testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow notificationclick=openReminder interactive-widget="resizes-content"
+    main accent-color=appearance.tint testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow notificationclick=openReminder interactive-widget=(top(nav).name == "room" ? "overlays-content" : "resizes-content")
       width="100%" height="100%"
       for e in stack(nav) key=e.id
         if e.name == "home"
@@ -1474,7 +1474,11 @@ component Multiplexer
             // the blur fading in just above the bar and reaching under the home indicator (40, as the list).
             // With Reduce Transparency the bar is the page's colour, fading in above it, as before.
             if threadShown
-              column inert=(held != "") flex-shrink=0 position="relative" testId="composer-bar"
+              // the keyboard's own toolbar while the chat is on top (the root's interactive-widget): it rides
+              // the keyboard's top and the transcript keeps its size under the keyboard, which shows the
+              // messages through its glass, as Beeper's does; the transcript gains a bottom inset instead.
+              // Every other screen keeps the default, where the page ends at the keyboard's top.
+              column inert=(held != "") flex-shrink=0 position="relative" role="toolbar" toolbarPlacement="keyboard" testId="composer-bar"
                 if viewport.prefersReducedTransparency
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none" aria-hidden=true
                     background-image="linear-gradient(to bottom, transparent 0px, -exact-background 24px, -exact-background 100%)"
