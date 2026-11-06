@@ -165,7 +165,8 @@ extension MatrixAccount {
     /// chat shows, the chat pages back once to the receipt's message (at most `pageLimit`
     /// events) and shows from a few messages before it, so the "New" line has its place. Nil
     /// when the room counts no unread message, or the first unread one is further back.
-    public func firstUnread(roomId: String, pageLimit: Int = 300, timeout: TimeInterval = 30) async throws -> String? {
+    /// With `pageBack` false, it only looks among the messages the chat shows (nil if not there).
+    public func firstUnread(roomId: String, pageLimit: Int = 300, pageBack: Bool = true, timeout: TimeInterval = 30) async throws -> String? {
         let target = try await room(roomId, timeout: timeout)
         guard let info = try? await target.roomInfo(), info.numUnreadMessages > 0 else { return nil }
         let me = try client.userId()
@@ -183,10 +184,22 @@ extension MatrixAccount {
             guard let found, live.shown(limit: 20).contains(where: { $0.id == found }) else { return nil }
             return found
         }
+        // while the chat still fills, the line is sure only when the receipt's message is loaded too:
+        // else the first unread one loaded may not be the first unread (R04).
+        if !pageBack {
+            guard let latest else { return nil }
+            let loaded = live.items.read { items, _ in
+                items.contains { item in
+                    if case .eventId(latest.eventId)? = item.asEvent()?.eventOrTransactionId { return true }
+                    return false
+                }
+            }
+            guard loaded else { return nil }
+        }
         if let found = shownFirstUnread() { return found }
         // a few read messages above the line, more than half a screen, so the chat placed at the
         // line does not start at the top of what it shows.
-        guard let latest, try await live.pageBackOnce(toEvent: latest.eventId, context: 8, limit: pageLimit) else { return nil }
+        guard pageBack, let latest, try await live.pageBackOnce(toEvent: latest.eventId, context: 8, limit: pageLimit) else { return nil }
         // the chat shows more now: no change of the timeline's says so.
         notify(.room(roomId))
         return shownFirstUnread()

@@ -213,7 +213,15 @@ public final class MatrixAccount: @unchecked Sendable {
     /// A room's messages, oldest first. The first call opens the chat's live timeline with
     /// its last `limit` messages; later calls return those and every message since, so a
     /// new message never pushes one the reader has loaded out of the chat.
+    /// The opening's fill is in: a chat opened here shows its full first screen.
     public func messages(roomId: String, limit: Int, timeout: TimeInterval = 30) async throws -> [Message] {
+        let live = try await liveTimeline(roomId, limit: limit, timeout: timeout)
+        await live.waitForFill()
+        return try await messagesNow(roomId: roomId, limit: limit, timeout: timeout)
+    }
+
+    /// The messages the chat shows now, while its opening may still fill (`opening`).
+    func messagesNow(roomId: String, limit: Int, timeout: TimeInterval) async throws -> [Message] {
         let live = try await liveTimeline(roomId, limit: limit, timeout: timeout)
         // a chat deleted here or on another device shows only what came after.
         live.items.since = await chatMarks().cleared[roomId] ?? 0
@@ -248,7 +256,13 @@ public final class MatrixAccount: @unchecked Sendable {
         items.since = await chatMarks().cleared[roomId] ?? 0
         let handle = await timeline.addListener(listener: items)
         let live = LiveTimeline(timeline: timeline, items: items, handle: handle)
-        try await live.pageBack(until: limit)
+        // the chat opens on what this device has kept of it, else on the first page with a message
+        // (R04: waiting for a full screen of history held a chat on its spinner for a second or more).
+        // The timeline hands over what it keeps in its first diff, a moment after the listener; a
+        // message there is enough to open on, with no wait for the diffs to go quiet.
+        let opened = Date()
+        while items.messages().isEmpty, Date().timeIntervalSince(opened) < 0.2 { try? await Task.sleep(nanoseconds: 10_000_000) }
+        if items.messages().isEmpty { try await live.pageBack(until: 1, quiet: 0.15) }
         live.show(last: limit)
         // from here on, a change is news: a message came, or one was sent, edited or removed.
         items.onChange = { [weak self] in self?.notify(.room(roomId)) }
@@ -261,6 +275,8 @@ public final class MatrixAccount: @unchecked Sendable {
             self.notify(.room(roomId))
         }
         lock.withLock { readyTimelines[roomId] = live }
+        // the rest of the chat's first screen comes behind it; the chat hears when it is in.
+        live.startFill(to: limit) { [weak self] paged in if paged { self?.notify(.room(roomId)) } }
         return live
     }
 
@@ -276,7 +292,9 @@ public final class MatrixAccount: @unchecked Sendable {
 
     /// True once an open chat shows the room's first message: there is nothing older to load.
     public func isAtStart(roomId: String, timeout: TimeInterval = 30) async throws -> Bool {
-        try await liveTimeline(roomId, limit: 20, timeout: timeout).atStart
+        let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
+        await live.waitForFill()
+        return live.atStart
     }
 
     /// Puts a text message in the room's send queue and returns at once. The chat shows
@@ -572,6 +590,8 @@ final class LiveTimeline: @unchecked Sendable {
     private var reachedStart: Bool { lock.withLock { startAtReset } == items.resetCount }
     /// The read receipt's event the chat paged back to for its "New" line (`pageBackOnce`).
     private var pagedToReceipt: String?
+    /// The opening's page back to a full first screen, while it runs (`startFill`).
+    private var fill: Task<Void, Never>?
 
     init(timeline: Timeline, items: TimelineItems, handle: TaskHandle) {
         self.timeline = timeline
@@ -618,29 +638,71 @@ final class LiveTimeline: @unchecked Sendable {
         lock.withLock { firstShown = first }
     }
 
+    /// True while the opening still pages back to a full first screen.
+    var isFilling: Bool { lock.withLock { fill != nil } }
+
+    /// Pages back, behind the opened chat, until it shows its last `count` messages (or the room's
+    /// first); `done` says whether it brought more messages. Showing older messages and paging to an event wait
+    /// for it, so two page-backs never run at once.
+    func startFill(to count: Int, done: @escaping @Sendable (Bool) -> Void) {
+        let missing = count - shown(limit: count).count
+        guard missing > 0, !reachedStart, !items.reachesCut else { return }
+        lock.withLock {
+            guard fill == nil else { return }
+            fill = Task { [weak self] in
+                guard let self else { return }
+                let before = self.items.messages().count
+                try? await self.pageBack(until: missing, quiet: 0.15)
+                self.widen(toLast: count)
+                self.lock.withLock { self.fill = nil }
+                // only news makes the chat ask again, so a fill that finds nothing more ends there.
+                done(self.items.messages().count > before)
+            }
+        }
+    }
+
+    /// Waits for the opening's fill, if it runs.
+    func waitForFill() async {
+        if let running = lock.withLock({ fill }) { await running.value }
+    }
+
+    /// Shows the last `count` messages, unless the chat already shows more (older ones it loaded).
+    private func widen(toLast count: Int) {
+        let all = items.messages()
+        guard let target = all.suffix(count).first?.id else { return }
+        lock.withLock {
+            guard let first = firstShown, let shownAt = all.firstIndex(where: { $0.id == first }),
+                  let targetAt = all.firstIndex(where: { $0.id == target }) else { firstShown = target; return }
+            if targetAt < shownAt { firstShown = target }
+        }
+    }
+
     /// Pages back until the timeline holds at least `count` messages before the first one
     /// shown (all of them when none is shown yet), or the room's start; at most 5 pages,
     /// since a page holds state events too (joins, names).
-    func pageBack(until count: Int) async throws {
+    /// `quiet`: how long the timeline's diffs must stop before it counts again (the opening's
+    /// fill and first page use a short one).
+    func pageBack(until count: Int, quiet: TimeInterval = 0.5) async throws {
         // a page is 50 events, at most 20 pages (1,000 events): a room whose newest events are
         // mostly ones the chat does not show (a bridge's members joining or renamed) needs many
         // pages for a few messages; before, 100 events of them opened the chat empty, and an
         // empty chat has no list to ask for more.
         for _ in 0..<20 {
             // the timeline delivers its diffs on the sdk's own task; wait until they stop arriving.
-            await items.settle()
+            await items.settle(quiet: quiet)
             if reachedStart || items.reachesCut || olderThanShown() >= count { return }
             let resets = items.resetCount
             let start = try await timeline.paginateBackwards(numEvents: 50)
             lock.withLock { startAtReset = start ? resets : nil }
         }
-        await items.settle()
+        await items.settle(quiet: quiet)
     }
 
     /// Pages back until the timeline holds the event `eventId`, at most `limit` events or to the
     /// room's start, then shows from `context` messages before it (never fewer than it shows).
     /// The message's id in the chat, or nil when it is not that far back.
     func show(event eventId: String, context: Int, limit: Int) async throws -> String? {
+        await waitForFill()
         var paged = 0
         while true {
             if let id = items.messageId(ofEvent: eventId) {
@@ -677,6 +739,7 @@ final class LiveTimeline: @unchecked Sendable {
     }
 
     func showOlder(_ count: Int) async throws {
+        await waitForFill()
         try await pageBack(until: count)
         let all = items.messages(), older = olderThanShown()
         let first = all.isEmpty ? nil : all[max(0, older - count)].id
