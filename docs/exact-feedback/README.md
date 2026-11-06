@@ -155,6 +155,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 130 | A swiped row's line runs from the cell's margin after it closes; fixed locally in the integration checkout (`cc75ef11d0`). | About 15 min | P3 | [a-swiped-row-s-line-runs](issues/20261106-a-swiped-row-s-line-runs.md) |
 | 131 | A drive cannot cross the app leaving the foreground and coming back: no Home, app switcher or lock op, and every op fails while the app is away. | About 30 min | P3 | [a-drive-cannot-cross-a-return](issues/20261106-a-drive-cannot-cross-a-return.md) |
 | 132 | `verify` leaves the drives' kept session signed out, and says nothing: the next drive meets the sign-in screen. | About 3 min | P3 | [verify-leaves-the-drives-kept-session](issues/20261106-verify-leaves-the-drives-kept-session.md) |
+| 133 | A text that spills its box shows only in `check`, one screen at a time; `layout` ranges and `tap <list> into` give no sign. | About 60 min | P3 | [a-text-that-spills-its-box](issues/20261106-a-text-that-spills-its-box.md) |
 
 ## What worked well
 
