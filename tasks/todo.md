@@ -232,6 +232,14 @@ had nothing to show at once.
   only an opening shows the copy (`showingLive`, per screen). After: messages stay, the new ones
   arrive with no spinner and no step back; A-B-A still shows the chat in its push. Proof:
   `apps/multiplexer/.exact/r04-return/`.
+- [x] The room list's text wider than its box (2026-11-06, `@rami` read only, signed out after).
+  Found with the drive's `check` on every screen (the list's own range is hidden by
+  `overflow-x="hidden"` and the swipe rows): two link previews whose long run of characters fell in
+  their two visible lines spilled 17 pt and 60 pt past their 310 pt box (76 + 310 + 60.875 = the
+  446.875 seen in R01), drawn to the screen's edge with no ellipsis. Fix: `overflow-wrap="break-word"`
+  on the row's name and preview, the pinned name and the search row's name and preview. After: no
+  spill in a scan of the whole list; the row ends in an ellipsis in dark, light and the largest
+  text size. Screenshots with real data only in `/tmp/mx-wide-text/`.
 - [ ] After a long time away, the newest message shows about 1 s before the ones between it and the
   older ones (the sync's gap, filled by the SDK). Hide the gap until it fills?
 

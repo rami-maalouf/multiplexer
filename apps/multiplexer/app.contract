@@ -1807,6 +1807,7 @@ component RoomFace
           // name's ellipsis never hides the bell.
           row flex="1 1 10rem" min-width=0 gap=4 align-items="baseline"
             text r.name font="-exact-headline" font-weight=(loud(r) ? 700 : 600) line-clamp=(largeText ? 2 : 1) min-width=0
+              overflow-wrap="break-word"
             if r.muted
               image "symbol:icon.bell-slash" font="-exact-headline" width="0.8em" height="0.8em" flex-shrink=0
                 color="-exact-secondary-label" aria-label="Muted" testId=`muted-${r.id}`
@@ -1817,8 +1818,9 @@ component RoomFace
         // count; with a mention, "@" and the accent. marked unread by hand: a dot.
         row gap=8 align-items="flex-start"
           // an own message: its receipt in place of "You:", an outline check once sent, filled once seen.
+          // a word longer than the line (a link) breaks where it must, so the ellipsis ends it in its box.
           text font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
-            min-height="2.6em" flex=1 min-width=0 testId=`room-preview-${r.id}`
+            min-height="2.6em" flex=1 min-width=0 overflow-wrap="break-word" testId=`room-preview-${r.id}`
             if r.lastIsOwn and r.lastStatus != "" and r.lastMessage != ""
               image (r.lastStatus == "seen" ? "symbol:icon.seen" : "symbol:icon.sent") width="0.95em" height="0.95em"
                 vertical-align="-0.12em" color="-exact-secondary-label" aria-label=(r.lastStatus == "seen" ? "Seen" : "Sent")

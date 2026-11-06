@@ -182,6 +182,7 @@ component ChatResult
         row flex-wrap="wrap" column-gap=6 align-items="baseline"
           row flex="1 1 10rem" min-width=0 gap=4 align-items="baseline"
             text chat.name font="-exact-headline" font-weight=(chat.loud ? 700 : 600) color="-exact-label" line-clamp=(largeText ? 2 : 1)
+              overflow-wrap="break-word"
               min-width=0
             if chat.muted
               image "symbol:icon.bell-slash" font="-exact-headline" width="0.8em" height="0.8em" flex-shrink=0
@@ -190,6 +191,7 @@ component ChatResult
             text formatDay(chat.lastTime, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label" margin-left="auto"
         row gap=8 align-items="flex-start"
           text chat.preview font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2 min-height="2.6em" flex=1 min-width=0
+            overflow-wrap="break-word"
           if chat.mentions > 0
             view flex-shrink=0
               AccentBadge(appearance=appearance, label=`@ ${countText(max(chat.unread, chat.mentions))}`, muted=false)

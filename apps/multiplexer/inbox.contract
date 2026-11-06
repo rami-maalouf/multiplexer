@@ -148,6 +148,7 @@ component PinnedGrid
               view position="absolute" right=0 bottom=0 border-radius=14 background-color="-exact-background" padding=2
                 ChooseMark(on=chosen.includes(r.id), identifier=`pinned-mark-${r.id}`)
           text r.shortName font="-exact-subheadline" color="-exact-secondary-label" line-clamp=1 max-width="100%"
+            overflow-wrap="break-word"
 
 // the inbox's title, as Beeper's: its words and a chevron at the top left, which open a menu.
 // Select Chats, Merge Chats and Settings. The route draws this row in place of the system bar,
