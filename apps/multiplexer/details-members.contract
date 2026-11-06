@@ -32,7 +32,9 @@ members Multiplexer
   // a link's page opens over the chat on iOS (Safari's view, Done comes back), else in the browser.
   resource browser = inAppBrowserStatus() as shape InAppBrowserStatus else empty(available=false, overApp=false)
   mutation browsed as shape BrowserResult
-  task keepNew when threadShown and newLineRoom != openRoom key=openRoom
+  // the line is the live answer's: a kept copy has none, and while more is on its way it may be
+  // further back than the first answer shows.
+  task keepNew when threadShown and newLineRoom != openRoom and (thread.firstUnread != "" or not thread.settling) key=openRoom
     after(1, keepNewLine)
   task forgetNew when openRoom == "" and newLineRoom != ""
     after(1, forgetNewLine)
