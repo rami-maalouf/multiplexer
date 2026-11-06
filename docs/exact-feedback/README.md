@@ -149,6 +149,8 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 124 | A horizontal drag inside a full-width list link activates it on release, starting a navigation push. | Native controls and isolated host regression investigation | P2 | [horizontal-row-drag-activates-link](issues/20261104-horizontal-row-drag-activates-link.md) |
 | 125 | A reactive navigation-root accent updates descendants but leaves a prominent native header blue. | Native visual mismatch and isolated regression investigation | P2 | [reparented-root-window-tint](issues/20261104-reparented-root-window-tint.md) |
 | 126 | A physical-device release cannot qualify a target-only Swift package module roster. | About 282 s failed release plus 183 s development build | P2 | [device-release-roster-rejects-swift-package](issues/20261105-device-release-roster-rejects-swift-package.md) |
+| 127 | Which swipe action a full swipe performs (the first id of `swipeTrailing`) is not documented; only the iOS host says it. | About 5 min | P3 | [which-swipe-action-a-full-swipe](issues/20261106-which-swipe-action-a-full-swipe.md) |
+| 128 | Under real touches a drive cannot tap a native swipe action by its id, and `drag ... from x y` counts from content that moves while the row is open. | About 10 min | P3 | [a-drive-cannot-tap-a-native](issues/20261106-a-drive-cannot-tap-a-native.md) |
 
 ## What worked well
 
