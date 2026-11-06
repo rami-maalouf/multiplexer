@@ -202,7 +202,7 @@ public final class MatrixAccount: @unchecked Sendable {
                 }
                 latest.fill(&summary)
                 if summary.lastIsOwn, !summary.lastMessage.isEmpty, summary.lastMessage != "Message deleted" {
-                    summary.lastStatus = await previewStatus(room, info: info, timestamp: timestamp)
+                    summary.lastStatus = await previewStatus(room, info: info, timestamp: timestamp, text: summary.lastMessage)
                 }
             case .local(let timestamp, let sender, let profile, let content, _):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: true, profile: profile, content: content)
