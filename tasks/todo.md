@@ -195,9 +195,24 @@ had nothing to show at once.
   drafts, pagination and merged-room switching. Owner: Later lane.
 - [ ] Completing, cancelling and reversing interactive chat swipe-back leaves both layouts
   intact, including with the keyboard shown. Reproduce with native touches. Owner: Exact/UI lane.
-- [ ] Outgoing list previews replace `You:` with subtle accessible receipt symbols tied to the
+- [x] Outgoing list previews replace `You:` with subtle accessible receipt symbols tied to the
   exact preview event. Prove remote seen updates without opening that chat; keep unknown,
   pending and failed states truthful. Cover merged rows and supported list surfaces. Owner: Labels lane.
+  Done 2026-11-06 (branch `work/preview-receipts`), the smallest version with the pinned SDK, no fork:
+  - MatrixCore `RoomSummary.lastStatus`: "sent" when the newest message is your own and on the server
+    (latest event `.remote`), "seen" when another member's public read receipt (`Room.loadUserReceipt`) points
+    at an event whose time is at or after it (`loadOrFetchEvent`, times cached), "" otherwise (not yours,
+    sending, failed, deleted). The latest event has no id, so "at or after" compares event times.
+  - Members looked at: the room's joined members but you and the bridge's service members (heroes, else the
+    store's members, else the server's once a room), at most 25: in a bigger group a reader beyond them
+    leaves "sent", never a "seen" without evidence. Merged chats copy their newest room's status.
+  - A watch reads again, every 2 s and locally, the receipts of at most 30 chats showing "sent", and tells
+    the list when one is seen (another member's receipt changes no room in the room list).
+  - The row: an outline check (sent) or a filled check (seen) in the secondary label colour, spoken "Sent" or
+    "Seen", in place of "You:"; "You:" stays when the state is unknown.
+  - `testThePreviewSaysSentThenSeen` (`@test1` sends: sent; `@test2` reads: seen; their answer: none). Drive:
+    `@test1` sent from outside the app, `@test2` read with `send-test-message.sh --read`: the row turned from
+    sent to seen within seconds without opening the chat, dark and light (`.exact/receipts/`). `verify ios` clean.
 - [x] Appearance settings: seven presets, a real native color picker with Cancel and Use Color,
   exact local fill persisted across launch, reset to default blue, and computed readable foregrounds.
   Outgoing bubbles and badges keep the chosen fill; links and controls use readable light/dark tints.

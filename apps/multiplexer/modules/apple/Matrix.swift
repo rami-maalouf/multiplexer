@@ -487,7 +487,7 @@ final class Matrix: ExactModule {
     /// tells `topic`.
     @MainActor private func roomRecord(_ room: RoomSummary, listed: Bool, _ account: MatrixAccount, topic: String) -> [String: Any] {
         ["id": room.id, "name": room.name, "roomName": room.roomName, "isDirect": room.isDirect, "lastMessage": room.lastMessage,
-         "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastTime": Double(room.lastTimestamp),
+         "lastSender": room.lastSenderName, "lastIsOwn": room.lastIsOwn, "lastStatus": room.lastStatus, "lastTime": Double(room.lastTimestamp),
          "unread": room.unreadCount, "network": room.network, "markedUnread": room.isMarkedUnread,
          "oneToOne": room.isOneToOne, "listed": listed,
          "muted": room.isMuted, "mentions": room.unreadMentions, "lowPriority": room.isLowPriority,

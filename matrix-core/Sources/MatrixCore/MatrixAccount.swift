@@ -29,6 +29,9 @@ public final class MatrixAccount: @unchecked Sendable {
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
     let accountDataWatch = AccountDataWatch()
+    /// The list preview's receipts and the watch that reads them again (PreviewReceipts.swift).
+    let receipts = PreviewReceipts()
+    let receiptWatch = PreviewReceiptWatch()
     private var syncService: SyncService?
     /// The sync's start, shared: callers at launch (the list, Send Later, Bookmarks) ask at once,
     /// and a second sync service with its own room list crashed the sdk.
@@ -193,15 +196,20 @@ public final class MatrixAccount: @unchecked Sendable {
                     summary.fillPreviewSender(sender: sender, memberName: try? await room.memberDisplayName(userId: sender))
                 }
                 latest.fill(&summary)
+                if summary.lastIsOwn, !summary.lastMessage.isEmpty, summary.lastMessage != "Message deleted" {
+                    summary.lastStatus = await previewStatus(room, info: info, timestamp: timestamp)
+                }
             case .local(let timestamp, let sender, let profile, let content, _):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: true, profile: profile, content: content)
             case .none, .remoteInvite:
                 break
             }
             if let live = lock.withLock({ readyTimelines[summary.id] }) { summary.fillDeleted(live.items.messages()) }
+            if summary.lastMessage == "Message deleted" { summary.lastStatus = "" }
             rooms.append(summary)
         }
         latest.save()
+        receipts.remember(rooms)
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
         await fillCustomNames(&rooms)
@@ -452,6 +460,7 @@ public final class MatrixAccount: @unchecked Sendable {
         }
         search.stop()
         accountDataWatch.stop()
+        receiptWatch.stop()
         let service = lock.withLock {
             syncStart = nil
             return syncService
@@ -501,6 +510,8 @@ public final class MatrixAccount: @unchecked Sendable {
         // its baseline and then miss a marker that the sdk delivered during that read.
         let initial = await AccountDataWatch.values(client)
         accountDataWatch.start(client, initial: initial) { [weak self] types in self?.accountDataChanged(types) }
+        // another member's read receipt changes no room in the room list: the watch tells the list.
+        receiptWatch.start(self) { [weak self] in self?.notify(.rooms) }
     }
 
     func accountDataChanged(_ types: Set<String>) {
