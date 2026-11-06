@@ -11,6 +11,10 @@ import MatrixRustSDK
 /// joined members other than this account and the bridge's service members, at most 25: in a larger
 /// group a reader beyond them leaves "sent", never a "seen" without evidence.
 extension MatrixAccount {
+    /// Whether the list's receipt watch reads: off while the app is in the background or the chat
+    /// list is not on screen.
+    public func watchPreviewReceipts(_ on: Bool) { receiptWatch.setActive(on) }
+
     func previewStatus(_ room: Room, info: RoomInfo?, timestamp: UInt64) async -> String {
         guard let info else { return "sent" }
         let me = (try? client.userId()) ?? ""
@@ -77,15 +81,21 @@ final class PreviewReceipts: @unchecked Sendable {
 /// Reads again, every `interval` seconds while the account syncs, the receipts of the chats whose
 /// preview says "sent": another member's receipt changes no room in the room list, so nothing else
 /// tells the list. Local reads only (the store), at most 30 chats; `changed` when one is now seen.
+/// It reads nothing while the app says the list is hidden or the app is in the background
+/// (`MatrixAccount.watchPreviewReceipts`).
 final class PreviewReceiptWatch: @unchecked Sendable {
     private var task: Task<Void, Never>?
     private let lock = NSLock()
+    /// Off while the app is in the background or the list is not on screen: no reads then.
+    private var active = true
+    func setActive(_ on: Bool) { lock.withLock { active = on } }
 
     func start(_ account: MatrixAccount, interval: TimeInterval = 2, changed: @escaping @Sendable () -> Void) {
-        let task = Task { [weak account] in
+        let task = Task { [weak account, unowned self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                 guard let account, !Task.isCancelled else { return }
+                guard self.lock.withLock({ self.active }) else { continue }
                 for (id, timestamp) in account.receipts.waiting {
                     guard let room = try? account.client.getRoom(roomId: id) else { continue }
                     let info = try? await room.roomInfo()

@@ -362,6 +362,12 @@ component Multiplexer
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
+  // tells the core whether the chat list is on screen, each time that changes: its receipt watch
+  // pauses when it is not.
+  derive listOnTop = session.userId != "" and top(nav).name == "home" and not searching
+  mutation listShownMark as shape Reply
+  task listShownTask when session.userId != "" key=listOnTop
+    after(1, markListShown)
   resource roomList = loadRoomsByRecency(session.userId, filter, network, community, chatList, labelFilter) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
@@ -934,6 +940,8 @@ component Multiplexer
   action swipeChat(id: string, change: string)
     send changedChat = changeChat(id, change)
     haptic("success")
+  action markListShown
+    send listShownMark = markListShown(session.userId, listOnTop)
   action askDelete
     showModal("delete-chat")
   // the chat bar's "..." pins, mutes or marks unread the open chat.

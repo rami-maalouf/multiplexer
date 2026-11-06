@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Answers app.ts's asks with MatrixCore (the core-*.swift files beside this one).
 /// the session is in the keychain; its store is in data or the app group's container.
@@ -18,6 +21,21 @@ final class Matrix: ExactModule {
     }
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
     private var account: Task<MatrixAccount, Error>?
+    /// The chat list's receipt watch reads only while the list is on screen and the app in front.
+    private var listShown = true, inFront = true
+    private var lifecycle: [NSObjectProtocol] = []
+    @MainActor private func applyReceiptWatch() {
+        let on = listShown && inFront
+        Task { @MainActor in (try? await self.signedIn())?.watchPreviewReceipts(on) }
+    }
+    @MainActor private func observeLifecycle() {
+        guard lifecycle.isEmpty else { return }
+        for (name, front) in [(UIApplication.didEnterBackgroundNotification, false), (UIApplication.willEnterForegroundNotification, true)] {
+            lifecycle.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.inFront = front; self?.applyReceiptWatch() }
+            })
+        }
+    }
     /// Topics that changed and app.ts has not heard of yet: a burst of changes becomes one ask.
     private var changedTopics: Set<String> = []
     /// Downloaded pictures, as `app:/cache/matrix-media/<name>` in the view.
@@ -79,6 +97,12 @@ final class Matrix: ExactModule {
                             "avatar": cached(c.avatarName, topic: "rooms") { _ = try await account.avatarFile(roomId: c.id, directory: self.media) }] }])
                 case "labels", "label":
                     reply.send(try await labelRequest(request))
+                case "listShown":
+                    // the app: whether the chat list is the screen in front (its receipt watch reads only then).
+                    observeLifecycle()
+                    listShown = request["shown"] as? Bool ?? true
+                    applyReceiptWatch()
+                    reply.send(["ok": true])
                 case "pin", "unpin":
                     // a merged chat pins or unpins each of its rooms.
                     let chatId = request["roomId"] as? String ?? "", account = try await signedIn()
