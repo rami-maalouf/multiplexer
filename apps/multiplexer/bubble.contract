@@ -23,7 +23,7 @@ component Balloon
     dimmed: bool
     identifier: string
   view
-    BalloonBox(appearance=appearance, outgoing=outgoing, tail=tail, dimmed=dimmed, identifier=identifier)
+    BalloonBox(appearance=appearance, outgoing=outgoing, tail=tail, dimmed=dimmed, card=false, identifier=identifier)
       text body position="relative" color=(outgoing ? appearance.onFill : "-exact-label") white-space="pre-wrap" overflow-wrap="break-word" min-width=0
 
 // a bubble's fill and tail around what it holds: a text (Balloon), or a text with links (details.contract's RichBalloon).
@@ -33,12 +33,14 @@ component BalloonBox
     outgoing: bool
     tail: bool
     dimmed: bool
+    // a link's card (details.contract's LinkBalloon): a narrow inset, so its picture spans the bubble.
+    card: bool
     identifier: string
   slot
   derive fill = outgoing ? appearance.fill : "bubble.incoming"
   view
     box id=identifier testId=identifier position="relative" min-width=44 max-width="100%" box-sizing="border-box"
-      padding="8px 14px 9px" border-radius=20 background-color=fill opacity=(dimmed and not outgoing ? 0.6 : 1)
+      padding=(card ? "4px 4px 9px" : "8px 14px 9px") border-radius=20 background-color=fill opacity=(dimmed and not outgoing ? 0.6 : 1)
       if tail
         Tail(outgoing=outgoing, fill=fill)
       children

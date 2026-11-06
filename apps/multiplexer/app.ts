@@ -5,6 +5,11 @@ import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
 import { deleteUntil, editUntil } from './limits.ts';
+import { linkOf, noLink } from './links.ts';
+
+// a link's kept preview (details.contract's LinkPreview); state "" while there is none.
+type Card = { url: string; title: string; image: string; width: number; height: number; state: string };
+const noCard: Card = { url: '', title: '', image: '', width: 0, height: 0, state: '' };
 import { appearance } from './appearance.ts';
 
 // app.json’s app.id: change the two together.
@@ -282,6 +287,9 @@ async function prepare(f: Chosen, photo: boolean, storage: Storage) {
 type Native = NonNullable<Parameters<Answer>[4]>;
 const THREAD_COPIES = 40;
 const threadCopies = new Map<string, MessagesAnswer>();
+// the link previews this launch knows, by link (R11): threadOf joins each message's (a kept copy
+// shows its cards at once); loadMessages and loadLinkPreviews fill it from the module.
+const cards = new Map<string, Card>();
 const servedCopy = new Set<string>();
 let copiesOwner = '';
 let copiesRead: Promise<void> | undefined;
@@ -302,6 +310,7 @@ function readThreadCopies(userId: string, native: Native): Promise<void> {
   if (copiesRead && copiesOwner === userId) return copiesRead;
   copiesOwner = userId;
   threadCopies.clear();
+  cards.clear();
   servedCopy.clear();
   copiesRead = native.later({ op: 'readCopies' }).then((answer) => {
     const text = (answer as { text: string }).text;
@@ -363,6 +372,8 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
         isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),
         isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [], audioKey: m.audio.key ?? '',
         balloon: !m.waitingForKey && !m.isDeleted && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
+        // a text message's first web link, for its preview card (links.ts), and its kept card.
+        ...(media || m.waitingForKey || m.isDeleted ? noLink : linkOf(runsOf(m.body))),
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
         isDeleted: m.isDeleted, isEditable: m.isEditable,
         editUntil: editUntil(network, m.time), deleteUntil: deleteUntil(network, m.time),
@@ -375,7 +386,8 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
         photoWidth: width > 0 && height > 0 ? Math.min(side, (tall * width) / height) : side,
       };
     });
-    return { room: roomId, atStart: answer.atStart, group, firstUnread: answer.firstUnread, settling: answer.settling, cached, messages };
+    const withCards = messages.map((m) => ({ ...m, card: cards.get(m.previewUrl) ?? noCard }));
+    return { room: roomId, atStart: answer.atStart, group, firstUnread: answer.firstUnread, settling: answer.settling, cached, messages: withCards };
 }
 
 // the web has no Matrix SDK: it shows the sign-in screen and refuses to sign in.
@@ -567,15 +579,38 @@ const sources: Sources = {
     if (copy && !servedCopy.has(roomId)) {
       servedCopy.add(roomId);
       // its "New" line and its start are the live answer's to say.
-      return threadOf({ ...copy, firstUnread: '', atStart: false, settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
+      const thread = threadOf({ ...copy, firstUnread: '', atStart: false, settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
+      // its links' kept previews, read at once, so the copy shows its cards too.
+      const unknown = [...new Set(thread.messages.map((m) => m.previewUrl).filter((u) => u !== '' && !cards.has(u)))];
+      if (unknown.length === 0) return thread;
+      const kept = native.call({ op: 'keptLinkPreviews', known: unknown }) as { items: Card[] };
+      for (const c of kept.items) cards.set(c.url, c);
+      return { ...thread, messages: thread.messages.map((m) => ({ ...m, card: cards.get(m.previewUrl) ?? noCard })) };
     }
     servedCopy.delete(roomId);
     return (async (): Promise<Result<'loadMessages'>> => {
       const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
       const shown = withKeptOlder(answer, threadCopies.get(roomId));
       keepThreadCopy(roomId, answer, native);
-      return threadOf(shown, roomId, isDirect, roomName, utcOffset, network, false);
+      const thread = threadOf(shown, roomId, isDirect, roomName, utcOffset, network, false);
+      // the chat's links' kept previews join their messages (cards); the module says when a fetch
+      // adds one (topic links). Fetching is links-members.contract's, for the rows on screen.
+      const links = [...new Set(thread.messages.map((m) => m.previewUrl).filter((u) => u !== ''))];
+      if (links.length === 0) return thread;
+      native.watch('links');
+      const previews = (await native.later({ op: 'linkPreviews', known: links, fetch: [] })) as { items: Card[] };
+      for (const c of previews.items) cards.set(c.url, c);
+      return { ...thread, messages: thread.messages.map((m) => ({ ...m, card: cards.get(m.previewUrl) ?? noCard })) };
     })();
+  },
+  // link previews (R11): a fetch on the phone of the links on screen that have no kept preview
+  // yet; their previews join their messages in loadMessages (cards).
+  loadLinkPreviews: async ([fetch], _store, _storage, native): Promise<Result<'loadLinkPreviews'>> => {
+    if (fetch.length === 0 || !native?.available) return { items: [] };
+    native.watch('links');
+    const answer = (await native.later({ op: 'linkPreviews', known: fetch, fetch })) as Result<'loadLinkPreviews'>;
+    for (const c of answer.items) cards.set(c.url, c);
+    return answer;
   },
   // the view asks when the reader has seen the chat's newest message; loading a chat reads nothing.
   markRead: async ([roomId], _store, _storage, native): Promise<Result<'markRead'>> => {

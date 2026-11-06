@@ -13,7 +13,7 @@ use LabelEditor, LabelPicker from "./labels.contract"
 use ChatBar, MergeTab, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
-use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, SwipeReply, seenText, videoLabel, OlderLine from "./details.contract"
+use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, LinkBalloon, LinkPreview, Sticker, VideoPoster, VideoPlayer, SwipeReply, seenText, videoLabel, OlderLine from "./details.contract"
 use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
 use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
@@ -153,6 +153,13 @@ shape Message
   bars: VoiceBar[]
   // a voice message's sound file's name, the same on every launch: its transcript's key.
   audioKey: string
+  // a text's first web link, for its preview card (links.ts): the link ("" for none), whether the
+  // text is only that link, and the link's own site.
+  previewUrl: string
+  linkOnly: bool
+  linkSite: string
+  // its link's kept preview (app.ts joins it), state "ready" for a card.
+  card: LinkPreview
 
 // isMine: this account reacted with it, so a tap takes it back.
 shape Reaction
@@ -512,6 +519,7 @@ component Multiplexer
   members "./transcribe-members.contract"
   members "./remind-members.contract"
   members "./merge-members.contract"
+  members "./links-members.contract"
 
   action step
     now = performanceNow()
@@ -545,6 +553,13 @@ component Multiplexer
       unsaved = ""
   // the newest message is in view while its row's top is above the chat's bottom edge.
   action scrolled(x: number, y: number, e: ScrollEvent)
+    // the first row in view: link previews fetch only for what is on screen (links-members.contract).
+    match e.firstVisibleKey
+      case some(k)
+        if k != topVisible
+          topVisible = k
+      case none
+        topVisible = topVisible
     let isAway = e.scrollHeight - e.scrollTop - e.clientHeight > max(1, frame(`row-${lastId}`).height)
     if isAway != away
       if isAway and reading and openUnread > 0 and not placing
@@ -1415,25 +1430,45 @@ component Multiplexer
                                       text m.replyName font="-exact-caption1" font-weight=600 color="-exact-secondary-label" line-clamp=1
                                         testId=`quote-name-${m.id}`
                                     text m.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
-                                // a swipe right answers it; a long press opens its reactions and actions. The bubble
-                                // follows the finger and, with the transition, springs back when it lets go.
-                                box id=`bubble-${m.id}` testId=`bubble-${m.id}` tabindex=0 retainFocus=true user-select="none" max-width="100%"
-                                  position="relative" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
-                                  opacity=(held == m.id ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body)
-                                  contextmenu=hold(m.id, m.body, m.isOwn ? "You" : m.senderName, m.isOwn, m.endsRun) aria-label=m.body
-                                  // the reply arrow, left of the bubble's middle: unseen at rest, it grows in as the
-                                  // swipe nears the 64 points that answer. On release it leaves faster than the bubble
-                                  // springs back, so it is gone before it reaches a sender's picture. It grows with the
-                                  // text size, to a cap, so it still fits in the 64 points the bubble leaves.
-                                  view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
-                                    display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
-                                    transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
-                                    image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
-                                  if m.bigEmoji
-                                    BigEmoji(body=m.body, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
-                                  else
-                                    RichBalloon(appearance=appearance, runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
-                                      open=openLink)
+                                // a message that is only a link with its card: the whole card opens the link, and the
+                                // same node holds the long press and the swipe (SwipeReply, as a photo), since a box
+                                // takes no tap and a press inside a swipe keeps the touch.
+                                match (m.linkOnly and m.card.state == "ready" ? some(m.card) : none)
+                                  case some(p)
+                                    view opacity=(held == m.id ? 0 : 1) max-width="100%"
+                                      SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body), open=openLink(m.previewUrl),
+                                        hold=hold(m.id, m.body, m.isOwn ? "You" : m.senderName, m.isOwn, m.endsRun),
+                                        label=(p.title != "" ? `${p.title}, ${m.linkSite}` : m.linkSite), identifier=`bubble-${m.id}`)
+                                        LinkBalloon(appearance=appearance, runs=m.runs, linkOnly=true, site=m.linkSite, preview=p, outgoing=m.isOwn,
+                                          tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`, open=openLink)
+                                  case none
+                                    // a swipe right answers it; a long press opens its reactions and actions. The bubble
+                                    // follows the finger and, with the transition, springs back when it lets go.
+                                    box id=`bubble-${m.id}` testId=`bubble-${m.id}` tabindex=0 retainFocus=true user-select="none" max-width="100%"
+                                      position="relative" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
+                                      opacity=(held == m.id ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body)
+                                      contextmenu=hold(m.id, m.body, m.isOwn ? "You" : m.senderName, m.isOwn, m.endsRun) aria-label=m.body
+                                      // the reply arrow, left of the bubble's middle: unseen at rest, it grows in as the
+                                      // swipe nears the 64 points that answer. On release it leaves faster than the bubble
+                                      // springs back, so it is gone before it reaches a sender's picture. It grows with the
+                                      // text size, to a cap, so it still fits in the 64 points the bubble leaves.
+                                      view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
+                                        display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
+                                        transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
+                                        image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
+                                      if m.bigEmoji
+                                        BigEmoji(body=m.body, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
+                                      else
+                                        // a link with a preview fetched on the phone shows its card; until then, or when
+                                        // the page gives none, the plain link (links-members.contract).
+                                        match (m.card.state == "ready" ? some(m.card) : none)
+                                          case some(p)
+                                            LinkBalloon(appearance=appearance, runs=m.runs, linkOnly=m.linkOnly, site=m.linkSite,
+                                              preview=p, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
+                                              open=openLink)
+                                          case none
+                                            RichBalloon(appearance=appearance, runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"),
+                                              identifier=`message-${m.id}`, open=openLink)
                               if m.isEdited
                                 text "Edited" font="-exact-caption2" color="-exact-secondary-label" padding="0 8px" testId=`edited-${m.id}`
                               if m.reactions.length > 0
@@ -1646,7 +1681,17 @@ component Multiplexer
                     column contextTarget=`message-${held}` contextMagnify=true width=heldWidth max-width="100%" max-height=heldCap overflow="hidden"
                       border-radius=(heldHeight > heldCap ? 20 : 0)
                       padding-bottom=6.65
-                      Balloon(appearance=appearance, body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
+                      // a link with a card lifts its card, so the bubble keeps its shape under the finger.
+                      match heldMessage
+                        case some(hm)
+                          match (hm.card.state == "ready" ? some(hm.card) : none)
+                            case some(p)
+                              LinkBalloon(appearance=appearance, runs=hm.runs, linkOnly=hm.linkOnly, site=hm.linkSite,
+                                preview=p, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble", open=letGoLink)
+                            case none
+                              Balloon(appearance=appearance, body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
+                        case none
+                          Balloon(appearance=appearance, body=heldBody, outgoing=heldOwn, tail=heldTail, dimmed=false, identifier="held-bubble")
                   // the emoji sheet hides the actions, as Beeper's does: they would show through it.
                   if top(nav).name != "reactions"
                     MessageActions(maxHeight=heldMenuRoom, canShare=heldCanShare, canForward=heldCanForward, canCopy=heldCanCopy, canEdit=heldCanEdit, canDelete=heldCanDelete,
