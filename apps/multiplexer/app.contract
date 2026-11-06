@@ -1046,6 +1046,9 @@ component Multiplexer
                   // same 34 points: the last row still ends 16 points above the bar.
                   list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=98 testId="room-list"
                     overflow-x="hidden" margin-bottom=-34 margin-top=-62 scroll=roomsScrolledTo
+                    // no UIKit edge effect: the header and the bottom bar draw their own soft edges; UIKit's
+                    // under the status bar ended in a dark line at the status bar's foot.
+                    -exact-scroll-edge-effect="none"
                     inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
                     // the list's top, for its Inbox button: the sticky header below is always "in view".
                     view id="inbox-top" height=0 border-bottom="none"
@@ -1344,10 +1347,11 @@ component Multiplexer
             save=invite)
         if e.name == "room"
           // the chat draws its own bar (chat.contract), so a held message's blur covers it.
+          // A zero-height box above the transcript makes the host pad the route under the status
+          // bar (finding 53); the bar then reaches back into that band with top=-62 so its soft
+          // edge covers the clock instead of leaving the page's colour as a hard shelf.
           column navigationKey=`${e.id}` navigationBar="none" navigationScroll="transcript" position="absolute" inset=0
             display="flex" flex-direction="column"
-            // a box above the transcript, so the host clears the screen's top of the status bar and
-            // the bar's top=0 starts under it (a scroller at the top edge is inset by UIKit instead).
             view height=0 flex-shrink=0 aria-hidden=true
             if threadShown
               if thread.messages.length == 0
@@ -1358,10 +1362,16 @@ component Multiplexer
                 // (40, as the inbox's bar: the page ends above it, so its env() inset reads 0 here), as
                 // Beeper's does, so the messages show softened behind the floating field; its padding
                 // keeps the newest message above the composer. (A windowed list takes no margin: its column does.)
-                column flex=1 min-height=0 margin-bottom=-100
+                // Top: the list runs under the status bar (margin-top=-62, as the inbox) so the
+                // bar's soft edge blurs real messages there, not empty page colour; padding clears
+                // the floating controls below the clock.
+                column flex=1 min-height=0 margin-bottom=-100 margin-top=-62
                   list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
-                    reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=((viewport.accessibilityTextSize ? 116 : 100) + (openMerge == none ? 0 : 56))
+                    reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=((viewport.accessibilityTextSize ? 178 : 162) + (openMerge == none ? 0 : 56))
                     padding-bottom=100
+                    // no UIKit edge effect: the chat bar and the composer draw their own soft edges; UIKit's
+                    // under the status bar ended in a dark line at the status bar's foot.
+                    -exact-scroll-edge-effect="none"
                     testId="transcript"
                     for m in transcriptRows key=m.id
                       // a found message the chat opened at is marked a moment (search-members.contract).

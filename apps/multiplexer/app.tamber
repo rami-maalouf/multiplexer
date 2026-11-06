@@ -1,9 +1,9 @@
 tamber multiplexer
 
 theme
-  // shared soft edge tint for the inbox top, chat top, home bottom bar and composer (one recipe):
-  // the page's colour, part clear, strongest at the screen edge so the clock and the home indicator
-  // stay calm, fading out with the material so content still shows through as blur, not a black shelf.
+  // shared soft edge tint for the home bottom bar, the chat composer and both tops (one recipe):
+  // the page's colour, part clear, strongest at the screen edge so the home indicator
+  // stays calm, fading out with the material so content still shows through as blur, not a black shelf.
   chat.edge-bottom = light-dark(rgba(255, 255, 255, 0.55), rgba(0, 0, 0, 0.6))
   // others' bubbles: Messages' grey, opaque so the tail and the body join without a seam.
   bubble.incoming = light-dark(#e9e9eb, #262629)

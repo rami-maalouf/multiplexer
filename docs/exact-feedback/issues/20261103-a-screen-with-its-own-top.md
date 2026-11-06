@@ -43,3 +43,22 @@ Cost: about 10 minutes, and three drives.
 Seen on 2026-11-03 at exact2 `ed43ad09a0` (iOS Simulator, iOS 26.5, a 402×874 iPhone).
 Related: exact2's `QUEUE.md`, "A box outside every route cannot clear the iPhone's status bar"
 (the same cause for a box outside every route).
+
+**2026-11-06 (same app):** with the zero-height box, a soft-edge material on the bar at
+`top=-40` still left the page's colour as a hard shelf above the clock (`layout chat-bar`:
+window `0,62`). The bar itself needed `top=-62` (controls padded back by 62) so its material
+covers the status bar; the transcript also needed `margin-top=-62` so messages run under that
+band. Docs for `navigationBar="none"` should name both the pad and the negative reach when the
+bar draws its own scroll-edge fade.
+
+**2026-11-06, later (same app, exact2 `ae8946aca0`):** with both soft edges in place, a faint dark line
+stayed at the foot of the status bar (y 62) on both the list screen and the chat. It was UIKit's
+own iOS 26 scroll edge effect: the scrollers keep the default `automatic`, and UIKit draws it under
+the status bar on a route with no bar, ending in a line at its foot, stacked under the app's own
+material. `layout <scroller> native` showed it (`_UITouchPassthroughView edge-effect of #3`);
+`-exact-scroll-edge-effect="none"` on both scrollers removed it (a screenshot diff confined to rows
+0 to 62; the bottom edges were pixel-identical). `contract vocab scroll-edge-effect` answered "not a
+built-in tag or attribute"; the `-exact-` spelling came from grepping an example app. About 20
+minutes. What would help: `contract vocab` finding the `-exact-` name from the bare one, and the
+`navigationBar="none"` docs saying that a screen drawing its own top edge should set
+`-exact-scroll-edge-effect="none"` on its scroller.

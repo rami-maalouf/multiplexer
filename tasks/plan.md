@@ -4,6 +4,19 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
+**Daily chat chrome (2026-11-06, `fix/daily-chat-experience`):** mid-scroll keyboard rise
+fixed in Exact (`KeyboardToolbarIOS` shifts offset when not at the end;
+`exact2-multiplexer-integration` `ae8946aca0`). App: recording capsule has no stroke, Stop is
+glass with a light red wash, draft cancel stays an X. Chat and inbox tops: the bottom bar's
+recipe mirrored (dark material in dark mode, `chat.edge-bottom` tint), 85% through the status
+bar, then an eased fade with no corner; always drawn; UIKit's own scroll edge effect off on the
+inbox list and the transcript (it ended in a line at the status bar's foot). Rami: "barely
+noticeable" on the iPhone (`.exact/edge-fix/line-d*`).
+
+**Media drafts (2026-11-06):** picking a KLIPY GIF no longer sends it: it joins the composer
+tray like photos (caption, remove, stack more); Send posts. Photos picker also accepts
+videos into that tray. Proven on Simulator (`.exact/media-draft/`).
+
 **New user-recorded iPhone feedback documented (2026-11-05):** reviewed the 3:58
 Beeper/Multiplexer comparison, extracted 41 local-only source frames, and catalogued 12
 requirements/observations with timestamps and acceptance criteria. The highest-priority

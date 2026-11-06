@@ -55,19 +55,27 @@ component ChatBar
   // Back's chevron and count grow a little at the accessibility sizes, as a system bar's stay put.
   derive labelSize = largeText ? 20 : 17
   view
-    view position="absolute" top=0 left=0 right=0 pointer-events="none" inert=covered testId="chat-bar"
-      // soft edge over the transcript: one ultra-thin material (even in dark — the bottom bar's
-      // "dark" material plus tint blacked out the title zone), full under the status bar, then open
-      // through the glass controls. The glass on Back, the title and More keeps those readable.
+    // the route's top sits under the status bar (host pad); top=-62 pulls the soft edge into
+    // that band so the page's colour is not a hard shelf above the clock. Controls stay where
+    // a system bar's would (padding restores the 62).
+    view position="absolute" top=-62 left=0 right=0 pointer-events="none" inert=covered testId="chat-bar"
+      // soft edge over the transcript: the home bottom bar's recipe, mirrored (one material,
+      // the dark one in dark mode, plus chat.edge-bottom): a little lighter than the bottom's
+      // (85%), even through the status bar, then an eased fade (smoothstep stops). Two rules
+      // keep a line from showing at the status bar's foot: the strength only falls going
+      // down, and it has no corner (a flat part meeting a straight fade reads as a dark line).
       if solid
-        view position="absolute" top=-40 left=0 right=0 bottom=-12
-          background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 35%, transparent 100%)"
+        view position="absolute" top=0 left=0 right=0 bottom=-40
+          background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 40%, transparent 100%)"
       else
-        view position="absolute" top=-40 left=0 right=0 bottom=-12 backgroundMaterial="ultra-thin"
-          mask-image="linear-gradient(to bottom, black 0%, black 35%, transparent 100%)"
+        view position="absolute" top=0 left=0 right=0 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
+          mask-image="linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.826) 37%, rgba(0, 0, 0, 0.762) 44%, rgba(0, 0, 0, 0.666) 51%, rgba(0, 0, 0, 0.551) 58%, rgba(0, 0, 0, 0.425) 65%, rgba(0, 0, 0, 0.299) 72%, rgba(0, 0, 0, 0.184) 79%, rgba(0, 0, 0, 0.088) 86%, rgba(0, 0, 0, 0.024) 93%, rgba(0, 0, 0, 0.0) 100%)"
+        view position="absolute" top=0 left=0 right=0 bottom=-40
+          background-color="chat.edge-bottom"
+          mask-image="linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1.0) 30%, rgba(0, 0, 0, 0.972) 37%, rgba(0, 0, 0, 0.896) 44%, rgba(0, 0, 0, 0.784) 51%, rgba(0, 0, 0, 0.648) 58%, rgba(0, 0, 0, 0.5) 65%, rgba(0, 0, 0, 0.352) 72%, rgba(0, 0, 0, 0.216) 79%, rgba(0, 0, 0, 0.104) 86%, rgba(0, 0, 0, 0.028) 93%, rgba(0, 0, 0, 0.0) 100%)"
       // the two sides share the room the title leaves, so the title stays in the middle of the screen
       // whatever Back's count, until a long name needs that room.
-      row position="relative" padding="0 16px" align-items="flex-start"
+      row position="relative" padding="62px 16px 0" align-items="flex-start"
         view flex="1 1 0" display="flex" justify-content="flex-start"
           // the edge swipe presses it too: its id is the screen's Back.
           button id="back" press=back buttonStyle="glass" min-width=44 height=44 flex-shrink=0 pointer-events="auto"

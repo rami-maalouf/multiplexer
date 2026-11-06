@@ -154,7 +154,7 @@ component PinnedGrid
 // Select Chats, Merge Chats and Settings. The route draws this row in place of the system bar,
 // whose large title cannot open a menu.
 // the inbox's top edge (R05), as Beeper's: the title, or Select Chats' count, over the chats, which scroll on
-// under it and under the status bar, softened by the same material recipe as the bottom bar (one ultra-thin
+// under it and under the status bar, softened by the bottom bar's material recipe, mirrored (one ultra-thin
 // or dark layer plus chat.edge-bottom, full under the status bar, fading out just below the title). In the
 // list it is the first row, sticky: at rest it holds its natural height above the first chat at any text
 // size, and while scrolling it stays on top. Under the status bar: the list starts 62 points higher (the
@@ -174,8 +174,7 @@ component InboxHeader
     largeText: bool
     // in the list, which starts under the status bar.
     underStatusBar: bool
-    // the list is scrolled from its top: chats are under the header. At rest the material is not drawn, as
-    // UIKit's scroll edge effect is not over a list at rest: over nothing it would show only its grey tint.
+    // the list is scrolled from its top: chats are under the header (the first row's line is covered at rest).
     scrolled: bool
     // Reduce Transparency: a solid fade in place of the blur. dark: the dark material, the faintest grey
     // over a black page.
@@ -185,16 +184,23 @@ component InboxHeader
     // its own bottom edge: no list separator under the title (the line above the pinned chats).
     column id="inbox-header" position="sticky" top=0 z-index=2 flex-shrink=0 padding-top=(underStatusBar ? 62 : 0) border-bottom="none"
       testId="inbox-header"
-      // soft edge over the list: one ultra-thin material (even in dark — the bottom bar's "dark"
-      // material plus tint blacked out the title), full under the status bar, then open through the
-      // title. The title itself stays readable as white text; rows show as blur under it.
-      view position="absolute" left=0 right=0 top=0 bottom=0 pointer-events="none" opacity=(scrolled ? 1 : 0) transition="opacity 150ms ease"
-        if solid
-          view position="absolute" top=0 left=0 right=0 bottom=-12
-            background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 35%, transparent 100%)"
-        else
-          view position="absolute" top=0 left=0 right=0 bottom=-12 backgroundMaterial="ultra-thin"
-            mask-image="linear-gradient(to bottom, black 0%, black 35%, transparent 100%)"
+      // soft edge over the list: the home bottom bar's recipe, mirrored (one material, the dark
+      // one in dark mode, plus chat.edge-bottom): a little lighter than the bottom's (85%), even
+      // through the status bar, then an eased fade (smoothstep stops). Two rules keep a line from
+      // showing at the status bar's foot: the strength only falls going down, and it has no
+      // corner (a flat part meeting a straight fade reads as a dark line). Always drawn while the list runs
+      // under the status bar, as the bottom bar's is, not only once the list scrolls.
+      if underStatusBar
+        view position="absolute" left=0 right=0 top=0 bottom=0 pointer-events="none"
+          if solid
+            view position="absolute" top=0 left=0 right=0 bottom=-40
+              background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 40%, transparent 100%)"
+          else
+            view position="absolute" top=0 left=0 right=0 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
+              mask-image="linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.826) 37%, rgba(0, 0, 0, 0.762) 44%, rgba(0, 0, 0, 0.666) 51%, rgba(0, 0, 0, 0.551) 58%, rgba(0, 0, 0, 0.425) 65%, rgba(0, 0, 0, 0.299) 72%, rgba(0, 0, 0, 0.184) 79%, rgba(0, 0, 0, 0.088) 86%, rgba(0, 0, 0, 0.024) 93%, rgba(0, 0, 0, 0.0) 100%)"
+            view position="absolute" top=0 left=0 right=0 bottom=-40
+              background-color="chat.edge-bottom"
+              mask-image="linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1.0) 30%, rgba(0, 0, 0, 0.972) 37%, rgba(0, 0, 0, 0.896) 44%, rgba(0, 0, 0, 0.784) 51%, rgba(0, 0, 0, 0.648) 58%, rgba(0, 0, 0, 0.5) 65%, rgba(0, 0, 0, 0.352) 72%, rgba(0, 0, 0, 0.216) 79%, rgba(0, 0, 0, 0.104) 86%, rgba(0, 0, 0, 0.028) 93%, rgba(0, 0, 0, 0.0) 100%)"
       // the list's first row has a top line the app cannot hide (finding 49): at rest it sits at the
       // screen's top edge, so the page's colour covers it there.
       if underStatusBar

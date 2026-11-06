@@ -164,12 +164,36 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
     idle, typed, multiline, reply, recording and keyboard states. The voice draft state
     could not be reached in a drive (the recorder stays `opening`): check it on the iPhone.
   - [ ] Rami (2026-11-06, iPhone): the stacked top materials and the solid composer fade still
-    read as a black shelf that reaches too far. Revision on `fix/daily-chat-experience`
-    (uncommitted): composer edge matches the home bottom bar exactly (one `dark`/`ultra-thin`
-    material + `chat.edge-bottom`, percentage fade); inbox and chat tops use one short
-    `ultra-thin` band, full under the status bar then open through the title/controls, no
-    black tint. Simulator display shots in `apps/multiplexer/.exact/edge-fix/` (`inbox-v5`,
-    `chat-top-v5`, `chat-bottom-v5`). Installed on the paired iPhone; needs Rami's eye.
+    read as a black shelf that reaches too far. Later revision on `fix/daily-chat-experience`
+    (uncommitted): composer edge matches the home bottom bar; chat top bar uses `top=-62` so
+    its soft edge covers the status bar (was a hard page-colour shelf above the clock),
+    transcript runs under it (`margin-top=-62`). Rami (iPhone, same day): the tops read white,
+    blinked on and off with scroll in the inbox, and showed lines under the clock. Now both tops
+    are the home bottom bar's recipe, mirrored: `dark` material in dark mode (`ultra-thin` in
+    light), `chat.edge-bottom` tint, one straight fade, full for the first 40% (a little more
+    blur than the bottom), 40 points past the controls; the inbox top is always drawn while the
+    list runs under the status bar; `chat.edge-top` is gone. Status band checked in display
+    shots: one smooth ramp, no line (`*-v11`, `chat-display-*-v11`). Then, by Rami: a little
+    less blur under the status bar only (mask 0.7 at the top, full by 40%; `*-v12`). That left a
+    dark line at the bottom of the status bar (Rami's iPhone shots): the blur peaked there, so
+    that row hid the most content. Our mask, not Exact. Now the strength only falls going down:
+    85% through the status bar and the controls, then one straight fade (`line-a*` old vs
+    `line-b*` new). A faint line stayed (Rami): UIKit's own iOS 26 scroll edge effect under the
+    status bar, on the inbox list and the transcript, ending at y 62. Now
+    `-exact-scroll-edge-effect="none"` on both (`line-c*`; only rows 0 to 62 changed, bottom
+    edges identical). Rami: still a faint line. Next cause: the fade's corner (flat to 40%, then a
+    straight fall) reads as a dark line where the slope changes (a Mach band), at about y 58 in
+    the inbox and y 70 in the chat. Now both layers (material and tint) share one eased curve
+    (flat to 30%, then smoothstep stops to 0), with no corner (`line-d*`). Not reproduced on the
+    Simulator: its rows under the band are too dark to show a faint line. Installed on the iPhone.
+    Needs Rami's eye on the phone.
+  - [x] Rami (2026-11-06, iPhone follow-up): voice recording matches Beeper's row: X replaces
+    "+" (and stays X on the draft, not trash); soft red fill capsule with no stroke; Stop is
+    liquid glass with a light red wash and a small red square; the composer field stays mounted
+    so the keyboard stays up; chat top blur is one long fade that is clear by the profile (no
+    hard cut). Simulator shots: `apps/multiplexer/.exact/kb-ui/` (`recording.png`, `draft.png`,
+    `blur-smooth.png`, mid-scroll keyboard). Installed on the paired iPhone (locked, so open it
+    after unlock).
 - [ ] R10: capture Multiplexer keyboard parity first; current video shows only Beeper's
   keyboard. Preserve system input behavior and accessibility.
   - Captured on the Simulator: the system keyboard's glass shows only the black page,
@@ -182,6 +206,11 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
     insets a scroller that runs on under it" (the transcript reaches under the composer). Checked:
     keyboard at the chat's end and scrolled, light, return from the info page, Back with the
     keyboard open, inbox search, GIF search, the info page's search.
+  - [x] Mid-scroll rise (2026-11-06): Exact only moved the offset when the transcript was at its
+    end, so a mid-scroll chat stayed put under the keyboard. `KeyboardToolbarIOS.adjust` now
+    shifts `contentOffset` by the inset delta whenever the scroller is not at the end
+    (`exact2-multiplexer-integration` `ae8946aca0`). Proven mid-scroll: bubble Y moved up with
+    the keyboard (`away` true); shots in `.exact/kb-ui/mid-*.png`.
 - [ ] Triage secondary R11-R12 rich link cards and typography/density separately from the
   explicitly requested blockers. Do not infer missing pins or unread-count bugs from unmatched views.
 
@@ -1540,10 +1569,14 @@ it the one exception to invariant 1.
 - [x] KLIPY's required branding shows in the GIF panel: the field says "Search KLIPY" (required),
   and "Powered by KLIPY" sits under the grid (optional). Results keep KLIPY's order (2026-11-03).
 - [x] Search waits for a pause in typing, so one search is one call (400 ms; trending before any word).
-  A tap sends KLIPY's largest GIF under 4 MB as an animated image (`m.image`, `image/gif`,
-  `is_animated`), downloaded straight to a file; animated GIFs now play in the chat (the whole file,
-  not the server's still thumbnail). `gif.contract`, `gif-members.contract`, `app.ts` (2026-11-03).
+  A tap puts KLIPY's largest GIF under 4 MB in the composer's tray (caption, remove, add more);
+  Send posts it as an animated image (`m.image`, `image/gif`, `is_animated`). Animated GIFs play
+  in the chat (the whole file, not the server's still thumbnail). `gif.contract`,
+  `gif-members.contract`, `app.ts` (2026-11-03; tray staging 2026-11-06).
 - [x] A GIF sent from the app plays in WhatsApp (check how the bridge sends it: GIF or video).
+- [x] 2026-11-06: GIFs, photos and videos no longer send on pick: they join the tray until Send
+  (photos already did; GIFs staged via `stageGif`; Photos picker also accepts video types).
+  Simulator: `.exact/media-draft/` (`gif-in-tray`, `gif-with-caption`, `two-gifs`, `gif-sent`).
   2026-11-03: sent from `@rami` (Rami's OK: his chat with himself, Mama, Dana, Osama and Ali G
   are test chats) to his WhatsApp chat with himself: "Sent", and no failure notice from the bridge
   after several minutes (the bridge logs warnings only). Rami saw it arrive in WhatsApp on his phone.

@@ -73,7 +73,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 50 | `scrollIntoView` cannot open a collapsed large title again. | About 10 min | P3 | [scrollintoview-cannot-open-a-collapsed-large](issues/20261102-scrollintoview-cannot-open-a-collapsed-large.md) |
 | 51 | A symbol inside a text with no width or height draws nothing, with no warning. | About 20 min | P3 | [a-symbol-inside-a-text-with](issues/20261103-a-symbol-inside-a-text-with.md) |
 | 52 | A drive cannot reach a long-press menu row below the fold at the largest text size. | About 6 min | P3 | [a-drive-cannot-reach-a-long](issues/20261103-a-drive-cannot-reach-a-long.md) |
-| 53 | A screen with its own top bar has no documented way to clear the status bar (a zero-height box works). | About 10 min | P3 | [a-screen-with-its-own-top](issues/20261103-a-screen-with-its-own-top.md) |
+| 53 | A screen with its own top bar has no documented way to clear the status bar (a zero-height box works), or to turn off the platform edge effect under it. | About 10 min | P3 | [a-screen-with-its-own-top](issues/20261103-a-screen-with-its-own-top.md) |
 | 54 | `check` calls a view covered when the bar over it only lets touches through (`pointer-events: none`). | About 5 min | P3 | [check-calls-a-view-covered-when](issues/20261103-check-calls-a-view-covered-when.md) |
 | 55 | `check` flags rows that scroll under an app-drawn floating bar as overlaps. | About 5 min each time | P3 | [check-flags-rows-that-scroll-under](issues/20261103-check-flags-rows-that-scroll-under.md) |
 | 56 | A drive cannot start a drag at a point, so it cannot make an edge swipe. It can: `tap <root> drag 320 0 from 2 <y>`; PR #1406 (open) makes the refusal name it. | About 3 min | P3 | [a-drive-cannot-start-a-drag](issues/20261103-a-drive-cannot-start-a-drag.md) |
@@ -156,6 +156,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 131 | A drive cannot cross the app leaving the foreground and coming back: no Home, app switcher or lock op, and every op fails while the app is away. | About 30 min | P3 | [a-drive-cannot-cross-a-return](issues/20261106-a-drive-cannot-cross-a-return.md) |
 | 132 | `verify` leaves the drives' kept session signed out, and says nothing: the next drive meets the sign-in screen. | About 3 min | P3 | [verify-leaves-the-drives-kept-session](issues/20261106-verify-leaves-the-drives-kept-session.md) |
 | 133 | A text that spills its box shows only in `check`, one screen at a time; `layout` ranges and `tap <list> into` give no sign. | About 60 min | P3 | [a-text-that-spills-its-box](issues/20261106-a-text-that-spills-its-box.md) |
+| 134 | A tinted glass circle needs `appearance="none"` plus `backgroundMaterial="glass"`; `buttonStyle="glass"` refuses a tint. | About 2 min | P3 | [a-tinted-glass-circle-needs](issues/20261106-a-tinted-glass-circle-needs.md) |
 
 ## What worked well
 
