@@ -181,8 +181,11 @@ had nothing to show at once.
   130 ms. Signed out after.
 - [x] "New" line placed on the first of three unread messages; a draft kept across A-B-A.
 - [x] Core: `ChatOpeningTests` (2), `ChatDetailsTests`, `MatrixCoreTests`.
-  `testANewLineFurtherBackThanTheChatLoads` failed once on an unread count with network timeouts
-  (a known unstable test), and passed alone.
+  `testANewLineFurtherBackThanTheChatLoads` failed once on an unread count with network timeouts.
+  Cause (2026-11-06): a new device counts only the few newest events it holds ("device 2"); the
+  SDK pages back to the read receipt in a background queue with no time limit, and the server's
+  count is 0 on our Synapse (sliding sync), so it cannot help. The test waited 20 s for 25. Now it
+  waits for some unread, opens the chat (which pages back), then expects 25. Passed 3 in a row.
 - [ ] A real return from the background cannot be driven (the agent suspends the drive); the page's
   visibility return keeps the chat. Rami's iPhone: check a return after a long time away.
 
