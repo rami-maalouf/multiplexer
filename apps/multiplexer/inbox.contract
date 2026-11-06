@@ -153,11 +153,12 @@ component PinnedGrid
 // Select Chats, Merge Chats and Settings. The route draws this row in place of the system bar,
 // whose large title cannot open a menu.
 // the inbox's top edge (R05), as Beeper's: the title, or Select Chats' count, over the chats, which scroll on
-// under it and under the status bar, softened by the same thin material as the bottom bar's band (full under
-// the status bar, fading out just below the title). In the list it is the first row, sticky: at rest it holds
-// its natural height above the first chat at any text size, and while scrolling it stays on top. Under the
-// status bar: the list starts 62 points higher (the status bar of the largest iPhones), so the header pads
-// those points back. Under Reduce Transparency, UIKit draws the material solid.
+// under it and under the status bar, softened by the same material recipe as the bottom bar (one ultra-thin
+// or dark layer plus chat.edge-bottom, full under the status bar, fading out just below the title). In the
+// list it is the first row, sticky: at rest it holds its natural height above the first chat at any text
+// size, and while scrolling it stays on top. Under the status bar: the list starts 62 points higher (the
+// status bar of the largest iPhones), so the header pads those points back. Under Reduce Transparency,
+// UIKit draws the material solid.
 component InboxHeader
   props
     title: string
@@ -183,21 +184,16 @@ component InboxHeader
     // its own bottom edge: no list separator under the title (the line above the pinned chats).
     column id="inbox-header" position="sticky" top=0 z-index=2 flex-shrink=0 padding-top=(underStatusBar ? 62 : 0) border-bottom="none"
       testId="inbox-header"
-      // the chat header's edge (R07), the same layers and fades: the rows pass under the status bar and the
-      // title blurred so hard that no text can be read, at full strength 24 points past the title's foot (the
-      // chat bar's own room below its title), then sharpen again in two steps over 20 and 32 points, under
-      // the page's colour, thickest at the status bar.
+      // soft edge over the list: one ultra-thin material (even in dark — the bottom bar's "dark"
+      // material plus tint blacked out the title), full under the status bar, then open through the
+      // title. The title itself stays readable as white text; rows show as blur under it.
       view position="absolute" left=0 right=0 top=0 bottom=0 pointer-events="none" opacity=(scrolled ? 1 : 0) transition="opacity 150ms ease"
         if solid
-          view position="absolute" top=0 left=0 right=0 bottom=-56
-            background-image="linear-gradient(to top, transparent 0px, -exact-background 24px, -exact-background 100%)"
+          view position="absolute" top=0 left=0 right=0 bottom=-12
+            background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 35%, transparent 100%)"
         else
-          view position="absolute" top=0 left=0 right=0 bottom=-44 backgroundMaterial=(dark ? "dark" : "thin")
-            mask-image="linear-gradient(to top, transparent 0px, black 20px, black 100%)"
-          view position="absolute" top=0 left=0 right=0 bottom=-56 backgroundMaterial=(dark ? "dark" : "ultra-thin")
-            mask-image="linear-gradient(to top, transparent 0px, black 32px, black 100%)"
-          view position="absolute" top=0 left=0 right=0 bottom=-56
-            background-image="linear-gradient(to top, transparent 0px, chat.edge-soft 32px, chat.edge 100%)"
+          view position="absolute" top=0 left=0 right=0 bottom=-12 backgroundMaterial="ultra-thin"
+            mask-image="linear-gradient(to bottom, black 0%, black 35%, transparent 100%)"
       // the list's first row has a top line the app cannot hide (finding 49): at rest it sits at the
       // screen's top edge, so the page's colour covers it there.
       if underStatusBar

@@ -56,25 +56,15 @@ component ChatBar
   derive labelSize = largeText ? 20 : 17
   view
     view position="absolute" top=0 left=0 right=0 pointer-events="none" inert=covered testId="chat-bar"
-      // as iOS's scroll edge effect, and Beeper's: the transcript passes behind Back, the title and
-      // More blurred so hard that its colours show but no text can be read, from the status bar down
-      // through the title's capsule, then fades back to sharp just below it. Sized by the bar itself
-      // (a two-line name, the merged chat's tabs, the text size): a thin blur that ends 20 points
-      // below the bar, an ultra-thin one over it that ends 32 below, so the edge softens in two steps,
-      // and the page's colour over both, thickest at the status bar, so the clock reads and the
-      // materials' grey does not lift a black page. They start above the screen's top, where the list
-      // still draws rows past its frame. With Reduce Transparency, the page's colour behind the bar,
-      // fading out just below it.
+      // soft edge over the transcript: one ultra-thin material (even in dark — the bottom bar's
+      // "dark" material plus tint blacked out the title zone), full under the status bar, then open
+      // through the glass controls. The glass on Back, the title and More keeps those readable.
       if solid
-        view position="absolute" top=-120 left=0 right=0 bottom=-32
-          background-image="linear-gradient(to top, transparent 0px, -exact-background 24px, -exact-background 100%)"
+        view position="absolute" top=-40 left=0 right=0 bottom=-12
+          background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 35%, transparent 100%)"
       else
-        view position="absolute" top=-120 left=0 right=0 bottom=-20 backgroundMaterial=(dark ? "dark" : "thin")
-          mask-image="linear-gradient(to top, transparent 0px, black 20px, black 100%)"
-        view position="absolute" top=-120 left=0 right=0 bottom=-32 backgroundMaterial=(dark ? "dark" : "ultra-thin")
-          mask-image="linear-gradient(to top, transparent 0px, black 32px, black 100%)"
-        view position="absolute" top=-120 left=0 right=0 bottom=-32
-          background-image="linear-gradient(to top, transparent 0px, chat.edge-soft 32px, chat.edge 100%)"
+        view position="absolute" top=-40 left=0 right=0 bottom=-12 backgroundMaterial="ultra-thin"
+          mask-image="linear-gradient(to bottom, black 0%, black 35%, transparent 100%)"
       // the two sides share the room the title leaves, so the title stays in the middle of the screen
       // whatever Back's count, until a long name needs that room.
       row position="relative" padding="0 16px" align-items="flex-start"

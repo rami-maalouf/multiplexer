@@ -1530,23 +1530,27 @@ component Multiplexer
                 column flex=1 justify-content="center" align-items="center"
                   progress aria-label="Loading messages" testId="thread-loading"
             // the reply bar and the composer float over the transcript's end, as Beeper's do: the
-            // messages under them show softened, blurred and dimmed as at the top edge (chat.contract),
-            // the blur fading in just above the bar and reaching under the home indicator (40, as the list).
-            // With Reduce Transparency the bar is the page's colour, fading in above it, as before.
+            // messages under them use the same soft edge as the home bottom bar (one material plus
+            // chat.edge-bottom), fading in above the bar and reaching under the home indicator.
+            // With Reduce Transparency the bar is the page's colour, fading in above it.
             if threadShown
               // the keyboard's own toolbar while the chat is on top (the root's interactive-widget): it rides
               // the keyboard's top and the transcript keeps its size under the keyboard, which shows the
               // messages through its glass, as Beeper's does; the transcript gains a bottom inset instead.
               // Every other screen keeps the default, where the page ends at the keyboard's top.
               column inert=(held != "") flex-shrink=0 position="relative" role="toolbar" toolbarPlacement="keyboard" testId="composer-bar"
+                // the same soft edge as the home bottom bar (inbox.contract BottomBar): one material,
+                // full at the screen's bottom and fading out above the composer, plus the same tint.
+                // The earlier solid fade from 32px made a black shelf under the field.
                 if viewport.prefersReducedTransparency
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none" aria-hidden=true
-                    background-image="linear-gradient(to bottom, transparent 0px, -exact-background 24px, -exact-background 100%)"
+                    background-image="linear-gradient(to top, -exact-background 0%, transparent 100%)"
                 else
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
-                    aria-hidden=true backgroundMaterial=(viewport.prefersColorScheme == "dark" ? "dark" : "ultra-thin") mask-image="linear-gradient(to bottom, transparent 0px, black 32px, black 100%)"
+                    aria-hidden=true backgroundMaterial=(viewport.prefersColorScheme == "dark" ? "dark" : "ultra-thin")
+                    mask-image="linear-gradient(to top, black 0%, transparent 100%)"
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
-                    aria-hidden=true background-image="linear-gradient(to bottom, transparent 0px, chat.edge-bottom 32px, chat.edge-bottom 100%)"
+                    aria-hidden=true background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
                 // above the bar, at the right, while the newest message is out of view.
                 if away and thread.messages.length > 0
                   view position="absolute" bottom="calc(100% + 8px)" right=12
