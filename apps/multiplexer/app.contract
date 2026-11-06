@@ -190,6 +190,9 @@ shape Viewport
   prefersReducedMotion: bool
   // Reduce Transparency: the chat's edges are solid, not blurred (chat.contract, the composer).
   prefersReducedTransparency: bool
+  // "dark" or "light": the chat's edges blur with the dark material in dark, whose grey is the
+  // faintest over a black page (chat.contract, the composer).
+  prefersColorScheme: string
   accessibilityTextSize: bool
 
 shape Page
@@ -1477,7 +1480,7 @@ component Multiplexer
                     background-image="linear-gradient(to bottom, transparent 0px, -exact-background 24px, -exact-background 100%)"
                 else
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
-                    aria-hidden=true backgroundMaterial="ultra-thin" mask-image="linear-gradient(to bottom, transparent 0px, black 32px, black 100%)"
+                    aria-hidden=true backgroundMaterial=(viewport.prefersColorScheme == "dark" ? "dark" : "ultra-thin") mask-image="linear-gradient(to bottom, transparent 0px, black 32px, black 100%)"
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
                     aria-hidden=true background-image="linear-gradient(to bottom, transparent 0px, chat.edge-bottom 32px, chat.edge-bottom 100%)"
                 // above the bar, at the right, while the newest message is out of view.
@@ -1573,7 +1576,8 @@ component Multiplexer
               unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, muted=openMuted, mute=toggleMuteOpen,
               markUnread=markUnreadOpen, info=openInfo, covered=(held != ""),
               tabs=(match openMerge { case some(m) => m.mergeRooms, case none => [] }), shown=openRoom, switchTo=switchMerged,
-              largeText=viewport.accessibilityTextSize, solid=viewport.prefersReducedTransparency)
+              largeText=viewport.accessibilityTextSize, solid=viewport.prefersReducedTransparency,
+              dark=(viewport.prefersColorScheme == "dark"))
             // the chat's one player of voice messages: no box of its own; each bubble is its button.
             if voiceSrc != ""
               audio voiceSrc id="voice-player" paused=voicePaused playbackRate=voiceSpeed preservesPitch=true timeupdate=voiceTimed
