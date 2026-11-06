@@ -853,8 +853,10 @@ component Multiplexer
         emojiGroup = emojiGroup
   action resetFrequent
     send resetEmojis = resetFrequentEmojis()
+  // after a send, to the very end and smoothly (jumpToEnd's offset, clamped to the scroll range),
+  // so the transcript then follows the end as the sent message arrives (scrollFollowEnd).
   action toEnd
-    scrollIntoView("transcript", lastId, block="end")
+    scrollIntoView("transcript", lastId, offset=1000000, behavior="smooth")
   action revealNow
     scrollIntoView("transcript", revealing, block="nearest", behavior="smooth")
     revealing = ""

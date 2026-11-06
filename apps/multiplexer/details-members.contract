@@ -64,8 +64,11 @@ members Multiplexer
     if olderWanted and threadShown and not thread.atStart and not pending(older)
       olderWanted = false
       send older = loadOlderMessages(openRoom)
+  // to the very end, as far as the transcript scrolls: past the last row's own bottom by the list's
+  // padding under the composer and, with the keyboard up, its inset. block="end" stopped the last
+  // row at the list's edge, behind the composer. The offset is clamped to the scroll range.
   action jumpToEnd
-    scrollIntoView("transcript", lastId, block="end", behavior="smooth")
+    scrollIntoView("transcript", lastId, offset=1000000, behavior="smooth")
   // a tap on a video's poster plays it full screen, zooming out of the poster.
   action showVideo(id: string)
     nav = push(nav, path("video", openRoom, id))
