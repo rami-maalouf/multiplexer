@@ -65,12 +65,13 @@ component BottomBar
   // the symbols grow a little at the accessibility text sizes, and stay inside their glass.
   derive symbolSize = largeText ? 24 : 20
   view
-    // as iOS's scroll edge effect under a bottom bar: the rows passing under the bar are hidden behind it and
-    // the home indicator, and fade out just above it. Outside the bar's glass group, so its glass stays its own.
+    // as iOS's scroll edge effect under a floating bar (R06): the rows stay visible under the glass, softened
+    // by a thin material that is full at the screen's bottom edge and fades out a little above the bar. The
+    // chat screen's top and composer use the same values. Under Reduce Transparency, UIKit draws the material
+    // solid. Outside the bar's glass group, so its glass stays its own.
     view position="absolute" left=0 right=0 bottom=0 pointer-events="none"
-      view position="absolute" left=0 right=0 top=0 bottom=-40 background-color="-exact-background"
-      view position="absolute" left=0 right=0 top=-32 height=32
-        background-image="linear-gradient(to top, -exact-background 0%, transparent 100%)"
+      view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial="ultra-thin"
+        mask-image="linear-gradient(to top, black 0%, transparent 100%)"
       row position="relative" padding="0 16px" align-items="center" justify-content="space-between"
         glassGroup=12 pointer-events="none" testId="bottom-bar"
         button popovertarget="filter-menu" buttonStyle=(filtered ? "prominent-glass" : "glass") width=48 height=48 pointer-events="auto"
@@ -221,12 +222,13 @@ component SelectBar
   derive off = count == 0 or busy
   derive symbolSize = largeText ? 24 : 20
   view
-    // as iOS's scroll edge effect under a bottom bar: the rows passing under the bar are hidden behind it and
-    // the home indicator, and fade out just above it. Outside the bar's glass group, so its glass stays its own.
+    // as iOS's scroll edge effect under a floating bar (R06): the rows stay visible under the glass, softened
+    // by a thin material that is full at the screen's bottom edge and fades out a little above the bar. The
+    // chat screen's top and composer use the same values. Under Reduce Transparency, UIKit draws the material
+    // solid. Outside the bar's glass group, so its glass stays its own.
     view position="absolute" left=0 right=0 bottom=0 pointer-events="none"
-      view position="absolute" left=0 right=0 top=0 bottom=-40 background-color="-exact-background"
-      view position="absolute" left=0 right=0 top=-32 height=32
-        background-image="linear-gradient(to top, -exact-background 0%, transparent 100%)"
+      view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial="ultra-thin"
+        mask-image="linear-gradient(to top, black 0%, transparent 100%)"
       row position="relative" padding="0 16px" align-items="center" justify-content="space-between"
         glassGroup=12 pointer-events="none" testId="select-bar"
         row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="select-capsule"
