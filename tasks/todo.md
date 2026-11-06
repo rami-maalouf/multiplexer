@@ -93,7 +93,38 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   line above it is gone since R05. Checked in dark, light, the largest text (rows wrap, nothing cut) and
   Select Chats. `verify ios` clean (12 tests). Screenshots: `apps/multiplexer/.exact/r12/`.
   Left as it is: in Select Chats the row lines start at the picture, not at the name (the list host places
-  them; it was so before R12).
+  them; it was so before R12). Fixed later in the real-data pass: the lines now start at the name.
+- [x] Real-data pass of the inbox (2026-11-06, branch `fix/real-data-pass`, `@rami` read-only, signed out
+  after; screenshots only in /tmp/mx-real-pass/, never in git). Checked the inbox, filters, Archive, search
+  and five chats in dark. Fixed: long chat names wrapped to four lines (now one, two at the accessibility
+  sizes, the muted bell kept after the ellipsis); row lines started at the initials for chats without a
+  photo (now always at the name: the text is written first, the row shown reversed); search's chat rows
+  kept the old style (now as the inbox's); the search field's query stayed at 22 points at the largest
+  sizes (now up to 28); the bottom edge in dark mode was a grey band (about #25, now #0b or less, with the
+  chat composer's "dark" material and chat.edge-bottom tint). `verify ios` clean (12 tests).
+- [x] Chats with no preview and no time in the list (2026-11-06, branch `fix/instagram-previews`). Cause:
+  the sdk's latest event comes from the events the device has, and the room list syncs only each room's
+  newest event; when that is no message (a reaction, a member's new picture, a redaction) the room has no
+  latest event until it is opened. On a new device: 132 of 187 chats on `@rami`. Fix: `NewestMessages`
+  asks the server once per launch for such a chat's newest message (`/messages`, filtered, no edits or
+  deleted ones), reads it through the sdk (which decrypts it), fills the row's preview and time, and keeps
+  it in the store folder. On `@rami` (read-only): 5 of 327 chats left without a time, all without messages
+  this account can read. The unread counts agreed: search shows the list's own record; the 0 was read
+  seconds after a sign-in, and the same chat shows 66 in both once synced. A sign-out stops the asks first.
+  Test: `NewestMessagesTests` checks the fallback itself (`@test2`'s message under its newer reaction is
+  found, then shown). It does not reproduce the fault: in one small test room the sdk has the latest
+  event (it passed with the fallback off), so the proof of the fault and the fix is the `@rami` count.
+- [x] Instagram raw markdown after ed95f6e (same branch). Cause: the messages are photos and videos with
+  a caption (`m.image` with `formatted_body`), and captions never went through `FormattedText`; search,
+  bookmarks, the info page and the list's text preview also read the plain body. The real html is
+  `<strong>title</strong><p><a href="address?query">address</a></p>`, so the link (its text is its address
+  without the query) was written twice, the paragraph had no line break, and the html's own line breaks
+  stayed. Fix: `FormattedText.words` for every kind and screen, links shown once, blocks on their own
+  lines, source line breaks as spaces (code blocks kept). Unit tests in `FormattedTextTests`.
+- [ ] Intermittent: once after the fix, a drive's sign-out left its `@test2` device (JXTKKHNGGJ) on the
+  server, with no error logged; 4 later sign-outs with logging all worked. Watch for it.
+- [ ] Minor: a preview that starts with a long link leaves "You:" alone on its first line (native text
+  wraps whole words). Left as it is.
 - [ ] R03 scrolling frozen after a return to the app (2026-11-06, Simulator): not reproduced, so a
   diagnostic and a reset ship first. Tried with real touches (exact2's `bench/bakeoff/drive.mjs`, which drives
   the running app; Exact's own drive cannot cross a trip to the background): Home idle and mid-fling, the
@@ -132,6 +163,13 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
     edges solid. Checked in dark, light, the largest text size and Reduce Transparency;
     idle, typed, multiline, reply, recording and keyboard states. The voice draft state
     could not be reached in a drive (the recorder stays `opening`): check it on the iPhone.
+  - [ ] Rami (2026-11-06, iPhone): the stacked top materials and the solid composer fade still
+    read as a black shelf that reaches too far. Revision on `fix/daily-chat-experience`
+    (uncommitted): composer edge matches the home bottom bar exactly (one `dark`/`ultra-thin`
+    material + `chat.edge-bottom`, percentage fade); inbox and chat tops use one short
+    `ultra-thin` band, full under the status bar then open through the title/controls, no
+    black tint. Simulator display shots in `apps/multiplexer/.exact/edge-fix/` (`inbox-v5`,
+    `chat-top-v5`, `chat-bottom-v5`). Installed on the paired iPhone; needs Rami's eye.
 - [ ] R10: capture Multiplexer keyboard parity first; current video shows only Beeper's
   keyboard. Preserve system input behavior and accessibility.
   - Captured on the Simulator: the system keyboard's glass shows only the black page,
@@ -190,10 +228,29 @@ had nothing to show at once.
   130 ms. Signed out after.
 - [x] "New" line placed on the first of three unread messages; a draft kept across A-B-A.
 - [x] Core: `ChatOpeningTests` (2), `ChatDetailsTests`, `MatrixCoreTests`.
-  `testANewLineFurtherBackThanTheChatLoads` failed once on an unread count with network timeouts
-  (a known unstable test), and passed alone.
-- [ ] A real return from the background cannot be driven (the agent suspends the drive); the page's
-  visibility return keeps the chat. Rami's iPhone: check a return after a long time away.
+  `testANewLineFurtherBackThanTheChatLoads` failed once on an unread count with network timeouts.
+  Cause (2026-11-06): a new device counts only the few newest events it holds ("device 2"); the
+  SDK pages back to the read receipt in a background queue with no time limit, and the server's
+  count is 0 on our Synapse (sliding sync), so it cannot help. The test waited 20 s for 25. Now it
+  waits for some unread, opens the chat (which pages back), then expects 25. Passed 3 in a row.
+- [x] A return from the background (2026-11-06, exact2's `bench/bakeoff/drive.mjs`: real touches,
+  Home, same process on return; `@test2` sent 3 messages while away). After 100 s away the chat
+  flickered for about 6 s between its kept copy and the live answer (2 of 3 times; not after 40 s):
+  `loadMessages` served the copy on every ask after a live one, so each change on the open chat
+  showed the copy first, and a live answer still `settling` is not kept, so the copy was old. Fixed:
+  only an opening shows the copy (`showingLive`, per screen). After: messages stay, the new ones
+  arrive with no spinner and no step back; A-B-A still shows the chat in its push. Proof:
+  `apps/multiplexer/.exact/r04-return/`.
+- [x] The room list's text wider than its box (2026-11-06, `@rami` read only, signed out after).
+  Found with the drive's `check` on every screen (the list's own range is hidden by
+  `overflow-x="hidden"` and the swipe rows): two link previews whose long run of characters fell in
+  their two visible lines spilled 17 pt and 60 pt past their 310 pt box (76 + 310 + 60.875 = the
+  446.875 seen in R01), drawn to the screen's edge with no ellipsis. Fix: `overflow-wrap="break-word"`
+  on the row's name and preview, the pinned name and the search row's name and preview. After: no
+  spill in a scan of the whole list; the row ends in an ellipsis in dark, light and the largest
+  text size. Screenshots with real data only in `/tmp/mx-wide-text/`.
+- [ ] After a long time away, the newest message shows about 1 s before the ones between it and the
+  older ones (the sync's gap, filled by the SDK). Hide the gap until it fills?
 
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 
@@ -217,6 +274,10 @@ had nothing to show at once.
     leaves "sent", never a "seen" without evidence. Merged chats copy their newest room's status.
   - A watch reads again, every 2 s and locally, the receipts of at most 30 chats showing "sent", and tells
     the list when one is seen (another member's receipt changes no room in the room list).
+    It reads nothing while the app is in the background (the native module observes it) or the chat list is
+    not the screen in front (a keyed `task` on `listOnTop` sends `listShown` to the native module each time it
+    changes: a chat, Settings or the search in front). Driven: one `listShown` at launch with the list in front,
+    one more when Settings opened; the list still turned sent to seen while in front. `verify ios` clean.
   - The row: an outline check (sent) or a filled check (seen) in the secondary label colour, spoken "Sent" or
     "Seen", in place of "You:"; "You:" stays when the state is unknown.
   - `testThePreviewSaysSentThenSeen` (`@test1` sends: sent; `@test2` reads: seen; their answer: none). Drive:

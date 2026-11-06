@@ -75,9 +75,11 @@ final class ChatDetailsTests: XCTestCase {
         _ = try await unread(owner, roomId) { $0 >= 25 }
 
         // another device of the reader opens the chat with its 20 newest: the first unread is older.
+        // a new device first counts only the few newest events it holds; the SDK pages back to the
+        // read receipt in a background queue, with no time limit, so wait only until it knows of some.
         let later = try await signIn(homeserver, user, password)
         _ = try await later.rooms()
-        _ = try await unread(later, roomId) { $0 >= 25 }
+        _ = try await unread(later, roomId) { $0 > 0 }
         let opened = try await later.messages(roomId: roomId, limit: 20)
         XCTAssertFalse(opened.contains { $0.body == "Many \(run) 1" }, "the chat opens with the first unread message: the test needs it further back")
         let found = try await later.firstUnread(roomId: roomId)
@@ -89,6 +91,8 @@ final class ChatDetailsTests: XCTestCase {
         // asked again, it finds the same message without paging again.
         let again = try await later.firstUnread(roomId: roomId)
         XCTAssertEqual(again, marked)
+        // the chat holds the read message now, so the new device counts all 25.
+        _ = try await unread(later, roomId) { $0 == 25 }
         try await later.markRead(roomId: roomId)
         _ = try await unread(owner, roomId) { $0 == 0 }
     }

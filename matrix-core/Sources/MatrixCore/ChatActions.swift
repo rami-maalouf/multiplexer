@@ -250,7 +250,8 @@ extension MatrixAccount {
         var newest: UInt64 = 0
         switch await room.latestEvent() {
         case .remote(let timestamp, _, _, _, _), .local(let timestamp, _, _, _, _): newest = timestamp
-        case .none, .remoteInvite: break
+        case .none: newest = newestMessages.newest(room.id())?.timestamp ?? 0
+        case .remoteInvite: break
         }
         // the open chat's timeline can be ahead of the room's latest event, which the sdk computes
         // after the same sync: a chat deleted right after a message came must hide that one too.

@@ -362,6 +362,12 @@ component Multiplexer
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
+  // tells the core whether the chat list is on screen, each time that changes: its receipt watch
+  // pauses when it is not.
+  derive listOnTop = session.userId != "" and top(nav).name == "home" and not searching
+  mutation listShownMark as shape Reply
+  task listShownTask when session.userId != "" key=listOnTop
+    after(1, markListShown)
   resource roomList = loadRoomsByRecency(session.userId, filter, network, community, chatList, labelFilter) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
@@ -416,7 +422,7 @@ component Multiplexer
   // Back's count: the inbox's unread chats on every network (the filter sheet's Inbox row), but this one.
   derive otherUnread = max(0, roomList.unread - (match openChatInfo { case some(r) => inboxUnread(r) ? 1 : 0, case none => 0 }))
   // the day a message is on is the reader's, so the zone's offset groups them.
-  resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset, openNetwork) as shape Thread else empty()
+  resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset, openNetwork, "thread") as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
   resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
   derive composer = composerOf(composers, openRoom, savedDraft)
@@ -480,7 +486,7 @@ component Multiplexer
   derive aimedNetwork = match aimedRoom { case some(r) => r.network, case none => "matrix" }
   // a merged chat's preview is the room it opens.
   derive aimedOpen = match aimedRoom { case some(r) => r.open, case none => aimed }
-  resource peek = loadMessages(aimedOpen, aimedIsDirect, aimedRoomName, time.utcOffset, aimedNetwork) as shape Thread else empty()
+  resource peek = loadMessages(aimedOpen, aimedIsDirect, aimedRoomName, time.utcOffset, aimedNetwork, "peek") as shape Thread else empty()
   derive peekShown = peek.room == aimedOpen and aimed != ""
   // a preview shown from the chat's kept copy asks for the live answer at once, as the chat does.
   task freshenPeek when peekShown and peek.cached key=aimedOpen
@@ -934,6 +940,8 @@ component Multiplexer
   action swipeChat(id: string, change: string)
     send changedChat = changeChat(id, change)
     haptic("success")
+  action markListShown
+    send listShownMark = markListShown(session.userId, listOnTop)
   action askDelete
     showModal("delete-chat")
   // the chat bar's "..." pins, mutes or marks unread the open chat.
@@ -1104,11 +1112,13 @@ component Multiplexer
               else if roomsShown and selecting
                 SelectBar(count=chosenIds.length, archived=chosenArchived, lowPriority=chosenLowPriority, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
                   change=changeChosen, delete=askDeleteChosen, labelChats=labelSelected, canMerge=(chosenRooms.filter(r => r.merge == "").length >= 2),
-                  merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats))
+                  merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats),
+                  dark=viewport.prefersColorScheme == "dark")
               else if roomsShown
                 BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=(labelFilter == "" ? chatList : "label"), network=network,
                   communityName=(community != "" ? scopeName : ""), communityPicture=(match shownCommunity { case some(c) => c.avatar, case none => "" }),
-                  sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize)
+                  sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize,
+                  dark=viewport.prefersColorScheme == "dark")
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
               // messages (a tap opens the chat), then its actions.
               column id="chat-menu" popover="auto" role="menu"
@@ -1520,23 +1530,27 @@ component Multiplexer
                 column flex=1 justify-content="center" align-items="center"
                   progress aria-label="Loading messages" testId="thread-loading"
             // the reply bar and the composer float over the transcript's end, as Beeper's do: the
-            // messages under them show softened, blurred and dimmed as at the top edge (chat.contract),
-            // the blur fading in just above the bar and reaching under the home indicator (40, as the list).
-            // With Reduce Transparency the bar is the page's colour, fading in above it, as before.
+            // messages under them use the same soft edge as the home bottom bar (one material plus
+            // chat.edge-bottom), fading in above the bar and reaching under the home indicator.
+            // With Reduce Transparency the bar is the page's colour, fading in above it.
             if threadShown
               // the keyboard's own toolbar while the chat is on top (the root's interactive-widget): it rides
               // the keyboard's top and the transcript keeps its size under the keyboard, which shows the
               // messages through its glass, as Beeper's does; the transcript gains a bottom inset instead.
               // Every other screen keeps the default, where the page ends at the keyboard's top.
               column inert=(held != "") flex-shrink=0 position="relative" role="toolbar" toolbarPlacement="keyboard" testId="composer-bar"
+                // the same soft edge as the home bottom bar (inbox.contract BottomBar): one material,
+                // full at the screen's bottom and fading out above the composer, plus the same tint.
+                // The earlier solid fade from 32px made a black shelf under the field.
                 if viewport.prefersReducedTransparency
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none" aria-hidden=true
-                    background-image="linear-gradient(to bottom, transparent 0px, -exact-background 24px, -exact-background 100%)"
+                    background-image="linear-gradient(to top, -exact-background 0%, transparent 100%)"
                 else
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
-                    aria-hidden=true backgroundMaterial=(viewport.prefersColorScheme == "dark" ? "dark" : "ultra-thin") mask-image="linear-gradient(to bottom, transparent 0px, black 32px, black 100%)"
+                    aria-hidden=true backgroundMaterial=(viewport.prefersColorScheme == "dark" ? "dark" : "ultra-thin")
+                    mask-image="linear-gradient(to top, black 0%, transparent 100%)"
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
-                    aria-hidden=true background-image="linear-gradient(to bottom, transparent 0px, chat.edge-bottom 32px, chat.edge-bottom 100%)"
+                    aria-hidden=true background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
                 // above the bar, at the right, while the newest message is out of view.
                 if away and thread.messages.length > 0
                   view position="absolute" bottom="calc(100% + 8px)" right=12
@@ -1793,6 +1807,7 @@ component RoomFace
           // name's ellipsis never hides the bell.
           row flex="1 1 10rem" min-width=0 gap=4 align-items="baseline"
             text r.name font="-exact-headline" font-weight=(loud(r) ? 700 : 600) line-clamp=(largeText ? 2 : 1) min-width=0
+              overflow-wrap="break-word"
             if r.muted
               image "symbol:icon.bell-slash" font="-exact-headline" width="0.8em" height="0.8em" flex-shrink=0
                 color="-exact-secondary-label" aria-label="Muted" testId=`muted-${r.id}`
@@ -1803,8 +1818,9 @@ component RoomFace
         // count; with a mention, "@" and the accent. marked unread by hand: a dot.
         row gap=8 align-items="flex-start"
           // an own message: its receipt in place of "You:", an outline check once sent, filled once seen.
+          // a word longer than the line (a link) breaks where it must, so the ellipsis ends it in its box.
           text font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
-            min-height="2.6em" flex=1 min-width=0 testId=`room-preview-${r.id}`
+            min-height="2.6em" flex=1 min-width=0 overflow-wrap="break-word" testId=`room-preview-${r.id}`
             if r.lastIsOwn and r.lastStatus != "" and r.lastMessage != ""
               image (r.lastStatus == "seen" ? "symbol:icon.seen" : "symbol:icon.sent") width="0.95em" height="0.95em"
                 vertical-align="-0.12em" color="-exact-secondary-label" aria-label=(r.lastStatus == "seen" ? "Seen" : "Sent")

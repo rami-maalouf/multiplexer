@@ -28,3 +28,9 @@ Cost: about 12 minutes and five drives.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS Simulator (iOS 26.5): `tap <id> contextmenu` and `tap <id>` (a `popovertarget`), each followed by `screenshot ... window`.
+
+## More evidence (2026-11-06)
+
+A tap on a filter button (a `popovertarget` menu of five radio items), then `screenshot ... window`,
+showed the five items as bare accent-coloured words over the list's rows. A real-touch check showed
+the system's menu drawn right. It cost about 6 minutes, including a second sign-in. Exact `dd9343b324`.

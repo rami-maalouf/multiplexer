@@ -129,3 +129,18 @@ Adding a separate `testId` to the list made `tap <list> drag 0 -350` work. The t
 usable scroll target or distinguish navigation IDs from drive IDs. Trying platform touches first
 also left a menu's rows unavailable after its suggested `clock settle`; normal activation worked.
 About 5 minutes, with all feedback kept local.
+
+## More evidence (2026-11-06, a large state value)
+
+`state <path>` on a list of 187 items answered that it is over the 8 KB printed whole, and named
+"`--full`, or --json". Written after the path in the step, `--json` printed the same notice again. The
+agent's own `--json` flag (`agent ios --json ...`) printed JSON lines, the value as a bare list on the
+last one. Naming the flag's place would have saved about 4 minutes. Exact `dd9343b324`.
+
+## More evidence (2026-11-06, soft edge materials)
+
+Item 7 again: checking backdrop blur under a floating bar, `screenshot <png> window` returned
+`pixels="app"` ("the display changed while it was read") on most first tries, so glass and the
+edge material looked solid in the file. A real settle of about 1.5 to 2 s before the shot usually
+gave `pixels="display"`. The reply already notes the fallback; a one-line "retry once for display
+pixels" in the agent help would have saved about 10 minutes of false "still black" reads.

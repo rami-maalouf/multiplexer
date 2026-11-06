@@ -30,3 +30,11 @@ Cost: about 30 minutes.
 ## Evidence
 
 Seen on 2026-11-05 at exact2 `919ae4220a` (the app's integration checkout), iOS Simulator (iOS 26.5).
+
+## More evidence (2026-11-06, a second lane)
+
+Proving that a chat keeps its messages over a return needed exact2's `bench/bakeoff/drive.mjs`
+(real touches, `home`) and `xcrun simctl launch` to come back, plus `simctl io recordVideo` to
+see the return: Exact's own drive could not. The recording showed a real bug (the chat stepped
+back to an older list several times a second for 6 s) that no Exact drive could have caught.
+About 20 minutes to set up.

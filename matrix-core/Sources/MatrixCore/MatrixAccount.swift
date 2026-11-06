@@ -28,6 +28,8 @@ public final class MatrixAccount: @unchecked Sendable {
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
     let latest: LatestMessages
+    /// The newest message of a chat the sdk has no latest event for, from the server (NewestMessages.swift).
+    let newestMessages: NewestMessages
     let accountDataWatch = AccountDataWatch()
     /// The list preview's receipts and the watch that reads them again (PreviewReceipts.swift).
     let receipts = PreviewReceipts()
@@ -49,6 +51,7 @@ public final class MatrixAccount: @unchecked Sendable {
     private init(client: Client, storeDirectory: URL) {
         self.client = client
         latest = LatestMessages(file: storeDirectory.appendingPathComponent("latest-messages.json"))
+        newestMessages = NewestMessages(file: storeDirectory.appendingPathComponent("newest-messages.json"))
         // a photo or file on its way tells how much of it is uploaded (`Message.uploadProgress`).
         client.enableSendQueueUploadProgress(enable: true)
     }
@@ -176,6 +179,8 @@ public final class MatrixAccount: @unchecked Sendable {
             .sorted { (rank[$0.element.id()] ?? Int.max, $0.offset) < (rank[$1.element.id()] ?? Int.max, $1.offset) }
             .map(\.element)
         let me = (try? client.userId()) ?? ""
+        // the chats the sdk has no latest event for, and no newest message is known for yet.
+        var unknown: [String] = []
         for room in joined {
             let info = try? await room.roomInfo()
             var summary = RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect(),
@@ -201,7 +206,10 @@ public final class MatrixAccount: @unchecked Sendable {
                 }
             case .local(let timestamp, let sender, let profile, let content, _):
                 summary.fillLast(timestamp: timestamp, sender: sender, isOwn: true, profile: profile, content: content)
-            case .none, .remoteInvite:
+            case .none:
+                // its newest event here is no message: its newest message is on the server.
+                if !newestMessages.fill(&summary) { unknown.append(summary.id) }
+            case .remoteInvite:
                 break
             }
             if let live = lock.withLock({ readyTimelines[summary.id] }) { summary.fillDeleted(live.items.messages()) }
@@ -209,6 +217,8 @@ public final class MatrixAccount: @unchecked Sendable {
             rooms.append(summary)
         }
         latest.save()
+        newestMessages.ask(unknown, fetch: { [weak self] id in await self?.newestMessage(roomId: id) },
+                           done: { [weak self] in self?.notify(.rooms) })
         receipts.remember(rooms)
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
@@ -481,6 +491,8 @@ public final class MatrixAccount: @unchecked Sendable {
         search.stop()
         accountDataWatch.stop()
         receiptWatch.stop()
+        // no request of the newest-message asks may still run when the client signs out.
+        await newestMessages.stop()
         let service = lock.withLock {
             syncStart = nil
             return syncService
@@ -1029,7 +1041,8 @@ private func preview(_ type: MessageType, body: String) -> String {
     case .audio(let content): return content.voice == nil ? "Audio" : "Voice message"
     case .file: return "File"
     case .location: return "Location"
-    default: return body
+    // a text's words from its html body, as the bubble shows them.
+    default: return FormattedText.words(type) ?? body
     }
 }
 
@@ -1087,24 +1100,16 @@ extension Message {
         // a remote echo has no local send state: the server has it.
         case .sent?, nil: sendState = .sent
         }
-        var body = message.body, image: MessageImage?, file: MessageFile?, video: MessageVideo?, audio: MessageAudio?
-        if case .text(let content) = message.msgType {
-            body = FormattedText.plain(content.body, content.formatted)
-        } else if case .notice(let content) = message.msgType {
-            body = FormattedText.plain(content.body, content.formatted)
-        } else if case .emote(let content) = message.msgType {
-            body = FormattedText.plain(content.body, content.formatted)
-        } else if case .image(let content) = message.msgType {
-            body = content.caption ?? ""
+        // a text's words and a media message's caption, each from its html when it has one.
+        let body = FormattedText.words(message.msgType) ?? message.body
+        var image: MessageImage?, file: MessageFile?, video: MessageVideo?, audio: MessageAudio?
+        if case .image(let content) = message.msgType {
             image = MessageImage(content)
         } else if case .file(let content) = message.msgType {
-            body = content.caption ?? ""
             file = MessageFile(content)
         } else if case .video(let content) = message.msgType {
-            body = content.caption ?? ""
             video = MessageVideo(content)
         } else if case .audio(let content) = message.msgType {
-            body = content.caption ?? ""
             audio = MessageAudio(content)
         }
         self.init(id: id, sender: event.sender, senderName: name, body: body, timestamp: event.timestamp,
