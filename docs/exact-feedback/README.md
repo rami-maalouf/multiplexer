@@ -153,6 +153,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 128 | Under real touches a drive cannot tap a native swipe action by its id, and `drag ... from x y` counts from content that moves while the row is open. | About 10 min | P3 | [a-drive-cannot-tap-a-native](issues/20261106-a-drive-cannot-tap-a-native.md) |
 | 129 | A swipe row in a plain list loses the cell's 16-point margin, with no warning: its content needs its own padding. | About 20 min, one regression | P3 | [a-swipe-row-in-a-plain](issues/20261106-a-swipe-row-in-a-plain.md) |
 | 130 | A swiped row's line runs from the cell's margin after it closes; fixed locally in the integration checkout (`cc75ef11d0`). | About 15 min | P3 | [a-swiped-row-s-line-runs](issues/20261106-a-swiped-row-s-line-runs.md) |
+| 131 | A drive cannot cross the app leaving the foreground and coming back: no Home, app switcher or lock op, and every op fails while the app is away. | About 30 min | P3 | [a-drive-cannot-cross-a-return](issues/20261106-a-drive-cannot-cross-a-return.md) |
 
 ## What worked well
 
