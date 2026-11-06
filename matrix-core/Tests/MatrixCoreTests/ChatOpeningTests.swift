@@ -6,6 +6,7 @@ import XCTest
 final class ChatOpeningTests: XCTestCase {
     private let roomName = "Multiplexer test"
 
+    // FRESH DEVICE: it opens a chat on a device whose timeline has not been read yet.
     func testAChatOpensBeforeItsFirstScreenIsInThenSettles() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
@@ -47,8 +48,8 @@ final class ChatOpeningTests: XCTestCase {
             throw XCTSkip("two test users are needed (MATRIX_TEST_USER2 and MATRIX_TEST_PASSWORD2)")
         }
         let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
-        let owner = try await signInTestDevice(homeserver, user, password)
-        let other = try await signInTestDevice(homeserver, user2, password2)
+        let owner = try await testAccount(homeserver, user, password)
+        let other = try await testAccount(homeserver, user2, password2)
         let name = "Multiplexer opening unread test"
         var roomId = try await owner.rooms().first { $0.name == name }?.id
         if roomId == nil {
@@ -72,7 +73,7 @@ final class ChatOpeningTests: XCTestCase {
         // what the test needs, and an unread count on the new device for the line to be looked for.
         try await until("the third arrives") { try await owner.messages(roomId: room, limit: 20).contains { $0.body == "Unread \(run) 3" } }
 
-        let later = try await signInTestDevice(homeserver, user, password)
+        let later = try await testAccount(homeserver, user, password)
         try await until("unread on the new device") { (try await later.rooms().first { $0.id == room }?.unreadCount ?? 0) >= 1 }
         let first = try await later.opening(roomId: room, limit: 20)
         if let early = first.firstUnread {

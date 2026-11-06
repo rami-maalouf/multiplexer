@@ -346,7 +346,9 @@ final class SearchTests: XCTestCase {
     }
 
     /// A new device of a test user, with its own search index, signed out at the test's end (TestDevices.swift).
+    private static let runSearchKey = SearchIndex.newKey()
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        try await signInTestDevice(homeserver, user, password, searchIndexKey: SearchIndex.newKey())
+        // the run's search device of this user: one key for the run, so its index is one store.
+        try await testAccount(homeserver, user, password, searchIndexKey: Self.runSearchKey)
     }
 }

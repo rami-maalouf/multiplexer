@@ -102,7 +102,7 @@ final class CommunitiesTests: XCTestCase {
         }
         let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
         let server = String(user.split(separator: ":").last ?? "")
-        let writer = try await signInTestDevice(homeserver, user, password)
+        let writer = try await testAccount(homeserver, user, password)
         let rooms = try await writer.rooms()
         let chatId: String
         if let id = rooms.first(where: { $0.name == chatName })?.id { chatId = id } else { chatId = try await writer.createRoom(name: chatName) }
@@ -113,7 +113,7 @@ final class CommunitiesTests: XCTestCase {
             try await putState(["via": [server], "canonical": true], type: "m.space.parent", stateKey: spaceId, roomId: chatId, session: session)
         }
 
-        let reader = try await signInTestDevice(homeserver, user, password)
+        let reader = try await testAccount(homeserver, user, password)
         let community = try await communityOnceItHasItsChat(reader, chatId)
         XCTAssertEqual(community?.name, spaceName)
         XCTAssertEqual(community?.rooms, [chatId])
@@ -128,7 +128,7 @@ final class CommunitiesTests: XCTestCase {
             throw XCTSkip("a test user is needed")
         }
         let server = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
-        let writer = try await signInTestDevice(server, user, password)
+        let writer = try await testAccount(server, user, password)
         let name = "Multiplexer new space \(UUID().uuidString.prefix(8))"
         let picture = FileManager.default.temporaryDirectory.appendingPathComponent("space-\(UUID().uuidString).jpg")
         let image = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 32)).image { context in
@@ -155,7 +155,7 @@ final class CommunitiesTests: XCTestCase {
         try await writer.addToSpace(roomId: chatId, spaceId: id)
         // repeating the action is harmless.
         try await writer.addToSpace(roomId: chatId, spaceId: id)
-        let reader = try await signInTestDevice(server, user, password)
+        let reader = try await testAccount(server, user, password)
         var found: Community?
         for _ in 0..<40 {
             found = try await reader.communities().first { $0.id == id }
@@ -169,6 +169,7 @@ final class CommunitiesTests: XCTestCase {
         XCTAssertEqual(inbox.listed, [chatId])
     }
 
+    // FRESH DEVICE: a new device builds the space graph from its first sync.
     func testAMergedChatAddsEachOfItsRoomsToTheSpace() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {

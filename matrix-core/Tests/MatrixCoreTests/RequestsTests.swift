@@ -14,11 +14,11 @@ final class RequestsTests: XCTestCase {
             throw XCTSkip("two test users are needed (MATRIX_TEST_USER2 and MATRIX_TEST_PASSWORD2)")
         }
         let homeserver = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
-        let owner = try await signInTestDevice(homeserver, user2, password2)
+        let owner = try await testAccount(homeserver, user2, password2)
         let roomId: String
         if let id = try await owner.rooms().first(where: { $0.name == roomName })?.id { roomId = id } else { roomId = try await owner.createRoom(name: roomName) }
 
-        let me = try await signInTestDevice(homeserver, user, password)
+        let me = try await testAccount(homeserver, user, password)
         // a run that stopped half way left this account in the room, or invited.
         let joined = try await me.rooms().contains { $0.id == roomId }
         let invited = try await me.requests().contains { $0.id == roomId }

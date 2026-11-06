@@ -51,10 +51,7 @@ final class MessageExpiryTests: XCTestCase {
     // MARK: helpers
 
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password, deviceName: "Multiplexer test",
-                                                     storeDirectory: FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)"))
-        addTeardownBlock { try? await account.signOut() }
-        return account
+        try await testAccount(homeserver, user, password)
     }
 
     private func api(_ method: String, _ path: [String], _ body: Any? = nil, session: SavedSession) async throws -> [String: Any] {

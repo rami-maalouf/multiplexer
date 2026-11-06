@@ -258,6 +258,7 @@ final class ChatInfoStates: @unchecked Sendable {
     func openedTimeline(_ roomId: String) -> Task<MediaTimeline, Error>? { lock.withLock { timelines[roomId] } }
 
     func forgetTimeline(_ roomId: String) { lock.withLock { timelines[roomId] = nil } }
+    func forgetAll() { lock.withLock { timelines = [:] } }
 
     func names(stored: [String: String]) -> [String: String] {
         lock.withLock {
