@@ -40,9 +40,14 @@ component AddButton
     press: action
     disabled: bool
   view
-    button press=press disabled=disabled buttonStyle="glass" retainFocus=true aria-label=(open ? "Close" : "Add") aria-expanded=open testId="add"
-      width=48 height=48 flex-shrink=0
+    // a glass circle of its own (not a native glass button) so it joins the composer row's glass
+    // group and, pressed, is interactive glass that can meet the field's. Disabled, only its
+    // symbol dims: a glass under opacity leaves the group.
+    button appearance="none" press=press disabled=disabled backgroundMaterial="glass" border-radius=24 -exact-press-opacity=1
+      retainFocus=true aria-label=(open ? "Close" : "Add") aria-expanded=open testId="add"
+      width=48 height=48 flex-shrink=0 display="flex" align-items="center" justify-content="center"
       image (open ? "symbol:close" : "symbol:add") font-size="min(-exact-title3, 24px)"
+        color=(disabled ? "-exact-tertiary-label" : "-exact-label")
 
 // where the keyboard was, as Beeper's: one row for each way to add, an icon and its name.
 component AddPanel

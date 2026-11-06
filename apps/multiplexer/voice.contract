@@ -179,9 +179,11 @@ component VoiceButton
     press: action
     disabled: bool
   view
-    button press=press disabled=disabled buttonStyle="glass" width=48 height=48 flex-shrink=0 retainFocus=true
+    // its own glass circle, as the + button's, so it joins the composer row's glass group.
+    button appearance="none" press=press disabled=disabled backgroundMaterial="glass" border-radius=24 -exact-press-opacity=1
+      width=48 height=48 flex-shrink=0 retainFocus=true display="flex" align-items="center" justify-content="center"
       aria-label="Record Voice Message" testId="voice-record"
-      image "symbol:waveform" font-size="min(-exact-title3, 24px)"
+      image "symbol:waveform" font-size="min(-exact-title3, 24px)" color=(disabled ? "-exact-tertiary-label" : "-exact-label")
 
 // cancel (left) and stop (right) sit outside this capsule, in the + and voice slots, as Beeper's.
 // Inside: the red dot, the time and the microphone's live level, with no border, a soft red fill only.
@@ -209,9 +211,11 @@ component VoiceCancel
     // draft: still an X; the test id names the draft so drives can tell it apart.
     draft: bool
   view
-    button press=press buttonStyle="glass" width=48 height=48 flex-shrink=0 retainFocus=true
+    // its own glass circle, as the + button's it replaces, in the composer row's glass group.
+    button appearance="none" press=press backgroundMaterial="glass" border-radius=24 -exact-press-opacity=1
+      width=48 height=48 flex-shrink=0 retainFocus=true display="flex" align-items="center" justify-content="center"
       aria-label=(draft ? "Delete Recording" : "Cancel Recording") testId=(draft ? "voice-delete" : "voice-cancel")
-      image "symbol:close" font-size="min(-exact-title3, 24px)"
+      image "symbol:close" font-size="min(-exact-title3, 24px)" color="-exact-label"
 
 // stop that replaces the voice button while recording: the whole circle is liquid glass with a
 // light red wash; a small red square marks stop (a stop-fill symbol read as a solid red disc).

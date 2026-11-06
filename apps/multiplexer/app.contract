@@ -1603,7 +1603,10 @@ component Multiplexer
                 // "+" on the left, the field, and the voice button or Send on the right, each its own glass,
                 // as Beeper has them. While recording or as a draft: X replaces "+", Stop or Send replaces
                 // voice; the capsule holds only the waveform. The photos and files picked sit above the text.
-                row align-items="flex-end" gap=8 margin="6px 12px"
+                // one glass group (iOS 26's glass container), so the + button, the field and the voice
+                // button are glass on one plane, as Beeper's: apart at rest (the group's spacing is the
+                // row's gap), they blend where a pressed, swelling glass comes near its neighbour.
+                row align-items="flex-end" gap=8 margin="6px 12px" glassGroup=8
                   if recording != "idle"
                     VoiceCancel(press=cancelVoice, draft=(recording == "draft"))
                   else
