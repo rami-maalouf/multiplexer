@@ -13,7 +13,7 @@ use LabelEditor, LabelPicker from "./labels.contract"
 use ChatBar, MergeTab, ComposerNetwork, replyPlaceholder, composerPlaceholder from "./chat.contract"
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
-use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, Sticker, VideoPoster, VideoPlayer, SwipeReply, seenText, videoLabel, OlderLine from "./details.contract"
+use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, LinkBalloon, Sticker, VideoPoster, VideoPlayer, SwipeReply, seenText, videoLabel, OlderLine from "./details.contract"
 use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
 use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
@@ -153,6 +153,11 @@ shape Message
   bars: VoiceBar[]
   // a voice message's sound file's name, the same on every launch: its transcript's key.
   audioKey: string
+  // a text's first web link, for its preview card (links.ts): the link ("" for none), whether the
+  // text is only that link, and the link's own site.
+  previewUrl: string
+  linkOnly: bool
+  linkSite: string
 
 // isMine: this account reacted with it, so a tap takes it back.
 shape Reaction
@@ -494,6 +499,7 @@ component Multiplexer
   members "./transcribe-members.contract"
   members "./remind-members.contract"
   members "./merge-members.contract"
+  members "./links-members.contract"
 
   action step
     now = performanceNow()
@@ -527,6 +533,13 @@ component Multiplexer
       unsaved = ""
   // the newest message is in view while its row's top is above the chat's bottom edge.
   action scrolled(x: number, y: number, e: ScrollEvent)
+    // the first row in view: link previews fetch only for what is on screen (links-members.contract).
+    match e.firstVisibleKey
+      case some(k)
+        if k != topVisible
+          topVisible = k
+      case none
+        topVisible = topVisible
     let isAway = e.scrollHeight - e.scrollTop - e.clientHeight > max(1, frame(`row-${lastId}`).height)
     if isAway != away
       if isAway and reading and openUnread > 0 and not placing
@@ -1372,8 +1385,16 @@ component Multiplexer
                                 if m.bigEmoji
                                   BigEmoji(body=m.body, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
                                 else
-                                  RichBalloon(appearance=appearance, runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
-                                    open=openLink)
+                                  // a link with a preview fetched on the phone shows its card; until then, or when
+                                  // the page gives none, the plain link (links-members.contract).
+                                  match first(linkPreviews.items.filter(p => m.previewUrl != "" and p.url == m.previewUrl and p.state == "ready"))
+                                    case some(p)
+                                      LinkBalloon(appearance=appearance, runs=m.runs, linkOnly=m.linkOnly, url=m.previewUrl, site=m.linkSite,
+                                        preview=p, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
+                                        open=openLink)
+                                    case none
+                                      RichBalloon(appearance=appearance, runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"),
+                                        identifier=`message-${m.id}`, open=openLink)
                             if m.isEdited
                               text "Edited" font="-exact-caption2" color="-exact-secondary-label" padding="0 8px" testId=`edited-${m.id}`
                             if m.reactions.length > 0

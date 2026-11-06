@@ -5,6 +5,7 @@ import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
 import { deleteUntil, editUntil } from './limits.ts';
+import { linkOf, noLink } from './links.ts';
 import { appearance } from './appearance.ts';
 
 // app.json’s app.id: change the two together.
@@ -476,6 +477,8 @@ const sources: Sources = {
         isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),
         isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [], audioKey: m.audio.key ?? '',
         balloon: !m.waitingForKey && !m.isDeleted && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
+        // a text message's first web link, for its preview card (links.ts).
+        ...(media || m.waitingForKey || m.isDeleted ? noLink : linkOf(runsOf(m.body))),
         waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
         isDeleted: m.isDeleted, isEditable: m.isEditable,
         editUntil: editUntil(network, m.time), deleteUntil: deleteUntil(network, m.time),
@@ -489,6 +492,13 @@ const sources: Sources = {
       };
     });
     return { room: roomId, atStart: answer.atStart, group, firstUnread: answer.firstUnread, messages };
+  },
+  // link previews (R11): the kept ones of the open chat's links (known), and a fetch on the phone
+  // of those on screen (fetch) that have none yet; the module says when one is ready (topic links).
+  loadLinkPreviews: async ([known, fetch], _store, _storage, native): Promise<Result<'loadLinkPreviews'>> => {
+    if (known.length === 0 || !native?.available) return { items: [] };
+    native.watch('links');
+    return (await native.later({ op: 'linkPreviews', known, fetch })) as Result<'loadLinkPreviews'>;
   },
   // the view asks when the reader has seen the chat's newest message; loading a chat reads nothing.
   markRead: async ([roomId], _store, _storage, native): Promise<Result<'markRead'>> => {

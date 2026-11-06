@@ -302,6 +302,9 @@ final class Matrix: ExactModule {
                 case "bookmarks", "bookmark", "removeBookmark":
                     // saved messages (Bookmarks.swift).
                     reply.send(try await bookmarks(request))
+                case "linkPreviews":
+                    // previews of the open chat's links, fetched on the phone (LinkPreviews.swift).
+                    reply.send(linkPreviews(request))
                 case "chatInfo", "chatMembers", "chatMedia", "rename", "customName", "invite", "setPicture", "expiry", "setExpiry":
                     // a chat's info page (Info.swift).
                     reply.send(try await info(request))
@@ -312,7 +315,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers registerPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers registerPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, linkPreviews, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))

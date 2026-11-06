@@ -1,0 +1,16 @@
+// link previews' state (R11; details.contract's LinkBalloon). The open chat's loaded messages ask
+// for their kept previews; only those on screen (the first row in view and the twelve after it,
+// or the newest at the chat's end) are fetched, on the phone. A message out of view keeps the
+// preview it has.
+use LinkPreviews from "./details.contract"
+
+members Multiplexer
+  // the first transcript row in view, from its scroll ("" until it scrolls).
+  state topVisible = ""
+  derive linkMessages = thread.messages.filter(m => m.previewUrl != "")
+  derive topIndex = thread.messages.map(m => m.id).indexOf(topVisible)
+  derive viewStart = away and topIndex >= 0 ? topIndex : max(0, thread.messages.length - 13)
+  derive onScreenLinks = thread.messages.slice(viewStart, viewStart + 13).filter(m => m.previewUrl != "").map(m => m.previewUrl)
+  derive knownLinks = threadShown ? linkMessages.map(m => m.previewUrl) : []
+  derive fetchLinks = threadShown ? onScreenLinks : []
+  resource linkPreviews = loadLinkPreviews(knownLinks, fetchLinks) as shape LinkPreviews else empty()

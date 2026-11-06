@@ -118,6 +118,61 @@ component RichBalloon
           else
             text r.text color=ink
 
+// a link's preview (R11), fetched on the phone and kept there (LinkPreviews.swift): the page's
+// title and picture (its size in pixels, 0 when unknown). state: "ready", or "none" when the page
+// gave neither, which leaves the plain link.
+shape LinkPreview
+  url: string
+  title: string
+  image: string
+  width: number
+  height: number
+  state: string
+
+shape LinkPreviews
+  items: LinkPreview[]
+
+// a text with a link and its preview, as Messages and Beeper show one: the card, with the page's
+// picture across the bubble, its title and the link's own site (from the link, never the page, so
+// a card cannot name another site than the one it opens). A message that is only the link shows
+// the card alone; another keeps its text above the card. A tap on the card opens the message's
+// own link. The picture keeps its shape, up to a cap, so a tall one does not fill the screen.
+component LinkBalloon
+  props
+    appearance: Appearance
+    runs: Run[]
+    linkOnly: bool
+    url: string
+    site: string
+    preview: LinkPreview
+    outgoing: bool
+    tail: bool
+    dimmed: bool
+    identifier: string
+    open: action
+  derive ink = outgoing ? appearance.onFill : "-exact-label"
+  derive soft = outgoing ? appearance.onFill : "-exact-secondary-label"
+  derive ratio = preview.width > 0 and preview.height > 0 ? `${preview.width} / ${preview.height}` : "1.91 / 1"
+  view
+    BalloonBox(appearance=appearance, outgoing=outgoing, tail=tail, dimmed=dimmed, identifier=identifier)
+      column position="relative" gap=6 width="15.5rem" max-width="100%"
+        if not linkOnly
+          text white-space="pre-wrap" overflow-wrap="break-word" hyphens="none" min-width=0
+            for r in runs key=r.id
+              if r.href != ""
+                text r.text color=(outgoing ? appearance.onFill : "AccentColor") text-decoration-line="underline" press=open(r.href)
+                  role="link" testId=`link-${identifier}-${r.id}`
+              else
+                text r.text color=ink
+        column press=open(url) role="link" aria-label=(preview.title != "" ? `${preview.title}, ${site}` : site) gap=3
+          testId=`card-${identifier}`
+          if preview.image != ""
+            image preview.image width="calc(100% + 20px)" margin=(linkOnly ? "-4px -10px 4px" : "2px -10px 4px")
+              aspect-ratio=ratio max-height="14rem" object-fit="cover" border-radius=14 aria-label="" testId=`card-image-${identifier}`
+          if preview.title != ""
+            text preview.title font="-exact-subheadline" font-weight=600 color=ink line-clamp=3 testId=`card-title-${identifier}`
+          text site font="-exact-footnote" color=soft line-clamp=1 testId=`card-site-${identifier}`
+
 // a photo, a video, a sticker or a file in the chat: a tap opens it, a long press holds it, and a
 // swipe right answers it, as a text's bubble (it follows the finger and springs back, and the
 // reply arrow grows in at its left). The three are on this one node: a press below a swipe keeps
