@@ -149,6 +149,16 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
     (`/usr/bin/log`: in zsh `log` is a shell builtin). The same `log show` read a Simulator archive
     (`xcrun simctl spawn <udid> log collect --last 10m --output x.logarchive`): 24 lines, the "stuck" one among them.
   - Next: Rami's build with R01's fix; if it freezes again, collect the log right after.
+  - 2026-11-06 (later): Rami: it still freezes on the iPhone after a return, and the back swipe and
+    sideways swipes die too (taps work; another tab or screen recovers). So one gesture blocks every
+    drag, not one list. Exact `584858860a`: the log also goes to `Library/Caches/scroll-return.log`
+    (read without root: `xcrun devicectl device copy from --device 00008140-0002155C01F3001C
+    --domain-type appDataContainer --domain-identifier com.ramimaalouf.multiplexer --source
+    Library/Caches/scroll-return.log --destination /tmp/r03/phone.log`), with lines on leaving, and
+    for the first 8 drags of 30 points or more in the 30 minutes after a return, every recognizer
+    that heard the finger and its state, plus any recognizer still active in the window. Real-touch
+    Simulator tries (inbox and chat, Home mid-fling, the bottom-edge swipe over the composer, the
+    back swipe) did not freeze. Installed on the iPhone; waiting for one freeze there.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
