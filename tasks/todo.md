@@ -30,6 +30,18 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   chat (not driven: `@test1`'s only merge is in no list). Reproduced first (the old row showed nothing).
   Screenshots and a 43 s recording: `apps/multiplexer/.exact/r02/` in the sibling checkout
   (dark, light, the largest text size, Reduce Transparency). `verify ios` clean. On the iPhone: still to see.
+- [x] R01 the whole inbox list moved sideways (2026-11-05, branch `fix/inbox-video`, Simulator only).
+  Reproduced on the build Rami's phone had (before R02), with `@rami`'s real chats (read only, agent mode,
+  real touches): horizontal pans shifted the whole list about 75 points left, under the fixed title and bar,
+  and it stayed shifted. `@test1`'s chats did not reproduce it. Cause: with those chats the list's content
+  was 446.875 points wide on a 402-point screen (no node's frame passed the edge: text wider than its
+  box), and a list that may scroll sideways takes its widest content, so it had 45 points of horizontal
+  range. R02's swipe rows clip each row's overflow (the same chats measured 402 after R02), which hid it
+  for rows only. Fix: the room list, the search results and the filter sheet scroll up and down only
+  (`overflow-x="hidden"`); a row's own swipe scrolls inside the row. Shown fixed: the same pans on the
+  pre-R02 build with only this line moved nothing, and on the branch R02's swipe still opens a row while
+  pans elsewhere move nothing. `verify ios` clean (12 tests). Recordings with real chats stay in `/tmp`;
+  the `@test1` ones are in the checkout's `apps/multiplexer/.exact/r01/`. On the iPhone: still to see.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
 - [ ] R10: capture Multiplexer keyboard parity first; current video shows only Beeper's
