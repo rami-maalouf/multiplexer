@@ -98,8 +98,10 @@ bun exact.mjs contract build app.contract --json --errors-only
 - **Sign in to the practice account in a drive** without the password in chat or logs:
   `pw="$(security find-generic-password -s multiplexer-test-account -a @rami-m-test:matrix.org -w)"`,
   then `"type password $pw"`. The drive masks a password field. Do not run `state` before
-  the sign-in ends: it shows the `password` state. Sign out at the end of the drive, so
-  matrix.org does not collect old devices.
+  the sign-in ends: it shows the `password` state. On matrix.org, sign out at the end of the
+  drive, so it does not collect old devices. As `@test1`/`@test2` on our own server, stay signed
+  in across drives on your own Simulator (the agent keeps its session), and sign out only when
+  your task ends: our server can delete leftover devices. On `@rami`, always sign out at the end.
 - Each drive is a new launch. The agent keeps its own session (Keychain service
   `com.ramimaalouf.multiplexer.session.agent`) and data, so a drive after a sign-in opens
   signed in. Each authored test starts signed out.
