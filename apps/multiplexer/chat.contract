@@ -118,8 +118,9 @@ component ChatBar
         view flex="1 1 0" display="flex" justify-content="flex-end"
           button popovertarget="chat-actions" buttonStyle="glass" width=44 height=44 flex-shrink=0 pointer-events="auto"
             aria-label="More" testId="chat-more"
+            // three dots alone in the glass, as iOS's bar buttons (not ellipsis.circle, a ring in a ring).
             // capped as Back's chevron, so the two stay one weight at the accessibility sizes.
-            image "symbol:more" font-size=labelSize
+            image "symbol:ellipsis" font-size=labelSize
         // the inbox's actions that suit an open chat, in Beeper's order; the chat's info page adds the rest.
         column id="chat-actions" popover="auto" role="menu" pointer-events="auto"
           button press=pin popovertarget="chat-actions" popovertargetaction="hide" testId="chat-pin"
