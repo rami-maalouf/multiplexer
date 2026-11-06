@@ -1715,6 +1715,44 @@ and the largest text size, with `check` (`apps/multiplexer/.exact/ui2/survey/`, 
   bar's fade as a card that does not show.
 - Otherwise clean: the info page, Settings and the filter sheet read "no findings" in all three; the inbox too.
 
+### R11 Link preview cards (iPhone review, 2026-11-05)
+
+**Description:** `tasks/reviews/20261105-iphone-video-feedback.md` R11: Beeper shows a card (picture,
+title, site) for a shared link; we showed an underlined URL. Rami (2026-11-05): "let's get these fixed".
+
+**Acceptance criteria:**
+- [x] A link with a preview shows a card in its bubble, as Messages and Beeper: the page's picture
+  across the bubble (its shape kept, up to a cap), the title (3 lines at most) and the link's own
+  site. A message that is only the link shows the card alone; a text with a link keeps its text, the
+  card under it. (2026-11-05, branch `work/link-previews`: `details.contract` `LinkBalloon`,
+  `links.ts`, `links-members.contract`, `modules/apple/LinkPreviews.swift`.)
+- [x] Safe: the site on the card comes from the link, never from the page, and a tap opens the
+  message's own link (B15's in-app Safari), so a page cannot name another site than the one it opens.
+- [x] Fetched on the phone with Apple's LinkPresentation (`LPMetadataProvider`), never the server's
+  `preview_url`, so a link in an encrypted chat does not go to the server. The page sees the phone's
+  address, as Safari would.
+- [x] Only the rows on screen fetch (the first row in view and the twelve after it; the newest at
+  the chat's end). Drive: at the end all 5 links were in the fetch list; scrolled to the top, none.
+- [x] Kept on the device (`matrix-media/link-<hash>.json` and `.jpg`), so a reopened chat shows its
+  cards at once (5 kept previews before any fetch in a drive). A page that gives nothing keeps the
+  plain link and is tried again after a day; Sign Out deletes them with the other pictures.
+- [x] A card keeps the bubble's gestures: a link-only card is a `SwipeReply` (tap opens, swipe
+  replies, long press holds), and the held copy is the card. Real-touch drives: swipe started a
+  reply, long press opened the menu over the lifted card, tap ran `openLink`.
+- [x] Checked as `@test1` with links from `@test2` (apple.com, Wikipedia, example.com, example.org)
+  and one of `@test1`'s own: dark, light, the largest text size and Reduce Transparency;
+  `bun test` 12 passed (new `links.test.ts`), `verify ios` clean. Screenshots in
+  `apps/multiplexer/.exact/links/` (gitignored).
+- [ ] Limits: the in-app browser does not show in a drive's screenshot (the same for a plain link);
+  the tap's request was seen in the log. A text with a link and a card opens from the link in its
+  text, not from the card (a box takes no tap; finding 90's press-in-swipe). example.org could not be
+  resolved on the Simulator, which showed the failure fallback; example.com's page gave no title or
+  picture to LinkPresentation.
+- [ ] Seen on the way, not R11's: in dark, the chat title's capsule over a white picture reads 3.8 to
+  4.4:1 (`check`; R07's bar material). Own bubbles on the default blue draw black text (`onFill`
+  picks black, as white on `#007aff` is 4.0:1), while `check` reads one of them as white: for the
+  accent work.
+
 ### Later
 
 Coordination (2026-11-04): Rami resumed feature work using GPT-6 Astra and GPT-6.1 Sol.
