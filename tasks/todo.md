@@ -50,8 +50,11 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
-    shows the messages behind Back, the title and More, blurred and dimmed more toward the
-    status bar (two masked materials and a `chat.edge` tint, in place of a solid backing).
+    shows the messages behind Back, the title and More as blurred colour only: two stacked
+    materials at full strength from the status bar down through the title's capsule (the
+    `dark` material in dark mode, whose grey stays near black), fading out 20 and 32 points
+    below it, and a `chat.edge` tint, in place of a solid backing. Text bubbles behind the
+    avatar and title are unreadable in dark, light, the largest text and two-line titles.
     The transcript reaches under the composer and the home indicator; the field is a glass
     capsule, + and voice (or Send) are 48-point glass circles beside it, and the messages
     under them are blurred and dimmed (`chat.edge-bottom`). Reduce Transparency draws both
