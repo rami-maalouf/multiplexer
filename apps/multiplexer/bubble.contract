@@ -37,7 +37,7 @@ component BalloonBox
     card: bool
     identifier: string
   slot
-  derive fill = outgoing ? appearance.fill : "bubble.incoming"
+  derive fill = outgoing ? appearance.bubble : "bubble.incoming"
   view
     box id=identifier testId=identifier position="relative" min-width=44 max-width="100%" box-sizing="border-box"
       padding=(card ? "4px 4px 9px" : "8px 14px 9px") border-radius=20 background-color=fill opacity=(dimmed and not outgoing ? 0.6 : 1)

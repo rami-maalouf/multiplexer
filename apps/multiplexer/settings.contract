@@ -121,7 +121,7 @@ component SettingsScreen
             button press=resetAccent disabled=(appearance.fill == "#007aff") testId="accent-reset"
               text "Reset to Default Blue"
           footer
-            text "Your messages keep this color. Buttons and links adapt for readability. Saved on this device."
+            text "Your messages use this color, a shade deeper where white text needs it. Buttons and links adapt for readability. Saved on this device."
         section
           header
             text "Voice Messages"
