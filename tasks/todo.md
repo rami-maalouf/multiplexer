@@ -208,6 +208,10 @@ had nothing to show at once.
     leaves "sent", never a "seen" without evidence. Merged chats copy their newest room's status.
   - A watch reads again, every 2 s and locally, the receipts of at most 30 chats showing "sent", and tells
     the list when one is seen (another member's receipt changes no room in the room list).
+    It reads nothing while the app is in the background (the native module observes it) or the chat list is
+    not the screen in front (a keyed `task` on `listOnTop` sends `listShown` to the native module each time it
+    changes: a chat, Settings or the search in front). Driven: one `listShown` at launch with the list in front,
+    one more when Settings opened; the list still turned sent to seen while in front. `verify ios` clean.
   - The row: an outline check (sent) or a filled check (seen) in the secondary label colour, spoken "Sent" or
     "Seen", in place of "You:"; "You:" stays when the state is unknown.
   - `testThePreviewSaysSentThenSeen` (`@test1` sends: sent; `@test2` reads: seen; their answer: none). Drive:
