@@ -217,8 +217,16 @@ had nothing to show at once.
   SDK pages back to the read receipt in a background queue with no time limit, and the server's
   count is 0 on our Synapse (sliding sync), so it cannot help. The test waited 20 s for 25. Now it
   waits for some unread, opens the chat (which pages back), then expects 25. Passed 3 in a row.
-- [ ] A real return from the background cannot be driven (the agent suspends the drive); the page's
-  visibility return keeps the chat. Rami's iPhone: check a return after a long time away.
+- [x] A return from the background (2026-11-06, exact2's `bench/bakeoff/drive.mjs`: real touches,
+  Home, same process on return; `@test2` sent 3 messages while away). After 100 s away the chat
+  flickered for about 6 s between its kept copy and the live answer (2 of 3 times; not after 40 s):
+  `loadMessages` served the copy on every ask after a live one, so each change on the open chat
+  showed the copy first, and a live answer still `settling` is not kept, so the copy was old. Fixed:
+  only an opening shows the copy (`showingLive`, per screen). After: messages stay, the new ones
+  arrive with no spinner and no step back; A-B-A still shows the chat in its push. Proof:
+  `apps/multiplexer/.exact/r04-return/`.
+- [ ] After a long time away, the newest message shows about 1 s before the ones between it and the
+  older ones (the sync's gap, filled by the SDK). Hide the gap until it fills?
 
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 

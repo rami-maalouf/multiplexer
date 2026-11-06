@@ -422,7 +422,7 @@ component Multiplexer
   // Back's count: the inbox's unread chats on every network (the filter sheet's Inbox row), but this one.
   derive otherUnread = max(0, roomList.unread - (match openChatInfo { case some(r) => inboxUnread(r) ? 1 : 0, case none => 0 }))
   // the day a message is on is the reader's, so the zone's offset groups them.
-  resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset, openNetwork) as shape Thread else empty()
+  resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset, openNetwork, "thread") as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
   resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
   derive composer = composerOf(composers, openRoom, savedDraft)
@@ -486,7 +486,7 @@ component Multiplexer
   derive aimedNetwork = match aimedRoom { case some(r) => r.network, case none => "matrix" }
   // a merged chat's preview is the room it opens.
   derive aimedOpen = match aimedRoom { case some(r) => r.open, case none => aimed }
-  resource peek = loadMessages(aimedOpen, aimedIsDirect, aimedRoomName, time.utcOffset, aimedNetwork) as shape Thread else empty()
+  resource peek = loadMessages(aimedOpen, aimedIsDirect, aimedRoomName, time.utcOffset, aimedNetwork, "peek") as shape Thread else empty()
   derive peekShown = peek.room == aimedOpen and aimed != ""
   // a preview shown from the chat's kept copy asks for the live answer at once, as the chat does.
   task freshenPeek when peekShown and peek.cached key=aimedOpen
