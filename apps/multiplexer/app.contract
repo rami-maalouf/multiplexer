@@ -257,6 +257,8 @@ routes nav
 fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender.replaceAll(":", ":\u200B").replaceAll(".", ".\u200B")}: ${r.lastMessage}`)
 // an unread chat that is not muted: its name is bolder and its time in the accent.
 fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
+// a row reads as unread: unread messages, or marked unread by hand (its swipe offers Read).
+fn rowUnread(r: Room): bool = r.unread > 0 or r.markedUnread
 // the inbox's unread count counts it (matrixcore's isInInbox and isLoudlyUnread): in the inbox,
 // unread and not muted, or with a mention.
 fn inboxUnread(r: Room): bool = not r.archived and not r.lowPriority and (loud(r) or r.mentions > 0)
@@ -885,6 +887,11 @@ component Multiplexer
   action changeAimed(change: string)
     send changedChat = changeChat(aimed, change)
     haptic("success")
+  // a row's swipe action (its read, archive or mute state flipped); as the long-press menu's, each
+  // shows in the list at once, and a merged chat's acts on each of its rooms (Matrix.swift).
+  action swipeChat(id: string, change: string)
+    send changedChat = changeChat(id, change)
+    haptic("success")
   action askDelete
     showModal("delete-chat")
   // the chat bar's "..." pins, mutes or marks unread the open chat.
@@ -998,8 +1005,27 @@ component Multiplexer
                             ChooseMark(on=selectedChats.includes(r.id), identifier=`room-mark-${r.id}`)
                           RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=false, picture=(not viewport.accessibilityTextSize))
                       else
-                        link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
-                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=true, picture=true)
+                        // a swipe shows the row's actions, as Beeper and Messages do (UIKit's own on iOS): left, Archive and
+                        // Mute, a full swipe archiving; right, Read or Unread, a full swipe toggling it. The row at rest is the
+                        // link; the actions follow it in the swipe's scroll, and each acts on every room of a merged chat.
+                        scroll swipeContent=`room-${r.id}` swipeLeading=`swipe-read-${r.id}` swipeTrailing=`swipe-archive-${r.id} swipe-mute-${r.id}`
+                          testId=`swipe-${r.id}` display="flex" overflow-x="scroll" overflow-y="hidden" scrollbar-width="none"
+                          scroll-snap-type="x mandatory"
+                          link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
+                            width="100%" flex-shrink=0 scroll-snap-align="start"
+                            RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=true, picture=true)
+                          button id=`swipe-read-${r.id}` press=swipeChat(r.id, rowUnread(r) ? "read" : "unread") accent-color="-exact-system-blue"
+                            flex-shrink=0 scroll-snap-align="start" testId=`swipe-read-${r.id}`
+                            image (rowUnread(r) ? "symbol:messages" : "symbol:icon.mark-unread")
+                            text (rowUnread(r) ? "Read" : "Unread")
+                          button id=`swipe-archive-${r.id}` press=swipeChat(r.id, r.archived ? "unarchive" : "archive") accent-color="-exact-system-green"
+                            flex-shrink=0 scroll-snap-align="start" testId=`swipe-archive-${r.id}`
+                            image (r.archived ? "symbol:icon.unarchive" : "symbol:icon.archive")
+                            text (r.archived ? "Unarchive" : "Archive")
+                          button id=`swipe-mute-${r.id}` press=swipeChat(r.id, r.muted ? "unmute" : "mute") accent-color="-exact-system-indigo"
+                            flex-shrink=0 scroll-snap-align="start" testId=`swipe-mute-${r.id}`
+                            image (r.muted ? "symbol:notifications" : "symbol:icon.bell-slash")
+                            text (r.muted ? "Unmute" : "Mute")
               else if not searching
                 if failed(roomList) and not pending(roomList)
                   column flex=1 justify-content="center" align-items="center" gap=12 padding=24
