@@ -85,6 +85,30 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   Select Chats. `verify ios` clean (12 tests). Screenshots: `apps/multiplexer/.exact/r12/`.
   Left as it is: in Select Chats the row lines start at the picture, not at the name (the list host places
   them; it was so before R12).
+- [ ] R03 scrolling frozen after a return to the app (2026-11-06, Simulator): not reproduced, so a
+  diagnostic and a reset ship first. Tried with real touches (exact2's `bench/bakeoff/drive.mjs`, which drives
+  the running app; Exact's own drive cannot cross a trip to the background): Home idle and mid-fling, the
+  bottom-edge Home gesture, the bottom-edge app switch, 45 s and 17 min away while messages arrived (`@test1`),
+  and on the pre-R01/R02 build with `@rami`'s real chats (read only, signed out after): a sideways drag then
+  Home, the app switch, lock and unlock. Each time the first scroll after the return moved the list.
+  The video shows the stuck state belongs to one list on screen (taps work; Archive and back recovers).
+  Shipped in the Exact integration checkout (`dd9343b324`, `ScrollReturnIOS.swift`):
+  - On every return to the app (`didBecomeActive`) one log line per list: scroll enabled, pan state, content
+    size against bounds, offset, a smooth correction running, the interaction pin; then a "cleared" line:
+    a running smooth correction cancelled where it stands, a held pin released, a swipe whose touch never
+    ended released (an open swipe stays open).
+  - For 2 minutes after a return, a vertical drag of 30 points or more that leaves its list where it was logs
+    a "stuck" line, once a list a return.
+  - Shown harmless (`apps/multiplexer/.exact/r03/harm5.mov` in the swipe checkout): a list scrolled midway with
+    a row's swipe open, Home and back: the same offset, the swipe still open, no flicker; the log said
+    `swipes-projected=1 swipes-released=0 corrections=0`. A drag that started on the bottom bar gave the one
+    "stuck" line. `verify ios` clean.
+  - Collect from the iPhone (cable or paired, unlocked), on this Mac:
+    `sudo /usr/bin/log collect --device-udid 00008140-0002155C01F3001C --last 2h --output ~/Desktop/multiplexer-r03.logarchive`
+    then `/usr/bin/log show ~/Desktop/multiplexer-r03.logarchive --info --style compact --predicate 'subsystem == "com.ramimaalouf.multiplexer" AND category == "scroll-return"'`
+    (`/usr/bin/log`: in zsh `log` is a shell builtin). The same `log show` read a Simulator archive
+    (`xcrun simctl spawn <udid> log collect --last 10m --output x.logarchive`): 24 lines, the "stuck" one among them.
+  - Next: Rami's build with R01's fix; if it freezes again, collect the log right after.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
