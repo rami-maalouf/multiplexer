@@ -991,8 +991,11 @@ component Multiplexer
                   // up and down only (R01): a row's text can be wider than the row in real chats (a long
                   // word in a preview), and a list that may scroll sideways then pans the whole list
                   // under the fixed title and bar. a row's own swipe scrolls inside the row.
-                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=64 testId="room-list"
-                    overflow-x="hidden"
+                  // the rows run on under the home indicator (its 34 points), as Beeper's do, so the softened band
+                  // under the floating bar shows rows, not empty background (R06). The bottom padding grows by the
+                  // same 34 points: the last row still ends 16 points above the bar.
+                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=98 testId="room-list"
+                    overflow-x="hidden" margin-bottom=-34
                     inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=tapPinned, aim=aim, menu="chat-menu", selecting=selecting,

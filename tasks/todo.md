@@ -42,6 +42,16 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   pre-R02 build with only this line moved nothing, and on the branch R02's swipe still opens a row while
   pans elsewhere move nothing. `verify ios` clean (12 tests). Recordings with real chats stay in `/tmp`;
   the `@test1` ones are in the checkout's `apps/multiplexer/.exact/r01/`. On the iPhone: still to see.
+- [x] R06 content stays visible under the floating bottom bar (2026-11-05, branch `fix/inbox-video`, Simulator
+  only, `@test1`). Reproduced: a solid background backing ran from about 70 points above the bar to the screen's
+  bottom, so rows faded out above it and nothing showed under the controls. Now a material, "ultra-thin",
+  masked from full at the bottom edge to none 24 points above the bar, as the chat lane's edges (it
+  started with "thin": that read as a grey shelf, darkest in light mode). The list also runs on under the
+  home indicator (`margin-bottom=-34`, its padding 34 points more), so the band blurs rows, not empty
+  background; at the list's end the last row still ends 16 points above the bar. Checked in dark, light,
+  the largest text size, and with the Simulator's real Reduce Transparency setting (UIKit draws the glass
+  opaque and the band as a solid fade; no app fallback needed). `verify ios` clean (12 tests).
+  Screenshots: the checkout's `apps/multiplexer/.exact/r06/` (`before-*`, `after4-*`).
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
 - [ ] R10: capture Multiplexer keyboard parity first; current video shows only Beeper's
