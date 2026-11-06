@@ -186,6 +186,13 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
     the inbox and y 70 in the chat. Now both layers (material and tint) share one eased curve
     (flat to 30%, then smoothstep stops to 0), with no corner (`line-d*`). Not reproduced on the
     Simulator: its rows under the band are too dark to show a faint line. Installed on the iPhone.
+    Rami: "barely noticeable", pushed to main.
+  - [x] Rami (2026-11-06, iPhone follow-ups, pushed to main one commit each): the inbox bar 6
+    points lower and the composer 16 points lower (keyboard down only); the chat's More is three
+    dots without a ring; the jump arrow is a 28-point circle (was 44) in a 44-point tap area.
+  - [ ] Interactive liquid glass on the chat title's capsule and the composer's field (their own
+    `press`, no press dim; finding 135). The agent cannot show the swell: needs Rami's finger on
+    the iPhone.
     Needs Rami's eye on the phone.
   - [x] Rami (2026-11-06, iPhone follow-up): voice recording matches Beeper's row: X replaces
     "+" (and stays X on the draft, not trash); soft red fill capsule with no stroke; Stop is
