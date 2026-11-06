@@ -1015,8 +1015,11 @@ component Multiplexer
                         scroll swipeContent=`room-${r.id}` swipeLeading=`swipe-read-${r.id}` swipeTrailing=`swipe-archive-${r.id} swipe-mute-${r.id}`
                           testId=`swipe-${r.id}` display="flex" overflow-x="scroll" overflow-y="hidden" scrollbar-width="none"
                           scroll-snap-type="x mandatory"
+                          // the swipe's scroll is the row, so the list gives its content no margin: the link keeps the
+                          // cell's 16 at each end itself, as the other rows have (Exact puts a row's content at the
+                          // cell's margin only where the row writes no padding).
                           link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
-                            width="100%" flex-shrink=0 scroll-snap-align="start"
+                            width="100%" flex-shrink=0 scroll-snap-align="start" padding="0 16px" box-sizing="border-box"
                             RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=true, picture=true)
                           button id=`swipe-read-${r.id}` press=swipeChat(r.id, rowUnread(r) ? "read" : "unread") accent-color="-exact-system-blue"
                             flex-shrink=0 scroll-snap-align="start" testId=`swipe-read-${r.id}`
