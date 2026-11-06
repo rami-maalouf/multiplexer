@@ -74,6 +74,17 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   rows in dark, light, the largest text (row text readable only in the fade, about 40 points below the title),
   Select Chats and Reduce Transparency (`q-*`, `e-*`). `verify ios`: 12 tests pass; its 4 contrast notes are the
   accent preview's accepted pair (d896bd4). Integrated as 0154097.
+- [x] R12 inbox title, density and hierarchy (2026-11-06, branch `fix/inbox-video`, Simulator only, `@test1`).
+  Compared with the video's Beeper frames (01:32, 01:41): Beeper has a compact "Inbox" title, rows of one
+  height (about 80 points, two preview lines kept), small grey times and no chevrons; ours had a 28-point
+  title, rows of 60 or 80 points, accent times at 15 points and a chevron on each row. Now: "Inbox" and
+  "Select Chats" are title 3 (20 points, bold); the picture is 48 points; every preview keeps two lines
+  (`min-height="2.6em"`, so the slot grows with the text size); the time is footnote and grey (the bold name
+  and the count say unread); no chevron. The lone pinned chat stays centred, as Messages shows one pin; the
+  line above it is gone since R05. Checked in dark, light, the largest text (rows wrap, nothing cut) and
+  Select Chats. `verify ios` clean (12 tests). Screenshots: `apps/multiplexer/.exact/r12/`.
+  Left as it is: in Select Chats the row lines start at the picture, not at the name (the list host places
+  them; it was so before R12).
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now

@@ -216,8 +216,8 @@ component TitleMenu
     row padding="2px 16px 6px" align-items="center" testId="title-bar"
       button popovertarget="title-menu" appearance="none" aria-label=`${title}, menu` testId="title-button"
         display="flex" align-items="center" gap=6 max-width="100%" min-height=44
-        text title role="heading" aria-level=1 font="-exact-title1" font-weight=700 color="-exact-label" testId="title"
-        image "symbol:icon.chevron-down" font=(largeText ? "-exact-title3" : "-exact-headline") font-weight=600 color="-exact-label"
+        text title role="heading" aria-level=1 font="-exact-title3" font-weight=700 color="-exact-label" testId="title"
+        image "symbol:icon.chevron-down" font=(largeText ? "-exact-headline" : "-exact-subheadline") font-weight=600 color="-exact-label"
           aria-hidden=true
       // a row with no press is a break between sections on iOS, so the greyed rows name one,
       // which a disabled row never runs.
@@ -250,7 +250,7 @@ component SelectTitle
     busy: bool
   view
     row padding="2px 16px 6px" align-items="center" flex-wrap="wrap" column-gap=12 row-gap=4 min-height=50 testId="select-title"
-      text selectedTitle(count) role="heading" aria-level=1 font="-exact-title1" font-weight=700 color="-exact-label" flex="1 1 12rem"
+      text selectedTitle(count) role="heading" aria-level=1 font="-exact-title3" font-weight=700 color="-exact-label" flex="1 1 12rem"
         min-width=0 testId="select-count"
       if busy
         progress aria-label="Updating chats" testId="select-progress"

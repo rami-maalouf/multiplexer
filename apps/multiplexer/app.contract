@@ -1056,7 +1056,7 @@ component Multiplexer
                           // at the accessibility text sizes the mark takes the picture's place, so the name keeps its width.
                           view flex-shrink=0 margin=(viewport.accessibilityTextSize ? "8px 12px 8px 0" : "0 12px 0 0")
                             ChooseMark(on=selectedChats.includes(r.id), identifier=`room-mark-${r.id}`)
-                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=false, picture=(not viewport.accessibilityTextSize))
+                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=(not viewport.accessibilityTextSize))
                       else
                         // a swipe shows the row's actions, as Beeper and Messages do (UIKit's own on iOS): left, Archive and
                         // Mute, a full swipe archiving; right, Read or Unread, a full swipe toggling it. The row at rest is the
@@ -1069,7 +1069,7 @@ component Multiplexer
                           // cell's margin only where the row writes no padding).
                           link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
                             width="100%" flex-shrink=0 scroll-snap-align="start" padding="0 16px" box-sizing="border-box"
-                            RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=true, picture=true)
+                            RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=true)
                           button id=`swipe-read-${r.id}` press=swipeChat(r.id, rowUnread(r) ? "read" : "unread") accent-color="-exact-system-blue"
                             flex-shrink=0 scroll-snap-align="start" testId=`swipe-read-${r.id}`
                             image (rowUnread(r) ? "symbol:messages" : "symbol:icon.mark-unread")
@@ -1767,24 +1767,23 @@ component Multiplexer
           text "Cancel"
 
 // a chat's row in the list: its picture (with its network's logo), its name, time, preview and
-// count. chevron: the row opens the chat (not while choosing chats). picture: off while choosing
-// chats at the accessibility text sizes, where the mark takes its place.
+// count. Every row keeps two lines for its preview, as Messages and Beeper do, so the list has one
+// rhythm; no chevron, and a small grey time: the bold name and the count say unread. picture: off
+// while choosing chats at the accessibility text sizes, where the mark takes its place.
 component RoomFace
   props
     appearance: Appearance
     r: Room
     now: number
     offset: number
-    chevron: bool
     picture: bool
   view
     row align-items="center" flex=1 min-width=0
-      // a fixed 44-point picture, as messages has; initials grow with the text size, to a cap.
-      // a bridged chat's network logo sits on its corner, outside the clipped circle. the
-      // margin keeps a chat with no message as tall as messages' rows.
+      // a fixed 48-point picture; initials grow with the text size, to a cap. a bridged chat's
+      // network logo sits on its corner, outside the clipped circle.
       if picture
         view position="relative" flex-shrink=0 margin="8px 12px 8px 0"
-          view width=44 height=44 border-radius=22 overflow="hidden"
+          view width=48 height=48 border-radius=24 overflow="hidden"
             background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
             testId=`avatar-${r.id}`
             if r.avatar != ""
@@ -1807,15 +1806,12 @@ component RoomFace
                 color="-exact-secondary-label" aria-label="Muted" testId=`muted-${r.id}`
           row gap=6 align-items="baseline" flex-shrink=0 margin-left="auto"
             if r.lastTime > 0
-              text formatDay(r.lastTime, now, offset, "list") font="-exact-subheadline"
-                color=(loud(r) ? "AccentColor" : "-exact-secondary-label")
-            if chevron
-              image "symbol:forward-chevron" font="-exact-footnote" color="-exact-tertiary-label"
+              text formatDay(r.lastTime, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label"
         // an unread chat: a bold name and a count beside the preview; muted, a grey
         // count; with a mention, "@" and the accent. marked unread by hand: a dot.
         row gap=8 align-items="flex-start"
           text (r.lastMessage != "" ? preview(r) : "") font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
-            flex=1 min-width=0 testId=`room-preview-${r.id}`
+            min-height="2.6em" flex=1 min-width=0 testId=`room-preview-${r.id}`
           if r.mentions > 0
             view flex-shrink=0 testId=`count-${r.id}`
               AccentBadge(appearance=appearance, label=`@ ${countText(max(r.unread, r.mentions))}`, muted=false)
