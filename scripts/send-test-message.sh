@@ -10,14 +10,17 @@
 #   send-test-message.sh --voice <sound file>: a voice note as the whatsapp bridge brings one (ffmpeg):
 #   ogg opus, its length, a waveform of 64 values from 0 to 100, and the voice mark
 #   send-test-message.sh --delete-last: deletes the sender's newest message in the room for everyone
+#   send-test-message.sh --read: the sender reads the room: a read receipt on its newest message
 #   SENDER=@test2:ramimaalouf.com ROOM="Multiplexer two-person test" (the defaults)
 #   REPLY_TO=<event id> or REPLY_TO=first: the text answers that message, or the room's first
 #   text message (older than what a chat loads when it opens)
 #   MENTION=<user id>: the text mentions that user, as a client's pill does (m.mentions)
 set -euo pipefail
-usage="usage: send-test-message.sh <text> | --image <file> [caption] | --video <file> [caption] | --sticker <file> | --voice <file> | --delete-last"
-image=""; video=""; sticker=""; voice=""; caption=""; deletelast=""
-if [ "${1:-}" = "--delete-last" ]; then
+usage="usage: send-test-message.sh <text> | --image <file> [caption] | --video <file> [caption] | --sticker <file> | --voice <file> | --delete-last | --read"
+image=""; video=""; sticker=""; voice=""; caption=""; deletelast=""; readlast=""
+if [ "${1:-}" = "--read" ]; then
+  readlast=1
+elif [ "${1:-}" = "--delete-last" ]; then
   deletelast=1
 elif [ "${1:-}" = "--image" ]; then
   image="${2:?$usage}"; caption="${3:-}"
@@ -49,6 +52,16 @@ for id in $(curl -sf "$base/client/v3/joined_rooms" -H "$auth" | jq -r '.joined_
   if [ "$name" = "$roomname" ]; then room="$enc"; break; fi
 done
 [ -n "$room" ] || { echo "$sender is in no room named $roomname" >&2; exit 1; }
+
+if [ -n "$readlast" ]; then
+  newest="$(curl -sf "$base/client/v3/rooms/$room/messages?dir=b&limit=20" -H "$auth" \
+    | jq -r '[.chunk[] | select(.type == "m.room.message" or .type == "m.sticker")][0].event_id // empty')"
+  [ -n "$newest" ] || { echo "no message to read in $roomname" >&2; exit 1; }
+  newenc="$(jq -rn --arg r "$newest" '$r|@uri')"
+  curl -sf -X POST "$base/client/v3/rooms/$room/receipt/m.read/$newenc" -H "$auth" -H 'Content-Type: application/json' -d '{}' >/dev/null
+  echo "read $newest as $sender"
+  exit 0
+fi
 
 if [ -n "$deletelast" ]; then
   last="$(curl -sf "$base/client/v3/rooms/$room/messages?dir=b&limit=50" -H "$auth" \

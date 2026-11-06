@@ -87,6 +87,32 @@ final class MessageActionsTests: XCTestCase {
         _ = try await summary(reader, roomId) { $0.lastMessage == next }
     }
 
+    /// The list's preview of an own message: "sent" once the server has it, "seen" after the other
+    /// person reads it (their read receipt), and nothing once their answer is the newest message.
+    func testThePreviewSaysSentThenSeen() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let sender = try await signIn(homeserver, user, password)
+        let reader = try await signIn(homeserver, user2, password2)
+        let roomId = try await testRooms(sender, reader, user2: user2)[menuName]!
+        _ = try await reader.messages(roomId: roomId, limit: 20)
+
+        let text = "Receipt \(UUID().uuidString)"
+        try await sender.sendAndWait(roomId: roomId, text: text)
+        let sent = try await summary(sender, roomId) { $0.lastMessage == text && $0.lastStatus != "" }
+        XCTAssertEqual(sent.lastStatus, "sent", "unread by the other person, it says seen")
+        XCTAssertTrue(sent.lastIsOwn)
+
+        _ = try await message(reader, roomId) { $0.body == text }
+        try await reader.markRead(roomId: roomId)
+        let seen = try await summary(sender, roomId) { $0.lastMessage == text && $0.lastStatus == "seen" }
+        XCTAssertEqual(seen.lastStatus, "seen")
+
+        let answer = "Answer \(UUID().uuidString)"
+        try await reader.sendAndWait(roomId: roomId, text: answer)
+        let theirs = try await summary(sender, roomId) { $0.lastMessage == answer }
+        XCTAssertEqual(theirs.lastStatus, "", "another person's message has a receipt status")
+    }
+
     func testAForwardedTextPhotoAndFileArriveInAnotherChat() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
         let sender = try await signIn(homeserver, user, password)

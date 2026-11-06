@@ -44,6 +44,8 @@ shape Room
   lastMessage: string
   lastSender: string
   lastIsOwn: bool
+  // an own newest message's receipt: "sent", "seen", or "" (not own, or unknown: the preview says "You:").
+  lastStatus: string
   lastTime: number
   avatar: string
   initials: string
@@ -270,7 +272,7 @@ routes nav
     merge "/merge"
 
 // a group chat names who wrote the last message; a one-to-one chat does not.
-fn preview(r: Room): string = r.lastIsOwn ? `You: ${r.lastMessage}` : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender.replaceAll(":", ":\u200B").replaceAll(".", ".\u200B")}: ${r.lastMessage}`)
+fn preview(r: Room): string = r.lastIsOwn ? (r.lastStatus != "" ? r.lastMessage : `You: ${r.lastMessage}`) : (r.isDirect or r.lastSender == r.name ? r.lastMessage : `${r.lastSender.replaceAll(":", ":\u200B").replaceAll(".", ".\u200B")}: ${r.lastMessage}`)
 // an unread chat that is not muted: its name is bolder and its time in the accent.
 fn loud(r: Room): bool = (r.unread > 0 or r.markedUnread) and not r.muted
 // a row reads as unread: unread messages, or marked unread by hand (its swipe offers Read).
@@ -1810,8 +1812,15 @@ component RoomFace
         // an unread chat: a bold name and a count beside the preview; muted, a grey
         // count; with a mention, "@" and the accent. marked unread by hand: a dot.
         row gap=8 align-items="flex-start"
-          text (r.lastMessage != "" ? preview(r) : "") font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
+          // an own message: its receipt in place of "You:", an outline check once sent, filled once seen.
+          text font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
             min-height="2.6em" flex=1 min-width=0 testId=`room-preview-${r.id}`
+            if r.lastIsOwn and r.lastStatus != "" and r.lastMessage != ""
+              image (r.lastStatus == "seen" ? "symbol:icon.seen" : "symbol:icon.sent") width="0.95em" height="0.95em"
+                vertical-align="-0.12em" color="-exact-secondary-label" aria-label=(r.lastStatus == "seen" ? "Seen" : "Sent")
+                testId=`receipt-${r.id}`
+              text " "
+            text (r.lastMessage != "" ? preview(r) : "")
           if r.mentions > 0
             view flex-shrink=0 testId=`count-${r.id}`
               AccentBadge(appearance=appearance, label=`@ ${countText(max(r.unread, r.mentions))}`, muted=false)

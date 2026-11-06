@@ -56,6 +56,8 @@ icons
   icon.video = icon(sf "video", svg "icons/video.svg")
   icon.clock = icon(sf "clock", svg "icons/clock.svg")
   icon.alarm = icon(sf "alarm", svg "icons/alarm.svg")
+  icon.sent = icon(sf "checkmark.circle", svg "icons/sent.svg")
+  icon.seen = icon(sf "checkmark.circle.fill", svg "icons/seen.svg")
   icon.safari = icon(sf "safari", svg "icons/safari.svg")
   // a chat search's Audio kind and a found voice message, as Beeper draws them.
   icon.waveform = icon(sf "waveform", svg "icons/waveform.svg")
