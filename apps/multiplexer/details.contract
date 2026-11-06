@@ -67,21 +67,26 @@ component StatusLine
 
 // the jump to the newest message, bottom right over the chat while it is out of view, with how
 // many messages are unread ("23" and an arrow, as Beeper has it); the arrow alone when none are.
+// A small glass circle (28 points, about 60% of a bar button) inside a 44-point tap area, flush
+// to the area's right edge so it lines up with the composer's right.
 component JumpButton
   props
     appearance: Appearance
     count: number
     press: action
   view
-    button appearance="none" press=press backgroundMaterial="glass" border-radius=22 min-width=44 height=44 testId="jump"
-      display="flex" flex-direction="row" align-items="center" justify-content="center" gap=6
-      padding=(count > 0 ? "0 12px 0 8px" : "0") box-sizing="border-box"
+    button appearance="none" press=press min-width=44 height=44 testId="jump"
+      display="flex" flex-direction="row" align-items="center" justify-content="flex-end"
       aria-label=(count > 0 ? `Newest message, ${count} unread` : "Newest message")
-      if count > 0
-        view min-width=24 height=24 padding="0 7px" border-radius=12 box-sizing="border-box" background-color=appearance.bubble
-          display="flex" align-items="center" justify-content="center"
-          text unreadCount(count) font="-exact-footnote" font-weight=600 color=appearance.onFill font-variant-numeric="tabular-nums"
-      image "symbol:icon.arrow-down" font-size="min(-exact-body, 20px)" color="-exact-label" aria-hidden=true
+      view backgroundMaterial="glass" border-radius=14 min-width=28 height=28 box-sizing="border-box"
+        display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+        padding=(count > 0 ? "0 8px 0 5px" : "0")
+        if count > 0
+          view min-width=18 height=18 padding="0 5px" border-radius=9 box-sizing="border-box" background-color=appearance.bubble
+            display="flex" align-items="center" justify-content="center"
+            text unreadCount(count) font="-exact-caption2" font-size="min(-exact-caption2, 14px)" font-weight=600 color=appearance.onFill
+              font-variant-numeric="tabular-nums"
+        image "symbol:icon.arrow-down" font-size="min(-exact-footnote, 14px)" color="-exact-label" aria-hidden=true
 
 // a message of one to three emoji and nothing else: large, with no bubble, as Messages shows it.
 component BigEmoji

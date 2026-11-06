@@ -1566,9 +1566,10 @@ component Multiplexer
                     mask-image="linear-gradient(to top, black 0%, transparent 100%)"
                   view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
                     aria-hidden=true background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
-                // above the bar, at the right, while the newest message is out of view.
+                // above the bar, at the right, while the newest message is out of view. Its tap area is
+                // 44 points and its circle 28, centred in it, so the circle stays 8 points above the bar.
                 if away and thread.messages.length > 0
-                  view position="absolute" bottom="calc(100% + 8px)" right=12
+                  view position="absolute" bottom="100%" right=12
                     JumpButton(appearance=appearance, count=belowUnread, press=jumpToEnd)
                 // this chat's messages waiting on the server (Send Later): how many, and when the first goes.
                 match first(openScheduled)
