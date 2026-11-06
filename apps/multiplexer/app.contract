@@ -6,7 +6,7 @@ use EmptyState from "exact:content"
 use Appearance, AccentBadge from "./appearance.contract"
 use Balloon, Face from "./bubble.contract"
 use Attachment, chosenOf, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
-use BottomBar, PinnedGrid, PinnedChat, TitleMenu, ChooseMark, SelectTitle, SelectBar, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage, deleteChatsTitle, deleteChatsMessage from "./inbox.contract"
+use BottomBar, PinnedGrid, PinnedChat, TitleMenu, InboxHeader, ChooseMark, SelectTitle, SelectBar, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage, deleteChatsTitle, deleteChatsMessage from "./inbox.contract"
 use NetworkBadge, NetworkBadges, networkName from "./network.contract"
 use InboxSheet, NetworkCount, CommunityCount from "./sheet.contract"
 use LabelEditor, LabelPicker from "./labels.contract"
@@ -317,6 +317,8 @@ component Multiplexer
   state emojiGroup = "frequent"
   // the reader scrolled the chat's newest message out of view.
   state away = false
+  // the chat list is scrolled from its top: its header softens the chats under it (InboxHeader, R05).
+  state roomsScrolled = false
   // the "+" panel is open, in the keyboard's place.
   state panel = false
   // the file message being downloaded to open.
@@ -546,6 +548,10 @@ component Multiplexer
     user = v
   action editPassword(v: string)
     password = v
+  // set only when it crosses the top, so a scroll writes no state on most frames.
+  action roomsScrolledTo(scrollLeft: number, scrollTop: number)
+    if (scrollTop > 1) != roomsScrolled
+      roomsScrolled = scrollTop > 1
   action toUser
     focus("user")
   action toPassword
@@ -846,8 +852,9 @@ component Multiplexer
       nav = back(nav)
     toTop()
     haptic("selection")
+  // the list's top: an empty first row above its sticky header (InboxHeader) and the pinned chats.
   action toTop
-    scrollIntoView(gridShown ? "pinned" : (match first(listedRooms) { case some(r) => `room-${r.id}`, case none => "rooms" }), block="start")
+    scrollIntoView(gridShown or listedRooms.length > 0 ? "inbox-top" : "rooms", block="start")
   // the capsule's Inbox and Archive keep the network; a press on the list shown goes back to its top.
   action toInbox
     activeLabel = ""
@@ -955,14 +962,13 @@ component Multiplexer
             // while searching, the search's results take the list's place, and the bar hides.
             column navigationKey=`${e.id}` navigationScroll=(searching ? "search-results" : "rooms") navigationBar="none"
               position="absolute" inset=0 display="flex" flex-direction="column"
-              // the title names the network the filter sheet chose, and opens Beeper's menu.
-              if selecting
-                SelectTitle(count=chosenIds.length, done=stopSelecting, busy=pending(changedChats))
-              else if not searching
-                TitleMenu(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize)
-              if selecting and selectionProblem != ""
-                text selectionProblem role="alert" font="-exact-footnote" color="-exact-system-red" padding="8px 16px"
-                  background-color="-exact-background" testId="select-error"
+              // the title names the network the filter sheet chose, and opens Beeper's menu. With chats shown it is
+              // the list's first row (InboxHeader, R05); with none, it stands above the empty state.
+              if not searching and not (roomsShown and (listedRooms.length > 0 or gridShown))
+                InboxHeader(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), selecting=selecting,
+                  count=chosenIds.length, done=stopSelecting, busy=pending(changedChats), problem=selectionProblem,
+                  select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize,
+                  underStatusBar=false, scrolled=false)
               // the list stays under the search, covered, so closing the search finds it where it was.
               if roomsShown
                 if listedRooms.length == 0 and not gridShown and not searching
@@ -997,8 +1003,15 @@ component Multiplexer
                   // under the floating bar shows rows, not empty background (R06). The bottom padding grows by the
                   // same 34 points: the last row still ends 16 points above the bar.
                   list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=98 testId="room-list"
-                    overflow-x="hidden" margin-bottom=-34
+                    overflow-x="hidden" margin-bottom=-34 margin-top=-62 scroll=roomsScrolledTo
                     inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
+                    // the list's top, for its Inbox button: the sticky header below is always "in view".
+                    view id="inbox-top" height=0
+                    if not searching
+                      InboxHeader(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), selecting=selecting,
+                        count=chosenIds.length, done=stopSelecting, busy=pending(changedChats), problem=selectionProblem,
+                        select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize,
+                        underStatusBar=true, scrolled=roomsScrolled)
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=tapPinned, aim=aim, menu="chat-menu", selecting=selecting,
                         chosen=selectedChats, busy=pending(changedChats))

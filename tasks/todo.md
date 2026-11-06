@@ -57,6 +57,16 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   the largest text size, and with the Simulator's real Reduce Transparency setting (UIKit draws the glass
   opaque and the band as a solid fade; no app fallback needed). `verify ios` clean (12 tests).
   Screenshots: the checkout's `apps/multiplexer/.exact/r06/` (`before-*`, `after4-*`).
+- [x] R05 a lighter, translucent inbox top edge (2026-11-06, branch `fix/inbox-video`, Simulator only, `@test1`).
+  Reproduced: the title row stood above the list on the page's background, and the rows were cut off sharply
+  under "Inbox". Now the title (or Select Chats' count) is the list's first row, sticky (`InboxHeader`), and the
+  list starts under the status bar (62 points up, padded back in the header): the rows scroll on under the
+  title and the status bar, softened by the same "ultra-thin" material as the bottom bar, masked to fade out
+  just below the title. The material shows only while the list is scrolled from its top, as UIKit's scroll edge
+  effect: at rest it would show only its grey tint. The Inbox button scrolls to an empty first row above the
+  sticky header. Checked in dark and light (the status bar readable), the largest text size, Select Chats, and
+  the Simulator's real Reduce Transparency (a solid fade). `verify ios` clean (12 tests). Screenshots: the
+  checkout's `apps/multiplexer/.exact/r05/` (`b-*` with the status bar, `xxxl-*`, `select-*`, `rt-*`, `top-*`).
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
