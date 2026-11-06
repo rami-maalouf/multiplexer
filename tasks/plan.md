@@ -48,7 +48,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Blocked on Rami | Phase 3's Apple setup (P3.0 in `tasks/todo.md`): an App Group, two App IDs, an APNs key in the Keychain, two development profiles, and the DNS name `sygnal.ramimaalouf.com`. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | Root host/compiler: clean `exact2-multiplexer-integration` at `d0d66b107e`; package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
-| Last updated | 2026-11-05 |
+| Last updated | 2026-11-06 |
 
 Update this table at the end of every work session.
 

@@ -138,6 +138,13 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
     edges solid. Checked in dark, light, the largest text size and Reduce Transparency;
     idle, typed, multiline, reply, recording and keyboard states. The voice draft state
     could not be reached in a drive (the recorder stays `opening`): check it on the iPhone.
+  - [ ] Rami (2026-11-06, iPhone): the stacked top materials and the solid composer fade still
+    read as a black shelf that reaches too far. Revision on `fix/daily-chat-experience`
+    (uncommitted): composer edge matches the home bottom bar exactly (one `dark`/`ultra-thin`
+    material + `chat.edge-bottom`, percentage fade); inbox and chat tops use one short
+    `ultra-thin` band, full under the status bar then open through the title/controls, no
+    black tint. Simulator display shots in `apps/multiplexer/.exact/edge-fix/` (`inbox-v5`,
+    `chat-top-v5`, `chat-bottom-v5`). Installed on the paired iPhone; needs Rami's eye.
 - [ ] R10: capture Multiplexer keyboard parity first; current video shows only Beeper's
   keyboard. Preserve system input behavior and accessibility.
   - Captured on the Simulator: the system keyboard's glass shows only the black page,
