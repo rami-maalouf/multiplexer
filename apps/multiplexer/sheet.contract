@@ -116,7 +116,8 @@ component InboxSheet
         button press=deleteLabel(l.id) destructive=true popovertarget=`label-menu-${l.id}` popovertargetaction="hide" testId=`label-delete-${l.id}`
           image "symbol:delete"
           text "Delete Label"
-    scroll id="inboxes" flex=1 min-height=0 testId="inboxes"
+    // up and down only, as the chat list (R01).
+    scroll id="inboxes" flex=1 min-height=0 overflow-x="hidden" testId="inboxes"
       column padding="14px 0" gap=4
         SheetRow(rounded=false, picture="symbol:icon.tray", logo=false, name="Inbox", unread=unread, noun="unread", chosen=(list == "inbox" and chosen == "" and community == ""),
           value="inbox", choose=chooseList, largeText=largeText, identifier="inboxes-inbox")
