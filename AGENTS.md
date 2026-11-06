@@ -69,6 +69,10 @@ the shared branch) only through the helper, which waits, removes a lock whose pr
 always releases its own lock, never another's:
 `scripts/mx-lock.sh matrixcore <your-lane> -- ./scripts/test-matrix-core.sh ...`.
 Never `rmdir` a lock by hand.
+The app builds with a shared local Exact checkout (`exact2-multiplexer-integration`, branch
+`local/multiplexer-integration`). Never leave uncommitted edits in it: work on Exact in your own
+worktree of it, point your build at that, and commit to the shared branch only compiled, tested
+changes.
 The SDK's start on a new device is CPU-bound: with many Simulators and builds at once, a test's first
 sync misses its limit. Keep at most one Simulator booted per conversation, and shut it down
 (`xcrun simctl shutdown <udid>`) whenever you are not driving or testing. Shut down only your own Simulator, by its
