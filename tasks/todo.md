@@ -159,6 +159,12 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
     that heard the finger and its state, plus any recognizer still active in the window. Real-touch
     Simulator tries (inbox and chat, Home mid-fling, the bottom-edge swipe over the composer, the
     back swipe) did not freeze. Installed on the iPhone; waiting for one freeze there.
+- [x] Jump to newest and Send stopped short of the chat's end (2026-11-06, Rami): `block="end"`
+  put the last row at the list's edge, behind the composer (the list's 100-point bottom padding)
+  and, with the keyboard up, under the keyboard; never at the end, so the list never followed it.
+  Now both scroll smoothly to the true end (`offset=` past the last row, clamped to the scroll
+  range). Reproduced and checked on the Simulator: near, far up, keyboard up and down
+  (`apps/multiplexer/.exact/scroll-end/`). Tests: 12 passed.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
