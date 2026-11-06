@@ -99,8 +99,9 @@ component ChatBar
                   NetworkBadge(network=network, identifier="chat-network")
               view backgroundMaterial="glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
                 // it grows with the text size to a cap, as a system bar's title stays put.
+                // one line, cut short as a system bar's title is; two at the accessibility sizes.
                 text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
-                  line-clamp=2
+                  line-clamp=(largeText ? 2 : 1)
                   testId="chat-name"
             // a merged chat: its networks under the name, the one shown chosen; a tap shows that network's chat.
             if tabs.length > 1

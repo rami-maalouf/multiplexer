@@ -15,6 +15,8 @@
 #   REPLY_TO=<event id> or REPLY_TO=first: the text answers that message, or the room's first
 #   text message (older than what a chat loads when it opens)
 #   MENTION=<user id>: the text mentions that user, as a client's pill does (m.mentions)
+#   HTML=<html>: the text carries that html body too (format org.matrix.custom.html), as a bridge's
+#   formatted message does, its plain body keeping the bridge's marks
 set -euo pipefail
 usage="usage: send-test-message.sh <text> | --image <file> [caption] | --video <file> [caption] | --sticker <file> | --voice <file> | --delete-last | --read"
 image=""; video=""; sticker=""; voice=""; caption=""; deletelast=""; readlast=""
@@ -151,6 +153,9 @@ else
   fi
   if [ -n "$replyto" ]; then
     body="$(jq --arg id "$replyto" '. + {"m.relates_to":{"m.in_reply_to":{event_id:$id}}}' <<<"$body")"
+  fi
+  if [ -n "${HTML:-}" ]; then
+    body="$(jq --arg h "$HTML" '. + {format:"org.matrix.custom.html",formatted_body:$h}' <<<"$body")"
   fi
   if [ -n "${MENTION:-}" ]; then
     body="$(jq --arg u "$MENTION" '. + {"m.mentions":{user_ids:[$u]}}' <<<"$body")"

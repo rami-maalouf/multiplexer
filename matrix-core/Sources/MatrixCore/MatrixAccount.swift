@@ -1016,9 +1016,9 @@ private func preview(_ type: MessageType, body: String) -> String {
 /// One line for a message fetched by its event id, which comes with no body of its own.
 func preview(_ type: MessageType) -> String {
     switch type {
-    case .text(let content): return content.body
-    case .notice(let content): return content.body
-    case .emote(let content): return content.body
+    case .text(let content): return FormattedText.plain(content.body, content.formatted)
+    case .notice(let content): return FormattedText.plain(content.body, content.formatted)
+    case .emote(let content): return FormattedText.plain(content.body, content.formatted)
     case .other(_, let body): return body
     default: return preview(type, body: "Message")
     }
@@ -1068,7 +1068,13 @@ extension Message {
         case .sent?, nil: sendState = .sent
         }
         var body = message.body, image: MessageImage?, file: MessageFile?, video: MessageVideo?, audio: MessageAudio?
-        if case .image(let content) = message.msgType {
+        if case .text(let content) = message.msgType {
+            body = FormattedText.plain(content.body, content.formatted)
+        } else if case .notice(let content) = message.msgType {
+            body = FormattedText.plain(content.body, content.formatted)
+        } else if case .emote(let content) = message.msgType {
+            body = FormattedText.plain(content.body, content.formatted)
+        } else if case .image(let content) = message.msgType {
             body = content.caption ?? ""
             image = MessageImage(content)
         } else if case .file(let content) = message.msgType {
