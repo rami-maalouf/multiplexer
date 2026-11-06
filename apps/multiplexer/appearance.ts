@@ -9,7 +9,9 @@ const contrast = (a: string, b: string) => {
   const x = luminance(a), y = luminance(b);
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
-const foreground = (fill: string) => contrast(fill, '#000000') >= contrast(fill, '#ffffff') ? '#000000' : '#ffffff';
+// white on a fill, as Messages writes on its blue (D9), unless white is under 3:1 there (a light
+// colour, such as yellow): then black.
+const foreground = (fill: string) => contrast(fill, '#ffffff') >= 3 ? '#ffffff' : '#000000';
 const mix = (hex: string, end: number, fraction: number) => `#${rgb(hex).map(c =>
   Math.round(c + (end - c) * fraction).toString(16).padStart(2, '0')).join('')}`;
 function tint(fill: string, dark: boolean) {
