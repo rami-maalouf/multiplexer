@@ -1056,7 +1056,7 @@ component Multiplexer
                           // at the accessibility text sizes the mark takes the picture's place, so the name keeps its width.
                           view flex-shrink=0 margin=(viewport.accessibilityTextSize ? "8px 12px 8px 0" : "0 12px 0 0")
                             ChooseMark(on=selectedChats.includes(r.id), identifier=`room-mark-${r.id}`)
-                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=(not viewport.accessibilityTextSize))
+                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=(not viewport.accessibilityTextSize), largeText=viewport.accessibilityTextSize)
                       else
                         // a swipe shows the row's actions, as Beeper and Messages do (UIKit's own on iOS): left, Archive and
                         // Mute, a full swipe archiving; right, Read or Unread, a full swipe toggling it. The row at rest is the
@@ -1069,7 +1069,7 @@ component Multiplexer
                           // cell's margin only where the row writes no padding).
                           link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
                             width="100%" flex-shrink=0 scroll-snap-align="start" padding="0 16px" box-sizing="border-box"
-                            RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=true)
+                            RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=true, largeText=viewport.accessibilityTextSize)
                           button id=`swipe-read-${r.id}` press=swipeChat(r.id, rowUnread(r) ? "read" : "unread") accent-color="-exact-system-blue"
                             flex-shrink=0 scroll-snap-align="start" testId=`swipe-read-${r.id}`
                             image (rowUnread(r) ? "symbol:messages" : "symbol:icon.mark-unread")
@@ -1777,32 +1777,22 @@ component RoomFace
     now: number
     offset: number
     picture: bool
+    // the accessibility text sizes: a name may take two lines.
+    largeText: bool
   view
-    row align-items="center" flex=1 min-width=0
-      // a fixed 48-point picture; initials grow with the text size, to a cap. a bridged chat's
-      // network logo sits on its corner, outside the clipped circle.
-      if picture
-        view position="relative" flex-shrink=0 margin="8px 12px 8px 0"
-          view width=48 height=48 border-radius=24 overflow="hidden"
-            background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
-            testId=`avatar-${r.id}`
-            if r.avatar != ""
-              image r.avatar width="100%" height="100%" object-fit="cover" aria-label=""
-            else
-              text r.initials font-size="min(-exact-headline, 20px)" font-weight=600 color="-exact-secondary-label"
-          if r.networks.length > 1
-            NetworkBadges(networks=r.networks, identifier=`network-${r.id}`)
-          else if r.network != "matrix"
-            NetworkBadge(network=r.network, identifier=`network-${r.id}`)
+    // the text is written first and the picture shown before it: a list's line starts at a row's
+    // first text in written order, so every row's line starts at the name, not at the initials.
+    row flex-direction="row-reverse" align-items="center" flex=1 min-width=0
       column flex=1 min-width=0 gap=2 padding="10px 0"
         // at large text sizes the time wraps under the name instead of covering it.
         row flex-wrap="wrap" column-gap=6 align-items="baseline"
           // a muted chat: a crossed bell after its name's last word, as beeper shows it.
-          text font="-exact-headline" font-weight=(loud(r) ? 700 : 600) flex="1 1 10rem" min-width=0
-            text r.name
+          // one line for the name (two at the accessibility sizes), its muted bell after it, so the
+          // name's ellipsis never hides the bell.
+          row flex="1 1 10rem" min-width=0 gap=4 align-items="baseline"
+            text r.name font="-exact-headline" font-weight=(loud(r) ? 700 : 600) line-clamp=(largeText ? 2 : 1) min-width=0
             if r.muted
-              text " "
-              image "symbol:icon.bell-slash" width="0.8em" height="0.8em" vertical-align="baseline"
+              image "symbol:icon.bell-slash" font="-exact-headline" width="0.8em" height="0.8em" flex-shrink=0
                 color="-exact-secondary-label" aria-label="Muted" testId=`muted-${r.id}`
           row gap=6 align-items="baseline" flex-shrink=0 margin-left="auto"
             if r.lastTime > 0
@@ -1828,3 +1818,18 @@ component RoomFace
               color=(r.reminder <= now ? "AccentColor" : "-exact-secondary-label")
             text `Reminder ${formatDay(r.reminder, now, offset, "day-time")}` font="-exact-footnote"
               color=(r.reminder <= now ? "AccentColor" : "-exact-secondary-label")
+      // a fixed 48-point picture; initials grow with the text size, to a cap. a bridged chat's
+      // network logo sits on its corner, outside the clipped circle.
+      if picture
+        view position="relative" flex-shrink=0 margin="8px 12px 8px 0"
+          view width=48 height=48 border-radius=24 overflow="hidden"
+            background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
+            testId=`avatar-${r.id}`
+            if r.avatar != ""
+              image r.avatar width="100%" height="100%" object-fit="cover" aria-label=""
+            else
+              text r.initials font-size="min(-exact-headline, 20px)" font-weight=600 color="-exact-secondary-label"
+          if r.networks.length > 1
+            NetworkBadges(networks=r.networks, identifier=`network-${r.id}`)
+          else if r.network != "matrix"
+            NetworkBadge(network=r.network, identifier=`network-${r.id}`)

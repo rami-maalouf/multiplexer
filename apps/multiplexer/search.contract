@@ -159,8 +159,9 @@ component KindButton
         font-size=(crowded and not largeText ? "min(-exact-caption1, 19px)" : "min(-exact-footnote, 19px)") white-space="nowrap"
         color=(chosen ? "AccentColor" : "-exact-label") text-align="center" max-width="100%"
 
-// a chat, as the inbox's row shows it: its picture with its network's logo, its name, its time,
-// its newest message, and its unread count.
+// a chat, as the inbox's row shows it: its picture with its network's logo, its name (one line, two
+// at the accessibility sizes), its small grey time, its newest message in two lines kept, and its
+// unread count.
 component ChatResult
   props
     appearance: Appearance
@@ -168,26 +169,26 @@ component ChatResult
     open: action
     now: number
     offset: number
+    largeText: bool
   view
     button appearance="none" press=open(chat.id) aria-label=chatLabel(chat) testId=`found-chat-${chat.id}`
       display="flex" flex-direction="row" align-items="center" width="100%" text-align="start"
       view position="relative" flex-shrink=0 margin-right=12
-        Face(picture=chat.avatar, initials=chat.initials, size=44)
+        Face(picture=chat.avatar, initials=chat.initials, size=48)
         if chat.network != "matrix"
           NetworkBadge(network=chat.network, identifier=`found-network-${chat.id}`)
       column flex=1 min-width=0 gap=2
         row flex-wrap="wrap" column-gap=6 align-items="baseline"
-          text font="-exact-headline" font-weight=(chat.loud ? 700 : 600) color="-exact-label" flex="1 1 10rem" min-width=0
-            text chat.name
+          row flex="1 1 10rem" min-width=0 gap=4 align-items="baseline"
+            text chat.name font="-exact-headline" font-weight=(chat.loud ? 700 : 600) color="-exact-label" line-clamp=(largeText ? 2 : 1)
+              min-width=0
             if chat.muted
-              text " "
-              image "symbol:icon.bell-slash" width="0.8em" height="0.8em" vertical-align="baseline" color="-exact-secondary-label"
-                aria-label="Muted"
+              image "symbol:icon.bell-slash" font="-exact-headline" width="0.8em" height="0.8em" flex-shrink=0
+                color="-exact-secondary-label" aria-label="Muted"
           if chat.lastTime > 0
-            text formatDay(chat.lastTime, now, offset, "list") font="-exact-subheadline" margin-left="auto"
-              color=(chat.loud ? "AccentColor" : "-exact-secondary-label")
+            text formatDay(chat.lastTime, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label" margin-left="auto"
         row gap=8 align-items="flex-start"
-          text chat.preview font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2 flex=1 min-width=0
+          text chat.preview font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2 min-height="2.6em" flex=1 min-width=0
           if chat.mentions > 0
             view flex-shrink=0
               AccentBadge(appearance=appearance, label=`@ ${countText(max(chat.unread, chat.mentions))}`, muted=false)
@@ -362,7 +363,7 @@ component SearchResults
               header
                 text "Recent"
               for c in found.chats key=c.id
-                ChatResult(appearance=appearance, chat=c, open=openChat, now=now, offset=offset)
+                ChatResult(appearance=appearance, chat=c, open=openChat, now=now, offset=offset, largeText=largeText)
         else if empty
           section
             column align-items="center" gap=8 padding="48px 0" text-align="center" width="100%" testId="no-results"
@@ -390,7 +391,7 @@ component SearchResults
               header
                 text "Chats"
               for c in found.chats.slice(0, 8) key=c.id
-                ChatResult(appearance=appearance, chat=c, open=openChat, now=now, offset=offset)
+                ChatResult(appearance=appearance, chat=c, open=openChat, now=now, offset=offset, largeText=largeText)
           if found.messages.length > 0
             section testId="found-messages"
               header
