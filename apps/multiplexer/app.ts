@@ -6,6 +6,10 @@ import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
 import { deleteUntil, editUntil } from './limits.ts';
 import { linkOf, noLink } from './links.ts';
+
+// a link's kept preview (details.contract's LinkPreview); state "" while there is none.
+type Card = { url: string; title: string; image: string; width: number; height: number; state: string };
+const noCard: Card = { url: '', title: '', image: '', width: 0, height: 0, state: '' };
 import { appearance } from './appearance.ts';
 
 // app.json’s app.id: change the two together.
@@ -491,14 +495,25 @@ const sources: Sources = {
         photoWidth: width > 0 && height > 0 ? Math.min(side, (tall * width) / height) : side,
       };
     });
-    return { room: roomId, atStart: answer.atStart, group, firstUnread: answer.firstUnread, messages };
+    // each link's kept preview joins its message here, so a row reads its own card; the module
+    // says when a fetch adds one (topic links). Fetching is links-members.contract's, for the rows
+    // on screen.
+    const links = [...new Set(messages.map((m) => m.previewUrl).filter((u) => u !== ''))];
+    const kept = new Map<string, Card>();
+    if (links.length > 0) {
+      native.watch('links');
+      const previews = (await native.later({ op: 'linkPreviews', known: links, fetch: [] })) as { items: Card[] };
+      for (const p of previews.items) kept.set(p.url, p);
+    }
+    const withCards = messages.map((m) => ({ ...m, card: kept.get(m.previewUrl) ?? noCard }));
+    return { room: roomId, atStart: answer.atStart, group, firstUnread: answer.firstUnread, messages: withCards };
   },
-  // link previews (R11): the kept ones of the open chat's links (known), and a fetch on the phone
-  // of those on screen (fetch) that have none yet; the module says when one is ready (topic links).
-  loadLinkPreviews: async ([known, fetch], _store, _storage, native): Promise<Result<'loadLinkPreviews'>> => {
-    if (known.length === 0 || !native?.available) return { items: [] };
+  // link previews (R11): a fetch on the phone of the links on screen that have no kept preview
+  // yet; loadMessages joins the kept ones to their messages.
+  loadLinkPreviews: async ([fetch], _store, _storage, native): Promise<Result<'loadLinkPreviews'>> => {
+    if (fetch.length === 0 || !native?.available) return { items: [] };
     native.watch('links');
-    return (await native.later({ op: 'linkPreviews', known, fetch })) as Result<'loadLinkPreviews'>;
+    return (await native.later({ op: 'linkPreviews', known: fetch, fetch })) as Result<'loadLinkPreviews'>;
   },
   // the view asks when the reader has seen the chat's newest message; loading a chat reads nothing.
   markRead: async ([roomId], _store, _storage, native): Promise<Result<'markRead'>> => {

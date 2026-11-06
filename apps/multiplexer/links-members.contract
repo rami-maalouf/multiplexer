@@ -1,16 +1,21 @@
-// link previews' state (R11; details.contract's LinkBalloon). The open chat's loaded messages ask
-// for their kept previews; only those on screen (the first row in view and the twelve after it,
-// or the newest at the chat's end) are fetched, on the phone. A message out of view keeps the
-// preview it has.
+// link previews' state (R11; details.contract's LinkBalloon). Each loaded message carries its
+// kept preview (app.ts's loadMessages, `card`); only the links on screen (the first row in view
+// and the twelve after it, or the newest at the chat's end) are fetched, on the phone. A message
+// out of view keeps the preview it has.
 use LinkPreviews from "./details.contract"
 
 members Multiplexer
   // the first transcript row in view, from its scroll ("" until it scrolls).
   state topVisible = ""
-  derive linkMessages = thread.messages.filter(m => m.previewUrl != "")
   derive topIndex = thread.messages.map(m => m.id).indexOf(topVisible)
-  derive viewStart = away and topIndex >= 0 ? topIndex : max(0, thread.messages.length - 13)
+  // scrolled away from the end: from the first row in view ("~older", the row above the oldest
+  // message, is the start); at the end, the newest.
+  derive viewStart = away ? (topVisible == "~older" ? 0 : (topIndex >= 0 ? topIndex : max(0, thread.messages.length - 13))) : max(0, thread.messages.length - 13)
   derive onScreenLinks = thread.messages.slice(viewStart, viewStart + 13).filter(m => m.previewUrl != "").map(m => m.previewUrl)
-  derive knownLinks = threadShown ? linkMessages.map(m => m.previewUrl) : []
   derive fetchLinks = threadShown ? onScreenLinks : []
-  resource linkPreviews = loadLinkPreviews(knownLinks, fetchLinks) as shape LinkPreviews else empty()
+  // its answer is the fetched ones' previews; the rows read theirs from the thread.
+  resource linkPreviews = loadLinkPreviews(fetchLinks) as shape LinkPreviews else empty()
+
+  // the lifted copy of a held card opens nothing: a tap there lets go of the message.
+  action letGoLink(url: string)
+    letGo()

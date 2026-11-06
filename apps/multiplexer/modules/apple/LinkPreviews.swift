@@ -62,7 +62,9 @@ extension Matrix {
         var title = "", imageName = "", width = 0, height = 0
         let provider = LPMetadataProvider()
         provider.timeout = 12
-        if let metadata = try? await provider.startFetchingMetadata(for: page) {
+        var metadata: LPLinkMetadata?
+        do { metadata = try await provider.startFetchingMetadata(for: page) } catch { print("matrix: link preview failed for \(page.host ?? ""): \(error)") }
+        if let metadata {
             title = (metadata.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             if let image = await loadImage(metadata.imageProvider), let jpeg = smaller(image) {
                 imageName = name.replacingOccurrences(of: ".json", with: ".jpg")
