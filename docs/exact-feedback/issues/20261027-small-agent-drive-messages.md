@@ -129,3 +129,10 @@ Adding a separate `testId` to the list made `tap <list> drag 0 -350` work. The t
 usable scroll target or distinguish navigation IDs from drive IDs. Trying platform touches first
 also left a menu's rows unavailable after its suggested `clock settle`; normal activation worked.
 About 5 minutes, with all feedback kept local.
+
+## More evidence (2026-11-06, a large state value)
+
+`state <path>` on a list of 187 items answered that it is over the 8 KB printed whole, and named
+"`--full`, or --json". Written after the path in the step, `--json` printed the same notice again. The
+agent's own `--json` flag (`agent ios --json ...`) printed JSON lines, the value as a bare list on the
+last one. Naming the flag's place would have saved about 4 minutes. Exact `dd9343b324`.

@@ -84,7 +84,22 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   line above it is gone since R05. Checked in dark, light, the largest text (rows wrap, nothing cut) and
   Select Chats. `verify ios` clean (12 tests). Screenshots: `apps/multiplexer/.exact/r12/`.
   Left as it is: in Select Chats the row lines start at the picture, not at the name (the list host places
-  them; it was so before R12).
+  them; it was so before R12). Fixed later in the real-data pass: the lines now start at the name.
+- [x] Real-data pass of the inbox (2026-11-06, branch `fix/real-data-pass`, `@rami` read-only, signed out
+  after; screenshots only in /tmp/mx-real-pass/, never in git). Checked the inbox, filters, Archive, search
+  and five chats in dark. Fixed: long chat names wrapped to four lines (now one, two at the accessibility
+  sizes, the muted bell kept after the ellipsis); row lines started at the initials for chats without a
+  photo (now always at the name: the text is written first, the row shown reversed); search's chat rows
+  kept the old style (now as the inbox's); the search field's query stayed at 22 points at the largest
+  sizes (now up to 28); the bottom edge in dark mode was a grey band (about #25, now #0b or less, with the
+  chat composer's "dark" material and chat.edge-bottom tint). `verify ios` clean (12 tests).
+- [ ] Some chats show no preview and no time in the list, though their chat has recent messages (seen on
+  two Instagram chats, one with 66 unread in search but 0 in the list's data). MatrixCore's latest event
+  for them is empty. Not fixed: reported to the coordinator.
+- [ ] Instagram messages still show raw markdown (`**…**`, `[url](url)`) after the chat lane's html-body
+  fix (ed95f6e): these events may carry the markdown in their plain body only. With the chat lane.
+- [ ] Minor: a preview that starts with a long link leaves "You:" alone on its first line (native text
+  wraps whole words). Left as it is.
 - [ ] R03 scrolling frozen after a return to the app (2026-11-06, Simulator): not reproduced, so a
   diagnostic and a reset ship first. Tried with real touches (exact2's `bench/bakeoff/drive.mjs`, which drives
   the running app; Exact's own drive cannot cross a trip to the background): Home idle and mid-fling, the

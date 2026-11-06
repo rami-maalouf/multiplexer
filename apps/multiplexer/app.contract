@@ -1112,11 +1112,13 @@ component Multiplexer
               else if roomsShown and selecting
                 SelectBar(count=chosenIds.length, archived=chosenArchived, lowPriority=chosenLowPriority, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
                   change=changeChosen, delete=askDeleteChosen, labelChats=labelSelected, canMerge=(chosenRooms.filter(r => r.merge == "").length >= 2),
-                  merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats))
+                  merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats),
+                  dark=viewport.prefersColorScheme == "dark")
               else if roomsShown
                 BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=(labelFilter == "" ? chatList : "label"), network=network,
                   communityName=(community != "" ? scopeName : ""), communityPicture=(match shownCommunity { case some(c) => c.avatar, case none => "" }),
-                  sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize)
+                  sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize,
+                  dark=viewport.prefersColorScheme == "dark")
               // a chat's long-press menu, from its row or its pinned picture: a preview of its last
               // messages (a tap opens the chat), then its actions.
               column id="chat-menu" popover="auto" role="menu"
