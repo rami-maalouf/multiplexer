@@ -146,6 +146,41 @@ component PinnedGrid
 // the inbox's title, as Beeper's: its words and a chevron at the top left, which open a menu.
 // Select Chats, Merge Chats and Settings. The route draws this row in place of the system bar,
 // whose large title cannot open a menu.
+// the inbox's top edge (R05), as Beeper's: the title, or Select Chats' count, over the chats, which scroll on
+// under it and under the status bar, softened by the same thin material as the bottom bar's band (full under
+// the status bar, fading out just below the title). In the list it is the first row, sticky: at rest it holds
+// its natural height above the first chat at any text size, and while scrolling it stays on top. Under the
+// status bar: the list starts 62 points higher (the status bar of the largest iPhones), so the header pads
+// those points back. Under Reduce Transparency, UIKit draws the material solid.
+component InboxHeader
+  props
+    title: string
+    selecting: bool
+    count: number
+    done: action
+    busy: bool
+    problem: string
+    select: action
+    settings: action
+    merge: action
+    largeText: bool
+    // in the list, which starts under the status bar.
+    underStatusBar: bool
+    // the list is scrolled from its top: chats are under the header. At rest the material is not drawn, as
+    // UIKit's scroll edge effect is not over a list at rest: over nothing it would show only its grey tint.
+    scrolled: bool
+  view
+    column id="inbox-header" position="sticky" top=0 z-index=2 flex-shrink=0 padding-top=(underStatusBar ? 62 : 0) testId="inbox-header"
+      view position="absolute" left=0 right=0 top=0 bottom=-16 pointer-events="none" backgroundMaterial="ultra-thin"
+        mask-image="linear-gradient(to bottom, black 0%, black 70%, transparent 100%)"
+        opacity=(scrolled ? 1 : 0) transition="opacity 150ms ease"
+      if selecting
+        SelectTitle(count=count, done=done, busy=busy)
+      else
+        TitleMenu(title=title, select=select, settings=settings, merge=merge, largeText=largeText)
+      if selecting and problem != ""
+        text problem role="alert" font="-exact-footnote" color="-exact-system-red" padding="4px 16px 8px" testId="select-error"
+
 component TitleMenu
   props
     title: string
@@ -192,7 +227,6 @@ component SelectTitle
     busy: bool
   view
     row padding="2px 16px 6px" align-items="center" flex-wrap="wrap" column-gap=12 row-gap=4 min-height=50 testId="select-title"
-      background-color="-exact-background"
       text selectedTitle(count) role="heading" aria-level=1 font="-exact-title1" font-weight=700 color="-exact-label" flex="1 1 12rem"
         min-width=0 testId="select-count"
       if busy
