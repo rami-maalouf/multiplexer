@@ -67,6 +67,13 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   sticky header. Checked in dark and light (the status bar readable), the largest text size, Select Chats, and
   the Simulator's real Reduce Transparency (a solid fade). `verify ios` clean (12 tests). Screenshots: the
   checkout's `apps/multiplexer/.exact/r05/` (`b-*` with the status bar, `xxxl-*`, `select-*`, `rt-*`, `top-*`).
+  Follow-up (coordinator review): row text was still sharp right under "Inbox". The header now uses the chat
+  header's layers and fades (R07: thin or dark, ultra-thin or dark, the `chat.edge` tint), at full strength 24
+  points past the title's foot. The list's first row has a top line the app cannot hide (finding 49): at rest it
+  sat at the screen's top edge, so a 1-point strip of the page's colour covers it there. Checked with two-line
+  rows in dark, light, the largest text (row text readable only in the fade, about 40 points below the title),
+  Select Chats and Reduce Transparency (`q-*`, `e-*`). `verify ios`: 12 tests pass; its 4 contrast notes are the
+  accent preview's accepted pair (d896bd4). Integrated as 0154097.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now

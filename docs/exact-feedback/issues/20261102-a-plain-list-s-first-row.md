@@ -46,3 +46,10 @@ The local experiment hides the top separator for the first item of the first pla
 A new build still shows the line above the pinned grid at the largest text size. The change
 is therefore not a verified fix. The local framework branch and experiment remain preserved,
 with before and after screenshots; no new feedback or pull request was published.
+
+## More evidence (2026-11-06)
+
+A sticky title as the list's second row, under a zero-height first row (so that `scrollIntoView` has a
+target above the sticky row), moves the line to the screen's top edge under the status bar. The app
+covers it there with a 1-point view in the page's colour, at the top of the sticky row, shown only at
+rest. Cost: about 5 minutes. The same "What would help" applies.
