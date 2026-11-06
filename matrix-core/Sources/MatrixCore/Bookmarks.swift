@@ -155,13 +155,13 @@ struct SavedBookmark: Equatable, Sendable {
         switch like.kind {
         case .message(let message):
             switch message.msgType {
-            case .image(let content): (kind, body) = (.image, content.caption ?? "")
-            case .video(let content): (kind, body) = (.video, content.caption ?? "")
-            case .file(let content): (kind, body, fileName) = (.file, content.caption ?? "", content.filename)
+            case .image(let content): (kind, body) = (.image, FormattedText.caption(content.caption, content.formattedCaption))
+            case .video(let content): (kind, body) = (.video, FormattedText.caption(content.caption, content.formattedCaption))
+            case .file(let content): (kind, body, fileName) = (.file, FormattedText.caption(content.caption, content.formattedCaption), content.filename)
             case .audio(let content):
-                (kind, body) = (content.voice == nil ? .audio : .voice, content.caption ?? "")
+                (kind, body) = (content.voice == nil ? .audio : .voice, FormattedText.caption(content.caption, content.formattedCaption))
                 if content.voice == nil { fileName = content.filename }
-            case .text, .notice, .emote: (kind, body) = (.text, message.body)
+            case .text, .notice, .emote: (kind, body) = (.text, FormattedText.words(message.msgType) ?? message.body)
             default: (kind, body) = (.other, message.body)
             }
         case .sticker:
