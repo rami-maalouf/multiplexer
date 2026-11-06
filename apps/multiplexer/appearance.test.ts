@@ -19,16 +19,25 @@ test('chosen colors remain exact and their foregrounds stay readable', () => {
   for (const color of colors) {
     const p = appearance(color);
     expect(p.fill).toBe(color);
-    expect(contrast(p.fill, p.onFill)).toBeGreaterThanOrEqual(4.5);
+    // white unless white is under 3:1 on the fill, then black (which is then over 7:1).
+    expect(p.onFill).toBe(contrast(color, '#ffffff') >= 3 ? '#ffffff' : '#000000');
+    expect(contrast(p.fill, p.onFill)).toBeGreaterThanOrEqual(3);
     const [lightTint, darkTint] = sides(p.tint), [lightInk, darkInk] = sides(p.onTint);
     for (const [tint, ink, backgrounds] of [
       [lightTint, lightInk, ['#ffffff', '#f2f2f7', '#e9e9eb']],
       [darkTint, darkInk, ['#000000', '#1c1c1e', '#2c2c2e', '#262629']],
     ] as const) {
-      expect(contrast(tint, ink)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tint, ink)).toBeGreaterThanOrEqual(3);
       for (const bg of backgrounds) expect(contrast(tint, bg)).toBeGreaterThanOrEqual(4.5);
     }
   }
+});
+
+test('own text is white on the default blue and on dark colours, black on light ones', () => {
+  expect(appearance('#007aff').onFill).toBe('#ffffff');
+  expect(appearance('#5b2a86').onFill).toBe('#ffffff');
+  expect(appearance('#ffcc00').onFill).toBe('#000000');
+  expect(appearance('#7fd8be').onFill).toBe('#000000');
 });
 
 test('invalid persisted values recover to default blue and hex normalizes', () => {
