@@ -440,6 +440,11 @@ const sources: Sources = {
     await native!.later({ op: 'label', action: 'assign', id, rooms, included }) as Result<'assignLabel'>,
   removeLabel: async ([id], _store, _storage, native): Promise<Result<'removeLabel'>> =>
     await native!.later({ op: 'label', action: 'delete', id }) as Result<'removeLabel'>,
+  // the chat list on screen or not: its receipt watch (MatrixCore) reads only while it is.
+  markListShown: async ([userId, shown], _store, _storage, native): Promise<Result<'markListShown'>> => {
+    if (userId !== '' && native?.available) await native.later({ op: 'listShown', shown });
+    return { ok: true };
+  },
   // a pin is kept on the server, so the account's other devices show it too.
   setPinned: async ([roomId, pinned], _store, _storage, native): Promise<Result<'setPinned'>> => {
     await native!.later({ op: pinned ? 'pin' : 'unpin', roomId });
