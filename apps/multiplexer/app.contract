@@ -654,6 +654,12 @@ component Multiplexer
       composers = withComposer(composers, Composer(composer, text="", replyTo=""))
       unsaved = openRoom
     focus("composer")
+  // a press on the field's glass (around the text, or held): the keyboard comes up, as a tap on the
+  // text does. The press also makes the glass interactive (it swells and follows the finger).
+  action pressField
+    if recording == "idle"
+      panel = false
+      focus("composer")
   // "+" puts the keyboard away and shows the panel in its place; X brings the keyboard back.
   action togglePanel
     if panel
@@ -1606,8 +1612,10 @@ component Multiplexer
                     change=photosPicked testId="pick-photos"
                   input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
                   // the field stays mounted while recording (hidden) so the keyboard does not fall when the
-                  // voice button keeps its focus; the recording or draft capsule covers it.
-                  column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative"
+                  // voice button keeps its focus; the recording or draft capsule covers it. Its press makes
+                  // the glass interactive, as Beeper's field is: held, it swells and follows the finger.
+                  column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" press=pressField
+                    -exact-press-opacity=1 testId="composer-glass"
                     if recording == "draft"
                       DraftBar(appearance=appearance, bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
                         playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, play=playVoice("draft"))

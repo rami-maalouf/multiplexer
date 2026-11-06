@@ -95,7 +95,9 @@ component ChatBar
                 Face(picture=picture, initials=initials, size=44)
                 if network != "matrix"
                   NetworkBadge(network=network, identifier="chat-network")
-              view backgroundMaterial="glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
+              // its own press (the same info) makes the glass interactive: held, it swells and follows the finger.
+              // No dim on press (press-opacity 1): the glass's own response is the feedback.
+              view backgroundMaterial="glass" press=info -exact-press-opacity=1 testId="chat-title-glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
                 // it grows with the text size to a cap, as a system bar's title stays put.
                 // one line, cut short as a system bar's title is; two at the accessibility sizes.
                 text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
