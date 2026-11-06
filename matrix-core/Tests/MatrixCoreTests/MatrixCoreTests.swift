@@ -10,6 +10,7 @@ final class MatrixCoreTests: XCTestCase {
     private let twoPersonRoomName = "Multiplexer two-person test"
     private let mediaRoomName = "Multiplexer media test"
 
+    // FRESH DEVICE: its point is signing in and a second, new device.
     func testSignInSendAndReadBackOnANewDevice() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
@@ -19,7 +20,7 @@ final class MatrixCoreTests: XCTestCase {
         let text = "Multiplexer test \(UUID().uuidString)"
 
         // the first device finds or makes the test room, sends, and signs out.
-        let first = try await signIn(homeserver, user, password)
+        let first = try await signInTestDevice(homeserver, user, password)
         let rooms = try await first.rooms()
         let existing = rooms.first { $0.name == roomName }?.id
         let roomId: String
@@ -28,7 +29,7 @@ final class MatrixCoreTests: XCTestCase {
         try await first.signOut()
 
         // a second device with an empty store must get both from the server.
-        let second = try await signIn(homeserver, user, password)
+        let second = try await signInTestDevice(homeserver, user, password)
         let seen = try await second.rooms()
         XCTAssertTrue(seen.contains { $0.id == roomId && $0.name == roomName }, "rooms: \(seen.map(\.name))")
         let summary = seen.first { $0.id == roomId }
@@ -728,12 +729,13 @@ final class MatrixCoreTests: XCTestCase {
         print("the test room has \(all.count) messages")
     }
 
+    // FRESH DEVICE: its point is signing a device out.
     func testSignOutOnServerWithoutTheStore() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
             throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
         }
-        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let account = try await signInTestDevice(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
         let saved = try account.savedSession()
         let before = try await whoamiStatus(saved)
         XCTAssertEqual(before, 200)
@@ -795,7 +797,7 @@ final class MatrixCoreTests: XCTestCase {
 
     /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        try await signInTestDevice(homeserver, user, password)
+        try await testAccount(homeserver, user, password)
     }
 
     private func freshDirectory() -> URL {

@@ -12,6 +12,15 @@ detail. Later phases are rough. We detail each one at the checkpoint before it.
 
 T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 
+## Open: "seen" in the list on a long-running device (2026-11-06)
+
+- [ ] With one signed-in device per test user for a whole MatrixCore run, `testThePreviewSaysSentThenSeen`
+  fails after any earlier test of its class (the sender's list stays "sent" for 20 s after the reader
+  marks the chat read) and passes alone or on new devices. The list reads the reader's receipt from the
+  sender's store (`previewStatus`), so a device that has synced for a while may not get receipts for a
+  chat it does not keep open. Check whether the app's inbox shows "Seen" late in a long session. The
+  test uses new devices until then (marked FRESH DEVICES).
+
 ## iPhone video review (2026-11-05, documentation only)
 
 - [x] Review the complete user recording, transcribe locally, preserve screenshots from

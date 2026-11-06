@@ -313,6 +313,6 @@ final class ChatInfoTests: XCTestCase {
 
     /// A new device of a test user, signed out at the test's end (TestDevices.swift).
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
-        try await signInTestDevice(homeserver, user, password)
+        try await testAccount(homeserver, user, password)
     }
 }

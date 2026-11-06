@@ -7,9 +7,10 @@ final class AccountDataTests: XCTestCase {
     /// A device just signed in has no account data in its store for some seconds after its first
     /// sync. A change made then must start from the server's event, not an empty one, or it would
     /// replace what the other devices saved.
+    // FRESH DEVICES: its first device writes before its first sync, and a new device reads it.
     func testANewDeviceKeepsTheAccountDataSavedBefore() async throws {
         let (homeserver, user, password) = try oneUser()
-        let first = try await signIn(homeserver, user, password)
+        let first = try await signInNewDevice(homeserver, user, password)
         let (kept, added) = try await twoRooms(first)
         let keptName = "Kept \(token())", addedName = "Added \(token())"
         let keptEmoji = "🦊", addedEmoji = "🦉"
@@ -29,7 +30,7 @@ final class AccountDataTests: XCTestCase {
         // a new device changes before its store has any of the account's data: an emoji count
         // needs no room, so it can come before the first sync. Before the fix this wrote the new
         // count alone, and the one counted before was gone.
-        let fresh = try await signIn(homeserver, user, password)
+        let fresh = try await signInNewDevice(homeserver, user, password)
         await fresh.countReaction(addedEmoji)
         // then the others, as soon as its first sync has run.
         try await fresh.startSync(timeout: 60)
@@ -104,6 +105,11 @@ final class AccountDataTests: XCTestCase {
 
     /// Signs in as a new device that the test signs out at its end, even when it fails.
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
+        try await testAccount(homeserver, user, password)
+    }
+
+    /// FRESH DEVICE: a device whose first sync has not run yet, which this test writes before.
+    private func signInNewDevice(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
         let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password, deviceName: "Multiplexer test",
                                                      storeDirectory: FileManager.default.temporaryDirectory.appendingPathComponent("matrix-core-\(UUID().uuidString)"))
         addTeardownBlock { try? await account.signOut() }

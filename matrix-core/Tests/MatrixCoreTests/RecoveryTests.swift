@@ -117,6 +117,7 @@ final class RecoveryTests: XCTestCase {
     }
 
     /// A new device of a test user, signed out at the test's end (TestDevices.swift).
+    /// FRESH DEVICES: recovery is about a device without the keys, and leaves recovery set on the account.
     private func signIn(_ homeserver: String, _ user: String, _ password: String) async throws -> MatrixAccount {
         try await signInTestDevice(homeserver, user, password)
     }

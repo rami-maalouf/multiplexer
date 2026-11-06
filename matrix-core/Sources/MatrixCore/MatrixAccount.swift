@@ -239,6 +239,23 @@ public final class MatrixAccount: @unchecked Sendable {
         return shown
     }
 
+    /// Set by the tests' shared device, which one test run reuses: `signOut()` then closes only what
+    /// a test opened. Never set by the app.
+    private var heldByTests = false
+    func holdForTests(_ held: Bool) { lock.withLock { heldByTests = held } }
+
+    /// What one test opened on a shared device: the change handler, the chats' timelines and the info
+    /// pages' media timelines. The sync, the store and the watches stay, as they do between an app's
+    /// screens.
+    func closeOpenedForTests() {
+        lock.withLock {
+            changeHandler = nil
+            timelines = [:]
+            readyTimelines = [:]
+        }
+        infoStates.forgetAll()
+    }
+
     /// The chats whose timeline is open (or opening).
     func openRoomIds() -> [String] { lock.withLock { Array(timelines.keys) } }
 
@@ -450,6 +467,9 @@ public final class MatrixAccount: @unchecked Sendable {
 
     /// Signs out, which removes this device from the account.
     public func signOut() async throws {
+        // a test run's shared device (the tests' SharedTestDevices) stays signed in for the whole run:
+        // a test's sign-out closes only what that test opened, and the run signs it out at its end.
+        if lock.withLock({ heldByTests }) { closeOpenedForTests(); return }
         lock.withLock {
             changeHandler = nil
             roomEntries = nil

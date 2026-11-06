@@ -185,8 +185,10 @@ final class PushTests: XCTestCase {
 
     /// Signs in as a new device that the test signs out at its end, even when it fails.
     private func signIn(_ homeserver: String, _ user: String, _ password: String, store: URL? = nil) async throws -> MatrixAccount {
+        // the push test signs in on the app's own store (a fresh device); the others share the run's.
+        guard let store else { return try await testAccount(homeserver, user, password) }
         let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
-                                                     deviceName: "Multiplexer test", storeDirectory: store ?? freshDirectory())
+                                                     deviceName: "Multiplexer test", storeDirectory: store)
         addTeardownBlock { try? await account.signOut() }
         return account
     }

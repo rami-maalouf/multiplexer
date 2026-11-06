@@ -170,4 +170,10 @@ chat read in WhatsApp or Instagram (double puppeting).
 - `./scripts/list-test-devices.sh` lists the practice account's devices. Tests and drives
   should leave none behind. matrix.org refuses device deletion through the API, so a
   leftover device must be removed in Element or at account.matrix.org.
+- `./scripts/clean-test-devices.sh [--older-than <hours>] [--delete]` lists `@test1`'s and `@test2`'s
+  devices on our server not seen for that long (default 24 h); a dry run unless `--delete`. It never
+  touches `@rami`. Ask Rami before the first `--delete` (deleting on the server).
+- MatrixCore tests share one signed-in device per test user for a whole run (`testAccount` in
+  `TestDevices.swift`); it signs out when the run ends. Use `signInTestDevice` (a fresh device, marked
+  `FRESH DEVICE`) only when a new device is the point of the test.
 - Do not test with `@rami-m:matrix.org` or `@ramimaalouf:beeper.com`: they are Rami's real accounts.
