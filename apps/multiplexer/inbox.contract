@@ -169,11 +169,34 @@ component InboxHeader
     // the list is scrolled from its top: chats are under the header. At rest the material is not drawn, as
     // UIKit's scroll edge effect is not over a list at rest: over nothing it would show only its grey tint.
     scrolled: bool
+    // Reduce Transparency: a solid fade in place of the blur. dark: the dark material, the faintest grey
+    // over a black page.
+    solid: bool
+    dark: bool
   view
-    column id="inbox-header" position="sticky" top=0 z-index=2 flex-shrink=0 padding-top=(underStatusBar ? 62 : 0) testId="inbox-header"
-      view position="absolute" left=0 right=0 top=0 bottom=-16 pointer-events="none" backgroundMaterial="ultra-thin"
-        mask-image="linear-gradient(to bottom, black 0%, black 70%, transparent 100%)"
-        opacity=(scrolled ? 1 : 0) transition="opacity 150ms ease"
+    // its own bottom edge: no list separator under the title (the line above the pinned chats).
+    column id="inbox-header" position="sticky" top=0 z-index=2 flex-shrink=0 padding-top=(underStatusBar ? 62 : 0) border-bottom="none"
+      testId="inbox-header"
+      // the chat header's edge (R07), the same layers and fades: the rows pass under the status bar and the
+      // title blurred so hard that no text can be read, at full strength 24 points past the title's foot (the
+      // chat bar's own room below its title), then sharpen again in two steps over 20 and 32 points, under
+      // the page's colour, thickest at the status bar.
+      view position="absolute" left=0 right=0 top=0 bottom=0 pointer-events="none" opacity=(scrolled ? 1 : 0) transition="opacity 150ms ease"
+        if solid
+          view position="absolute" top=0 left=0 right=0 bottom=-56
+            background-image="linear-gradient(to top, transparent 0px, -exact-background 24px, -exact-background 100%)"
+        else
+          view position="absolute" top=0 left=0 right=0 bottom=-44 backgroundMaterial=(dark ? "dark" : "thin")
+            mask-image="linear-gradient(to top, transparent 0px, black 20px, black 100%)"
+          view position="absolute" top=0 left=0 right=0 bottom=-56 backgroundMaterial=(dark ? "dark" : "ultra-thin")
+            mask-image="linear-gradient(to top, transparent 0px, black 32px, black 100%)"
+          view position="absolute" top=0 left=0 right=0 bottom=-56
+            background-image="linear-gradient(to top, transparent 0px, chat.edge-soft 32px, chat.edge 100%)"
+      // the list's first row has a top line the app cannot hide (finding 49): at rest it sits at the
+      // screen's top edge, so the page's colour covers it there.
+      if underStatusBar
+        view position="absolute" left=0 right=0 top=0 height=1 pointer-events="none" background-color="-exact-background"
+          opacity=(scrolled ? 0 : 1)
       if selecting
         SelectTitle(count=count, done=done, busy=busy)
       else

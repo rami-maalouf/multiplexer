@@ -999,7 +999,7 @@ component Multiplexer
                 InboxHeader(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), selecting=selecting,
                   count=chosenIds.length, done=stopSelecting, busy=pending(changedChats), problem=selectionProblem,
                   select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize,
-                  underStatusBar=false, scrolled=false)
+                  underStatusBar=false, scrolled=false, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark")
               // the list stays under the search, covered, so closing the search finds it where it was.
               if roomsShown
                 if listedRooms.length == 0 and not gridShown and not searching
@@ -1037,12 +1037,12 @@ component Multiplexer
                     overflow-x="hidden" margin-bottom=-34 margin-top=-62 scroll=roomsScrolledTo
                     inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
                     // the list's top, for its Inbox button: the sticky header below is always "in view".
-                    view id="inbox-top" height=0
+                    view id="inbox-top" height=0 border-bottom="none"
                     if not searching
                       InboxHeader(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), selecting=selecting,
                         count=chosenIds.length, done=stopSelecting, busy=pending(changedChats), problem=selectionProblem,
                         select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize,
-                        underStatusBar=true, scrolled=roomsScrolled)
+                        underStatusBar=true, scrolled=roomsScrolled, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark")
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=tapPinned, aim=aim, menu="chat-menu", selecting=selecting,
                         chosen=selectedChats, busy=pending(changedChats))
