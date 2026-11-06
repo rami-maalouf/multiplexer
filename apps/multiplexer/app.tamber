@@ -15,8 +15,11 @@ theme
   media.backdrop = #1c1c1e scheme=fixed
   // the play mark and the length on a video's poster, over the scrim: white in both schemes.
   media.ink = #ffffff scheme=fixed
-  // the field while a voice message records: the system's red, faint.
+  // the field while a voice message records: the system's red, faint, with no border on the capsule.
   voice.recording = light-dark(rgba(255, 59, 48, 0.1), rgba(255, 69, 58, 0.18))
+  // Stop's glass circle: a light red wash over the material, as Beeper's (enough to read as
+  // red, still clear enough that the glass shows through).
+  voice.stop-glass = light-dark(rgba(255, 59, 48, 0.32), rgba(255, 69, 58, 0.4))
   // the stop mark on the red stop button: white in both schemes.
   voice.on-red = #ffffff scheme=fixed
   // the camera is dark in both schemes, as the phone's camera: black, white ink, the shutter white.

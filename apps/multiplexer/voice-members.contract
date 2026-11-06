@@ -97,7 +97,9 @@ members Multiplexer
       recording = "opening"
       recordingRoom = openRoom
       panel = false
-      blur("composer")
+      // keep the keyboard up, as Beeper does: the voice button retains the composer's focus, and
+      // the field stays mounted (hidden) while recording so resigning it does not dismiss the keyboard.
+      focus("composer")
       stopVoiceNow()
       send micOpened = getUserMedia(audio=true)
   action micReady

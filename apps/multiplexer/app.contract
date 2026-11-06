@@ -14,7 +14,7 @@ use ChatBar, MergeTab, ComposerNetwork, replyPlaceholder, composerPlaceholder fr
 use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.contract"
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, LinkBalloon, LinkPreview, Sticker, VideoPoster, VideoPlayer, SwipeReply, seenText, videoLabel, OlderLine from "./details.contract"
-use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, RecordingBar, DraftBar from "./voice.contract"
+use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, VoiceCancel, VoiceStop, RecordingBar, DraftBar from "./voice.contract"
 use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
@@ -1578,52 +1578,61 @@ component Multiplexer
                     button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
                       image "symbol:close"
                 // "+" on the left, the field, and the voice button or Send on the right, each its own glass,
-                // as Beeper has them; the photos and files picked sit above the text.
+                // as Beeper has them. While recording or as a draft: X replaces "+", Stop or Send replaces
+                // voice; the capsule holds only the waveform. The photos and files picked sit above the text.
                 row align-items="flex-end" gap=8 margin="6px 12px"
-                  AddButton(open=panel, press=togglePanel, disabled=(editing != "" or recording != "idle"))
+                  if recording != "idle"
+                    VoiceCancel(press=cancelVoice, draft=(recording == "draft"))
+                  else
+                    AddButton(open=panel, press=togglePanel, disabled=(editing != ""))
                   // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
-                  input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp" multiple=true display="none"
+                  // Videos join the tray the same way (caption, remove, Send): they are not sent on pick.
+                  input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/mpeg" multiple=true display="none"
                     change=photosPicked testId="pick-photos"
                   input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
-                  // a voice message takes the field's place while it records, then as a draft until it goes.
-                  if recording == "draft"
-                    view flex=1 min-width=0 border-radius=24 backgroundMaterial="glass"
+                  // the field stays mounted while recording (hidden) so the keyboard does not fall when the
+                  // voice button keeps its focus; the recording or draft capsule covers it.
+                  column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative"
+                    if recording == "draft"
                       DraftBar(appearance=appearance, bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
-                        playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, preparing=pending(voicePrepared),
-                        remove=cancelVoice, play=playVoice("draft"), send=sendVoiceDraft)
-                  else if recording != "idle"
-                    view flex=1 min-width=0 border-radius=24 backgroundMaterial="glass"
-                      RecordingBar(track=recordTrack, milliseconds=recorderState.duration, starting=(recording != "recording"),
-                        cancel=cancelVoice, stop=stopVoice)
-                  else
-                    column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass"
+                        playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, play=playVoice("draft"))
+                    else if recording != "idle"
+                      RecordingBar(track=recordTrack, milliseconds=recorderState.duration, starting=(recording != "recording"))
+                    else
                       if composer.attachments.length > 0 and editing == ""
                         Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
                       if tooLarge != ""
                         text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
                           font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
-                      // the field's own padding makes it as tall as the circles beside it (48 points); the row
-                      // adds none above or below. a bridged chat's network logo at the field's start says where
-                      // the message goes, as the placeholder does ("Reply on WhatsApp").
-                      row align-items="flex-end" padding="0 14px"
-                        if openNetwork != "matrix" and not viewport.accessibilityTextSize
-                          ComposerNetwork(network=openNetwork)
-                        textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
-                          placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
-                          aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
-                          border="none" background-color="transparent"
-                    // the voice button while the field is empty and nothing is picked; Send once there is
-                    // something to send. While editing, a checkmark saves the edit.
-                    if voiceOffered
-                      VoiceButton(press=startVoice, disabled=pending(sentVoice))
-                    else
-                      // a long press offers Send Later's times (send-later-members.contract) where the chat can
-                      // have it; it is on a view around Send, as a native button takes no long press.
-                      view contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "") testId="send-hold"
-                        button press=post buttonStyle="filled" color=appearance.onTint width=48 height=48 retainFocus=true testId="send"
-                          disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
-                          aria-label=(editing != "" ? "Save Edit" : "Send")
-                          image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 22px)"
+                    // the field's own padding makes it as tall as the circles beside it (48 points); the row
+                    // adds none above or below. a bridged chat's network logo at the field's start says where
+                    // the message goes, as the placeholder does ("Reply on WhatsApp").
+                    row align-items="flex-end" padding="0 14px"
+                      opacity=(recording != "idle" ? 0 : 1) height=(recording != "idle" ? 0 : "auto") overflow="hidden"
+                      pointer-events=(recording != "idle" ? "none" : "auto") aria-hidden=(recording != "idle")
+                      if openNetwork != "matrix" and not viewport.accessibilityTextSize and recording == "idle"
+                        ComposerNetwork(network=openNetwork)
+                      textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
+                        placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
+                        aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
+                        border="none" background-color="transparent"
+                  if recording == "draft"
+                    button press=sendVoiceDraft disabled=(not draftReady and pending(voicePrepared)) buttonStyle="filled"
+                      color=(pending(voicePrepared) ? "-exact-label" : appearance.onTint) width=48 height=48 flex-shrink=0
+                      retainFocus=true aria-label="Send Voice Message" testId="voice-send"
+                      image "symbol:send" font-size="min(-exact-body, 22px)"
+                  else if recording != "idle"
+                    VoiceStop(press=stopVoice, disabled=(recording != "recording"))
+                  else if voiceOffered
+                    VoiceButton(press=startVoice, disabled=pending(sentVoice))
+                  else
+                    // a long press offers Send Later's times (send-later-members.contract) where the chat can
+                    // have it; it is on a view around Send, as a native button takes no long press.
+                    view contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "") testId="send-hold"
+                      button press=post buttonStyle="filled" color=appearance.onTint width=48 height=48 retainFocus=true testId="send"
+                        disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
+                        aria-label=(editing != "" ? "Save Edit" : "Send")
+                        image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 22px)"
             column id="send-later-menu" popover="auto" role="menu"
               button press=sendLaterAt("tomorrow") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-tomorrow"
                 image "symbol:icon.clock"

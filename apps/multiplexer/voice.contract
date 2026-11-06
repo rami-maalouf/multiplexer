@@ -183,33 +183,50 @@ component VoiceButton
       aria-label="Record Voice Message" testId="voice-record"
       image "symbol:waveform" font-size="min(-exact-title3, 24px)"
 
-// the field while a voice message records: X stops it and throws it away; the red dot, the time and
-// the microphone's live level; the stop button keeps it as a draft.
+// cancel (left) and stop (right) sit outside this capsule, in the + and voice slots, as Beeper's.
+// Inside: the red dot, the time and the microphone's live level, with no border, a soft red fill only.
 component RecordingBar
   props
     track: string
     milliseconds: number
     starting: bool
-    cancel: action
-    stop: action
   view
-    row align-items="center" gap=8 min-height=48 padding="0 4px" border-radius=24 border="1px solid -exact-system-red"
-      background-color="voice.recording" testId="recording-bar"
-      button press=cancel aria-label="Cancel Recording" testId="voice-cancel"
-        image "symbol:close" font-size="min(-exact-title3, 24px)" color="-exact-secondary-label"
-      view width=10 height=10 border-radius=5 background-color="-exact-system-red" flex-shrink=0 aria-hidden=true
-      text lengthText(floor(milliseconds / 1000)) font="-exact-body" font-size="min(-exact-body, 24px)" color="-exact-system-red" font-variant-numeric="tabular-nums"
-        flex-shrink=0 testId="voice-elapsed" aria-label=`Recording, ${lengthText(floor(milliseconds / 1000))}`
-      if starting
-        view flex=1
-      else
-        audio-waveform track=track tint="#ff3b30" flex=1 min-width=0 height=28 testId="voice-level"
-      button appearance="none" press=stop disabled=starting aria-label="Stop Recording" testId="voice-stop" width=44 height=44
-        display="flex" align-items="center" justify-content="center" flex-shrink=0
-        view width=34 height=34 border-radius=17 background-color="-exact-system-red" display="flex" align-items="center" justify-content="center"
-          image "symbol:stop-fill" font-size="min(-exact-subheadline, 14px)" color="voice.on-red" aria-hidden=true
+    // no stroke: a red border was the old look; fill alone, clipped to the capsule.
+    view flex=1 min-width=0 min-height=48 border-radius=24 overflow="hidden" background-color="voice.recording" testId="recording-bar"
+      row align-items="center" gap=8 min-height=48 padding="0 14px"
+        view width=10 height=10 border-radius=5 background-color="-exact-system-red" flex-shrink=0 aria-hidden=true
+        text lengthText(floor(milliseconds / 1000)) font="-exact-body" font-size="min(-exact-body, 24px)" color="-exact-system-red" font-variant-numeric="tabular-nums"
+          flex-shrink=0 testId="voice-elapsed" aria-label=`Recording, ${lengthText(floor(milliseconds / 1000))}`
+        if starting
+          view flex=1
+        else
+          audio-waveform track=track tint="#ff3b30" flex=1 min-width=0 height=28 testId="voice-level"
 
-// the recording before it goes: Delete, play with its waveform and length, and Send.
+// X that replaces "+" while a voice message records or waits as a draft (same mark either way).
+component VoiceCancel
+  props
+    press: action
+    // draft: still an X; the test id names the draft so drives can tell it apart.
+    draft: bool
+  view
+    button press=press buttonStyle="glass" width=48 height=48 flex-shrink=0 retainFocus=true
+      aria-label=(draft ? "Delete Recording" : "Cancel Recording") testId=(draft ? "voice-delete" : "voice-cancel")
+      image "symbol:close" font-size="min(-exact-title3, 24px)"
+
+// stop that replaces the voice button while recording: the whole circle is liquid glass with a
+// light red wash; a small red square marks stop (a stop-fill symbol read as a solid red disc).
+component VoiceStop
+  props
+    press: action
+    disabled: bool
+  view
+    button appearance="none" press=press disabled=disabled width=48 height=48 flex-shrink=0 border-radius=24 border-width=0
+      backgroundMaterial="glass" background-color="voice.stop-glass" retainFocus=true
+      aria-label="Stop Recording" testId="voice-stop"
+      display="flex" align-items="center" justify-content="center"
+      view width=14 height=14 border-radius=3 background-color="-exact-system-red" aria-hidden=true
+// the recording before it goes: play with its waveform and length inside the capsule; Delete and
+// Send sit outside in the + and voice slots, as while recording.
 component DraftBar
   props
     appearance: Appearance
@@ -219,22 +236,14 @@ component DraftBar
     current: bool
     playing: bool
     time: number
-    // its file is still being made ready: Send waits.
-    preparing: bool
-    remove: action
     play: action
-    send: action
   derive played = current and seconds > 0 ? min(1, time / seconds) : -1
   derive shown = current and time > 0 ? max(0, ceil(seconds - time)) : seconds
   view
-    row align-items="center" gap=6 min-height=48 padding="0 4px 0 2px" border-radius=24 testId="voice-draft"
-      button press=remove aria-label="Delete Recording" testId="voice-delete" destructive=true
-        image "symbol:delete" font-size="min(-exact-title3, 24px)"
+    row align-items="center" gap=6 min-height=48 padding="0 10px 0 8px" border-radius=24 testId="voice-draft"
       button appearance="none" press=play aria-label=(playing ? "Pause" : "Play") testId="voice-draft-play" min-width=36 min-height=44
         display="flex" align-items="center" justify-content="center" flex-shrink=0
         VoicePlayMark(playing=playing, loading=false, ink="AccentColor", fill="-exact-background", size=28)
       VoiceBars(bars=bars, played=played, ink="AccentColor")
       text lengthText(shown) font="-exact-footnote" font-size="min(-exact-footnote, 20px)" color="-exact-secondary-label" font-variant-numeric="tabular-nums"
         flex-shrink=0 testId="voice-draft-time"
-      button press=send disabled=preparing buttonStyle="filled" color=(preparing ? "-exact-label" : appearance.onTint) margin="4px 0" aria-label="Send Voice Message" testId="voice-send"
-        image "symbol:send" font-size="min(-exact-body, 22px)"
