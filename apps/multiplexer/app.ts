@@ -5,6 +5,11 @@ import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
 import { deleteUntil, editUntil } from './limits.ts';
+import { linkOf, noLink } from './links.ts';
+
+// a link's kept preview (details.contract's LinkPreview); state "" while there is none.
+type Card = { url: string; title: string; image: string; width: number; height: number; state: string };
+const noCard: Card = { url: '', title: '', image: '', width: 0, height: 0, state: '' };
 import { appearance } from './appearance.ts';
 
 // app.json’s app.id: change the two together.
@@ -105,6 +110,9 @@ const shortName = (name: string, oneToOne: boolean): string =>
   (oneToOne ? name.trim().split(/\s+/)[0] : '') || name;
 type MessagesAnswer = {
   atStart: boolean;
+  // more is on its way (the rest of the chat's first screen, or its "New" line further back): the
+  // native side says so on the chat's topic when it is in.
+  settling: boolean;
   // the first message after this account's read receipt, or "".
   firstUnread: string;
   messages: {
@@ -269,6 +277,119 @@ async function prepare(f: Chosen, photo: boolean, storage: Storage) {
   };
 }
 
+// R04: each chat's last native answer, the most recently used last, so a chat opened again shows
+// its messages in its first frame. At most THREAD_COPIES chats, kept across launches in one file in
+// the session's store folder, which the native side protects and keeps out of backups (Matrix.swift,
+// threadCopiesFile): read once when its chat list first loads; written when a chat gets its first
+// copy, else from the chat list's next answer, which comes with each change. Sign Out deletes them. servedCopy: the chats just answered
+// from their copy, whose next ask goes to the native side.
+// the native module, as every source receives it.
+type Native = NonNullable<Parameters<Answer>[4]>;
+const THREAD_COPIES = 40;
+const threadCopies = new Map<string, MessagesAnswer>();
+// the link previews this launch knows, by link (R11): threadOf joins each message's (a kept copy
+// shows its cards at once); loadMessages and loadLinkPreviews fill it from the module.
+const cards = new Map<string, Card>();
+const servedCopy = new Set<string>();
+let copiesOwner = '';
+let copiesRead: Promise<void> | undefined;
+let copiesDirty = false;
+function keepThreadCopy(roomId: string, answer: MessagesAnswer, native: Native) {
+  // a first answer still filling holds only the newest messages: it is kept only for a chat with no copy.
+  const before = threadCopies.get(roomId);
+  if (answer.settling && before) return;
+  const first = before === undefined || (before.settling && !answer.settling);
+  threadCopies.delete(roomId);
+  threadCopies.set(roomId, answer);
+  if (threadCopies.size > THREAD_COPIES) threadCopies.delete(threadCopies.keys().next().value!);
+  copiesDirty = true;
+  if (first) saveThreadCopies(native);
+}
+/** Reads the account's kept copies once; a copy the session already has is newer and stays. */
+function readThreadCopies(userId: string, native: Native): Promise<void> {
+  if (copiesRead && copiesOwner === userId) return copiesRead;
+  copiesOwner = userId;
+  threadCopies.clear();
+  cards.clear();
+  servedCopy.clear();
+  copiesRead = native.later({ op: 'readCopies' }).then((answer) => {
+    const text = (answer as { text: string }).text;
+    if (text === '') return;
+    const kept = JSON.parse(text) as { owner: string; rooms: [string, MessagesAnswer][] };
+    if (kept.owner !== userId || copiesOwner !== userId) return;
+    const live = new Map(threadCopies);
+    threadCopies.clear();
+    for (const [id, answer] of kept.rooms) threadCopies.set(id, answer);
+    for (const [id, answer] of live) { threadCopies.delete(id); threadCopies.set(id, answer); }
+  }, () => { /* none yet, or unreadable: the session's answers make new ones */ });
+  return copiesRead;
+}
+function saveThreadCopies(native: Native) {
+  if (!copiesDirty || copiesOwner === '') return;
+  copiesDirty = false;
+  const kept = { owner: copiesOwner, rooms: [...threadCopies] };
+  native.later({ op: 'saveCopies', text: JSON.stringify(kept) }).catch(() => { copiesDirty = true; });
+}
+
+/** While the first answer still fills (it holds the newest messages only), the copy's older
+ * messages stay in front of them, so text already shown does not go away (R04). Matched by event id. */
+function withKeptOlder(answer: MessagesAnswer, copy: MessagesAnswer | undefined): MessagesAnswer {
+  if (!answer.settling || copy === undefined || answer.messages.length === 0) return answer;
+  const live = new Set(answer.messages.map((m) => m.event).filter((e) => e !== ''));
+  const firstTime = answer.messages[0].time;
+  const older = copy.messages.filter((m) => m.event !== '' && !live.has(m.event) && m.time < firstTime);
+  return older.length === 0 ? answer : { ...answer, messages: older.concat(answer.messages) };
+}
+
+/** The chat's screen from the native side's answer (or its copy). */
+function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roomName: string, utcOffset: number, network: string,
+  cached: boolean): Result<'loadMessages'> {
+    // a bridged one-to-one chat is often not marked direct, but it is named after the other person.
+    const group = !isDirect && answer.messages.some((m) => !m.isOwn && m.senderName !== roomName);
+    const day = (t: number) => Math.floor((t + utcOffset * 60000) / DAY_MS);
+    const messages = answer.messages.map((m, i) => {
+      const before = answer.messages[i - 1];
+      const after = answer.messages[i + 1];
+      const startsGroup = before === undefined || m.time - before.time > GROUP_GAP_MS || day(m.time) !== day(before.time);
+      // a run is one sender's messages in a row; its last bubble has the tail and the sender's picture.
+      const endsRun = after === undefined || after.sender !== m.sender || after.time - m.time > GROUP_GAP_MS
+        || day(after.time) !== day(m.time);
+      // a group chat names the sender above the first message of each run.
+      const showName = group && !m.isOwn && (startsGroup || before.sender !== m.sender);
+      const isVideo = m.video.duration !== undefined;
+      const isAudio = m.audio.duration !== undefined;
+      // a video and a sticker show their picture where a photo shows its own.
+      const [width, height] = isVideo ? [m.video.width ?? 0, m.video.height ?? 0] : [m.imageWidth, m.imageHeight];
+      const side = m.isSticker ? STICKER_SIDE : PHOTO_MAX_WIDTH;
+      const tall = m.isSticker ? STICKER_SIDE : PHOTO_MAX_HEIGHT;
+      const media = m.isImage || m.file.name !== undefined || isVideo || m.isSticker || isAudio;
+      const bigEmoji = !media && !m.waitingForKey && isBigEmoji(m.body);
+      const status = i === answer.messages.length - 1 ? statusOf(m, group) : { status: '', statusTime: 0 };
+      return {
+        id: m.id, event: m.event, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
+        body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
+        isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
+        isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),
+        isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [], audioKey: m.audio.key ?? '',
+        balloon: !m.waitingForKey && !m.isDeleted && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
+        // a text message's first web link, for its preview card (links.ts), and its kept card.
+        ...(media || m.waitingForKey || m.isDeleted ? noLink : linkOf(runsOf(m.body))),
+        waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
+        isDeleted: m.isDeleted, isEditable: m.isEditable,
+        editUntil: editUntil(network, m.time), deleteUntil: deleteUntil(network, m.time),
+        // a reply shows who wrote what it answers once that message is loaded; until then, or if
+        // it cannot load, no quote shows rather than an empty one.
+        hasReply: (m.reply.body ?? '') !== '',
+        replyName: m.reply.isOwn ? 'You' : (m.reply.senderName ?? ''),
+        replyBody: m.reply.body ?? '',
+        isFile: m.file.name !== undefined, fileName: m.file.name ?? '', fileSize: m.file.size ?? 0, progress: m.progress,
+        photoWidth: width > 0 && height > 0 ? Math.min(side, (tall * width) / height) : side,
+      };
+    });
+    const withCards = messages.map((m) => ({ ...m, card: cards.get(m.previewUrl) ?? noCard }));
+    return { room: roomId, atStart: answer.atStart, group, firstUnread: answer.firstUnread, settling: answer.settling, cached, messages: withCards };
+}
+
 // the web has no Matrix SDK: it shows the sign-in screen and refuses to sign in.
 const sources: Sources = {
   loadAppearance: ([color]) => appearance(color),
@@ -287,6 +408,9 @@ const sources: Sources = {
         archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
     }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
+    // the chats' kept copies, read while the list loads (not awaited), and a write held back.
+    void readThreadCopies(userId, native);
+    saveThreadCopies(native);
     const answer = (await native.later({ op: 'rooms', filter, network, community, list, label })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     // the reminders' notifications follow the account's reminders; a failure leaves the list as it is.
@@ -443,52 +567,50 @@ const sources: Sources = {
   showMessage: async ([roomId, eventId], _store, _storage, native): Promise<Result<'showMessage'>> =>
     (await native!.later({ op: 'showMessage', roomId, eventId })) as { id: string },
   // the messages of a day go together in the reader's zone (utcOffset, in minutes); the chat's
-  // network sets how long your own can be edited and deleted (limits.ts).
-  loadMessages: async ([roomId, isDirect, roomName, utcOffset, network], _store, _storage, native): Promise<Result<'loadMessages'>> => {
-    if (roomId === '' || !native?.available) return { room: roomId, atStart: true, group: false, firstUnread: '', messages: [] };
+  // network sets how long your own can be edited and deleted (limits.ts). A chat opened before in
+  // this session answers at once from its last answer (R04: no spinner while the native side
+  // answers); that answer says `cached`, and the screen asks again at once for the live one.
+  loadMessages: ([roomId, isDirect, roomName, utcOffset, network], _store, _storage, native) => {
+    if (roomId === '' || !native?.available) {
+      return { room: roomId, atStart: true, group: false, firstUnread: '', settling: false, cached: false, messages: [] };
+    }
     native.watch(`thread:${roomId}`);
-    const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
-    // a bridged one-to-one chat is often not marked direct, but it is named after the other person.
-    const group = !isDirect && answer.messages.some((m) => !m.isOwn && m.senderName !== roomName);
-    const day = (t: number) => Math.floor((t + utcOffset * 60000) / DAY_MS);
-    const messages = answer.messages.map((m, i) => {
-      const before = answer.messages[i - 1];
-      const after = answer.messages[i + 1];
-      const startsGroup = before === undefined || m.time - before.time > GROUP_GAP_MS || day(m.time) !== day(before.time);
-      // a run is one sender's messages in a row; its last bubble has the tail and the sender's picture.
-      const endsRun = after === undefined || after.sender !== m.sender || after.time - m.time > GROUP_GAP_MS
-        || day(after.time) !== day(m.time);
-      // a group chat names the sender above the first message of each run.
-      const showName = group && !m.isOwn && (startsGroup || before.sender !== m.sender);
-      const isVideo = m.video.duration !== undefined;
-      const isAudio = m.audio.duration !== undefined;
-      // a video and a sticker show their picture where a photo shows its own.
-      const [width, height] = isVideo ? [m.video.width ?? 0, m.video.height ?? 0] : [m.imageWidth, m.imageHeight];
-      const side = m.isSticker ? STICKER_SIDE : PHOTO_MAX_WIDTH;
-      const tall = m.isSticker ? STICKER_SIDE : PHOTO_MAX_HEIGHT;
-      const media = m.isImage || m.file.name !== undefined || isVideo || m.isSticker || isAudio;
-      const bigEmoji = !media && !m.waitingForKey && isBigEmoji(m.body);
-      const status = i === answer.messages.length - 1 ? statusOf(m, group) : { status: '', statusTime: 0 };
-      return {
-        id: m.id, event: m.event, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
-        body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
-        isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
-        isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),
-        isSticker: m.isSticker, bigEmoji, isAudio, bars: isAudio ? barsOf(m.audio.waveform ?? []) : [], audioKey: m.audio.key ?? '',
-        balloon: !m.waitingForKey && !m.isDeleted && !bigEmoji && (!media || m.body !== ''), runs: runsOf(m.body), ...status,
-        waitingForKey: m.waitingForKey, isEdited: m.isEdited, reactions: m.reactions,
-        isDeleted: m.isDeleted, isEditable: m.isEditable,
-        editUntil: editUntil(network, m.time), deleteUntil: deleteUntil(network, m.time),
-        // a reply shows who wrote what it answers once that message is loaded; until then, or if
-        // it cannot load, no quote shows rather than an empty one.
-        hasReply: (m.reply.body ?? '') !== '',
-        replyName: m.reply.isOwn ? 'You' : (m.reply.senderName ?? ''),
-        replyBody: m.reply.body ?? '',
-        isFile: m.file.name !== undefined, fileName: m.file.name ?? '', fileSize: m.file.size ?? 0, progress: m.progress,
-        photoWidth: width > 0 && height > 0 ? Math.min(side, (tall * width) / height) : side,
-      };
-    });
-    return { room: roomId, atStart: answer.atStart, group, firstUnread: answer.firstUnread, messages };
+    const copy = threadCopies.get(roomId);
+    if (copy && !servedCopy.has(roomId)) {
+      servedCopy.add(roomId);
+      // its "New" line and its start are the live answer's to say.
+      const thread = threadOf({ ...copy, firstUnread: '', atStart: false, settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
+      // its links' kept previews, read at once, so the copy shows its cards too.
+      const unknown = [...new Set(thread.messages.map((m) => m.previewUrl).filter((u) => u !== '' && !cards.has(u)))];
+      if (unknown.length === 0) return thread;
+      const kept = native.call({ op: 'keptLinkPreviews', known: unknown }) as { items: Card[] };
+      for (const c of kept.items) cards.set(c.url, c);
+      return { ...thread, messages: thread.messages.map((m) => ({ ...m, card: cards.get(m.previewUrl) ?? noCard })) };
+    }
+    servedCopy.delete(roomId);
+    return (async (): Promise<Result<'loadMessages'>> => {
+      const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
+      const shown = withKeptOlder(answer, threadCopies.get(roomId));
+      keepThreadCopy(roomId, answer, native);
+      const thread = threadOf(shown, roomId, isDirect, roomName, utcOffset, network, false);
+      // the chat's links' kept previews join their messages (cards); the module says when a fetch
+      // adds one (topic links). Fetching is links-members.contract's, for the rows on screen.
+      const links = [...new Set(thread.messages.map((m) => m.previewUrl).filter((u) => u !== ''))];
+      if (links.length === 0) return thread;
+      native.watch('links');
+      const previews = (await native.later({ op: 'linkPreviews', known: links, fetch: [] })) as { items: Card[] };
+      for (const c of previews.items) cards.set(c.url, c);
+      return { ...thread, messages: thread.messages.map((m) => ({ ...m, card: cards.get(m.previewUrl) ?? noCard })) };
+    })();
+  },
+  // link previews (R11): a fetch on the phone of the links on screen that have no kept preview
+  // yet; their previews join their messages in loadMessages (cards).
+  loadLinkPreviews: async ([fetch], _store, _storage, native): Promise<Result<'loadLinkPreviews'>> => {
+    if (fetch.length === 0 || !native?.available) return { items: [] };
+    native.watch('links');
+    const answer = (await native.later({ op: 'linkPreviews', known: fetch, fetch })) as Result<'loadLinkPreviews'>;
+    for (const c of answer.items) cards.set(c.url, c);
+    return answer;
   },
   // the view asks when the reader has seen the chat's newest message; loading a chat reads nothing.
   markRead: async ([roomId], _store, _storage, native): Promise<Result<'markRead'>> => {
@@ -706,6 +828,12 @@ const sources: Sources = {
     return { userId: p.userId, name: p.name, avatar: p.avatar, initials: initials(p.name), version: p.version };
   },
   signOut: async (_args, _store, _storage, native): Promise<Result<'signOut'>> => {
+    // the native side deletes the session's store folder, the kept copies' file with it.
+    threadCopies.clear();
+    servedCopy.clear();
+    copiesOwner = '';
+    copiesRead = undefined;
+    copiesDirty = false;
     await native!.later({ op: 'signOut' });
     return { ok: true };
   },
