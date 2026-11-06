@@ -988,7 +988,11 @@ component Multiplexer
                         text "Show All Chats"
                 else
                   // the last row scrolls up above the floating bar.
+                  // up and down only (R01): a row's text can be wider than the row in real chats (a long
+                  // word in a preview), and a list that may scroll sideways then pans the whole list
+                  // under the fixed title and bar. a row's own swipe scrolls inside the row.
                   list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=64 testId="room-list"
+                    overflow-x="hidden"
                     inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=tapPinned, aim=aim, menu="chat-menu", selecting=selecting,
