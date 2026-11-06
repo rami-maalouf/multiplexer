@@ -38,7 +38,7 @@ component AddButton
     disabled: bool
   view
     button press=press disabled=disabled buttonStyle="glass" retainFocus=true aria-label=(open ? "Close" : "Add") aria-expanded=open testId="add"
-      width=44 height=44 flex-shrink=0
+      width=48 height=48 flex-shrink=0
       image (open ? "symbol:close" : "symbol:add") font-size="min(-exact-title3, 24px)"
 
 // where the keyboard was, as Beeper's: one row for each way to add, an icon and its name.

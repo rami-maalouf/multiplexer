@@ -172,13 +172,15 @@ component VoiceSpeedText
       color=(outgoing ? appearance.onFill : "-exact-label") padding="3px 7px" border-radius=10 min-width=34 text-align="center" box-sizing="border-box"
       background-color=(outgoing ? "transparent" : "-exact-tertiary-fill")
 
-// in the composer's field while it is empty and nothing is picked, where Send is once there is text.
+// beside the composer's field, in its own glass circle as Beeper's, while the field is empty and
+// nothing is picked; Send takes its place once there is text.
 component VoiceButton
   props
     press: action
     disabled: bool
   view
-    button press=press disabled=disabled margin="4px 0" retainFocus=true aria-label="Record Voice Message" testId="voice-record"
+    button press=press disabled=disabled buttonStyle="glass" width=48 height=48 flex-shrink=0 retainFocus=true
+      aria-label="Record Voice Message" testId="voice-record"
       image "symbol:waveform" font-size="min(-exact-title3, 24px)"
 
 // the field while a voice message records: X stops it and throws it away; the red dot, the time and
@@ -191,7 +193,7 @@ component RecordingBar
     cancel: action
     stop: action
   view
-    row align-items="center" gap=8 min-height=44 padding="0 4px" border-radius=22 border="1px solid -exact-system-red"
+    row align-items="center" gap=8 min-height=48 padding="0 4px" border-radius=24 border="1px solid -exact-system-red"
       background-color="voice.recording" testId="recording-bar"
       button press=cancel aria-label="Cancel Recording" testId="voice-cancel"
         image "symbol:close" font-size="min(-exact-title3, 24px)" color="-exact-secondary-label"
@@ -225,7 +227,7 @@ component DraftBar
   derive played = current and seconds > 0 ? min(1, time / seconds) : -1
   derive shown = current and time > 0 ? max(0, ceil(seconds - time)) : seconds
   view
-    row align-items="center" gap=6 min-height=44 padding="0 4px 0 2px" border-radius=22 border="1px solid -exact-separator" testId="voice-draft"
+    row align-items="center" gap=6 min-height=48 padding="0 4px 0 2px" border-radius=24 testId="voice-draft"
       button press=remove aria-label="Delete Recording" testId="voice-delete" destructive=true
         image "symbol:delete" font-size="min(-exact-title3, 24px)"
       button appearance="none" press=play aria-label=(playing ? "Pause" : "Play") testId="voice-draft-play" min-width=36 min-height=44

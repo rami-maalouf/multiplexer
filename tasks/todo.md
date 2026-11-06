@@ -30,6 +30,11 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   chat (not driven: `@test1`'s only merge is in no list). Reproduced first (the old row showed nothing).
   Screenshots and a 43 s recording: `apps/multiplexer/.exact/r02/` in the sibling checkout
   (dark, light, the largest text size, Reduce Transparency). `verify ios` clean. On the iPhone: still to see.
+  Regression fixed 2026-11-05 (branch `work/r02-insets`): the swipe rows had lost the cell's 16-point margins
+  (pictures at the left edge, chevrons and badges cut at the right); the swipe's content now writes them
+  (`padding="0 16px"`). And a swiped row's line ran full width after it closed: fixed in the Exact integration
+  checkout (`cc75ef11d0`, `SwipeActionsIOS.swift` `restore()` redraws the list's row lines). Screenshots:
+  `.exact/r02i/` (rest dark, light, largest text; a row closed after a swipe, light and dark). `verify ios` clean.
 - [x] R01 the whole inbox list moved sideways (2026-11-05, branch `fix/inbox-video`, Simulator only).
   Reproduced on the build Rami's phone had (before R02), with `@rami`'s real chats (read only, agent mode,
   real touches): horizontal pans shifted the whole list about 75 points left, under the fixed title and bar,
@@ -54,8 +59,20 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   Screenshots: the checkout's `apps/multiplexer/.exact/r06/` (`before-*`, `after4-*`).
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
+  - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
+    shows the messages behind Back, the title and More, blurred and dimmed more toward the
+    status bar (two masked materials and a `chat.edge` tint, in place of a solid backing).
+    The transcript reaches under the composer and the home indicator; the field is a glass
+    capsule, + and voice (or Send) are 48-point glass circles beside it, and the messages
+    under them are blurred and dimmed (`chat.edge-bottom`). Reduce Transparency draws both
+    edges solid. Checked in dark, light, the largest text size and Reduce Transparency;
+    idle, typed, multiline, reply, recording and keyboard states. The voice draft state
+    could not be reached in a drive (the recorder stays `opening`): check it on the iPhone.
 - [ ] R10: capture Multiplexer keyboard parity first; current video shows only Beeper's
   keyboard. Preserve system input behavior and accessibility.
+  - Captured on the Simulator: the system keyboard's glass shows only the black page,
+    because the page ends at the keyboard's top (`resizes-content`), so no message is
+    under it. It differs from Beeper.
 - [ ] Triage secondary R11-R12 rich link cards and typography/density separately from the
   explicitly requested blockers. Do not infer missing pins or unread-count bugs from unmatched views.
 

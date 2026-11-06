@@ -184,6 +184,8 @@ shape Viewport
   width: number
   height: number
   prefersReducedMotion: bool
+  // Reduce Transparency: the chat's edges are solid, not blurred (chat.contract, the composer).
+  prefersReducedTransparency: bool
   accessibilityTextSize: bool
 
 shape Page
@@ -1018,8 +1020,11 @@ component Multiplexer
                         scroll swipeContent=`room-${r.id}` swipeLeading=`swipe-read-${r.id}` swipeTrailing=`swipe-archive-${r.id} swipe-mute-${r.id}`
                           testId=`swipe-${r.id}` display="flex" overflow-x="scroll" overflow-y="hidden" scrollbar-width="none"
                           scroll-snap-type="x mandatory"
+                          // the swipe's scroll is the row, so the list gives its content no margin: the link keeps the
+                          // cell's 16 at each end itself, as the other rows have (Exact puts a row's content at the
+                          // cell's margin only where the row writes no padding).
                           link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
-                            width="100%" flex-shrink=0 scroll-snap-align="start"
+                            width="100%" flex-shrink=0 scroll-snap-align="start" padding="0 16px" box-sizing="border-box"
                             RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, chevron=true, picture=true)
                           button id=`swipe-read-${r.id}` press=swipeChat(r.id, rowUnread(r) ? "read" : "unread") accent-color="-exact-system-blue"
                             flex-shrink=0 scroll-snap-align="start" testId=`swipe-read-${r.id}`
@@ -1291,148 +1296,154 @@ component Multiplexer
               if thread.messages.length == 0
                 EmptyState(symbol="symbol:messages", title="No Messages Yet", message="Messages in this chat show here.")
               else
-                // the first message can scroll down from under the bar, a chat name of two lines too.
-                list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
-                  reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=((viewport.accessibilityTextSize ? 116 : 100) + (openMerge == none ? 0 : 56))
-                  testId="transcript"
-                  for m in transcriptRows key=m.id
-                    // a found message the chat opened at is marked a moment (search-members.contract).
-                    column id=`row-${m.id}` intersect=sawMessage(m.id) align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
-                      background-color=(m.id == jumpedTo ? "-exact-tertiary-fill" : "transparent") transition="background-color 600ms ease"
-                      if m.id == "~older"
-                        OlderLine(atStart=thread.atStart)
-                      else
-                        if m.startsGroup
-                          DayHeader(time=m.time, now=shown, offset=time.utcOffset, identifier=`day-${m.id}`)
-                        if m.id == newLine and newLineRoom == openRoom
-                          NewLine()
-                        if m.showName
-                          text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding-left=(thread.group ? 50 : 14)
-                            margin-bottom=2
-                        // in a group, the sender's picture sits beside the last bubble of their run.
-                        row position="relative" max-width="80%" min-width=0 padding-left=(thread.group and not m.isOwn ? 36 : 0)
-                          padding-bottom=(m.endsRun and m.balloon ? 6.65 : 0)
-                          if thread.group and not m.isOwn and m.endsRun
-                            view position="absolute" left=0 bottom=(m.balloon ? 6.65 : 0)
-                              Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
-                          column align-items=(m.isOwn ? "flex-end" : "flex-start") gap=2 min-width=0
-                            // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box. A swipe
-                            // right answers a photo, a video, a sticker or a file, as a text's bubble (SwipeReply).
-                            if m.isImage
-                              SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=showPhoto(m.id),
-                                hold=holdMedia(m.id, "photo", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=(m.body != "" ? m.body : "Photo"),
-                                identifier=`photo-${m.id}`)
-                                view opacity=(held == m.id ? 0 : 1) width=`${m.photoWidth}rem` max-width="100%"
-                                  aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
-                                  border-radius=18 overflow="hidden" background-color="-exact-secondary-background" position="relative"
-                                  if m.image != ""
-                                    image m.image width="100%" height="100%" object-fit="cover" opacity=(m.state == "sending" ? 0.6 : 1) aria-label=""
-                                  // a photo on its way: its upload's ring over a dark disc, at its middle.
-                                  if m.state == "sending"
-                                    view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
-                                      view width=44 height=44 border-radius=22 background-color="media.scrim" display="flex"
-                                        align-items="center" justify-content="center" testId=`upload-${m.id}`
-                                        UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
-                            if m.isVideo
-                              SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=showVideo(m.id),
-                                hold=holdMedia(m.id, "video", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=videoLabel(m.seconds), identifier=`video-${m.id}`)
-                                VideoPoster(poster=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "16 / 9"),
-                                  seconds=m.seconds, dimmed=(m.state == "sending"))
-                            // a sticker opens nothing: its tap lets go of nothing held.
-                            if m.isSticker
-                              SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=letGo,
-                                hold=holdMedia(m.id, "sticker", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label="Sticker", identifier=`sticker-${m.id}`)
-                                Sticker(picture=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "1 / 1"))
-                            if m.isFile
-                              SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=openFile(m.id),
-                                hold=holdMedia(m.id, "file", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=`${m.fileName}, ${fileDetail(m.fileName, m.fileSize)}`,
-                                identifier=`file-${m.id}`)
-                                FileBubble(appearance=appearance, name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
-                                  opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize)
-                            // a voice message plays here; a swipe right answers it and a long press holds it, as a text's bubble.
-                            if m.isAudio
-                              box position="relative" max-width="100%" user-select="none" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
-                                opacity=(held == m.id ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m))
-                                contextmenu=holdMedia(m.id, "voice", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)) testId=`voice-swipe-${m.id}`
-                                view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
-                                  display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
-                                  transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
-                                  image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
-                                VoiceBubble(appearance=appearance, bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=(voicePlaying == m.id and voiceRoom == openRoom),
-                                  playing=(voicePlaying == m.id and voiceRoom == openRoom and not voicePaused and voiceSrc != ""),
-                                  loading=(voicePlaying == m.id and voiceSrc == "" and not failed(voiceFile)), time=voiceTime, speed=voiceSpeed,
-                                  dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, play=playVoice(m.id), speedUp=speedUp,
-                                  identifier=`voice-${m.id}`)
-                              // its transcript under it (transcribe-members.contract): the words heard while it is
-                              // made, then the text, kept across launches by its sound file's name.
-                              if transcribing == m.id and transcribeRoom == openRoom
-                                text (heardSoFar != "" ? heardSoFar : "Transcribing…") font="-exact-footnote" color="-exact-secondary-label"
-                                  max-width="100%" padding="2px 8px" testId=`transcribing-${m.id}`
-                              for t in transcripts.filter(x => x.key == m.audioKey and m.audioKey != "") key=t.key
-                                text (t.text != "" ? t.text : (t.problem == "noSpeech" ? "No speech in this voice message." : "Couldn’t transcribe this voice message on this iPhone."))
-                                  font="-exact-subheadline" color=(t.text != "" ? "-exact-label" : "-exact-secondary-label") max-width="100%"
-                                  padding="2px 8px" user-select="text" testId=`transcript-${m.id}`
-                            // a message on its way is dimmed; one that failed says so, with a way to send it again.
-                            if m.waitingForKey
-                              text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
-                                background-color="-exact-fill" color="-exact-secondary-label" testId=`message-${m.id}`
-                            else if m.isDeleted
-                              text "Message deleted" padding="8px 14px 9px" border-radius=20 font-style="italic"
-                                background-color="-exact-fill" color="-exact-secondary-label" testId=`deleted-${m.id}`
-                            else if m.balloon or m.bigEmoji
-                              if m.hasReply
-                                column padding="2px 0 2px 10px" margin="0 6px 2px" border-left="2px solid -exact-separator" max-width="100%"
-                                  testId=`quote-${m.id}`
-                                  // the name comes a moment after the quote when its sender's profile is not loaded yet.
-                                  if m.replyName != ""
-                                    text m.replyName font="-exact-caption1" font-weight=600 color="-exact-secondary-label" line-clamp=1
-                                      testId=`quote-name-${m.id}`
-                                  text m.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
-                              // a swipe right answers it; a long press opens its reactions and actions. The bubble
-                              // follows the finger and, with the transition, springs back when it lets go.
-                              box id=`bubble-${m.id}` testId=`bubble-${m.id}` tabindex=0 retainFocus=true user-select="none" max-width="100%"
-                                position="relative" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
-                                opacity=(held == m.id ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body)
-                                contextmenu=hold(m.id, m.body, m.isOwn ? "You" : m.senderName, m.isOwn, m.endsRun) aria-label=m.body
-                                // the reply arrow, left of the bubble's middle: unseen at rest, it grows in as the
-                                // swipe nears the 64 points that answer. On release it leaves faster than the bubble
-                                // springs back, so it is gone before it reaches a sender's picture. It grows with the
-                                // text size, to a cap, so it still fits in the 64 points the bubble leaves.
-                                view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
-                                  display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
-                                  transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
-                                  image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
-                                if m.bigEmoji
-                                  BigEmoji(body=m.body, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
-                                else
-                                  RichBalloon(appearance=appearance, runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
-                                    open=openLink)
-                            if m.isEdited
-                              text "Edited" font="-exact-caption2" color="-exact-secondary-label" padding="0 8px" testId=`edited-${m.id}`
-                            if m.reactions.length > 0
-                              row gap=4 flex-wrap="wrap" justify-content=(m.isOwn ? "flex-end" : "flex-start") margin-top=2
-                                for x in m.reactions key=x.key
-                                  // a 44-point target around a smaller pill; the margins keep the rows close.
-                                  button appearance="none" press=toggleReaction(m.id, x.key) testId=`reaction-${m.id}-${x.key}`
-                                    aria-label=`${x.key} ${x.count}` aria-pressed=x.isMine -exact-press-haptic="selection"
-                                    min-width=44 min-height=44 margin="-8px 0" display="flex" align-items="center" justify-content="center"
-                                    row gap=4 align-items="center" padding="2px 8px" border-radius=12 min-height=28
-                                      background-color=(x.isMine ? "-exact-tertiary-fill" : "-exact-quaternary-fill")
-                                      border=(x.isMine ? "1px solid AccentColor" : "1px solid transparent")
-                                      text x.key
-                                      if x.count > 1
-                                        text `${x.count}` font="-exact-footnote" font-weight=600 font-variant-numeric="tabular-nums"
-                                          color=(x.isMine ? "AccentColor" : "-exact-secondary-label")
-                        if m.state == "failed"
-                          row gap=12 align-items="center"
-                            text "Not Delivered" font="-exact-footnote" color="-exact-system-red" testId=`failed-${m.id}`
-                            button press=retry(m.id) disabled=pending(retried) testId=`retry-${m.id}`
-                              text "Try Again"
-                            button press=discard(m.id) destructive=true disabled=pending(discarded) testId=`discard-${m.id}`
-                              text "Delete"
-                        if m.status != ""
-                          StatusLine(label=seenText(m.status, m.statusTime, shown, time.utcOffset), own=m.isOwn,
-                            indent=(thread.group and not m.isOwn ? 36 : 0))
+                // the first message can scroll down from under the bar, a chat name of two lines too. At
+                // the bottom the list reaches under the composer's one-line row (60) and the home indicator
+                // (40, as the inbox's bar: the page ends above it, so its env() inset reads 0 here), as
+                // Beeper's does, so the messages show softened behind the floating field; its padding
+                // keeps the newest message above the composer. (A windowed list takes no margin: its column does.)
+                column flex=1 min-height=0 margin-bottom=-100
+                  list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
+                    reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=((viewport.accessibilityTextSize ? 116 : 100) + (openMerge == none ? 0 : 56))
+                    padding-bottom=100
+                    testId="transcript"
+                    for m in transcriptRows key=m.id
+                      // a found message the chat opened at is marked a moment (search-members.contract).
+                      column id=`row-${m.id}` intersect=sawMessage(m.id) align-items=(m.isOwn ? "flex-end" : "flex-start") padding="1px 12px" padding-bottom=(m.endsRun ? 8 : 1)
+                        background-color=(m.id == jumpedTo ? "-exact-tertiary-fill" : "transparent") transition="background-color 600ms ease"
+                        if m.id == "~older"
+                          OlderLine(atStart=thread.atStart)
+                        else
+                          if m.startsGroup
+                            DayHeader(time=m.time, now=shown, offset=time.utcOffset, identifier=`day-${m.id}`)
+                          if m.id == newLine and newLineRoom == openRoom
+                            NewLine()
+                          if m.showName
+                            text m.senderName font="-exact-caption1" color="-exact-secondary-label" padding-left=(thread.group ? 50 : 14)
+                              margin-bottom=2
+                          // in a group, the sender's picture sits beside the last bubble of their run.
+                          row position="relative" max-width="80%" min-width=0 padding-left=(thread.group and not m.isOwn ? 36 : 0)
+                            padding-bottom=(m.endsRun and m.balloon ? 6.65 : 0)
+                            if thread.group and not m.isOwn and m.endsRun
+                              view position="absolute" left=0 bottom=(m.balloon ? 6.65 : 0)
+                                Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
+                            column align-items=(m.isOwn ? "flex-end" : "flex-start") gap=2 min-width=0
+                              // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box. A swipe
+                              // right answers a photo, a video, a sticker or a file, as a text's bubble (SwipeReply).
+                              if m.isImage
+                                SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=showPhoto(m.id),
+                                  hold=holdMedia(m.id, "photo", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=(m.body != "" ? m.body : "Photo"),
+                                  identifier=`photo-${m.id}`)
+                                  view opacity=(held == m.id ? 0 : 1) width=`${m.photoWidth}rem` max-width="100%"
+                                    aspect-ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "4 / 3")
+                                    border-radius=18 overflow="hidden" background-color="-exact-secondary-background" position="relative"
+                                    if m.image != ""
+                                      image m.image width="100%" height="100%" object-fit="cover" opacity=(m.state == "sending" ? 0.6 : 1) aria-label=""
+                                    // a photo on its way: its upload's ring over a dark disc, at its middle.
+                                    if m.state == "sending"
+                                      view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+                                        view width=44 height=44 border-radius=22 background-color="media.scrim" display="flex"
+                                          align-items="center" justify-content="center" testId=`upload-${m.id}`
+                                          UploadRing(fraction=max(0, m.progress), size=32, color="#ffffff", track="rgba(255, 255, 255, 0.3)")
+                              if m.isVideo
+                                SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=showVideo(m.id),
+                                  hold=holdMedia(m.id, "video", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=videoLabel(m.seconds), identifier=`video-${m.id}`)
+                                  VideoPoster(poster=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "16 / 9"),
+                                    seconds=m.seconds, dimmed=(m.state == "sending"))
+                              // a sticker opens nothing: its tap lets go of nothing held.
+                              if m.isSticker
+                                SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=letGo,
+                                  hold=holdMedia(m.id, "sticker", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label="Sticker", identifier=`sticker-${m.id}`)
+                                  Sticker(picture=m.image, width=m.photoWidth, ratio=(m.imageWidth > 0 and m.imageHeight > 0 ? `${m.imageWidth} / ${m.imageHeight}` : "1 / 1"))
+                              if m.isFile
+                                SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m)), open=openFile(m.id),
+                                  hold=holdMedia(m.id, "file", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)), label=`${m.fileName}, ${fileDetail(m.fileName, m.fileSize)}`,
+                                  identifier=`file-${m.id}`)
+                                  FileBubble(appearance=appearance, name=m.fileName, size=m.fileSize, outgoing=m.isOwn, progress=(m.state == "sending" ? max(0, m.progress) : -1),
+                                    opening=(opening == m.id and pending(opened)), stacked=viewport.accessibilityTextSize)
+                              // a voice message plays here; a swipe right answers it and a long press holds it, as a text's bubble.
+                              if m.isAudio
+                                box position="relative" max-width="100%" user-select="none" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
+                                  opacity=(held == m.id ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, messageLine(m))
+                                  contextmenu=holdMedia(m.id, "voice", m.isOwn ? "You" : m.senderName, m.isOwn, messageLine(m)) testId=`voice-swipe-${m.id}`
+                                  view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
+                                    display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
+                                    transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
+                                    image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
+                                  VoiceBubble(appearance=appearance, bars=m.bars, seconds=m.seconds, outgoing=m.isOwn, current=(voicePlaying == m.id and voiceRoom == openRoom),
+                                    playing=(voicePlaying == m.id and voiceRoom == openRoom and not voicePaused and voiceSrc != ""),
+                                    loading=(voicePlaying == m.id and voiceSrc == "" and not failed(voiceFile)), time=voiceTime, speed=voiceSpeed,
+                                    dimmed=(m.state == "sending"), stacked=viewport.accessibilityTextSize, play=playVoice(m.id), speedUp=speedUp,
+                                    identifier=`voice-${m.id}`)
+                                // its transcript under it (transcribe-members.contract): the words heard while it is
+                                // made, then the text, kept across launches by its sound file's name.
+                                if transcribing == m.id and transcribeRoom == openRoom
+                                  text (heardSoFar != "" ? heardSoFar : "Transcribing…") font="-exact-footnote" color="-exact-secondary-label"
+                                    max-width="100%" padding="2px 8px" testId=`transcribing-${m.id}`
+                                for t in transcripts.filter(x => x.key == m.audioKey and m.audioKey != "") key=t.key
+                                  text (t.text != "" ? t.text : (t.problem == "noSpeech" ? "No speech in this voice message." : "Couldn’t transcribe this voice message on this iPhone."))
+                                    font="-exact-subheadline" color=(t.text != "" ? "-exact-label" : "-exact-secondary-label") max-width="100%"
+                                    padding="2px 8px" user-select="text" testId=`transcript-${m.id}`
+                              // a message on its way is dimmed; one that failed says so, with a way to send it again.
+                              if m.waitingForKey
+                                text "Waiting for this message" padding="8px 14px 9px" border-radius=20 font-style="italic"
+                                  background-color="-exact-fill" color="-exact-secondary-label" testId=`message-${m.id}`
+                              else if m.isDeleted
+                                text "Message deleted" padding="8px 14px 9px" border-radius=20 font-style="italic"
+                                  background-color="-exact-fill" color="-exact-secondary-label" testId=`deleted-${m.id}`
+                              else if m.balloon or m.bigEmoji
+                                if m.hasReply
+                                  column padding="2px 0 2px 10px" margin="0 6px 2px" border-left="2px solid -exact-separator" max-width="100%"
+                                    testId=`quote-${m.id}`
+                                    // the name comes a moment after the quote when its sender's profile is not loaded yet.
+                                    if m.replyName != ""
+                                      text m.replyName font="-exact-caption1" font-weight=600 color="-exact-secondary-label" line-clamp=1
+                                        testId=`quote-name-${m.id}`
+                                    text m.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
+                                // a swipe right answers it; a long press opens its reactions and actions. The bubble
+                                // follows the finger and, with the transition, springs back when it lets go.
+                                box id=`bubble-${m.id}` testId=`bubble-${m.id}` tabindex=0 retainFocus=true user-select="none" max-width="100%"
+                                  position="relative" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
+                                  opacity=(held == m.id ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body)
+                                  contextmenu=hold(m.id, m.body, m.isOwn ? "You" : m.senderName, m.isOwn, m.endsRun) aria-label=m.body
+                                  // the reply arrow, left of the bubble's middle: unseen at rest, it grows in as the
+                                  // swipe nears the 64 points that answer. On release it leaves faster than the bubble
+                                  // springs back, so it is gone before it reaches a sender's picture. It grows with the
+                                  // text size, to a cap, so it still fits in the 64 points the bubble leaves.
+                                  view swipeIndicator=true position="absolute" right="calc(100% + 14px)" top=0 bottom=0
+                                    display="flex" align-items="center" opacity=0 scale=0.4 aria-hidden=true
+                                    transition="opacity -exact-spring(900, 60, 1), scale -exact-spring(900, 60, 1)"
+                                    image "symbol:icon.arrowshape-turn-up-left" font-size="min(-exact-body, 28px)" color="-exact-secondary-label"
+                                  if m.bigEmoji
+                                    BigEmoji(body=m.body, dimmed=(m.state == "sending"), identifier=`message-${m.id}`)
+                                  else
+                                    RichBalloon(appearance=appearance, runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"), identifier=`message-${m.id}`,
+                                      open=openLink)
+                              if m.isEdited
+                                text "Edited" font="-exact-caption2" color="-exact-secondary-label" padding="0 8px" testId=`edited-${m.id}`
+                              if m.reactions.length > 0
+                                row gap=4 flex-wrap="wrap" justify-content=(m.isOwn ? "flex-end" : "flex-start") margin-top=2
+                                  for x in m.reactions key=x.key
+                                    // a 44-point target around a smaller pill; the margins keep the rows close.
+                                    button appearance="none" press=toggleReaction(m.id, x.key) testId=`reaction-${m.id}-${x.key}`
+                                      aria-label=`${x.key} ${x.count}` aria-pressed=x.isMine -exact-press-haptic="selection"
+                                      min-width=44 min-height=44 margin="-8px 0" display="flex" align-items="center" justify-content="center"
+                                      row gap=4 align-items="center" padding="2px 8px" border-radius=12 min-height=28
+                                        background-color=(x.isMine ? "-exact-tertiary-fill" : "-exact-quaternary-fill")
+                                        border=(x.isMine ? "1px solid AccentColor" : "1px solid transparent")
+                                        text x.key
+                                        if x.count > 1
+                                          text `${x.count}` font="-exact-footnote" font-weight=600 font-variant-numeric="tabular-nums"
+                                            color=(x.isMine ? "AccentColor" : "-exact-secondary-label")
+                          if m.state == "failed"
+                            row gap=12 align-items="center"
+                              text "Not Delivered" font="-exact-footnote" color="-exact-system-red" testId=`failed-${m.id}`
+                              button press=retry(m.id) disabled=pending(retried) testId=`retry-${m.id}`
+                                text "Try Again"
+                              button press=discard(m.id) destructive=true disabled=pending(discarded) testId=`discard-${m.id}`
+                                text "Delete"
+                          if m.status != ""
+                            StatusLine(label=seenText(m.status, m.statusTime, shown, time.utcOffset), own=m.isOwn,
+                              indent=(thread.group and not m.isOwn ? 36 : 0))
             else
               if failed(thread) and not pending(thread)
                 column flex=1 justify-content="center" align-items="center" gap=12 padding=24
@@ -1442,10 +1453,20 @@ component Multiplexer
               else
                 column flex=1 justify-content="center" align-items="center"
                   progress aria-label="Loading messages" testId="thread-loading"
-            // the reply bar and the composer share one bar in the page's colour: the chat's rows scroll
-            // on past the list's frame, and without it they show through the reply and the field.
+            // the reply bar and the composer float over the transcript's end, as Beeper's do: the
+            // messages under them show softened, blurred and dimmed as at the top edge (chat.contract),
+            // the blur fading in just above the bar and reaching under the home indicator (40, as the list).
+            // With Reduce Transparency the bar is the page's colour, fading in above it, as before.
             if threadShown
-              column inert=(held != "") flex-shrink=0 background-color="-exact-background" position="relative" testId="composer-bar"
+              column inert=(held != "") flex-shrink=0 position="relative" testId="composer-bar"
+                if viewport.prefersReducedTransparency
+                  view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none" aria-hidden=true
+                    background-image="linear-gradient(to bottom, transparent 0px, -exact-background 24px, -exact-background 100%)"
+                else
+                  view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
+                    aria-hidden=true backgroundMaterial="ultra-thin" mask-image="linear-gradient(to bottom, transparent 0px, black 32px, black 100%)"
+                  view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
+                    aria-hidden=true background-image="linear-gradient(to bottom, transparent 0px, chat.edge-bottom 32px, chat.edge-bottom 100%)"
                 // above the bar, at the right, while the newest message is out of view.
                 if away and thread.messages.length > 0
                   view position="absolute" bottom="calc(100% + 8px)" right=12
@@ -1471,7 +1492,8 @@ component Multiplexer
                       text composer.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
                     button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
                       image "symbol:close"
-                // "+" on the left, as Beeper and Messages have it; the photos and files picked sit above the text.
+                // "+" on the left, the field, and the voice button or Send on the right, each its own glass,
+                // as Beeper has them; the photos and files picked sit above the text.
                 row align-items="flex-end" gap=8 margin="6px 12px"
                   AddButton(open=panel, press=togglePanel, disabled=(editing != "" or recording != "idle"))
                   // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
@@ -1480,43 +1502,43 @@ component Multiplexer
                   input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
                   // a voice message takes the field's place while it records, then as a draft until it goes.
                   if recording == "draft"
-                    view flex=1 min-width=0
+                    view flex=1 min-width=0 border-radius=24 backgroundMaterial="glass"
                       DraftBar(appearance=appearance, bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
                         playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, preparing=pending(voicePrepared),
                         remove=cancelVoice, play=playVoice("draft"), send=sendVoiceDraft)
                   else if recording != "idle"
-                    view flex=1 min-width=0
+                    view flex=1 min-width=0 border-radius=24 backgroundMaterial="glass"
                       RecordingBar(track=recordTrack, milliseconds=recorderState.duration, starting=(recording != "recording"),
                         cancel=cancelVoice, stop=stopVoice)
                   else
-                    column flex=1 min-width=0 border-radius=22 border="1px solid -exact-separator"
+                    column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass"
                       if composer.attachments.length > 0 and editing == ""
                         Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
                       if tooLarge != ""
                         text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
                           font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
-                      // the field's own padding makes it a 44-point target; the row adds none above or below.
-                      // a bridged chat's network logo at the field's start says where the message goes, as
-                      // the placeholder does ("Reply on WhatsApp").
-                      row align-items="flex-end" padding="0 4px 0 12px"
+                      // the field's own padding makes it as tall as the circles beside it (48 points); the row
+                      // adds none above or below. a bridged chat's network logo at the field's start says where
+                      // the message goes, as the placeholder does ("Reply on WhatsApp").
+                      row align-items="flex-end" padding="0 14px"
                         if openNetwork != "matrix" and not viewport.accessibilityTextSize
                           ComposerNetwork(network=openNetwork)
                         textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
                           placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
-                          aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="12px 0"
+                          aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
                           border="none" background-color="transparent"
-                        // the voice button while the field is empty and nothing is picked; Send once there is
-                        // something to send. While editing, a checkmark saves the edit.
-                        if voiceOffered
-                          VoiceButton(press=startVoice, disabled=pending(sentVoice))
-                        else
-                          // a long press offers Send Later's times (send-later-members.contract) where the chat can
-                          // have it; it is on a view around Send, as a native button takes no long press.
-                          view contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "") testId="send-hold"
-                            button press=post buttonStyle="filled" color=appearance.onTint margin="4px 0" retainFocus=true testId="send"
-                              disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
-                              aria-label=(editing != "" ? "Save Edit" : "Send")
-                              image (editing != "" ? "symbol:checkmark" : "symbol:send")
+                    // the voice button while the field is empty and nothing is picked; Send once there is
+                    // something to send. While editing, a checkmark saves the edit.
+                    if voiceOffered
+                      VoiceButton(press=startVoice, disabled=pending(sentVoice))
+                    else
+                      // a long press offers Send Later's times (send-later-members.contract) where the chat can
+                      // have it; it is on a view around Send, as a native button takes no long press.
+                      view contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "") testId="send-hold"
+                        button press=post buttonStyle="filled" color=appearance.onTint width=48 height=48 retainFocus=true testId="send"
+                          disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
+                          aria-label=(editing != "" ? "Save Edit" : "Send")
+                          image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 22px)"
             column id="send-later-menu" popover="auto" role="menu"
               button press=sendLaterAt("tomorrow") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-tomorrow"
                 image "symbol:icon.clock"
@@ -1538,7 +1560,7 @@ component Multiplexer
               unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, muted=openMuted, mute=toggleMuteOpen,
               markUnread=markUnreadOpen, info=openInfo, covered=(held != ""),
               tabs=(match openMerge { case some(m) => m.mergeRooms, case none => [] }), shown=openRoom, switchTo=switchMerged,
-              largeText=viewport.accessibilityTextSize)
+              largeText=viewport.accessibilityTextSize, solid=viewport.prefersReducedTransparency)
             // the chat's one player of voice messages: no box of its own; each bubble is its button.
             if voiceSrc != ""
               audio voiceSrc id="voice-player" paused=voicePaused playbackRate=voiceSpeed preservesPitch=true timeupdate=voiceTimed

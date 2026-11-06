@@ -48,17 +48,30 @@ component ChatBar
     switchTo: action
     // the reader chose one of the accessibility text sizes.
     largeText: bool
+    // Reduce Transparency: a solid backdrop in place of the blur.
+    solid: bool
   // Back's chevron and count grow a little at the accessibility sizes, as a system bar's stay put.
   derive labelSize = largeText ? 20 : 17
   view
     view position="absolute" top=0 left=0 right=0 pointer-events="none" inert=covered testId="chat-bar"
-      // as iOS's scroll edge effect: the transcript fades out under the status bar and the bar. The
-      // backdrop is sized by the bar itself (a two-line name, the merged chat's tabs, the text
-      // size), solid behind its controls and fading just below it, so no message shows behind them. It starts above the screen's top, where the list still draws
-      // rows past its frame.
-      view position="absolute" top=-120 left=0 right=0 bottom=0 background-color="-exact-background"
-      view position="absolute" left=0 right=0 bottom=-32 height=32
-        background-image="linear-gradient(to bottom, -exact-background 0%, transparent 100%)"
+      // as iOS's scroll edge effect, and Beeper's: the transcript stays in view behind Back, the title
+      // and More, softened, and the blur and the dimming grow toward the status bar, so its clock
+      // never sits on sharp text. Three layers, sized by the bar itself (a two-line name, the
+      // merged chat's tabs, the text size): a light blur that fades out just below the bar, a
+      // stronger one that fades out just below the status bar, and the page's colour over both, thicker
+      // toward the top, so the materials' grey does not lift a black page.
+      // They start above the screen's top, where the list still draws rows past its frame. With
+      // Reduce Transparency, the page's colour behind the bar, fading out just below it.
+      if solid
+        view position="absolute" top=-120 left=0 right=0 bottom=-32
+          background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 80%, transparent 100%)"
+      else
+        view position="absolute" top=-120 left=0 right=0 bottom=-24 backgroundMaterial="ultra-thin"
+          mask-image="linear-gradient(to bottom, black 0%, black 55%, transparent 100%)"
+        view position="absolute" top=-120 left=0 right=0 height=140 backgroundMaterial="thin"
+          mask-image="linear-gradient(to bottom, black 0%, black 75%, transparent 100%)"
+        view position="absolute" top=-120 left=0 right=0 bottom=-24
+          background-image="linear-gradient(to bottom, chat.edge 0%, chat.edge 50%, chat.edge-soft 80%, transparent 100%)"
       // the two sides share the room the title leaves, so the title stays in the middle of the screen
       // whatever Back's count, until a long name needs that room.
       row position="relative" padding="0 16px" align-items="flex-start"
@@ -122,6 +135,6 @@ component ComposerNetwork
   props
     network: string
   view
-    row align-items="center" flex-shrink=0 margin="0 8px 12px 0" aria-hidden=true testId="composer-network"
+    row align-items="center" flex-shrink=0 margin="0 8px 13px 0" aria-hidden=true testId="composer-network"
       text "M" font="-exact-body" width=0 overflow="hidden" visibility="hidden"
       image `assets/networks/${network}.svg` width=20 height=20
