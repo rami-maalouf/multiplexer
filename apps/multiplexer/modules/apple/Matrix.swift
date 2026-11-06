@@ -170,12 +170,12 @@ final class Matrix: ExactModule {
                     reply.send(["id": id ?? ""])
                 case "messages":
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
-                    // where the "New" line goes: the first message after this account's read receipt.
-                    // first, as it may page the chat back to it: the messages then hold it.
-                    let firstUnread = (try? await account.firstUnread(roomId: roomId)) ?? nil
-                    let messages = try await account.messages(roomId: roomId, limit: request["limit"] as? Int ?? 20)
-                    let atStart = try await account.isAtStart(roomId: roomId)
-                    reply.send(["atStart": atStart, "firstUnread": firstUnread ?? "", "messages": messages.map {
+                    // the chat's messages at once, with its "New" line (the first message after this
+                    // account's read receipt) when known; settling: more comes, and the chat hears of it.
+                    let opening = try await account.opening(roomId: roomId, limit: request["limit"] as? Int ?? 20)
+                    let messages = opening.messages
+                    reply.send(["atStart": opening.atStart, "firstUnread": opening.firstUnread ?? "", "settling": opening.settling,
+                                "messages": messages.map {
                         ["id": $0.id, "event": $0.eventId, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
                          "waitingForKey": $0.waitingForKey, "isEdited": $0.isEdited,
@@ -308,6 +308,12 @@ final class Matrix: ExactModule {
                 case "registerPush":
                     // with the notification permission: the push token to the server (PushRegistration.swift).
                     reply.send(["registered": try await registerPush()])
+                case "readCopies":
+                    // the chats' kept last answers (R04), "" for none (app.ts's threadCopies).
+                    reply.send(["text": try readThreadCopies()])
+                case "saveCopies":
+                    try saveThreadCopies(request["text"] as? String ?? "")
+                    reply.send(["ok": true])
                 case "signOut":
                     try await signOut()
                     reply.send(["ok": true])
@@ -318,6 +324,28 @@ final class Matrix: ExactModule {
                 reply.fail(String(describing: error))
             }
         }
+    }
+
+    /// The chats' kept last answers (R04: a chat opened again shows them in its first frame): message
+    /// text, names, and the file names of pictures in the media cache (no picture itself). They live in
+    /// the session's store folder, which Sign Out deletes, with the file protection the app can still
+    /// write under in the background (until the phone's first unlock), and are never in a backup. The
+    /// sdk's own store there has no passphrase; this is kept no less safely.
+    private func threadCopiesFile() throws -> URL? {
+        try stored()?.directory.appendingPathComponent("thread-copies.json")
+    }
+
+    private func readThreadCopies() throws -> String {
+        guard let file = try threadCopiesFile(), let data = try? Data(contentsOf: file) else { return "" }
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    private func saveThreadCopies(_ text: String) throws {
+        guard var file = try threadCopiesFile() else { return }
+        try Data(text.utf8).write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try file.setResourceValues(values)
     }
 
     /// unavailable shared stores stay in the keychain. only a confirmed missing store

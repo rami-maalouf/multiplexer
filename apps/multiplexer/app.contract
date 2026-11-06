@@ -174,6 +174,10 @@ shape Thread
   atStart: bool
   group: bool
   firstUnread: string
+  // settling: more is on its way (the rest of the first screen, or a "New" line further back);
+  // cached: this is the chat's last answer kept in this session, and the live one is asked for.
+  settling: bool
+  cached: bool
   messages: Message[]
 
 shape Time
@@ -467,8 +471,15 @@ component Multiplexer
   derive aimedOpen = match aimedRoom { case some(r) => r.open, case none => aimed }
   resource peek = loadMessages(aimedOpen, aimedIsDirect, aimedRoomName, time.utcOffset, aimedNetwork) as shape Thread else empty()
   derive peekShown = peek.room == aimedOpen and aimed != ""
+  // a preview shown from the chat's kept copy asks for the live answer at once, as the chat does.
+  task freshenPeek when peekShown and peek.cached key=aimedOpen
+    after(1, reloadPeek)
   // the chat is in front, not behind its photo viewer, and the app is too.
-  derive reading = top(nav).name == "room" and threadShown and page.visibilityState == "visible"
+  // a chat's kept copy is not what is new on it: reading waits for the live answer (it comes at once).
+  derive reading = top(nav).name == "room" and threadShown and not thread.cached and page.visibilityState == "visible"
+  // a chat shown from its kept copy asks for the live answer at once (R04).
+  task freshenThread when threadShown and thread.cached key=openRoom
+    after(1, reloadThread)
   task tick mount
     every(60000, step)
   // as Excord does, what the reader sees at the end is read a second after it shows; leaving
@@ -585,6 +596,8 @@ component Multiplexer
     refresh roomList
   action reloadThread
     refresh thread
+  action reloadPeek
+    refresh peek
   // while an edit is under way the field holds its text; the draft waits.
   action editDraft(v: string)
     if editing != ""
@@ -996,8 +1009,11 @@ component Multiplexer
                   // up and down only (R01): a row's text can be wider than the row in real chats (a long
                   // word in a preview), and a list that may scroll sideways then pans the whole list
                   // under the fixed title and bar. a row's own swipe scrolls inside the row.
-                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=64 testId="room-list"
-                    overflow-x="hidden"
+                  // the rows run on under the home indicator (its 34 points), as Beeper's do, so the softened band
+                  // under the floating bar shows rows, not empty background (R06). The bottom padding grows by the
+                  // same 34 points: the last row still ends 16 points above the bar.
+                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=98 testId="room-list"
+                    overflow-x="hidden" margin-bottom=-34
                     inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=tapPinned, aim=aim, menu="chat-menu", selecting=selecting,

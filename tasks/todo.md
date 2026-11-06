@@ -47,6 +47,16 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   pre-R02 build with only this line moved nothing, and on the branch R02's swipe still opens a row while
   pans elsewhere move nothing. `verify ios` clean (12 tests). Recordings with real chats stay in `/tmp`;
   the `@test1` ones are in the checkout's `apps/multiplexer/.exact/r01/`. On the iPhone: still to see.
+- [x] R06 content stays visible under the floating bottom bar (2026-11-05, branch `fix/inbox-video`, Simulator
+  only, `@test1`). Reproduced: a solid background backing ran from about 70 points above the bar to the screen's
+  bottom, so rows faded out above it and nothing showed under the controls. Now a material, "ultra-thin",
+  masked from full at the bottom edge to none 24 points above the bar, as the chat lane's edges (it
+  started with "thin": that read as a grey shelf, darkest in light mode). The list also runs on under the
+  home indicator (`margin-bottom=-34`, its padding 34 points more), so the band blurs rows, not empty
+  background; at the list's end the last row still ends 16 points above the bar. Checked in dark, light,
+  the largest text size, and with the Simulator's real Reduce Transparency setting (UIKit draws the glass
+  opaque and the band as a solid fade; no app fallback needed). `verify ios` clean (12 tests).
+  Screenshots: the checkout's `apps/multiplexer/.exact/r06/` (`before-*`, `after4-*`).
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
@@ -72,12 +82,57 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 No implementation, agent work, runtime or device testing is authorized by this review.
 All detailed acceptance criteria and evidence limits are in the report.
 
+### R04 A chat opens on its messages, not a spinner (2026-11-05, branch `fix/r04-loading`)
+
+**Cause.** The native `messages` call answered only after three steps in a row: finding the "New"
+line (it may page back up to 300 events), paging back until 20 messages show, and checking for the
+room's start. Each page-back step also waited for 0.5 s of quiet in the timeline (`settle`). Until
+all of it was done the chat showed a spinner on a blank body, even when the SDK already held the
+messages. Across launches the SDK keeps only a chat's newest event, so a first open after a launch
+had nothing to show at once.
+
+**Fix.**
+- [x] MatrixCore `opening()` (`ChatOpening.swift`): answers on the timeline's first diff (or its
+  first page on a device that has nothing), then fills the rest of the first screen behind it and
+  notifies the chat (`settling`). A "New" line given early counts only when the read receipt's own
+  message is loaded; else it waits for the settled answer. After a timeline reset (a sync with a
+  gap) the chat fills its first screen again. `messages()` and `isAtStart()` keep their full
+  behaviour for every other caller; loading older messages waits for the fill.
+- [x] App: each chat's last settled answer is kept (40 chats) and a chat opened again answers from
+  it synchronously, then asks for the live answer at once (`freshenThread`, `freshenPeek`). While
+  the live answer still fills, the copy's older messages stay in front, so no text disappears.
+  Reading (mark as read) waits for the live answer; the "New" line waits for a settled answer
+  unless it is already known.
+- [x] The copies' file lives in the session's store folder (deleted at Sign Out), written by the
+  native module with iOS file protection (until first unlock: the app writes it in the background)
+  and excluded from backups. The SDK store beside it has no passphrase and is not excluded from
+  backups (not changed here). The copy holds message text, names and the file names of thumbnails
+  in the media cache (in Caches, never backed up), no picture bytes: with them a photo keeps its
+  place and picture in the first frame.
+
+**Measured** (Simulator, 15 fps screen recordings, blank body with a spinner after the tap):
+- [x] `@test1`, first open after a launch: base 3.0 s (chat A) and 0.7 s (chat B); fix 0 to 0.13 s,
+  newest message at once, full first screen by 0.5 to 0.7 s.
+- [x] A-B-A: base 1 frame (up to 67 ms); fix 0 to 1 frame.
+- [x] After a relaunch (copies on disk): 0 frames; full content in the first recorded frame.
+- [x] New device (never opened): newest message after 1 frame (67 ms); first screen fills in 1 to
+  2.6 s under the small older-messages spinner.
+- [x] `@rami`, read only, a new device with 324 chats: a large WhatsApp group shows messages in its
+  first chat frame and moves to its "New" line; a small group shows its newest message at about
+  130 ms. Signed out after.
+- [x] "New" line placed on the first of three unread messages; a draft kept across A-B-A.
+- [x] Core: `ChatOpeningTests` (2), `ChatDetailsTests`, `MatrixCoreTests`.
+  `testANewLineFurtherBackThanTheChatLoads` failed once on an unread count with network timeouts
+  (a known unstable test), and passed alone.
+- [ ] A real return from the background cannot be driven (the agent suspends the drive); the page's
+  visibility return keeps the chat. Rami's iPhone: check a return after a long time away.
+
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 
 - [ ] Home and conversation lists stay fixed horizontally under left/right drags; vertical
   scrolling, row actions and navigation remain usable. Owner: Push lane.
 - [ ] Opening a cached conversation renders available messages immediately, without waiting
-  for unrelated network enrichment. Measure first and repeat opens; preserve unread position,
+  for unrelated network enrichment (2026-11-05: done on the Simulator in R04, above). Measure first and repeat opens; preserve unread position,
   drafts, pagination and merged-room switching. Owner: Later lane.
 - [ ] Completing, cancelling and reversing interactive chat swipe-back leaves both layouts
   intact, including with the keyboard shown. Reproduce with native touches. Owner: Exact/UI lane.
