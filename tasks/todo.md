@@ -85,6 +85,30 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   Select Chats. `verify ios` clean (12 tests). Screenshots: `apps/multiplexer/.exact/r12/`.
   Left as it is: in Select Chats the row lines start at the picture, not at the name (the list host places
   them; it was so before R12).
+- [ ] R03 scrolling frozen after a return to the app (2026-11-06, Simulator): not reproduced, so a
+  diagnostic and a reset ship first. Tried with real touches (exact2's `bench/bakeoff/drive.mjs`, which drives
+  the running app; Exact's own drive cannot cross a trip to the background): Home idle and mid-fling, the
+  bottom-edge Home gesture, the bottom-edge app switch, 45 s and 17 min away while messages arrived (`@test1`),
+  and on the pre-R01/R02 build with `@rami`'s real chats (read only, signed out after): a sideways drag then
+  Home, the app switch, lock and unlock. Each time the first scroll after the return moved the list.
+  The video shows the stuck state belongs to one list on screen (taps work; Archive and back recovers).
+  Shipped in the Exact integration checkout (`dd9343b324`, `ScrollReturnIOS.swift`):
+  - On every return to the app (`didBecomeActive`) one log line per list: scroll enabled, pan state, content
+    size against bounds, offset, a smooth correction running, the interaction pin; then a "cleared" line:
+    a running smooth correction cancelled where it stands, a held pin released, a swipe whose touch never
+    ended released (an open swipe stays open).
+  - For 2 minutes after a return, a vertical drag of 30 points or more that leaves its list where it was logs
+    a "stuck" line, once a list a return.
+  - Shown harmless (`apps/multiplexer/.exact/r03/harm5.mov` in the swipe checkout): a list scrolled midway with
+    a row's swipe open, Home and back: the same offset, the swipe still open, no flicker; the log said
+    `swipes-projected=1 swipes-released=0 corrections=0`. A drag that started on the bottom bar gave the one
+    "stuck" line. `verify ios` clean.
+  - Collect from the iPhone (cable or paired, unlocked), on this Mac:
+    `sudo /usr/bin/log collect --device-udid 00008140-0002155C01F3001C --last 2h --output ~/Desktop/multiplexer-r03.logarchive`
+    then `/usr/bin/log show ~/Desktop/multiplexer-r03.logarchive --info --style compact --predicate 'subsystem == "com.ramimaalouf.multiplexer" AND category == "scroll-return"'`
+    (`/usr/bin/log`: in zsh `log` is a shell builtin). The same `log show` read a Simulator archive
+    (`xcrun simctl spawn <udid> log collect --last 10m --output x.logarchive`): 24 lines, the "stuck" one among them.
+  - Next: Rami's build with R01's fix; if it freezes again, collect the log right after.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now
@@ -171,9 +195,24 @@ had nothing to show at once.
   drafts, pagination and merged-room switching. Owner: Later lane.
 - [ ] Completing, cancelling and reversing interactive chat swipe-back leaves both layouts
   intact, including with the keyboard shown. Reproduce with native touches. Owner: Exact/UI lane.
-- [ ] Outgoing list previews replace `You:` with subtle accessible receipt symbols tied to the
+- [x] Outgoing list previews replace `You:` with subtle accessible receipt symbols tied to the
   exact preview event. Prove remote seen updates without opening that chat; keep unknown,
   pending and failed states truthful. Cover merged rows and supported list surfaces. Owner: Labels lane.
+  Done 2026-11-06 (branch `work/preview-receipts`), the smallest version with the pinned SDK, no fork:
+  - MatrixCore `RoomSummary.lastStatus`: "sent" when the newest message is your own and on the server
+    (latest event `.remote`), "seen" when another member's public read receipt (`Room.loadUserReceipt`) points
+    at an event whose time is at or after it (`loadOrFetchEvent`, times cached), "" otherwise (not yours,
+    sending, failed, deleted). The latest event has no id, so "at or after" compares event times.
+  - Members looked at: the room's joined members but you and the bridge's service members (heroes, else the
+    store's members, else the server's once a room), at most 25: in a bigger group a reader beyond them
+    leaves "sent", never a "seen" without evidence. Merged chats copy their newest room's status.
+  - A watch reads again, every 2 s and locally, the receipts of at most 30 chats showing "sent", and tells
+    the list when one is seen (another member's receipt changes no room in the room list).
+  - The row: an outline check (sent) or a filled check (seen) in the secondary label colour, spoken "Sent" or
+    "Seen", in place of "You:"; "You:" stays when the state is unknown.
+  - `testThePreviewSaysSentThenSeen` (`@test1` sends: sent; `@test2` reads: seen; their answer: none). Drive:
+    `@test1` sent from outside the app, `@test2` read with `send-test-message.sh --read`: the row turned from
+    sent to seen within seconds without opening the chat, dark and light (`.exact/receipts/`). `verify ios` clean.
 - [x] Appearance settings: seven presets, a real native color picker with Cancel and Use Color,
   exact local fill persisted across launch, reset to default blue, and computed readable foregrounds.
   Outgoing bubbles and badges keep the chosen fill; links and controls use readable light/dark tints.

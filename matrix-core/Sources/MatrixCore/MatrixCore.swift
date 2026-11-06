@@ -57,6 +57,9 @@ public struct RoomSummary: Equatable, Sendable {
     public var lastIsOwn: Bool
     /// Milliseconds since 1970; 0 when the room has no message.
     public var lastTimestamp: UInt64
+    /// The receipt of an own newest message: "sent" (the server has it), "seen" (another member's
+    /// read receipt is at or after it), or "" (not own, or unknown: sending, failed, deleted).
+    public var lastStatus: String = ""
     /// The file name of the room's picture for `MatrixAccount.avatarFile`; "" when it has none.
     public var avatarName: String = ""
     /// Messages after this account's read receipt.
