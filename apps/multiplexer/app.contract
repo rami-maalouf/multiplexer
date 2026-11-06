@@ -1591,7 +1591,7 @@ component Multiplexer
                       row align-items="flex-end" padding="0 14px"
                         if openNetwork != "matrix" and not viewport.accessibilityTextSize
                           ComposerNetwork(network=openNetwork)
-                        textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=140
+                        textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
                           placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
                           aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
                           border="none" background-color="transparent"
