@@ -19,7 +19,7 @@ extension Matrix {
         for url in Set(known) {
             guard let page = URL(string: url), ["http", "https"].contains(page.scheme?.lowercased() ?? "") else { continue }
             let name = Self.linkPreviewName(url)
-            if let kept = keptLinkPreview(name) {
+            if let kept = Self.keptLinkPreview(name, in: media) {
                 items.append(kept)
             } else if fetch.contains(url) {
                 // a fetch at most once at a time per link; `cached` tells the view's sources (topic
@@ -33,8 +33,8 @@ extension Matrix {
     }
 
     /// The kept preview, or nil when there is none: none yet, or a page that gave nothing a day
-    /// ago, which is then fetched again.
-    @MainActor private func keptLinkPreview(_ name: String) -> [String: Any]? {
+    /// ago, which is then fetched again. Plain file reads, so a synchronous call can ask too.
+    nonisolated static func keptLinkPreview(_ name: String, in media: URL) -> [String: Any]? {
         let file = media.appendingPathComponent(name)
         guard let data = try? Data(contentsOf: file),
               let kept = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
