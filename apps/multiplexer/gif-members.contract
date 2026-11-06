@@ -1,6 +1,8 @@
 // the GIF sheet's state and actions (gif.contract). The words typed search once typing pauses
-// for 400 ms, so one search is one call to KLIPY (its test key allows 100 an hour).
-use GifResults, GifSent from "./gif.contract"
+// for 400 ms, so one search is one call to KLIPY (its test key allows 100 an hour). A tap puts
+// the GIF in the composer's tray (Chosen from attach.contract); Send posts it with any caption.
+use GifResults from "./gif.contract"
+use Attachment, Chosen from "./attach.contract"
 
 members Multiplexer
   // the words typed, and the words the grid searches for (they catch up after the pause).
@@ -9,7 +11,8 @@ members Multiplexer
   derive gifsOpen = top(nav).name == "gifs"
   resource gifs = loadGifs(gifsOpen, gifSearch) as shape GifResults else empty()
   derive gifsShown = gifs.query == gifQuery.trim()
-  mutation sentGif as shape GifSent
+  // a chosen GIF's file, ready for the tray (path under app:/tmp/gifs).
+  mutation stagedGif as shape Chosen then gifAttached
   task settleGifSearch when gifsOpen and gifQuery.trim() != gifSearch key=gifQuery
     after(400, applyGifSearch)
 
@@ -24,9 +27,15 @@ members Multiplexer
     gifQuery = v
   action applyGifSearch
     gifSearch = gifQuery.trim()
-  // a tap sends the GIF at once, answering the message the composer answers, and the sheet closes.
+  // a tap downloads the GIF into the tray; the sheet closes when it is ready. Send posts it.
   action pickGif(id: string)
-    send sentGif = sendGif(openRoom, id, composer.replyTo)
-    cancelReply()
-    haptic("selection")
-    nav = back(nav)
+    if not pending(stagedGif)
+      send stagedGif = stageGif(id)
+  action gifAttached
+    match stagedGif
+      case some(c)
+        attachPhotos([Attachment(file=c, photo=true)])
+        haptic("selection")
+        nav = back(nav)
+      case none
+        stagedGif = stagedGif

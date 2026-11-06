@@ -688,12 +688,17 @@ const sources: Sources = {
   },
   // each photo or file goes in the chat's send queue in order and shows at once; the caption goes
   // with the last one, the reply with the first. A failure shows on the message, as for text.
+  // A KLIPY GIF (staged under app:/tmp/gifs) tells KLIPY it was shared once it actually goes.
   sendMedia: async ([roomId, items, caption, replyTo], _store, storage, native): Promise<Result<'sendMedia'>> => {
     for (const [i, item] of items.entries()) {
       const ready = await prepared(item.file, item.photo, storage);
       await native!.later({ op: 'sendMedia', roomId, ...ready,
         caption: i === items.length - 1 ? caption : '', replyTo: i === 0 ? replyTo : '' });
       preparing.delete(`${item.photo}:${item.file.size}:${item.file.path}`);
+      if (item.file.path.startsWith('app:/tmp/gifs/') && item.file.name.endsWith('.gif')) {
+        const slug = item.file.name.slice(0, -4);
+        await fetch(`${KLIPY}/${KLIPY_KEY}/gifs/share/${encodeURIComponent(slug)}`, { method: 'POST' }).catch(() => null);
+      }
     }
     return { ok: true };
   },
@@ -789,11 +794,9 @@ const sources: Sources = {
       }),
     };
   },
-  // a tapped GIF: KLIPY's largest GIF under GIF_SEND_BYTES, downloaded straight to a file (a large
-  // one copied through this module would pass its turn's budget), sent as an animated image through
-  // the photos' path, answering replyTo; the bridge sends it to WhatsApp as a GIF. KLIPY is told
-  // it was shared.
-  sendGif: async ([roomId, slug, replyTo], _store, storage, native): Promise<Result<'sendGif'>> => {
+  // a tapped GIF: KLIPY's largest under GIF_SEND_BYTES, downloaded to a file for the composer's
+  // tray (caption, remove, add more). Send posts it through sendMedia; KLIPY is told then.
+  stageGif: async ([slug], _store, storage): Promise<Result<'stageGif'>> => {
     const g = shownGifs.get(slug);
     const sizes = (['hd', 'md', 'sm', 'xs'] as const).flatMap((s) => (g?.file[s]?.gif ? [g.file[s]!.gif!] : []));
     const file = sizes.find((f) => f.size > 0 && f.size <= GIF_SEND_BYTES) ?? sizes.at(-1);
@@ -803,10 +806,7 @@ const sources: Sources = {
     const path = `app:/tmp/gifs/${name}`;
     const response = await fetch(file.url, { exactBodyTo: path });
     if (!response.ok) throw new Error(`KLIPY answered ${response.status} for ${slug}`);
-    await native!.later({ op: 'sendMedia', roomId, path, name, mimetype: 'image/gif', size: file.size, photo: true,
-      width: file.width, height: file.height, caption: '', replyTo });
-    await fetch(`${KLIPY}/${KLIPY_KEY}/gifs/share/${encodeURIComponent(slug)}`, { method: 'POST' }).catch(() => null);
-    return { ok: true };
+    return { path, name, type: 'image/gif', size: file.size, width: file.width, height: file.height };
   },
   // a photo's or file's original, downloaded once into the cache under its own name, to share.
   fetchMedia: async ([roomId, messageId], _store, _storage, native): Promise<Result<'fetchMedia'>> => {

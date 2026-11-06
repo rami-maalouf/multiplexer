@@ -21,6 +21,9 @@ shape Attachment
 fn chosenOf(f: Picked): Chosen = Chosen(path=f.path, name=f.name, type=f.type, size=f.size,
   width=(match f.width { case some(w) => w, case none => 0 }), height=(match f.height { case some(h) => h, case none => 0 }))
 
+// a still or animated picture for the tray (photos and GIFs); videos and other types go as files.
+fn isPicture(type: string): bool = type == "image/jpeg" or type == "image/png" or type == "image/gif" or type == "image/webp" or type == "image/heic" or type == "image/heif"
+
 // "12 KB", "3.4 MB": a file's size as Files counts it (1000 bytes a kilobyte).
 fn sizeText(n: number): string = n < 1000 ? `${n} ${n == 1 ? "byte" : "bytes"}` : (n < 1000000 ? `${round(n / 1000)} KB` : `${round(n / 100000) / 10} MB`)
 // a file's kind and size, as Messages names one: "PDF · 2.1 MB".
@@ -90,6 +93,12 @@ component Tray
             if a.photo
               image a.file.path width=72 height=72 border-radius=14 object-fit="cover" background-color="-exact-tertiary-fill"
                 aria-label=a.file.name testId=`tray-${a.file.name}`
+            else if a.file.type == "video/mp4" or a.file.type == "video/quicktime" or a.file.type == "video/mpeg"
+              // a video from Photos: same tray size as a photo, with a play mark (it goes as a file until
+              // Matrix video send is built).
+              view width=72 height=72 border-radius=14 background-color="-exact-tertiary-fill" display="flex"
+                align-items="center" justify-content="center" aria-label=`${a.file.name}, Video` testId=`tray-${a.file.name}`
+                image "symbol:icon.video" font-size="min(-exact-title2, 26px)" color="-exact-secondary-label" aria-hidden=true
             else
               row min-height=72 max-width=(stacked ? "280px" : "min(14rem, 240px)") gap=8 padding="8px 36px 8px 12px" box-sizing="border-box" align-items="center" border-radius=14
                 background-color="-exact-tertiary-fill" aria-label=`${a.file.name}, ${fileDetail(a.file.name, a.file.size)}` testId=`tray-${a.file.name}`

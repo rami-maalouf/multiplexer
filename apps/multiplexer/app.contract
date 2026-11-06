@@ -5,7 +5,7 @@ use notificationclick, requestNotificationPermission, notificationStatus, Notifi
 use EmptyState from "exact:content"
 use Appearance, AccentBadge from "./appearance.contract"
 use Balloon, Face from "./bubble.contract"
-use Attachment, chosenOf, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
+use Attachment, chosenOf, isPicture, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, InboxHeader, ChooseMark, SelectTitle, SelectBar, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage, deleteChatsTitle, deleteChatsMessage from "./inbox.contract"
 use NetworkBadge, NetworkBadges, networkName from "./network.contract"
 use InboxSheet, NetworkCount, CommunityCount from "./sheet.contract"
@@ -669,10 +669,11 @@ component Multiplexer
   action chooseFiles
     showPicker("pick-files")
   // what was picked joins the open chat's composer, and the keyboard comes back for a caption.
-  // A photo is made ready (smaller, upright, without its location) while the caption is typed.
+  // Photos are made ready (smaller, upright, without location) while the caption is typed; videos
+  // and GIFs stay as they are. Nothing goes until Send.
   action photosPicked(files: Picked[])
-    attachPhotos(files.map(f => Attachment(file=chosenOf(f), photo=true)))
-  // a camera photo comes here too (camera-members.contract).
+    attachPhotos(files.map(f => Attachment(file=chosenOf(f), photo=isPicture(f.type))))
+  // a camera photo or a staged KLIPY GIF comes here too (camera-members, gif-members).
   action attachPhotos(picked: Attachment[])
     composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(picked)))
     send staged = stageMedia(picked)
@@ -1274,7 +1275,7 @@ component Multiplexer
             largeText=viewport.accessibilityTextSize)
         // the + panel's GIFs from KLIPY (gif.contract), half height and pulled up to full.
         if e.name == "gifs"
-          GifSheet(route=`${e.id}`, gifs=gifs, query=gifQuery, shown=gifsShown, loading=pending(gifs), search=typeGif, pick=pickGif,
+          GifSheet(route=`${e.id}`, gifs=gifs, query=gifQuery, shown=gifsShown, loading=pending(gifs), picking=pending(stagedGif), search=typeGif, pick=pickGif,
             close=back, largeText=viewport.accessibilityTextSize)
         // the + panel's Camera (camera.contract), full screen over the chat.
         if e.name == "camera"
