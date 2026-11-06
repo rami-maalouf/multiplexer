@@ -337,7 +337,9 @@ component SearchResults
     // would show.
     column position="absolute" left=0 right=0 top=-120 bottom=-60 padding="120px 0 60px" box-sizing="border-box" display="flex"
       flex-direction="column" background-color="-exact-background" animation=(reduced ? "none" : "appear 220ms ease both") testId="search-screen"
+      // up and down only, as the chat list (R01).
       list id="search-results" appearance="auto" listStyle="plain" keyboardDismissMode="on-drag" flex=1 min-height=0 padding-bottom=72
+        overflow-x="hidden"
         testId="search-results"
         section
           row padding="8px 0 10px" gap=4 testId="kinds"

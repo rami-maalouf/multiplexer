@@ -63,8 +63,12 @@ Without it the app builds, and the GIF sheet says it could not load GIFs.
 Test MatrixCore (about 10 s after the first build):
 
 Two MatrixCore runs at once (two conversations, the same test users) time out on "the first
-sync". Hold the shared lock around every run, on your own simulator:
-`until mkdir /tmp/mx-matrixcore.lock 2>/dev/null; do sleep 10; done; <run>; rmdir /tmp/mx-matrixcore.lock`.
+sync". Hold the shared lock around every run, on your own simulator. Take every shared lock
+(`matrixcore` for MatrixCore runs, `auth-drive` for signed-in drives, `integrate` for merges into
+the shared branch) only through the helper, which waits, removes a lock whose process is gone, and
+always releases its own lock, never another's:
+`scripts/mx-lock.sh matrixcore <your-lane> -- ./scripts/test-matrix-core.sh ...`.
+Never `rmdir` a lock by hand.
 The SDK's start on a new device is CPU-bound: with many Simulators and builds at once, a test's first
 sync misses its limit. Keep at most one Simulator booted per conversation, and shut it down
 (`xcrun simctl shutdown <udid>`) whenever you are not driving or testing. Shut down only your own Simulator, by its
