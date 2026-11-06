@@ -1549,7 +1549,11 @@ component Multiplexer
               // the keyboard's top and the transcript keeps its size under the keyboard, which shows the
               // messages through its glass, as Beeper's does; the transcript gains a bottom inset instead.
               // Every other screen keeps the default, where the page ends at the keyboard's top.
+              // With the keyboard down it sits 16 points into the home indicator's band, low as Beeper's
+              // (lower than the inbox's bar); the keyboard lifts it by its box less its bottom padding, so
+              // with the keyboard up it still rests on the keyboard's top.
               column inert=(held != "") flex-shrink=0 position="relative" role="toolbar" toolbarPlacement="keyboard" testId="composer-bar"
+                margin-bottom=-16
                 // the same soft edge as the home bottom bar (inbox.contract BottomBar): one material,
                 // full at the screen's bottom and fading out above the composer, plus the same tint.
                 // The earlier solid fade from 32px made a black shelf under the field.

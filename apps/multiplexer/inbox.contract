@@ -72,8 +72,9 @@ component BottomBar
     // chat screen's top and composer use the same values. Under Reduce Transparency, UIKit draws the material
     // solid. Outside the bar's glass group, so its glass stays its own. In dark mode "ultra-thin" lifted the
     // black page to a grey band (about #25 at the bottom edge); the "dark" material and the chat's
-    // chat.edge-bottom tint keep it near black.
-    view position="absolute" left=0 right=0 bottom=0 pointer-events="none"
+    // chat.edge-bottom tint keep it near black. It sits 6 points into the home indicator's band, a
+    // little lower than the page's end, as iOS's own floating tab bar does.
+    view position="absolute" left=0 right=0 bottom=-6 pointer-events="none"
       view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
         mask-image="linear-gradient(to top, black 0%, transparent 100%)"
       view position="absolute" left=0 right=0 top=-24 bottom=-40
@@ -295,8 +296,9 @@ component SelectBar
     // chat screen's top and composer use the same values. Under Reduce Transparency, UIKit draws the material
     // solid. Outside the bar's glass group, so its glass stays its own. In dark mode "ultra-thin" lifted the
     // black page to a grey band (about #25 at the bottom edge); the "dark" material and the chat's
-    // chat.edge-bottom tint keep it near black.
-    view position="absolute" left=0 right=0 bottom=0 pointer-events="none"
+    // chat.edge-bottom tint keep it near black. It sits 6 points into the home indicator's band, a
+    // little lower than the page's end, as iOS's own floating tab bar does.
+    view position="absolute" left=0 right=0 bottom=-6 pointer-events="none"
       view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
         mask-image="linear-gradient(to top, black 0%, transparent 100%)"
       view position="absolute" left=0 right=0 top=-24 bottom=-40
