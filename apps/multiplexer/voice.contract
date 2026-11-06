@@ -96,7 +96,7 @@ component VoiceBubble
     speedUp: action
     identifier: string
   derive ink = outgoing ? appearance.onFill : "-exact-label"
-  derive fill = outgoing ? appearance.fill : "bubble.incoming"
+  derive fill = outgoing ? appearance.bubble : "bubble.incoming"
   derive played = current and seconds > 0 ? min(1, time / seconds) : -1
   derive shown = current and time > 0 ? max(0, ceil(seconds - time)) : seconds
   view
@@ -131,7 +131,7 @@ component VoiceStill
     stacked: bool
     identifier: string
   derive ink = outgoing ? appearance.onFill : "-exact-label"
-  derive fill = outgoing ? appearance.fill : "bubble.incoming"
+  derive fill = outgoing ? appearance.bubble : "bubble.incoming"
   view
     column id=identifier testId=identifier role="group" aria-label=`Voice message, ${lengthText(seconds)}` gap=4
       width="16.5rem" max-width="100%" box-sizing="border-box" padding=(stacked ? "6px 12px 6px 4px" : "1px 6px 1px 4px")

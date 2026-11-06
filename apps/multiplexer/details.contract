@@ -78,7 +78,7 @@ component JumpButton
       padding=(count > 0 ? "0 12px 0 8px" : "0") box-sizing="border-box"
       aria-label=(count > 0 ? `Newest message, ${count} unread` : "Newest message")
       if count > 0
-        view min-width=24 height=24 padding="0 7px" border-radius=12 box-sizing="border-box" background-color=appearance.fill
+        view min-width=24 height=24 padding="0 7px" border-radius=12 box-sizing="border-box" background-color=appearance.bubble
           display="flex" align-items="center" justify-content="center"
           text unreadCount(count) font="-exact-footnote" font-weight=600 color=appearance.onFill font-variant-numeric="tabular-nums"
       image "symbol:icon.arrow-down" font-size="min(-exact-body, 20px)" color="-exact-label" aria-hidden=true

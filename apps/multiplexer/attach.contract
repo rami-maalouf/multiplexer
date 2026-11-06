@@ -134,7 +134,7 @@ component FileBubble
   view
     view display="flex" flex-direction=(stacked ? "column" : "row") align-items=(stacked ? "flex-start" : "center") gap=10 min-width=44
       max-width="100%" box-sizing="border-box"
-      padding="10px 16px 10px 10px" border-radius=20 background-color=(outgoing ? appearance.fill : "bubble.incoming")
+      padding="10px 16px 10px 10px" border-radius=20 background-color=(outgoing ? appearance.bubble : "bubble.incoming")
       opacity=(progress >= 0 and not outgoing ? 0.6 : 1)
       view width=40 height=40 border-radius=20 flex-shrink=0 display="flex" align-items="center" justify-content="center"
         background-color=(outgoing ? "transparent" : "-exact-tertiary-fill")

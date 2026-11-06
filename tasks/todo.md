@@ -1869,9 +1869,12 @@ title, site) for a shared link; we showed an underlined URL. Rami (2026-11-05): 
   `appearance.test.ts`). `check` had read a bubble as white while it drew black: the paragraph had
   no colour of its own (only its runs had), so `check` measured the default label; the paragraph
   now carries its runs' ink. Drives: blue and purple white, yellow black, dark and light
-  (`.exact/links/white-*.png`). Accepted: `check` flags white on `#007aff` (4.0:1) and on purple
-  (4.1:1) against its 4.5:1, in own bubbles and Settings' preview (4 `verify ios` findings), the
-  pair Messages uses; Exact has no way to mark it.
+  (`.exact/links/white-*.png`). Then (the coordinator, 2026-11-06): own bubbles, the Settings
+  preview and the unread badges are drawn on `bubble`, the accent mixed toward black (the same hue)
+  just enough for white to reach 4.5:1, at most 25% (blue `#0072ef`, purple `#a64ed3`, pink
+  `#e2284b`); a light accent that would need more keeps its colour with black (yellow, green,
+  orange, teal). The accent itself stays for buttons, links and the swatches. `verify ios` clean
+  (`.exact/links/shade-*.png`).
 
 ### Later
 
