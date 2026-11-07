@@ -207,6 +207,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 
 | Date | Receipt | What | Sent by |
 |---|---|---|---|
+| 2026-11-06 | `a83c1989-e345-4828-8cb5-60c983aeb0df` | One branding diary, isolated from the backlog: native rebuild cost and manifest icon packaging. Zero command-log entries or attachments. | Codex, with Rami's yes |
 | 2026-10-27 | `4c8a0a07-60a8-466e-ae9a-bef9a0b29f82` | 4 diary entries (findings 1 to 15, in their Rough sections) and 77 command-log lines | Rami |
 | 2026-10-27 | `ac63ff5c-08e3-461b-ae7f-5f1598b2125b` | Findings 1 to 15 as issue files, rechecked at exact2 `cee509ac82`, in the entry `2026-10-27-findings-for-the-team.md` | Claude, at Rami's request |
 | 2026-10-27 | `cea3ed9a-11b2-4359-9849-7cab26e44f59` | 2 diary entries (findings 16 to 19, and new evidence for finding 4) and 20 command-log lines | Claude, with Rami's yes |

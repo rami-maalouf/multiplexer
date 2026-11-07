@@ -8,6 +8,9 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 named the app Mux. Visible app copy, manifest names, new Matrix device/push display
 names, and voice-file vendor metadata now use Mux. The approved PNG is packaged
 through the manifest's icon array; `docs/brand.md` records the artwork and palette.
+Rami authorized sending only this session's Exact diary; receipt
+`a83c1989-e345-4828-8cb5-60c983aeb0df` confirms one diary, zero commands and no
+attachments. The 41 older unsent diaries and the command-log cursor were preserved.
 Installation, Keychain, App Group, push and storage identifiers remain unchanged.
 Native verification passed: 12 tests, light/dark checks and 14 largest-text
 screens, clean in 124.4 s. The installed Home Screen icon and Mux label were

@@ -2,6 +2,9 @@
 
 ## Mux identity (2026-11-06)
 
+- [x] With Rami's approval, send only the branding session's Exact diary. Receipt
+  `a83c1989-e345-4828-8cb5-60c983aeb0df`: one diary, zero logged commands, no
+  attachments. Archived that diary; preserved the 41 older diaries and command cursor.
 - [x] Adopt the selected three-fold glass paper-plane PNG and the name Mux. Update
   visible copy, manifest names, device/push display names, and voice-file vendor.
   Keep installation, storage, Keychain and test-room identities stable.
