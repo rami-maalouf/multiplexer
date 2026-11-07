@@ -82,6 +82,11 @@ extension Matrix {
     }
 
     static func request(timeout: TimeInterval = 20) async throws -> Data {
+        #if !EXACT_DEVELOPMENT
+        // an archive (testflight) refuses the registration call (exact's llp 1126.001 wp9), and
+        // its profile has no aps-environment before p3.0: no token, as on a build without push.
+        throw URLError(.unsupportedURL)
+        #else
         install()
         let id = UUID()
         return try await withCheckedThrowingContinuation { continuation in
@@ -93,6 +98,7 @@ extension Matrix {
                 waiting.removeValue(forKey: id)?.resume(throwing: URLError(.timedOut))
             }
         }
+        #endif
     }
 
     /// iOS answers every request at once: each one waiting gets the token or the error.
