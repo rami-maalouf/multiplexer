@@ -344,7 +344,7 @@ A note on verification: once, verifying Element X from another session hung on t
 2. Type `example.com` in the server field.
 3. Type `alice` and your password, then sign in.
 
-Mux finds the server through the well-known file, same as Element X. Push notifications aren't ready in Mux yet (they wait on my Apple push setup).
+Mux finds the server through the well-known file, same as Element X. Push notifications already wake my own iPhone (a development build). They come to the shared builds next.
 
 **A browser client** (Element Web) doesn't follow a redirect without a CORS header. If `example.com` redirects (for example to `www.example.com`), type `matrix.example.com` in the browser client instead. Your user ID stays `@alice:example.com`.
 
