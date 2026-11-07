@@ -4,6 +4,18 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Push resumed (2026-11-07):** Rami requested implementation of iPhone push notifications.
+Read-only preflight confirmed both `multiplexer-apns` Keychain items are missing,
+the installed Multiplexer provisioning profile has neither push nor App Groups and is
+distribution-only, and `sygnal.ramimaalouf.com` does not resolve. Apple Developer is
+signed in. A new key form is prepared for sandbox, Topic Specific,
+`com.ramimaalouf.multiplexer`; no key has been registered or downloaded. Credential
+creation and installation await the computer-use tool's required explicit confirmation.
+The current Apple form separates sandbox and production, so the prepared server branch's
+assumption of one new key for both environments must be corrected before deployment.
+No Apple capability, DNS, server, app binary or real-account state was changed.
+Other feature lanes remain outside this authorization.
+
 **Website and README (2026-11-06, `feat/mux-website`):** a root `README.md` (what Mux is, why,
 how it works, how it was built; no other product named) and the production site in `website/`:
 static HTML and CSS with a Three.js scene of the glass plane (three streams converging into its

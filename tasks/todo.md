@@ -164,7 +164,7 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 - [ ] R03 scrolling frozen after a return to the app (2026-11-06 → 2026-11-07): still open on
   the iPhone. Simulator never reproduced; diagnostics remain (`dd9343b324`, file log
   `584858860a`). Phone log (return=2): `_UIFlexInteractionPanGestureRecognizer` on the Exact
-  window stayed `.changed` after the finger lifted (finding 137). A host try that toggled
+  window stayed `.changed` after the finger lifted (finding 151). A host try that toggled
   `isEnabled` on began/changed recognizers (`e2b58b6992`) did **not** stop the freeze; Rami
   confirmed; that workaround was reverted (`4251663c25`). Keep the log; do not ship speculative
   remount/release hacks until a real fix is proved on the phone.
@@ -2469,6 +2469,16 @@ What the research found:
   shared crypto store and the lock.
 
 ### P3.0 The Apple setup (Rami)
+
+**Rechecked 2026-11-07:** Rami requested push implementation. Both APNs Keychain
+items are absent, the installed app profile has no push/App Group entitlement and
+does not provision the phone, and the gateway DNS name does not resolve. Apple
+Developer is signed in. A dedicated sandbox/topic-specific key form is prepared
+for `com.ramimaalouf.multiplexer`, but not saved or registered: the computer-use
+tool requires explicit confirmation to create the persistent credential and deploy
+it to the gateway. Its current form separates sandbox and production; do not use
+this sandbox key for the prepared production gateway entry. No existing keys were
+revoked, no server changes were applied, and no real-account drive was performed.
 
 **Description:** push and an App Group need explicit App IDs and profiles; the team wildcard
 profile grants neither. Rami can do this now, while the inbox tasks run.
