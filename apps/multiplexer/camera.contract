@@ -49,7 +49,7 @@ component CameraScreen
           column min-height="100%" align-items="center" justify-content="center" gap=16 padding=32 box-sizing="border-box"
             image "symbol:camera" font="-exact-large-title" color="camera.ink-faint" aria-hidden=true
             text "Camera Access Is Off" font="-exact-title3" font-weight=600 text-align="center"
-            text "Turn on the camera for Multiplexer in Settings to take a photo here." text-align="center"
+            text "Turn on the camera for Mux in Settings to take a photo here." text-align="center"
               color="camera.ink-soft"
             button press=openSettings buttonStyle="filled" color=appearance.onTint testId="camera-settings"
               text "Open Settings"

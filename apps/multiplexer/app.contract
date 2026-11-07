@@ -1,4 +1,4 @@
-// Multiplexer: the view. app.ts answers what it asks for, through the native module
+// mux: the view. app.ts answers what it asks for, through the native module
 // (modules/apple/Matrix.swift), which calls MatrixCore.
 use ClipboardItem from "@exact/clipboard"
 use notificationclick, requestNotificationPermission, notificationStatus, NotificationStatus from "@exact/notifications"
@@ -990,7 +990,7 @@ component Multiplexer
           if session.userId == ""
             column navigationKey=`${e.id}` navigationScroll="sign-in-form" position="absolute" inset=0 display="flex" flex-direction="column"
               header display="flex" align-items="center"
-                text "Multiplexer" role="heading" aria-level=1 flex=1
+                text "Mux" role="heading" aria-level=1 flex=1
                 button press=signIn disabled=(not canSignIn) buttonStyle="filled" color=((not canSignIn) ? "-exact-label" : appearance.onTint) testId="sign-in"
                   text "Sign In"
               list id="sign-in-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
@@ -1832,7 +1832,7 @@ component Multiplexer
           text "Cancel"
       // the microphone was refused once: the system asks no more, so the alert says where to allow it.
       dialog id="microphone-off" role="alertdialog" aria-label="Microphone Access Is Off"
-        text "To record a voice message, turn on the microphone for Multiplexer in Settings." testId="microphone-off-text"
+        text "To record a voice message, turn on the microphone for Mux in Settings." testId="microphone-off-text"
         button press=openSettings commandfor="microphone-off" command="close" testId="microphone-settings"
           text "Open Settings"
         button commandfor="microphone-off" command="close" testId="microphone-cancel"

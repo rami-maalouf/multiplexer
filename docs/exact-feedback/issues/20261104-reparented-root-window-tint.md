@@ -1,10 +1,13 @@
 # A reactive root accent leaves a prominent native header blue
 
-**Status:** Open, local only; native failure observed, source hypothesis under test
+**Status:** Open
 **Systems:** iOS window tint, navigation root, prominent header items
 **Severity:** P2
+**Author:** Rami Maalouf, via a local agent report
 **Date:** 2026-11-04
 **Finding:** 125
+
+**Local status note:** Open, local only; native failure observed, source hypothesis under test
 
 ## Observed behavior
 

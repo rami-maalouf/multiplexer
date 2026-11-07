@@ -1,8 +1,12 @@
-# Multiplexer: instructions for agents
+# Mux: instructions for agents
 
-Multiplexer is Rami's own replacement for Beeper: one app (iPhone first, Mac later)
+Mux (formerly Multiplexer) is Rami's own replacement for Beeper: one app (iPhone first, Mac later)
 that shows all of Rami's chats (WhatsApp, Signal, Telegram, Instagram, ...). Messages go
 through a Matrix server that Rami controls. Rami is the only user for now.
+
+The approved name, paper-plane logo, and palette are in `docs/brand.md`. Use Mux in
+visible copy. Keep existing bundle IDs, Keychain services, App Group, push topics,
+storage paths, package names, and test-room names stable across the rename.
 
 **Read `tasks/plan.md` first** (Status, decisions D1 to D8, invariants, facts, risks,
 open questions, decision log). The tasks with acceptance criteria are in

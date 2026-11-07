@@ -419,7 +419,7 @@ final class Matrix: ExactModule {
             account = nil
             shownThumbnails = [:]
             let signedIn = try await MatrixAccount.signIn(homeserver: server, user: user, password: password,
-                                                          deviceName: context.agent ? "Multiplexer test" : "Multiplexer",
+                                                          deviceName: context.agent ? "Mux test" : "Mux",
                                                           storeDirectory: directory, searchIndexKey: searchKey,
                                                           sessionStorage: sessionStorage)
             do {

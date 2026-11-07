@@ -160,7 +160,7 @@ struct OggWriter {
         head.append(0) // mono or stereo, no mapping table
         writer.page([head], granule: 0, flags: 0x02)
         var tags = Data("OpusTags".utf8)
-        let vendor = Data("Multiplexer".utf8)
+        let vendor = Data("Mux".utf8)
         tags.append(le: UInt32(vendor.count))
         tags.append(vendor)
         tags.append(le: UInt32(0))

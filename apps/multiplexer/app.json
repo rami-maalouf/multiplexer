@@ -1,14 +1,14 @@
 {
   "$schema": "../../../exact/exact2-multiplexer-integration/scripts/app.schema.json",
-  "name": "Multiplexer",
-  "short_name": "Multiplexer",
+  "name": "Mux",
+  "short_name": "Mux",
   "id": "com.ramimaalouf.multiplexer",
   "start_url": "/",
   "display": "standalone",
   "audio_session": "playback",
   "app": {
     "id": "com.ramimaalouf.multiplexer",
-    "name": "Multiplexer"
+    "name": "Mux"
   },
   "host": {
     "ios": {
@@ -39,5 +39,14 @@
   ],
   "modules": [
     "accent-picker"
+  ],
+  "description": "All your chats from different networks, together in one app.",
+  "icons": [
+    {
+      "src": "assets/mux-icon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

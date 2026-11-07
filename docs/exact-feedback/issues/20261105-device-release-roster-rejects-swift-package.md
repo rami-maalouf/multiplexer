@@ -1,10 +1,13 @@
 # A device release cannot qualify a target-only Swift package roster
 
-**Status:** Open, local only
+**Status:** Open
 **Systems:** iOS device build, Swift package modules, roster qualification
 **Severity:** P2
+**Author:** Rami Maalouf, via a local agent report
 **Date:** 2026-11-05
 **Finding:** 126
+
+**Local status note:** Open, local only
 
 ## Observed behavior
 

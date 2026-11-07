@@ -1,8 +1,23 @@
-# Multiplexer: plan
+# Mux: plan
 
-Multiplexer combines many chat networks into one inbox on a server I own.
+Mux (formerly Multiplexer) combines many chat networks into one inbox on a server I own.
 
 ## Status
+
+**Mux identity (2026-11-06):** Rami selected the three-fold glass paper plane and
+named the app Mux. Visible app copy, manifest names, new Matrix device/push display
+names, and voice-file vendor metadata now use Mux. The approved PNG is packaged
+through the manifest's icon array; `docs/brand.md` records the artwork and palette.
+Rami authorized sending only this session's Exact diary; receipt
+`a83c1989-e345-4828-8cb5-60c983aeb0df` confirms one diary, zero commands and no
+attachments. The 41 older unsent diaries and the command-log cursor were preserved.
+Installation, Keychain, App Group, push and storage identifiers remain unchanged.
+Native verification passed: 12 tests, light/dark checks and 14 largest-text
+screens, clean in 124.4 s. The installed Home Screen icon and Mux label were
+visually inspected, as were both sign-in appearances. Receipt:
+`tasks/evidence/mux-branding-20261106.json`. Physical iPhone installation was not
+part of this run. This authorization covers branding
+only and does not reopen the halted feature queue below.
 
 **Daily chat chrome (2026-11-06, `fix/daily-chat-experience`):** mid-scroll keyboard rise
 fixed in Exact (`KeyboardToolbarIOS` shifts offset when not at the end;
