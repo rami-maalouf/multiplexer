@@ -29,7 +29,7 @@ extension Matrix {
         if PushToken.isDevelopment { print("matrix: push token \(token.map { String(format: "%02x", $0) }.joined())") }
         guard var stored = try keychain.read() else { return false }
         let pusher = Pusher(appId: PushToken.appId, pushkey: Pusher.pushkey(apnsToken: token), url: Self.pushGateway,
-                            appDisplayName: "Multiplexer", deviceDisplayName: context.agent ? "Multiplexer test" : "Multiplexer")
+                            appDisplayName: "Mux", deviceDisplayName: context.agent ? "Mux test" : "Mux")
         if let oldKey = stored.pushkey, let oldApp = stored.pusherAppId, oldKey != pusher.pushkey || oldApp != pusher.appId {
             try? await account.deletePusher(appId: oldApp, pushkey: oldKey)
         }

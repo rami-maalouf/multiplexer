@@ -1,4 +1,21 @@
-# Multiplexer: tasks
+# Mux: tasks
+
+## Mux identity (2026-11-06)
+
+- [x] Adopt the selected three-fold glass paper-plane PNG and the name Mux. Update
+  visible copy, manifest names, device/push display names, and voice-file vendor.
+  Keep installation, storage, Keychain and test-room identities stable.
+- [x] Verify the installed app icon and name, inspect the sign-in screen in both
+  appearances, and run the existing iOS verification. Branding is a mechanical
+  rename/configuration change; no new behavior tests are needed. MatrixCore's voice
+  metadata change uses the existing dynamic vendor-length encoding. Its app copy
+  was refreshed with `scripts/setup-matrix-sdk.sh`. Verification: 12 native tests
+  passed, no light/dark findings, no overflow on 14 largest-text screens (124.4 s).
+  Visually inspected the installed icon/Mux label and both sign-in appearances.
+  Receipt: `tasks/evidence/mux-branding-20261106.json`. No physical-phone install.
+  Also repaired three inherited feedback-report headers; issue format now passes.
+  Code review: skipped (mechanical diff): strings, assets, configuration, documentation
+  and metadata only; no control flow changed.
 
 - [x] Enforce the user's 2026-11-05 stop: wind down at 07:44:48 UTC, halt all related
   lanes and delegated tasks by 07:49:48 UTC, verify cleanup, disable the one-time alarms

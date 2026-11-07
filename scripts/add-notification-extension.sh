@@ -4,10 +4,10 @@
 # those entitlements (docs/exact-feedback, "an app cannot add its own app extension"), so this
 # runs after exact's build, then installs the result.
 #
-#   scripts/add-notification-extension.sh --sim <udid> <Multiplexer.app>
+#   scripts/add-notification-extension.sh --sim <udid> <Mux.app>
 #       a simulator build: ad-hoc signed. the simulator reads entitlements from the binary's
 #       __TEXT,__entitlements section, so the app's is rewritten in place (same size).
-#   scripts/add-notification-extension.sh --device <phone udid> <Multiplexer.app>
+#   scripts/add-notification-extension.sh --device <phone udid> <Mux.app>
 #       a phone build, signed with the identity exact used and the two development profiles of
 #       P3.0 (APP_PROFILE and EXTENSION_PROFILE: .mobileprovision paths). not run yet: it waits
 #       for P3.0.
@@ -28,7 +28,7 @@ name="MultiplexerNotifications"
 
 mode="${1:-}"; target="${2:-}"; app="${3:-}"
 case "$mode" in --sim|--device) ;; *) echo "usage: $0 --sim <udid> <app> | --device <phone udid> <app>" >&2; exit 2 ;; esac
-[ -n "$target" ] && [ -d "$app" ] || { echo "usage: $0 $mode <udid> <path to Multiplexer.app>" >&2; exit 2; }
+[ -n "$target" ] && [ -d "$app" ] || { echo "usage: $0 $mode <udid> <path to Mux.app>" >&2; exit 2; }
 ls "$modules"/core-*.swift >/dev/null 2>&1 || { echo "no matrix-core copies in $modules: run scripts/setup-matrix-sdk.sh" >&2; exit 1; }
 
 if [ "$mode" = "--sim" ]; then
