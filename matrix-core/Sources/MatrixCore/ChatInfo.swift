@@ -69,11 +69,15 @@ extension MatrixAccount {
         let levels = try? await target.getPowerLevels()
         let custom = await customNames()[roomId] ?? ""
         let roomName = target.displayName() ?? roomId
-        // the bot of a bridge is a service member (`io.element.functional_members`).
-        let service = UInt64(info.serviceMembers.count)
         var summary = RoomSummary(id: roomId, name: roomName, isDirect: await target.isDirect(), lastMessage: "",
                                   lastSenderName: "", lastIsOwn: false, lastTimestamp: 0)
-        summary.fillKind(info, pins: pins)
+        // a chat the member count leaves open is asked of its bridge now, and kept for the list.
+        if summary.fillKind(info, pins: pins, kinds: roomKinds), let kind = await bridgedKind(roomId: roomId) {
+            roomKinds.remember(roomId, kind)
+            summary.fillKind(info, pins: pins, kinds: roomKinds)
+        }
+        // the bot of a bridge is a service member (`io.element.functional_members`).
+        let service = UInt64(info.serviceMembers.count)
         return ChatInfo(id: roomId, name: custom.isEmpty ? roomName : custom, roomName: roomName, customName: custom,
                         topic: info.topic ?? "", pictureUrl: target.avatarUrl() ?? "",
                         network: RoomNetwork.of(info, ownUserId: me), isOneToOne: summary.isOneToOne,

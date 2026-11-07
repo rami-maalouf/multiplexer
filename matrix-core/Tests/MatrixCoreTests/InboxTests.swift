@@ -9,6 +9,9 @@ final class InboxTests: XCTestCase {
     /// A chat where the second user plays a bridge's bot: a service member
     /// (`io.element.functional_members`), as a bridge marks its bot.
     private let bridgedName = "Multiplexer inbox test bridged DM"
+    /// A bridged group with one person besides the bridge's bot, as its bridge's `m.bridge` says (no
+    /// room type: a group). The second user plays the bot.
+    private let bridgedGroupName = "Multiplexer inbox test bridged group"
 
     func testFiltersFindUnreadUnansweredDirectAndGroupChats() async throws {
         let (homeserver, user, password, user2, password2) = try twoUsers()
@@ -87,6 +90,83 @@ final class InboxTests: XCTestCase {
 
         for id in [direct, group] { try await first.unpin(roomId: id) }
         _ = try await pinned(second, among: [direct, group, bridged]) { $0.isEmpty }
+    }
+
+    /// A bridged chat not marked direct whose member count says "one person" is what its bridge's
+    /// `m.bridge` says: a group here. The list asks the server once and shows it under Groups; the
+    /// info page says the same and lists its members.
+    func testABridgedGroupWithOnePersonIsAGroup() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let reader = try await signIn(homeserver, user, password)
+        let other = try await signIn(homeserver, user2, password2)
+        let session = try reader.savedSession(), otherSession = try other.savedSession()
+        let known = try await reader.rooms()
+        let id: String
+        if let found = known.first(where: { $0.roomName == bridgedGroupName || $0.name == bridgedGroupName })?.id {
+            id = found
+        } else {
+            let created = try await api("POST", ["createRoom"], [
+                "name": bridgedGroupName, "preset": "private_chat", "invite": [user2],
+                "initial_state": [
+                    ["type": "io.element.functional_members", "state_key": "", "content": ["service_members": [user2]]],
+                    // as mautrix-go's bridgev2 writes a WhatsApp group's (no `com.beeper.room_type`).
+                    ["type": "m.bridge", "state_key": "multiplexer-test://whatsapp/120363000000000000@g.us",
+                     "content": ["protocol": ["id": "whatsapp"], "channel": ["id": "120363000000000000@g.us"]]],
+                ],
+            ], session: session)
+            id = try XCTUnwrap(created["room_id"] as? String, "createRoom: \(created)")
+            _ = try await api("POST", ["join", id], [:], session: otherSession)
+        }
+        try await reader.unpin(roomId: id)
+
+        let groups = try await inbox(reader, .groups) { $0.contains(id) }
+        XCTAssertTrue(groups.contains(id))
+        let people = try await reader.inbox(filter: .people).rooms.map(\.id)
+        XCTAssertFalse(people.contains(id), "the bridged group shows under DMs")
+        let info = try await reader.chatInfo(roomId: id)
+        XCTAssertFalse(info.isOneToOne, "the info page takes the bridged group for a DM")
+        // the bot has joined, so the count leaves it out, as the list does.
+        let members = try await reader.chatMembers(roomId: id)
+        XCTAssertEqual(members.map(\.userId), [user])
+        XCTAssertEqual(info.memberCount, members.count)
+    }
+
+    /// What a room's state says it is, and the rule that uses it.
+    func testTheBridgedKindAndTheOneToOneRule() {
+        func kind(_ events: [[String: Any]]) -> BridgedKind? {
+            BridgedKind.of(state: try! JSONSerialization.data(withJSONObject: events))
+        }
+        let member: [String: Any] = ["type": "m.room.member", "state_key": "@a:x", "content": ["membership": "join"]]
+        XCTAssertEqual(kind([member]), .unknown)
+        XCTAssertEqual(kind([member, ["type": "m.bridge", "state_key": "k", "content": ["com.beeper.room_type": "dm"]]]), .direct)
+        XCTAssertEqual(kind([["type": "uk.half-shot.bridge", "state_key": "k", "content": ["com.beeper.room_type.v2": "dm"]]]), .direct)
+        XCTAssertEqual(kind([["type": "m.bridge", "state_key": "k", "content": ["channel": ["id": "1@g.us"]]]]), .group)
+        XCTAssertEqual(kind([["type": "m.bridge", "state_key": "k", "content": ["com.beeper.room_type": "group_dm"]]]), .group)
+        XCTAssertNil(BridgedKind.of(state: Data("{\"errcode\":\"M_FORBIDDEN\"}".utf8)))
+
+        func rule(_ people: UInt64, direct: Bool = false, bridged: Bool = false, _ kind: BridgedKind? = nil) -> Bool {
+            RoomSummary.isOneToOne(people: people, isDirect: direct, bridged: bridged, kind: kind)
+        }
+        XCTAssertTrue(rule(2, direct: true))
+        XCTAssertFalse(rule(3, direct: true), "a chat marked direct with a third person is a group")
+        XCTAssertFalse(rule(2), "a plain room not marked direct is a group")
+        XCTAssertTrue(rule(2, bridged: true), "with no word from the bridge, the count decides")
+        XCTAssertTrue(rule(2, bridged: true, .unknown))
+        XCTAssertTrue(rule(2, bridged: true, .direct))
+        XCTAssertFalse(rule(2, bridged: true, .group), "a bridged group with one other person")
+        XCTAssertFalse(rule(1, bridged: true, .group))
+        XCTAssertTrue(rule(2, direct: true, bridged: true, .group), "marked direct wins")
+        XCTAssertTrue(RoomSummary.needsKind(people: 2, isDirect: false, bridged: true))
+        XCTAssertFalse(RoomSummary.needsKind(people: 2, isDirect: true, bridged: true))
+        XCTAssertFalse(RoomSummary.needsKind(people: 3, isDirect: false, bridged: true))
+        XCTAssertFalse(RoomSummary.needsKind(people: 2, isDirect: false, bridged: false))
+
+        // a kind is kept across launches in its file.
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("room-kinds-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        RoomKinds(file: file).remember("!a:x", .group)
+        XCTAssertEqual(RoomKinds(file: file).kind("!a:x"), .group)
+        XCTAssertNil(RoomKinds(file: file).kind("!b:x"))
     }
 
     /// The rules without a server: what each filter takes, the pin order, and a new pin's order.
