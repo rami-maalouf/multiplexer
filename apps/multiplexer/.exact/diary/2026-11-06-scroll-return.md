@@ -16,3 +16,6 @@ task: a chat app's list that a reader found frozen after returning to the app: r
 ### Rough (2026-11-06 evening)
 - Pulled `Library/Caches/scroll-return.log` from the paired phone after a real freeze. Return itself logged `active … count=0`, but the next drags left `_UIFlexInteractionPanGestureRecognizer` on the Exact window in `.changed` with no finger down; row swipe and interactive-back pans died the same way. About 15 minutes. What would have helped: the host releasing began/changed recognizers on return and after a dead drag (shipped locally as Exact `e2b58b6992`).
 - Capsule Inbox↔Archive still re-keyed `roomList` on `chatList`, so each press awaited a full native `rooms` answer. Client-side list pick from a scoped answer removes that wait.
+
+### Checkpoints (2026-11-07)
+- The `isEnabled` release on began/changed recognizers did not fix the freeze on the phone (Rami); Exact revert `4251663c25`. Diagnostic file log kept. Capsule client-side list pick kept.

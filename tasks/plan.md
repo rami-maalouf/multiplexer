@@ -4,11 +4,11 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
-**R03 / capsule tabs (2026-11-07, `fix/r03-scroll-and-tabs`):** phone `scroll-return.log` named
-`_UIFlexInteractionPanGestureRecognizer` stuck in `.changed` after resume (finding 137). Exact
-integration `e2b58b6992` force-ends began/changed recognizers on return and after a dead drag;
-iPhone acceptance still open. Capsule Inbox↔Archive no longer re-keys `roomList`: MatrixCore
-`scopedInbox` + contract `inChatList`. `verify ios` clean. Exact checkout tip `e2b58b6992`.
+**R03 / capsule tabs (2026-11-07, `fix/r03-scroll-and-tabs`):** phone log still points at
+`_UIFlexInteractionPanGestureRecognizer` (finding 137). An Exact `isEnabled` release workaround
+did not fix the freeze on device and was reverted (`4251663c25`). R03 remains open. Capsule
+Inbox↔Archive no longer re-keys `roomList` (`scopedInbox` + `inChatList`) — kept. Exact tip
+`4251663c25`.
 
 **Daily chat chrome (2026-11-06, `fix/daily-chat-experience`):** mid-scroll keyboard rise
 fixed in Exact (`KeyboardToolbarIOS` shifts offset when not at the end;
@@ -66,7 +66,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; push (P3.0) waits for Rami's Apple setup. Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is prepared on `server/p3.3-sygnal`, not merged: it installs once P3.0's APNs key and DNS record exist (Rami's OK). |
 | Blocked on Rami | Phase 3's Apple setup (P3.0 in `tasks/todo.md`): an App Group, two App IDs, an APNs key in the Keychain, two development profiles, and the DNS name `sygnal.ramimaalouf.com`. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
-| Exact | Root host/compiler: `exact2-multiplexer-integration` at `e2b58b6992` (R03 recognizer release); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
+| Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
 | Last updated | 2026-11-07 |
 
 Update this table at the end of every work session.
