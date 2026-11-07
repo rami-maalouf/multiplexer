@@ -233,6 +233,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 | 2026-11-02 | `f63c011a-dedb-4c1e-ae6b-4bee50181ae4` | 7 diary entries (findings 21 to 29, 33 and 34, and new evidence for findings 13 and 15; from the B1 and inbox entries, findings 30 to 32 and 35 to 37, and new evidence for findings 13 and 17) and 287 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `623dd86e-723a-4d6d-a5e1-d671e965d0d9` | 17 diary entries (the tasks of 2026-11-02 and 2026-11-03, B19 included; the app's README not attached) and 63 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `c0048b5e-44e2-40f5-aae3-63299084a8f0` | 2 diary entries (swipe to reply on media and Copy for a photo; Send Later: findings 90, 91 and 93 to 95) and 1 command-log line | Claude, with Rami's yes |
+| 2026-11-07 | `77e85bbe-29ca-49f0-9931-aac5ff2eb9d4` | 6 diary entries (the landing site of 2026-11-06; the TestFlight build, keyboard, Send, spinner and demo bug tasks of 2026-11-07: findings 143 to 150, 153 and 154, and new evidence for 45, 46, 116, 132 and 149) and 34 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `1a0285c9-b1bf-4f21-a7f9-69a05a6cfc20` | 1 diary entry (GIFs: finding 92, new evidence for 61) and 18 command-log lines | Claude, with Rami's yes |
 
 The first two sends include finding 14, which was withdrawn after they were sent.
