@@ -96,4 +96,13 @@ extension MatrixAccount {
         return Inbox(chats: all, listed: Set(all.filter { $0.matches(filter, in: list) }.map(\.id)),
                      pinned: Self.inPinOrder(all).filter(\.isInInbox))
     }
+
+    /// Every non-hidden chat under `filter`, across inbox, Archive and Low Priority. The app
+    /// picks the capsule list client-side so Inbox↔Archive does not wait on another rooms call.
+    public func scopedInbox(filter: RoomFilter = .all, timeout: TimeInterval = 30) async throws -> Inbox {
+        let all = try await rooms(timeout: timeout)
+        return Inbox(chats: all,
+                     listed: Set(all.filter { !$0.isHidden && $0.foldedInto == nil && $0.passes(filter) }.map(\.id)),
+                     pinned: Self.inPinOrder(all).filter(\.isInInbox))
+    }
 }

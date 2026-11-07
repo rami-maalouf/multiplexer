@@ -402,25 +402,25 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  // matrixcore filters the list (list: inbox, archive or lowPriority; filter: all, unread,
-  // unanswered, people or groups; network: one network's chats, or "" for every network;
-  // community: one community's chats instead, a space's id or ""); in the inbox under all, the
-  // pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter, network, community, list, label], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+  // matrixcore answers every capsule list under the filter (list: "" scoped); network: one
+  // network's chats, or "" for every network; community: one community's chats instead, a space's
+  // id or "". The contract's chatList picks inbox/Archive/Low Priority/Reminders without refetch.
+  // inbox+all: pinned chats leave the rows for the grid (listedRooms).
+  loadRoomsByRecency: async ([userId, filter, network, community, label], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
     if (userId === '' || !native?.available) {
-      return { owner: userId, filter, network, community, list, label, rooms: [], pinned: [], networks: [], communities: [], unread: 0,
+      return { owner: userId, filter, network, community, list: '', label, rooms: [], pinned: [], networks: [], communities: [], unread: 0,
         archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
     }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
     // the chats' kept copies, read while the list loads (not awaited), and a write held back.
     void readThreadCopies(userId, native);
     saveThreadCopies(native);
-    const answer = (await native.later({ op: 'rooms', filter, network, community, list, label })) as RoomsAnswer;
+    const answer = (await native.later({ op: 'rooms', filter, network, community, list: '', label })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     // the reminders' notifications follow the account's reminders; a failure leaves the list as it is.
     syncReminders(answer.rooms, storage).catch((e) => console.log(`reminders: ${e}`));
     return {
-      owner: userId, filter, network, community, list, label, networks: answer.networks, communities: answer.communities, unread: answer.unread,
+      owner: userId, filter, network, community, list: '', label, networks: answer.networks, communities: answer.communities, unread: answer.unread,
       archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread, reminders: answer.reminders,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {

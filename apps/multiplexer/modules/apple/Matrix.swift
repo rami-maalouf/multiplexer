@@ -68,20 +68,23 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    // every chat, each saying whether the list (inbox, archive or lowPriority) shows it
-                    // under the filter menu's choice and the filter sheet's network ("": every network),
-                    // the pinned ones' ids in their pin order, and the sheet's rows with their unread chats.
-                    // a community (a space's id) narrows it instead of a network.
+                    // every chat under the filter menu and the filter sheet's network ("": every
+                    // network) or community; `listed` spans inbox, Archive and Low Priority so the
+                    // app can flip the capsule without another rooms round-trip. Labels stay their
+                    // own set. list "" or "*": scoped; a concrete list keeps the old single-list
+                    // answer for older callers.
                     let started = Date(), account = try await signedIn()
                     let network = request["network"] as? String ?? "", chosen = request["community"] as? String ?? ""
                     let filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
-                    // Reminders is not a list a chat is in: it shows the chats with a reminder, from every list.
                     let label = request["label"] as? String ?? ""
+                    let listRaw = request["list"] as? String ?? ""
                     let all = !label.isEmpty
                         ? try await account.labelInbox(id: label, filter: filter)
-                        : request["list"] as? String == "reminders"
+                        : listRaw == "reminders"
                         ? try await account.reminderList(filter: filter)
-                        : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox)
+                        : (listRaw.isEmpty || listRaw == "*"
+                            ? try await account.scopedInbox(filter: filter)
+                            : try await account.inbox(filter: filter, list: ChatList(rawValue: listRaw) ?? .inbox))
                     let communities = await account.communities(among: all.chats)
                     let community = communities.first { $0.id == chosen }
                     let inbox = community != nil ? all.on(community: community) : all.on(network: network.isEmpty ? nil : network)

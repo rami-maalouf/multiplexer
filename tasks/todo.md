@@ -125,40 +125,22 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   server, with no error logged; 4 later sign-outs with logging all worked. Watch for it.
 - [ ] Minor: a preview that starts with a long link leaves "You:" alone on its first line (native text
   wraps whole words). Left as it is.
-- [ ] R03 scrolling frozen after a return to the app (2026-11-06, Simulator): not reproduced, so a
-  diagnostic and a reset ship first. Tried with real touches (exact2's `bench/bakeoff/drive.mjs`, which drives
-  the running app; Exact's own drive cannot cross a trip to the background): Home idle and mid-fling, the
-  bottom-edge Home gesture, the bottom-edge app switch, 45 s and 17 min away while messages arrived (`@test1`),
-  and on the pre-R01/R02 build with `@rami`'s real chats (read only, signed out after): a sideways drag then
-  Home, the app switch, lock and unlock. Each time the first scroll after the return moved the list.
-  The video shows the stuck state belongs to one list on screen (taps work; Archive and back recovers).
-  Shipped in the Exact integration checkout (`dd9343b324`, `ScrollReturnIOS.swift`):
-  - On every return to the app (`didBecomeActive`) one log line per list: scroll enabled, pan state, content
-    size against bounds, offset, a smooth correction running, the interaction pin; then a "cleared" line:
-    a running smooth correction cancelled where it stands, a held pin released, a swipe whose touch never
-    ended released (an open swipe stays open).
-  - For 2 minutes after a return, a vertical drag of 30 points or more that leaves its list where it was logs
-    a "stuck" line, once a list a return.
-  - Shown harmless (`apps/multiplexer/.exact/r03/harm5.mov` in the swipe checkout): a list scrolled midway with
-    a row's swipe open, Home and back: the same offset, the swipe still open, no flicker; the log said
-    `swipes-projected=1 swipes-released=0 corrections=0`. A drag that started on the bottom bar gave the one
-    "stuck" line. `verify ios` clean.
-  - Collect from the iPhone (cable or paired, unlocked), on this Mac:
-    `sudo /usr/bin/log collect --device-udid 00008140-0002155C01F3001C --last 2h --output ~/Desktop/multiplexer-r03.logarchive`
-    then `/usr/bin/log show ~/Desktop/multiplexer-r03.logarchive --info --style compact --predicate 'subsystem == "com.ramimaalouf.multiplexer" AND category == "scroll-return"'`
-    (`/usr/bin/log`: in zsh `log` is a shell builtin). The same `log show` read a Simulator archive
-    (`xcrun simctl spawn <udid> log collect --last 10m --output x.logarchive`): 24 lines, the "stuck" one among them.
-  - Next: Rami's build with R01's fix; if it freezes again, collect the log right after.
-  - 2026-11-06 (later): Rami: it still freezes on the iPhone after a return, and the back swipe and
-    sideways swipes die too (taps work; another tab or screen recovers). So one gesture blocks every
-    drag, not one list. Exact `584858860a`: the log also goes to `Library/Caches/scroll-return.log`
-    (read without root: `xcrun devicectl device copy from --device 00008140-0002155C01F3001C
-    --domain-type appDataContainer --domain-identifier com.ramimaalouf.multiplexer --source
-    Library/Caches/scroll-return.log --destination /tmp/r03/phone.log`), with lines on leaving, and
-    for the first 8 drags of 30 points or more in the 30 minutes after a return, every recognizer
-    that heard the finger and its state, plus any recognizer still active in the window. Real-touch
-    Simulator tries (inbox and chat, Home mid-fling, the bottom-edge swipe over the composer, the
-    back swipe) did not freeze. Installed on the iPhone; waiting for one freeze there.
+- [ ] R03 scrolling frozen after a return to the app (2026-11-06 → 2026-11-07): phone cause found;
+  host release shipped; **iPhone acceptance still open**.
+  - Simulator never reproduced; diagnostics shipped (`dd9343b324`, then file log `584858860a`).
+  - Phone log after a freeze (`Library/Caches/scroll-return.log`, return=2): after the finger
+    lifted, `_UIFlexInteractionPanGestureRecognizer` on the Exact window stayed `.changed`, so
+    scroll, row swipe and interactive-back all died; taps worked. Finding 137.
+  - Exact integration `e2b58b6992` (`ScrollReturnIOS.swift`): on return and after a dead drag,
+    force-end every window recognizer still began/changed (toggle `isEnabled`). Branch
+    `fix/r03-scroll-and-tabs`. `verify ios` clean (12 tests).
+  - Next: install on the iPhone; Home → return → scroll / swipe / back without switching tabs;
+    confirm `scroll-return.log` shows `recognizers-released` / `released drag` when it would have
+    frozen, and no multi-drag freeze.
+- [x] Inbox↔Archive capsule waited on a full native `rooms` reload (2026-11-07, with R03):
+  `chatList` keyed `roomList`. Now `scopedInbox` lists every chat under the filter; the contract
+  picks inbox/Archive/Low Priority/Reminders with `inChatList` (pinned still leave inbox+all for
+  the grid). Capsule flip does not await native. Same branch; `verify ios` clean.
 - [x] Jump to newest and Send stopped short of the chat's end (2026-11-06, Rami): `block="end"`
   put the last row at the list's edge, behind the composer (the list's 100-point bottom padding)
   and, with the keyboard up, under the keyboard; never at the end, so the list never followed it.
