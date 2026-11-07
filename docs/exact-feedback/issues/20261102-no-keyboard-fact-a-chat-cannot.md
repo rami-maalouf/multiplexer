@@ -29,3 +29,5 @@ Cost: about 15 minutes.
 ## Evidence
 
 Seen on 2026-11-02 at exact2 `ed43ad09a0` (iOS Simulator, iOS 26.5).
+
+Additional evidence (2026-11-07, exact2 `4a187c1bbe`): a chat composer's voice button and Send must keep a raised keyboard up and raise none that the person dragged down. The contract cannot read whether the keyboard is up or which field has focus, so the app keeps its own state from the field's `focus` and `blur` events and calls `focus("composer")` only when it is set. About 10 minutes for the voice button. Send had the same bug (it called `focus` each time, so a keyboard dragged down came back on Send) and took the same workaround. What would help: a viewport value for the keyboard (up, height) or the focused field's id.
