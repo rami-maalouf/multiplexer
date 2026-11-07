@@ -161,18 +161,13 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   server, with no error logged; 4 later sign-outs with logging all worked. Watch for it.
 - [ ] Minor: a preview that starts with a long link leaves "You:" alone on its first line (native text
   wraps whole words). Left as it is.
-- [ ] R03 scrolling frozen after a return to the app (2026-11-06 → 2026-11-07): phone cause found;
-  host release shipped; **iPhone acceptance still open**.
-  - Simulator never reproduced; diagnostics shipped (`dd9343b324`, then file log `584858860a`).
-  - Phone log after a freeze (`Library/Caches/scroll-return.log`, return=2): after the finger
-    lifted, `_UIFlexInteractionPanGestureRecognizer` on the Exact window stayed `.changed`, so
-    scroll, row swipe and interactive-back all died; taps worked. Finding 137.
-  - Exact integration `e2b58b6992` (`ScrollReturnIOS.swift`): on return and after a dead drag,
-    force-end every window recognizer still began/changed (toggle `isEnabled`). Branch
-    `fix/r03-scroll-and-tabs`. `verify ios` clean (12 tests).
-  - Next: install on the iPhone; Home → return → scroll / swipe / back without switching tabs;
-    confirm `scroll-return.log` shows `recognizers-released` / `released drag` when it would have
-    frozen, and no multi-drag freeze.
+- [ ] R03 scrolling frozen after a return to the app (2026-11-06 → 2026-11-07): still open on
+  the iPhone. Simulator never reproduced; diagnostics remain (`dd9343b324`, file log
+  `584858860a`). Phone log (return=2): `_UIFlexInteractionPanGestureRecognizer` on the Exact
+  window stayed `.changed` after the finger lifted (finding 137). A host try that toggled
+  `isEnabled` on began/changed recognizers (`e2b58b6992`) did **not** stop the freeze; Rami
+  confirmed; that workaround was reverted (`4251663c25`). Keep the log; do not ship speculative
+  remount/release hacks until a real fix is proved on the phone.
 - [x] Inbox↔Archive capsule waited on a full native `rooms` reload (2026-11-07, with R03):
   `chatList` keyed `roomList`. Now `scopedInbox` lists every chat under the filter; the contract
   picks inbox/Archive/Low Priority/Reminders with `inChatList` (pinned still leave inbox+all for

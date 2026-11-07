@@ -1,6 +1,6 @@
 # A liquid-glass flex pan stays `.changed` after a return and blocks every drag
 
-**Status:** Open (local host workaround shipped in the app's integration checkout)
+**Status:** Open (local `isEnabled` release workaround tried and reverted; did not fix on device)
 **Systems:** Apple host (iOS)
 **Severity:** P1
 **Author:** Auto (Composer), from Rami Maalouf's chat app friction log (an app outside exact2)
@@ -36,5 +36,7 @@ Physical iPhone, app with Exact integration at `584858860a` (scroll-return file 
 Freeze after return=2; first five ≥30pt drags `moved=false` with
 `_UIFlexInteractionPanGestureRecognizer[state=2 … view=ExactWindow]`; `stuck` lines for
 the transcript and the inbox list; drags 7–8 moved once the flex pan was gone.
-Local workaround: Exact `e2b58b6992` / `072cbd1f60` releases began/changed recognizers on
-return and after a dead drag.
+Tried locally: Exact `e2b58b6992` toggled `isEnabled` on began/changed recognizers on return
+and after a dead drag. On the phone that did not stop the freeze (returns often logged
+`recognizers-released=0`; the freeze remained). Reverted as `4251663c25`. The diagnostic file
+log stays.
