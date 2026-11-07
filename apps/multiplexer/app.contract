@@ -347,6 +347,9 @@ component Multiplexer
   state roomsScrolled = false
   // the "+" panel is open, in the keyboard's place.
   state panel = false
+  // the composer has the keyboard's focus (its focus and blur events): the voice button keeps a
+  // keyboard that is up, and raises none that is down.
+  state composerFocus = false
   // the file message being downloaded to open.
   state opening = ""
   // the files just picked that are over the server's limit, by name ("" when none).
@@ -680,6 +683,9 @@ component Multiplexer
       blur("composer")
   action composerFocused
     panel = false
+    composerFocus = true
+  action composerBlurred
+    composerFocus = false
   action choosePhotos
     showPicker("pick-photos")
   action chooseFiles
@@ -1656,7 +1662,7 @@ component Multiplexer
                       if openNetwork != "matrix" and not viewport.accessibilityTextSize and recording == "idle" and voiceOffered
                         view flex-shrink=0 -exact-exit-animation="logoOut 150ms ease-in both"
                           ComposerNetwork(network=openNetwork)
-                      textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
+                      textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused blur=composerBlurred rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
                         placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
                         aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
                         border="none" background-color="transparent" line-height=1.25
