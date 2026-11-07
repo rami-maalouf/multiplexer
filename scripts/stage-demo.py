@@ -124,6 +124,15 @@ def join(contact: Session, room: str, name: str) -> None:
                  json={"membership": "join", "displayname": name})
 
 
+def unstage(sessions: list[Session], room: str) -> None:
+    """every staged user leaves the room and forgets it."""
+    for s in sessions:
+        requests.post(f"{HOMESERVER}/_matrix/client/v3/rooms/{room}/leave", timeout=30,
+                      headers={"Authorization": f"Bearer {s.token}"}, json={})
+        requests.post(f"{HOMESERVER}/_matrix/client/v3/rooms/{room}/forget", timeout=30,
+                      headers={"Authorization": f"Bearer {s.token}"}, json={})
+
+
 def stage(redo: list[str]) -> None:
     sessions: list[Session] = []
     try:
@@ -134,24 +143,19 @@ def stage(redo: list[str]) -> None:
         existing = tagged_rooms(me)
         for slug in redo:
             if (room := existing.pop(slug, None)) is not None:
-                for s in (me, a, b, c):
-                    requests.post(f"{HOMESERVER}/_matrix/client/v3/rooms/{room}/leave", timeout=30,
-                                  headers={"Authorization": f"Bearer {s.token}"}, json={})
-                    requests.post(f"{HOMESERVER}/_matrix/client/v3/rooms/{room}/forget", timeout=30,
-                                  headers={"Authorization": f"Bearer {s.token}"}, json={})
+                unstage(sessions, room)
                 print(f"{slug}: left {room}, making it again")
         direct: dict[str, list[str]] = {}
         for slug, network, group_name, names, lines in CHATS:
             contacts = [a] if group_name is None else [a, b, c]
             if slug in existing:
+                joined = me.call("GET", f"/rooms/{existing[slug]}/joined_members")["joined"]
+                if any(contact.user not in joined for contact in contacts):
+                    unstage(sessions, existing.pop(slug))
+                    print(f"{slug}: a contact is missing, making it again")
+            if slug in existing:
                 room = existing[slug]
                 print(f"{slug}: already staged ({room})")
-                joined = me.call("GET", f"/rooms/{room}/joined_members")["joined"]
-                for contact, name in zip(contacts, names):
-                    if contact.user not in joined:
-                        me.call("POST", f"/rooms/{room}/invite", json={"user_id": contact.user})
-                        join(contact, room, name)
-                        print(f"{slug}: seated {name}")
             else:
                 body = {"preset": "trusted_private_chat" if group_name is None else "private_chat",
                         "invite": [c.user for c in contacts], "is_direct": group_name is None,
