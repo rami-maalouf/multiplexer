@@ -4,6 +4,22 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Exact validation continuation (2026-11-07):** recovered the newer original-thread
+checkpoint: Rami saved export compliance and build 2 showed Ready to Submit, assigned
+to Teammates, which contained only its invited owner. The prior browser blocker below
+is historical. App PRs #12, #13 and #14 and Exact #1560 are linked to this thread.
+Exact text fade retiming sampled the clock twice, shifting the calculated endpoint
+when execution was delayed between samples. Local commit `a7ae7d07b0` uses one sample
+for progress and the layer clock origin. All 35 TextPlace iOS cases passed, including
+the hosted pixel comparison; the existing endpoint assertion is unchanged. The endpoint
+test also passed 100 consecutive repetitions, and caps passed. Feedback receipt:
+`ac9481f6-814f-49b1-bbc1-33193c87b718` (one diary). This does
+not resolve the separately observed fade-completion callback timeout. Earlier tracing
+edits remain uncommitted and were present during this run. Navigation, menu and surface
+candidates remain local. Broad prerequisite validation was stopped for disk pressure;
+Cargo cleaned the disposable dev artifacts, recovering 24 GB free. No upload or shared
+Exact integration was performed.
+
 **Teammate-testing resumption (2026-11-07):** app fixes are committed in PR #14
 (`fix/members-composer-groups`, stacked on #13). Recorded drives show matching group
 counts, the composer mounted during first-open loading, corrected two-person bridged

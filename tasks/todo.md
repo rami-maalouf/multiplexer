@@ -1,5 +1,28 @@
 # Mux: tasks
 
+## Exact validation continuation (2026-11-07)
+
+- [x] Recover the original thread's later TestFlight check: compliance saved, build 2
+  Ready to Submit, Teammates contains only its invited owner. This supersedes the
+  earlier pending-France checklist below. PR #14 is still absent from build 2.
+- [x] Fix the text fade endpoint clock mismatch, local Exact commit `a7ae7d07b0`.
+  All 35 TextPlace iOS cases pass, including the hosted pixel comparison. Existing
+  endpoint assertion unchanged. Earlier tracing edits were present and are not
+  committed with the production fix. Logs: `/tmp/mx-continue-fade-tests.log`.
+  Endpoint stress: 100 consecutive passes (`/tmp/mx-continue-fade-repeat.log`);
+  caps passed (`/tmp/mx-continue-fade-caps-final.log`).
+- [x] Recheck the drive refusal fix: 49 focused tests pass with pinned Bun 1.4.2.
+- [x] Send one validation diary with existing authorization, receipt
+  `ac9481f6-814f-49b1-bbc1-33193c87b718`; owned Simulator is shut down.
+- [ ] Complete publication gates and publish the isolated endpoint fix. Broad build
+  prerequisites consumed disk space and were stopped before completion. Cargo's
+  supported dev cleanup recovered 24 GB. No broad suite is claimed green.
+- [ ] Resolve the separate fade-completion callback timeout and hosted navigation
+  failure. Do not replace either with a relaxed assertion or another timeout increase.
+- [ ] Finish menu/surface validation. Direct replay of the saved menu xctestrun
+  failed because it had no test bundles; the fresh rebuild was stopped for disk pressure.
+- [ ] Integrate validated fixes under the helper lock before making another release.
+
 ## Teammate-testing checkpoint (2026-11-07 resumption)
 
 - [x] Recover app helper results and inspect the saved group-info comparison. PR #14

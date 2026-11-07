@@ -216,7 +216,18 @@ task down. Record that in the task's notes (`tasks/todo.md`), not here.
 If a new diary file does not show in `git status`, check `apps/multiplexer/.gitignore`:
 it must keep `!/.exact/diary/`.
 
+## Validation resumption findings
+
+| Finding | Cost | Severity | Evidence |
+|---|---|---|---|
+| saved native test run loses its bundles | about 2 min plus rebuilding | P3 | [native replay](issues/20261107-native-test-replay-loses-bundles.md) |
+| affected hides an unavailable cargo executable | about 1 min | P3 | [affected lookup](issues/20261107-affected-hides-missing-cargo.md) |
+
 ## Sent to the Exact team
+
+Validation continuation, 2026-11-07: receipt `ac9481f6-814f-49b1-bbc1-33193c87b718`,
+one diary, zero logged commands, sent with Rami's prior authorization. Findings:
+saved native-test replay and the missing-cargo diagnostic above.
 
 Findings go to the team through Exact's private feedback tool. Run it from
 `apps/multiplexer/`: `bun exact.mjs feedback preview` shows what would go, and
