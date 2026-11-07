@@ -332,6 +332,19 @@ had nothing to show at once.
   text size. Screenshots with real data only in `/tmp/mx-wide-text/`.
 - [ ] After a long time away, the newest message shows about 1 s before the ones between it and the
   older ones (the sync's gap, filled by the SDK). Hide the gap until it fills?
+- [x] A new device's first open showed the newest message alone for about 0.35 s, then the full
+  screen (demo recording, 2026-11-07, branch `fix/demo-bugs`). Cause: the early answer above, with no
+  kept copy in front. Fix: the app asks `messages` with `early` only when it has a copy; without one,
+  `opening(early: false)` waits for the fill, so the chat shows the loading spinner, then the full
+  first screen in one frame. Core test `testAChatWithNothingKeptOpensOnItsFullFirstScreen`. Frames:
+  `.exact/demo-bugs/bug1/` (in that worktree; a copy in the testflight checkout's `.exact/demo-bugs/`).
+- [x] The older-messages spinner row was 40 pt and the "Start of the chat" row 36 pt, so the messages
+  moved 4 pt when one replaced the other. Both now take the text line's height (the spinner over a
+  hidden copy of it): 36 and 36, and 72 and 72 at the largest text size.
+- [ ] The demo staging's rooms list a bridge bot that never joins (the id belongs to the live bridge).
+  The group now has a third contact, so it shows under Groups, but its info page says "3 members"
+  over a list of 4, and seating the contact marked the group read. A real bridged room has its bot
+  joined. A group with one other person on a real bridge still counts as a DM (`fillKind`).
 
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 

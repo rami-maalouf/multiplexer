@@ -20,3 +20,5 @@ Cost: about 15 minutes, two takes.
 ## Evidence
 
 Seen on 2026-11-07 at exact2 `8e547ca606`, iOS Simulator, `--timing platform --touch platform`.
+
+Additional evidence (2026-11-07, exact2 `f53339adc8`): a `--touch platform` drive signed in, `clock settle` reported two held tickets, and the next real tap failed with "no touch reached the app's window within 1 s ... (a push, a sheet, the keyboard) can be lost". The screen held the system's "Save Password?" sheet over the app. The failure named neither the sheet nor the held tickets. A drive in a new launch (no sheet) worked. About 5 minutes and one wasted recording.

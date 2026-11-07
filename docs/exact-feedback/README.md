@@ -175,6 +175,8 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 150 | `state` does not show a state that a `members` file declares. | About 3 min | P3 | [state-does-not-show-a-state](issues/20261107-state-does-not-show-a-state.md) |
 | 151 | After a return, liquid-glass `_UIFlexInteractionPanGestureRecognizer` can stay `.changed` and block every drag (scroll, row swipe, back); taps still work. An `isEnabled` release try did not fix it on device and was reverted. | About 15 min reading the phone log | P1 | [flex-pan-blocks-every-drag-after](issues/20261106-flex-pan-blocks-every-drag-after.md) |
 | 152 | A native popover action is reachable by its visible label but does not expose its authored test id to an external native drive. | About 2 min | P3 | [native-popover-action-test-id](issues/20261107-a-native-popover-action-does-not.md) |
+| 153 | A package's Swift that did not compile shows an empty error: "did not compile:" and nothing after it. | About 3 min and a 2-min build | P3 | [a-package-s-swift-that-did](issues/20261107-a-package-s-swift-that-did.md) |
+| 154 | A drive cannot show a component in a given state (props or app state), so `layout` of a short-lived state needs a contract edit for each measurement. | About 8 min, four drives | P3 | [a-drive-cannot-show-a-component](issues/20261107-a-drive-cannot-show-a-component.md) |
 
 ## What worked well
 
