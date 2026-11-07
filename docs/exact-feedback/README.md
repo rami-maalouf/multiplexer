@@ -173,6 +173,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 148 | Smooth scrolling cannot be limited to following a list's end, so an appended message is a one-frame shift. | Not timed | P3 | [smooth-scrolling-cannot-be-limited-to](issues/20261107-smooth-scrolling-cannot-be-limited-to.md) |
 | 149 | A held device request (a microphone permission) shows only on `clock settle`; `clock +N real` passes in silence, and a disabled-control failure does not name it. | About 15 min, two takes | P3 | [a-held-device-request-shows-only](issues/20261107-a-held-device-request-shows-only.md) |
 | 150 | `state` does not show a state that a `members` file declares. | About 3 min | P3 | [state-does-not-show-a-state](issues/20261107-state-does-not-show-a-state.md) |
+| 151 | After a return, liquid-glass `_UIFlexInteractionPanGestureRecognizer` can stay `.changed` and block every drag (scroll, row swipe, back); taps still work. Local host release shipped (`e2b58b6992`). | About 15 min reading the phone log | P1 | [flex-pan-blocks-every-drag-after](issues/20261106-flex-pan-blocks-every-drag-after.md) |
 
 ## What worked well
 
