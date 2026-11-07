@@ -90,7 +90,7 @@ component SettingsScreen
               else
                 text (notifications == "granted" ? "On" : "Off") color="-exact-secondary-label" testId="notifications-state"
             footer
-              text (notifications == "denied" ? "Turn them on in the iPhone's Settings, under Multiplexer." : "A new message shows its chat, its sender and its text.")
+              text (notifications == "denied" ? "Turn them on in the iPhone's Settings, under Mux." : "A new message shows its chat, its sender and its text.")
         section testId="appearance-settings"
           header
             text "Appearance"
@@ -165,4 +165,4 @@ component SettingsScreen
               button press=signOut destructive=true testId="sign-out" flex=1
                 text "Sign Out"
             footer
-              text (shown and profile.version != "" ? `Multiplexer ${profile.version}` : "") testId="version"
+              text (shown and profile.version != "" ? `Mux ${profile.version}` : "") testId="version"
