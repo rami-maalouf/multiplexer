@@ -5,7 +5,7 @@ LinkedIn and Signal. It follows the steps that Rami used for his own server in O
 November 2026. The records of that work are in `server/` and `tasks/` in this repo.
 
 At the end you have one inbox for your chats. You read it in Element X, or in the Mux app
-through TestFlight.
+(iPhone): https://appdrop.app/d/nb2nfrv68c
 
 Placeholders in this guide:
 
@@ -405,9 +405,9 @@ phone's "Start verification" spinner. Then it worked. He does not know which ste
 it. If it hangs, start the verification from the other session, and do not tap Start on
 the phone.
 
-**Mux** (iOS, through TestFlight). Rami sends the invite.
+**Mux** (iPhone).
 
-1. Install Mux from TestFlight.
+1. Install Mux from https://appdrop.app/d/nb2nfrv68c.
 2. Type `example.com` in the server field.
 3. Type `alice` and your password, then sign in.
 
