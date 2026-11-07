@@ -41,3 +41,14 @@ distribution one), and the archive check allowing the call when that grant is de
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS 26.5 Simulator: the token callback added at run
 time received a 64-byte sandbox token once the binary's simulated entitlements had
 `aps-environment`; without it, the error above.
+
+## Evidence (2026-11-07): the app's own module has no development flag
+
+For a TestFlight archive, the app needed to keep its push-registration call out of the archive
+and keep it in development builds. Packages compile with `-D EXACT_DEVELOPMENT` in a development
+build. The app's own `modules/apple/` Swift compiles with no such flag, so the app had no
+compile-time way to do it. Local fix in exact2 (`8e547ca606`, branch `local/mx-testflight`):
+the app module's compile takes the same flag as packages, and `docs/reference.md` says to put a
+development-only call inside `#if EXACT_DEVELOPMENT`. With that and the `#if` in the app, the
+archive passed with 0 hits of the refused name in its binaries, and a development Simulator build
+kept the call. Not yet a pull request. About 15 minutes.
