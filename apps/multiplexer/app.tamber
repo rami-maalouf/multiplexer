@@ -16,9 +16,11 @@ theme
   // the play mark and the length on a video's poster, over the scrim: white in both schemes.
   media.ink = #ffffff scheme=fixed
   // the field while a voice message records: the system's red, faint, with no border on the capsule.
-  voice.recording = light-dark(rgba(255, 59, 48, 0.1), rgba(255, 69, 58, 0.18))
-  // Stop's prominent glass: the system red, part clear, so the glass shows and the red is softer.
-  voice.stop = light-dark(rgba(255, 59, 48, 0.72), rgba(255, 69, 58, 0.7))
+  voice.recording = light-dark(rgba(176, 42, 36, 0.08), rgba(150, 34, 30, 0.2))
+  // Stop's glass tint (UIKit's tinted glass): a muted, darker red, part clear so the glass shows.
+  voice.stop = light-dark(rgba(168, 40, 34, 0.8), rgba(150, 34, 30, 0.7))
+  // the recording's dot, time and level: a darker red than the system's, easier on the eye.
+  voice.ink = light-dark(#c0362e, #d24a41)
   // the stop mark on the red stop button: white in both schemes.
   voice.on-red = #ffffff scheme=fixed
   // the camera is dark in both schemes, as the phone's camera: black, white ink, the shutter white.

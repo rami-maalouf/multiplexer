@@ -209,13 +209,14 @@ component RecordingBar
     // no stroke: a red border was the old look; fill alone, clipped to the capsule.
     view flex=1 min-width=0 min-height=48 border-radius=24 overflow="hidden" background-color="voice.recording" testId="recording-bar"
       row align-items="center" gap=8 min-height=48 padding="0 14px"
-        view width=10 height=10 border-radius=5 background-color="-exact-system-red" flex-shrink=0 aria-hidden=true
-        text lengthText(floor(milliseconds / 1000)) font="-exact-body" font-size="min(-exact-body, 24px)" color="-exact-system-red" font-variant-numeric="tabular-nums"
+        view width=10 height=10 border-radius=5 background-color="voice.ink" flex-shrink=0 aria-hidden=true
+        text lengthText(floor(milliseconds / 1000)) font="-exact-body" font-size="min(-exact-body, 24px)" color="voice.ink" font-variant-numeric="tabular-nums"
           flex-shrink=0 testId="voice-elapsed" aria-label=`Recording, ${lengthText(floor(milliseconds / 1000))}`
         if starting
           view flex=1
         else
-          audio-waveform track=track tint="#ff3b30" flex=1 min-width=0 height=28 testId="voice-level"
+          // its tint is one literal colour: between voice.ink's two.
+          audio-waveform track=track tint="#c9403a" flex=1 min-width=0 height=28 testId="voice-level"
 
 // X that replaces "+" while a voice message records or waits as a draft (same mark either way).
 component VoiceCancel
@@ -230,17 +231,18 @@ component VoiceCancel
       aria-label=(draft ? "Delete Recording" : "Cancel Recording") testId=(draft ? "voice-delete" : "voice-cancel")
       image "symbol:close" font-size="min(-exact-title3, 24px)" color="-exact-label"
 
-// stop that replaces the voice button while recording: iOS's red liquid glass (prominent glass,
-// tinted a softer red than the system's, voice.stop), with a white square, as Beeper's. A tint painted over a glass view hid
-// the glass; prominent glass is the platform's own tinted glass.
+// stop that replaces the voice button while recording: a glass circle tinted a muted red (UIKit's
+// tinted glass, voice.stop) with a white square, as Beeper's. A glass view, not a native prominent
+// glass button, so it is in the composer row's glass group with the field and the X.
 component VoiceStop
   props
     press: action
     disabled: bool
   view
-    button press=press disabled=disabled buttonStyle="prominent-glass" accent-color="voice.stop"
-      width=48 height=48 flex-shrink=0 retainFocus=true aria-label="Stop Recording" testId="voice-stop"
-      image "symbol:stop-fill" font-size="min(-exact-body, 18px)"
+    button appearance="none" press=press disabled=disabled backgroundMaterial="glass" -exact-tint-color="voice.stop"
+      border-radius=24 -exact-press-opacity=1 width=48 height=48 flex-shrink=0 retainFocus=true
+      display="flex" align-items="center" justify-content="center" aria-label="Stop Recording" testId="voice-stop"
+      view width=14 height=14 border-radius=3 background-color="voice.on-red" aria-hidden=true
 // the recording before it goes: play with its waveform and length inside the capsule; Delete and
 // Send sit outside in the + and voice slots, as while recording.
 component DraftBar

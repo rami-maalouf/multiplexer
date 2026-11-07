@@ -174,6 +174,11 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   points with 8 around it; Stop's red is softer (`voice.stop`, the system red part clear).
   Frames in `apps/multiplexer/.exact/edge-fix/anim-*.png`. The logo was not seen in a drive: the
   test users have no bridged chat.
+  Then (Rami): the recording red is muted and darker (`voice.stop`, `voice.ink`, `voice.recording`);
+  Stop, Send and the draft's Send are glass views tinted by `-exact-tint-color` (Exact `0d43115cb6`:
+  UIKit's tinted glass on a glass box), so they share the row's glass group (Send, inside the
+  field, is isolated by the field's glass, as nested glass is); the live waveform draws levels in
+  decibels (Exact `31063d7dbb`, Apple and web; Android not compiled here, left as it was).
 - [ ] Exact: a growing field is a line short at three or more lines (finding 136); the composer's
   `line-height=1.25` fixes three lines, four or more still scroll a little.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status

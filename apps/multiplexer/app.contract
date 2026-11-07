@@ -1660,7 +1660,7 @@ component Multiplexer
                         placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
                         aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
                         border="none" background-color="transparent" line-height=1.25
-                    // Send (or an edit's checkmark): the accent's liquid glass (iOS's prominent glass), 32
+                    // Send (or an edit's checkmark): the accent's liquid glass (a tinted glass view), 32
                     // points, 8 from the field's end and bottom, over the field's right padding. It floats:
                     // beside the text in the row, the text's own height was measured at the row's whole width
                     // and cut its first line. A long press offers Send Later's times (send-later-members.contract)
@@ -1670,15 +1670,21 @@ component Multiplexer
                         testId="send-hold"
                         animation=(viewport.prefersReducedMotion ? "none" : "sendIn 280ms 60ms cubic-bezier(.32,.72,0,1) both")
                         -exact-exit-animation="sendOut 160ms ease-in both"
-                        button press=post buttonStyle="prominent-glass" width=32 height=32 retainFocus=true testId="send"
+                        // a glass circle tinted the accent (UIKit's tinted glass), not a native button, so it is
+                        // glass on the same plane as the field it sits in. Disabled, only its arrow dims.
+                        button appearance="none" press=post backgroundMaterial="glass" -exact-tint-color=appearance.tint
+                          border-radius=16 -exact-press-opacity=1 width=32 height=32 retainFocus=true testId="send"
+                          display="flex" align-items="center" justify-content="center"
                           disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
                           aria-label=(editing != "" ? "Save Edit" : "Send")
-                          image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 16px)"
+                          image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 16px)" color=appearance.onTint
                   // the voice slot: the voice button, Stop while recording, the draft's Send; each liquid glass.
                   if recording == "draft"
-                    button press=sendVoiceDraft disabled=(not draftReady and pending(voicePrepared)) buttonStyle="prominent-glass"
+                    button appearance="none" press=sendVoiceDraft disabled=(not draftReady and pending(voicePrepared))
+                      backgroundMaterial="glass" -exact-tint-color=appearance.tint border-radius=24 -exact-press-opacity=1
                       width=48 height=48 flex-shrink=0 retainFocus=true aria-label="Send Voice Message" testId="voice-send"
-                      image "symbol:send" font-size="min(-exact-body, 22px)"
+                      display="flex" align-items="center" justify-content="center"
+                      image "symbol:send" font-size="min(-exact-body, 22px)" color=appearance.onTint
                   else if recording != "idle"
                     VoiceStop(press=stopVoice, disabled=(recording != "recording"))
                   else if voiceOffered
