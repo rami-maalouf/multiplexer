@@ -54,6 +54,19 @@ extension Matrix {
             print("matrix: the pusher stays until the server forgets the device: \(error.localizedDescription)")
         }
     }
+
+    /// Permission left `granted` (turned off in the iPhone's Settings): drop this device's
+    /// pusher and forget its stored key so a later Allow can register cleanly.
+    @MainActor func unregisterPush() async throws {
+        guard var stored = try keychain.read() else { return }
+        guard stored.pushkey != nil, stored.pusherAppId != nil else { return }
+        let account = try await signedIn()
+        await deletePusher(account, stored)
+        stored.pushkey = nil
+        stored.pusherAppId = nil
+        try keychain.write(stored)
+        print("matrix: pusher cleared after notifications left granted")
+    }
 }
 
 #if canImport(UIKit)
