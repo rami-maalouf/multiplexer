@@ -52,3 +52,12 @@ the app module's compile takes the same flag as packages, and `docs/reference.md
 development-only call inside `#if EXACT_DEVELOPMENT`. With that and the `#if` in the app, the
 archive passed with 0 hits of the refused name in its binaries, and a development Simulator build
 kept the call. Not yet a pull request. About 15 minutes.
+
+## Evidence (2026-11-07): it also blocks an install-link archive
+
+Once the roster check passed (finding 126's local fix), `ios --device --archive <out.ipa> --unsigned`
+stopped at `ExactModules.framework/ExactModules: registerForRemoteNotifications refused (LLP 1126.001
+WP9)`. For that one archive, the call was replaced by an immediate "no token" answer in an
+uncommitted copy (a re-signing service signs with the recipient's own Apple ID, which has no push
+entitlement, so nothing was lost). The archive was then made. The refusal applies to every archive,
+also to an app with no Live Activity, which is what the WP9 ruling is about.
