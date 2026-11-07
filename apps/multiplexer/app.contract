@@ -26,6 +26,16 @@ use CameraScreen from "./camera.contract"
 use RequestsScreen from "./requests.contract"
 use NewSpaceSheet, AddToSpaceSheet from "./spaces.contract"
 
+// Send grows into the field's end as typing starts, and leaves as it empties; the network's logo
+// at the field's start fades with the voice button, as Beeper's.
+keyframes sendIn
+  from opacity=0 scale=0.5
+// leaving is a fade only, so it stays calm under Reduce Motion (an exit animation is one literal).
+keyframes sendOut
+  to opacity=0
+keyframes logoOut
+  to opacity=0
+
 shape Session
   userId: string
 
@@ -1621,6 +1631,8 @@ component Multiplexer
                   // the glass interactive, as Beeper's field is: held, it swells and follows the finger.
                   column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" press=pressField
                     -exact-press-opacity=1 testId="composer-glass"
+                    // it widens into the voice button's slot as Send moves in, and gives it back.
+                    -exact-layout-transition=(viewport.prefersReducedMotion ? "none" : "300ms cubic-bezier(.32,.72,0,1)")
                     if recording == "draft"
                       DraftBar(appearance=appearance, bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
                         playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, play=playVoice("draft"))
@@ -1640,24 +1652,28 @@ component Multiplexer
                     row align-items="flex-end" padding=(recording == "idle" and not voiceOffered ? "0 48px 0 14px" : "0 14px")
                       opacity=(recording != "idle" ? 0 : 1) height=(recording != "idle" ? 0 : "auto") overflow="hidden"
                       pointer-events=(recording != "idle" ? "none" : "auto") aria-hidden=(recording != "idle")
-                      if openNetwork != "matrix" and not viewport.accessibilityTextSize and recording == "idle"
-                        ComposerNetwork(network=openNetwork)
+                      // the network's logo only while the field is empty, as Beeper's: typing takes its room.
+                      if openNetwork != "matrix" and not viewport.accessibilityTextSize and recording == "idle" and voiceOffered
+                        view flex-shrink=0 -exact-exit-animation="logoOut 150ms ease-in both"
+                          ComposerNetwork(network=openNetwork)
                       textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
                         placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
                         aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
                         border="none" background-color="transparent" line-height=1.25
-                    // Send (or an edit's checkmark): the accent's liquid glass (iOS's prominent glass), 36
-                    // points, 6 from the field's end and bottom, over the field's right padding. It floats:
+                    // Send (or an edit's checkmark): the accent's liquid glass (iOS's prominent glass), 32
+                    // points, 8 from the field's end and bottom, over the field's right padding. It floats:
                     // beside the text in the row, the text's own height was measured at the row's whole width
                     // and cut its first line. A long press offers Send Later's times (send-later-members.contract)
                     // where the chat can have it; it is on a view around Send, as a native button takes no long press.
                     if recording == "idle" and not voiceOffered
-                      view position="absolute" right=6 bottom=6 contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "")
+                      view position="absolute" right=8 bottom=8 contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "")
                         testId="send-hold"
-                        button press=post buttonStyle="prominent-glass" width=36 height=36 retainFocus=true testId="send"
+                        animation=(viewport.prefersReducedMotion ? "none" : "sendIn 280ms 60ms cubic-bezier(.32,.72,0,1) both")
+                        -exact-exit-animation="sendOut 160ms ease-in both"
+                        button press=post buttonStyle="prominent-glass" width=32 height=32 retainFocus=true testId="send"
                           disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
                           aria-label=(editing != "" ? "Save Edit" : "Send")
-                          image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 18px)"
+                          image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 16px)"
                   // the voice slot: the voice button, Stop while recording, the draft's Send; each liquid glass.
                   if recording == "draft"
                     button press=sendVoiceDraft disabled=(not draftReady and pending(voicePrepared)) buttonStyle="prominent-glass"
@@ -1666,7 +1682,7 @@ component Multiplexer
                   else if recording != "idle"
                     VoiceStop(press=stopVoice, disabled=(recording != "recording"))
                   else if voiceOffered
-                    VoiceButton(press=startVoice, disabled=pending(sentVoice))
+                    VoiceButton(press=startVoice, disabled=pending(sentVoice), still=viewport.prefersReducedMotion)
             column id="send-later-menu" popover="auto" role="menu"
               button press=sendLaterAt("tomorrow") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-tomorrow"
                 image "symbol:icon.clock"

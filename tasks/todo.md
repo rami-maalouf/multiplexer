@@ -169,6 +169,11 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   group (`glassGroup=8`), each glass with its own press; typing moves Send inside the field (the
   accent's prominent glass) and the field reaches the row's end; Stop and the draft's Send are
   prominent glass (Stop tinted the system red). Needs Rami's finger for the glass merging.
+  Then (Rami): the network logo leaves the field once typing starts; the field widens with a layout
+  transition as the voice button fades and Send grows in (Reduce Motion: fades only); Send is 32
+  points with 8 around it; Stop's red is softer (`voice.stop`, the system red part clear).
+  Frames in `apps/multiplexer/.exact/edge-fix/anim-*.png`. The logo was not seen in a drive: the
+  test users have no bridged chat.
 - [ ] Exact: a growing field is a line short at three or more lines (finding 136); the composer's
   `line-height=1.25` fixes three lines, four or more still scroll a little.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status

@@ -39,6 +39,15 @@ fn nextSpeed(speed: number): number = speed == 1 ? 1.5 : (speed == 1.5 ? 2 : 1)
 // a voice message's waveform: one bar for each part, from its start to its end, as tall as that
 // part is loud. While it plays, the bars played are in full ink and the rest faint. With no bars yet
 // (a draft's waveform is being measured), a flat line.
+
+// the voice button leaves as typing starts (Send takes its place inside the field) and comes back
+// when the field empties: a shrink and fade, as Beeper's.
+keyframes voiceIn
+  from opacity=0 scale=0.6
+// leaving is a fade only, so it stays calm under Reduce Motion (an exit animation is one literal).
+keyframes voiceOut
+  to opacity=0
+
 component VoiceBars
   props
     bars: VoiceBar[]
@@ -178,10 +187,14 @@ component VoiceButton
   props
     press: action
     disabled: bool
+    // Reduce Motion: no shrink or fade.
+    still: bool
   view
     // its own glass circle, as the + button's, so it joins the composer row's glass group.
     button appearance="none" press=press disabled=disabled backgroundMaterial="glass" border-radius=24 -exact-press-opacity=1
       width=48 height=48 flex-shrink=0 retainFocus=true display="flex" align-items="center" justify-content="center"
+      animation=(still ? "none" : "voiceIn 260ms cubic-bezier(.32,.72,0,1) both")
+      -exact-exit-animation="voiceOut 180ms ease-in both"
       aria-label="Record Voice Message" testId="voice-record"
       image "symbol:waveform" font-size="min(-exact-title3, 24px)" color=(disabled ? "-exact-tertiary-label" : "-exact-label")
 
@@ -218,14 +231,14 @@ component VoiceCancel
       image "symbol:close" font-size="min(-exact-title3, 24px)" color="-exact-label"
 
 // stop that replaces the voice button while recording: iOS's red liquid glass (prominent glass,
-// tinted the system red), with a white square, as Beeper's. A tint painted over a glass view hid
+// tinted a softer red than the system's, voice.stop), with a white square, as Beeper's. A tint painted over a glass view hid
 // the glass; prominent glass is the platform's own tinted glass.
 component VoiceStop
   props
     press: action
     disabled: bool
   view
-    button press=press disabled=disabled buttonStyle="prominent-glass" accent-color="-exact-system-red"
+    button press=press disabled=disabled buttonStyle="prominent-glass" accent-color="voice.stop"
       width=48 height=48 flex-shrink=0 retainFocus=true aria-label="Stop Recording" testId="voice-stop"
       image "symbol:stop-fill" font-size="min(-exact-body, 18px)"
 // the recording before it goes: play with its waveform and length inside the capsule; Delete and
