@@ -4,6 +4,23 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Review metadata saved and CLI fix published (2026-11-07):** Rami supplied the Apple
+review contact phone and approved the existing staged demo account. Beta description,
+feedback/marketing/contact information, review notes and demo credentials were saved;
+reload verified all required saved fields without exposing credentials. No phone or
+password is stored in this repository. Build 3 has finished processing and shows
+Missing Compliance. Standard encryption is selected as previously approved; the
+France response is requested because Rami's saved build-2 choice was not reported.
+No compliance save or beta-review submission has been performed for build 3.
+Both replacement Exact agents stopped on provider usage limits. Parent recovered
+CLI validation and completed the missing full workspace check (exit 0, 79 s), after
+Cargo's supported dev cleanup removed 22 GiB of disposable build artifacts. Other
+recorded root gates passed, as did 49 driver tests and 100 related CLI cases.
+Published Exact PR #1596 (`eddc967dc3`) and integrated it under the shared helper lock
+as `86559f737a`; the integration's 49 driver tests passed, and the checkout is clean.
+The fade, navigation and menu candidates remain isolated and unpublished; their
+focused successes do not close the wider native failures or remaining gates.
+
 **Build 3 uploaded (2026-11-07):** release lane integrated app PRs #12, #13 and #14 on
 `release/testflight-3`. Compiled source `f995eeebb654935d503aa2116620c9a2f0d6524f`, clean
 Exact `7783ea7012d01f2df8b9b53ce814c9e8337b2aef`; copied MatrixCore before compiling.

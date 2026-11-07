@@ -5,13 +5,20 @@
 - [x] Delegate app release and Exact validation to separate lanes with disjoint ownership.
 - [x] Create `Teammates External` and verify the public link, capped at 25 testers:
   `https://testflight.apple.com/join/h9JBMmDZ`. Group currently has zero builds.
-- [ ] Receive Apple beta-review contact phone and permission to submit staged demo credentials.
+- [x] Receive Apple beta-review contact phone and permission to submit staged demo credentials. Contact and approved sample-account fields saved and verified after reload; neither phone nor credential is committed.
 - [x] Upload 0.1.0 (3), containing app PRs #12/#13/#14; verify release evidence and
   inspect App Store Connect: Processing. Source `f995eee`, clean Exact `7783ea7012`.
   Receipt: `multiplexer-testflight/docs/releases/testflight-3.md` (`251a157`).
-- [ ] Complete TestFlight beta information and attach build 3 when processing finishes.
+- [x] Save TestFlight beta information and verify persistence after reload.
+- [ ] Clear build 3 compliance and attach it to Teammates External. Processing finished;
+  Apple asks France again. Await Rami's actual build-2 answer; standard encryption is selected.
 - [ ] Submit the new build for external beta review and verify Apple's resulting state.
-- [ ] Finish Exact publication/integration and record each PR and its actual validation.
+- [x] Publish CLI refusal fix as Exact PR #1596 and integrate under helper lock
+  (`86559f737a`); 49 integration tests passed. Full Rust workspace check passed after
+  disposable artifact cleanup; other root gates and 100 related CLI cases passed.
+- [ ] Finish fade/navigation/menu publication and integration. Both delegated providers
+  reached usage limits; commits/tests are preserved. Larger native failures remain
+  distinct from the passing 15 collapse cases and 100 fade repetitions.
 
 ## Exact validation continuation (2026-11-07)
 
