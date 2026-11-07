@@ -190,6 +190,8 @@ final class PushTests: XCTestCase {
         let account = try await MatrixAccount.signIn(homeserver: homeserver, user: user, password: password,
                                                      deviceName: "Multiplexer test", storeDirectory: store)
         addTeardownBlock { try? await account.signOut() }
+        // the fresh store needs the same first-sync budget as the other fresh test devices.
+        _ = try await account.rooms(timeout: 120)
         return account
     }
 

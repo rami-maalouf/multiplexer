@@ -54,6 +54,7 @@ All in the Mac's login Keychain. Never in git, chat or logs.
 | `multiplexer-server` | `postgres_connection_password` | PostgreSQL's main user. Changing it later needs manual work. |
 | `multiplexer-matrix` | `@rami:ramimaalouf.com` | Rami's Matrix password. |
 | `multiplexer-test-account` | `@test1:ramimaalouf.com`, `@test2:ramimaalouf.com` | Test users for the app. |
+| `multiplexer-apns` | `key`, `key-id` | The sandbox APNs key (`.p8`, base64) and its Key ID, for Sygnal. |
 
 To paste a password on the iPhone (Universal Clipboard):
 `security find-generic-password -s multiplexer-matrix -a @rami:ramimaalouf.com -w | pbcopy`.
@@ -81,6 +82,21 @@ To paste a password on the iPhone (Universal Clipboard):
   playbook's `docs/importing-postgres.md`. After restoring a dump older than
   the server's state, truncate Synapse's `e2e_one_time_keys_json` table before Synapse starts
   (the playbook's `docs/maintenance-postgres.md`).
+
+## Push (Sygnal)
+
+- **What:** Sygnal sends Synapse's pushes for the iPhone to Apple (APNs). `config.yml` turns it
+  on with `com.ramimaalouf.multiplexer.ios.dev` (APNs sandbox, development builds),
+  team `3V2UU7RRK9` and topic `com.ramimaalouf.multiplexer`. The key created on
+  2026-11-07 is sandbox-only and restricted to that topic. Production is disabled
+  until it has a separate production credential.
+- **Where:** `https://sygnal.ramimaalouf.com/_matrix/push/v1/notify`. DNS: Cloudflare
+  `CNAME sygnal -> matrix.ramimaalouf.com`, DNS only.
+- **The key:** in the Keychain (`multiplexer-apns`, see Secrets). `setup.sh` copies it into
+  `vars.yml`; the playbook writes it to `/matrix/sygnal/data/apns-key.p8` (mode 0600, user
+  `matrix`). The playbook also keeps a copy of `vars.yml` in `/matrix/vars.yml` (mode 0660,
+  user `matrix`), as for the other secrets. A new key: replace the Keychain items, run
+  `setup.sh`, then install.
 
 ## Network
 
