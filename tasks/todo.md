@@ -38,7 +38,7 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 - [x] `website/`: an Exact site, one page built ahead, dark only, brand tokens in `app.tamber`;
   `test web` 3 passed, `verify` clean; checked at 1280 and 390 px wide and at the largest text.
 - [x] Exact findings 137 to 142 (diary `apps/multiplexer/.exact/diary/2026-11-06-a-landing-site.md`).
-- [ ] Publish at `https://mux.orbitlabs.studio` (`website/deploy.sh`, Vercel project `mux`).
+- [x] Published at `https://mux.orbitlabs.studio` (`website/deploy.sh`, Vercel project `mux`, 2026-11-06); checked live at 1280 and 390 px.
 - [ ] The setup guide: a server, a domain, the bridges, and the app, for someone other than Rami.
 
 ## Open: "seen" in the list on a long-running device (2026-11-06)
