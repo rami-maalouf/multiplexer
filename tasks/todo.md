@@ -6,7 +6,10 @@
 - [x] Create `Teammates External` and verify the public link, capped at 25 testers:
   `https://testflight.apple.com/join/h9JBMmDZ`. Group currently has zero builds.
 - [ ] Receive Apple beta-review contact phone and permission to submit staged demo credentials.
-- [ ] Complete TestFlight beta information and attach the newly verified uploaded build.
+- [x] Upload 0.1.0 (3), containing app PRs #12/#13/#14; verify release evidence and
+  inspect App Store Connect: Processing. Source `f995eee`, clean Exact `7783ea7012`.
+  Receipt: `multiplexer-testflight/docs/releases/testflight-3.md` (`251a157`).
+- [ ] Complete TestFlight beta information and attach build 3 when processing finishes.
 - [ ] Submit the new build for external beta review and verify Apple's resulting state.
 - [ ] Finish Exact publication/integration and record each PR and its actual validation.
 

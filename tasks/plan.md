@@ -4,6 +4,22 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Build 3 uploaded (2026-11-07):** release lane integrated app PRs #12, #13 and #14 on
+`release/testflight-3`. Compiled source `f995eeebb654935d503aa2116620c9a2f0d6524f`, clean
+Exact `7783ea7012d01f2df8b9b53ce814c9e8337b2aef`; copied MatrixCore before compiling.
+The upload succeeded at 18:20 UTC and App Store Connect independently shows 0.1.0 (3)
+Processing. It is not yet approved or installable externally. Release receipt and diary
+are committed as `251a157` in `multiplexer-testflight`; see
+`docs/releases/testflight-3.md` there. Verification: 13 Bun tests, 12 iOS tests,
+light/dark checks and 14 largest-text screens passed. Parent inspected the chat
+screenshot; the composer is visible. App and both framework symbol UUIDs match.
+Owned test session signed out and simulator shut down. Previous full-core and
+cold-open evidence limits remain in the receipt. External review still waits for
+contact phone/demo-account authorization and build processing. Exact lane reports
+navigation `a33be9ae8a` fixes a stale minimum offset (64 vs 116 pt), all 15 intended
+NavigationCollapse tests pass; wider neighbors/screenshots and publication gates
+remain active. The clean fade fix passed 100 completion repetitions.
+
 **Release and external-testing execution (2026-11-07):** Rami authorized sub-agents to
 finish the newer TestFlight build, external testing and Exact validation. App release
 and Exact validation are delegated in separate lanes; root owns App Store Connect and
