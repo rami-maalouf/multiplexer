@@ -2434,6 +2434,16 @@ What the research found:
 
 ### P3.0 The Apple setup (Rami)
 
+**Rechecked 2026-11-07:** Rami requested push implementation. Both APNs Keychain
+items are absent, the installed app profile has no push/App Group entitlement and
+does not provision the phone, and the gateway DNS name does not resolve. Apple
+Developer is signed in. A dedicated sandbox/topic-specific key form is prepared
+for `com.ramimaalouf.multiplexer`, but not saved or registered: the computer-use
+tool requires explicit confirmation to create the persistent credential and deploy
+it to the gateway. Its current form separates sandbox and production; do not use
+this sandbox key for the prepared production gateway entry. No existing keys were
+revoked, no server changes were applied, and no real-account drive was performed.
+
 **Description:** push and an App Group need explicit App IDs and profiles; the team wildcard
 profile grants neither. Rami can do this now, while the inbox tasks run.
 
