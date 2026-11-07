@@ -171,6 +171,8 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 146 | `layout` shows no scroll state (offset, content size, insets) for a windowed list. | About 20 min, host logging by hand | P3 | [layout-shows-no-scroll-state-for](issues/20261107-layout-shows-no-scroll-state-for.md) |
 | 147 | A drive screenshot leaves the keyboard out, so a keyboard bug needs a Simulator recording and a hand-made frame sheet. | About 10 min over two tasks | P3 | [a-drive-screenshot-leaves-the-keyboard](issues/20261107-a-drive-screenshot-leaves-the-keyboard.md) |
 | 148 | Smooth scrolling cannot be limited to following a list's end, so an appended message is a one-frame shift. | Not timed | P3 | [smooth-scrolling-cannot-be-limited-to](issues/20261107-smooth-scrolling-cannot-be-limited-to.md) |
+| 149 | A held device request (a microphone permission) shows only on `clock settle`; `clock +N real` passes in silence, and a disabled-control failure does not name it. | About 15 min, two takes | P3 | [a-held-device-request-shows-only](issues/20261107-a-held-device-request-shows-only.md) |
+| 150 | `state` does not show a state that a `members` file declares. | About 3 min | P3 | [state-does-not-show-a-state](issues/20261107-state-does-not-show-a-state.md) |
 
 ## What worked well
 
