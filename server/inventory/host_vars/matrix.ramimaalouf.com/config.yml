@@ -17,6 +17,27 @@ matrix_homeserver_implementation: synapse
 # let's encrypt needs no e-mail address, so traefik_config_certificatesResolvers_acme_email stays empty.
 matrix_playbook_reverse_proxy_type: playbook-managed-traefik
 
+# flowback (rami-maalouf/flowback) shares this traefik. its web service listens on
+# 127.0.0.1:8893, and a systemd socket bridges it to the docker gateway at 172.26.0.1:8894.
+# a playbook run rewrites /matrix/traefik/config/provider.yml, so the route must live here:
+# hand edits to that file are lost (2026-11-03 run, site 404 until 2026-11-07).
+# source of truth: deploy/bridge/traefik-provider.yml in the flowback repo.
+traefik_provider_configuration_extension_yaml: |
+  http:
+    routers:
+      flowback:
+        rule: Host(`flowback.orbitlabs.studio`)
+        entryPoints:
+          - web-secure
+        service: flowback
+        tls:
+          certResolver: default
+    services:
+      flowback:
+        loadBalancer:
+          servers:
+            - url: http://172.26.0.1:8894
+
 # as the playbook's example recommends. the server has no public ipv6 address yet,
 # so there is no AAAA record.
 devture_systemd_docker_base_ipv6_enabled: true
