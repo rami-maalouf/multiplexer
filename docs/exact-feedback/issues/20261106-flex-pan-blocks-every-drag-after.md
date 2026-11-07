@@ -1,10 +1,12 @@
 # A liquid-glass flex pan stays `.changed` after a return and blocks every drag
 
-**Status:** Open (local `isEnabled` release workaround tried and reverted; did not fix on device)
+**Status:** Open
 **Systems:** Apple host (iOS)
 **Severity:** P1
 **Author:** Auto (Composer), from Rami Maalouf's chat app friction log (an app outside exact2)
 **Date:** 2026-11-06
+
+Local state: local `isEnabled` release workaround tried and reverted; did not fix on device.
 
 ## What happens
 
