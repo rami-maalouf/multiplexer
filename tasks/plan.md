@@ -4,6 +4,12 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Website and README (2026-11-06, `feat/mux-website`):** a root `README.md` (what Mux is, why,
+how it works, how it was built) and a one-page site in `website/`, an Exact site built ahead
+(`render=build`), dark only, in the brand's colours (`docs/brand.md`). `verify` clean; tests pass.
+Publishes to Vercel (project `mux`) at `mux.orbitlabs.studio` with `website/deploy.sh`.
+Exact findings 137 to 142. A setup guide for others is the next document.
+
 **Mux identity (2026-11-06):** Rami selected the three-fold glass paper plane and
 named the app Mux. Visible app copy, manifest names, new Matrix device/push display
 names, and voice-file vendor metadata now use Mux. The approved PNG is packaged

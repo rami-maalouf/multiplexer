@@ -159,6 +159,12 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 134 | A tinted glass circle needs `appearance="none"` plus `backgroundMaterial="glass"`; `buttonStyle="glass"` refuses a tint. | About 2 min | P3 | [a-tinted-glass-circle-needs](issues/20261106-a-tinted-glass-circle-needs.md) |
 | 135 | Glass is interactive only on a node with its own `press`; the docs do not say so, and the agent cannot show it. | About 15 min | P3 | [glass-is-interactive-only-with](issues/20261106-glass-is-interactive-only-with.md) |
 | 136 | A growing textarea comes up a line short on iOS, so its first line scrolls under its top. | About 15 min | P2 | [a-growing-textarea-comes-up](issues/20261106-a-growing-textarea-comes-up.md) |
+| 137 | A woken built page keeps the build's `exactViewport` width until a resize, so a width branch never shows its wide side on a desktop. | About 25 min | P2 | [a-woken-built-page-keeps-the](issues/20261107-a-woken-built-page-keeps-the.md) |
+| 138 | A radial gradient's explicit size is refused with a message about the stop's colour. | About 5 min | P3 | [a-radial-gradient-s-size-is](issues/20261107-a-radial-gradient-s-size-is.md) |
+| 139 | `verify`'s contrast check reads the page under a `background-image` gradient fill, so text on a gradient pill is reported. | About 3 min | P3 | [verify-s-contrast-check-ignores-a](issues/20261107-verify-s-contrast-check-ignores-a.md) |
+| 140 | `verify.accept` cannot take a fixed-type finding on a text whose `testId` is a template. | About 5 min | P3 | [verify-accept-cannot-take-a-template](issues/20261107-verify-accept-cannot-take-a-template.md) |
+| 141 | A dark-only site cannot set the document's background, so overscroll shows black. | About 5 min | P3 | [a-dark-only-site-cannot-set](issues/20261107-a-dark-only-site-cannot-set.md) |
+| 142 | A site with no API must still export `grants`; the recipe does not say so. | About 2 min | P3 | [a-site-with-no-api-must](issues/20261107-a-site-with-no-api-must.md) |
 
 ## What worked well
 

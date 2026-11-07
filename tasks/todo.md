@@ -32,6 +32,15 @@ detail. Later phases are rough. We detail each one at the checkpoint before it.
 
 T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 
+## Website and README (2026-11-06, branch `feat/mux-website`)
+
+- [x] Root `README.md`: what Mux is, why we built it, how it works, how we built it, the folders.
+- [x] `website/`: an Exact site, one page built ahead, dark only, brand tokens in `app.tamber`;
+  `test web` 3 passed, `verify` clean; checked at 1280 and 390 px wide and at the largest text.
+- [x] Exact findings 137 to 142 (diary `apps/multiplexer/.exact/diary/2026-11-06-a-landing-site.md`).
+- [ ] Publish at `https://mux.orbitlabs.studio` (`website/deploy.sh`, Vercel project `mux`).
+- [ ] The setup guide: a server, a domain, the bridges, and the app, for someone other than Rami.
+
 ## Open: "seen" in the list on a long-running device (2026-11-06)
 
 - [ ] With one signed-in device per test user for a whole MatrixCore run, `testThePreviewSaysSentThenSeen`

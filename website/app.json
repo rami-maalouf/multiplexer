@@ -1,0 +1,78 @@
+{
+  "$schema": "../../exact/exact2-multiplexer-integration/scripts/app.schema.json",
+  "name": "Mux",
+  "short_name": "Mux",
+  "id": "studio.orbitlabs.mux",
+  "start_url": "/",
+  "display": "standalone",
+  "app": {
+    "id": "studio.orbitlabs.mux",
+    "name": "Mux",
+    "origin": "https://mux.orbitlabs.studio"
+  },
+  "host": {
+    "web": {}
+  },
+  "deploy": {
+    "store": {
+      "web": "0"
+    }
+  },
+  "server": {
+    "database": false
+  },
+  "description": "All your chats, one inbox you own.",
+  "background_color": "#0C1118",
+  "theme_color": "#0C1118",
+  "icons": [
+    {
+      "src": "assets/mux-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/mux-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "verify": {
+    "accept": [
+      {
+        "finding": "contrast",
+        "node": "cta-how",
+        "why": "dark ink on the brand gradient (background-image), about 6:1; the check reads the box under it, not the gradient"
+      },
+      {
+        "finding": "contrast",
+        "node": "step-s1",
+        "why": "dark ink on the brand gradient circle, about 6:1; the check reads the card under it"
+      },
+      {
+        "finding": "contrast",
+        "node": "step-s2",
+        "why": "as step-s1"
+      },
+      {
+        "finding": "contrast",
+        "node": "step-s3",
+        "why": "as step-s1"
+      },
+      {
+        "finding": "contrast",
+        "node": "step-s4",
+        "why": "as step-s1"
+      },
+      {
+        "finding": "clipped",
+        "node": "nav-*",
+        "why": "the section links are one group that the bar clips on purpose where it does not fit (a phone, the largest text)"
+      },
+      {
+        "finding": "fixed-type",
+        "node": "phone-*",
+        "why": "the inbox in the hero is a drawing of a phone (role=\"img\"): its text keeps the size it has on a real iPhone"
+      }
+    ]
+  }
+}
