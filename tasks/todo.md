@@ -165,6 +165,12 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   Now both scroll smoothly to the true end (`offset=` past the last row, clamped to the scroll
   range). Reproduced and checked on the Simulator: near, far up, keyboard up and down
   (`apps/multiplexer/.exact/scroll-end/`). Tests: 12 passed.
+- [x] Composer as Beeper's (2026-11-06, Rami): the +, the field and the voice button are one glass
+  group (`glassGroup=8`), each glass with its own press; typing moves Send inside the field (the
+  accent's prominent glass) and the field reaches the row's end; Stop and the draft's Send are
+  prominent glass (Stop tinted the system red). Needs Rami's finger for the glass merging.
+- [ ] Exact: a growing field is a line short at three or more lines (finding 136); the composer's
+  `line-height=1.25` fixes three lines, four or more still scroll a little.
 - [ ] R05-R09: validate lighter inbox top/bottom material, progressive chat header/status
   protection, translucent composer field and coherent Add/voice controls on actual hardware.
   - [x] R07-R09 on the Simulator (branch fix/iphone-chat-materials): the chat header now

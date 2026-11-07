@@ -158,6 +158,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 133 | A text that spills its box shows only in `check`, one screen at a time; `layout` ranges and `tap <list> into` give no sign. | About 60 min | P3 | [a-text-that-spills-its-box](issues/20261106-a-text-that-spills-its-box.md) |
 | 134 | A tinted glass circle needs `appearance="none"` plus `backgroundMaterial="glass"`; `buttonStyle="glass"` refuses a tint. | About 2 min | P3 | [a-tinted-glass-circle-needs](issues/20261106-a-tinted-glass-circle-needs.md) |
 | 135 | Glass is interactive only on a node with its own `press`; the docs do not say so, and the agent cannot show it. | About 15 min | P3 | [glass-is-interactive-only-with](issues/20261106-glass-is-interactive-only-with.md) |
+| 136 | A growing textarea comes up a line short on iOS, so its first line scrolls under its top. | About 15 min | P2 | [a-growing-textarea-comes-up](issues/20261106-a-growing-textarea-comes-up.md) |
 
 ## What worked well
 
