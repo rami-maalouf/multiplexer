@@ -177,6 +177,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 152 | A native popover action is reachable by its visible label but does not expose its authored test id to an external native drive. | About 2 min | P3 | [native-popover-action-test-id](issues/20261107-a-native-popover-action-does-not.md) |
 | 153 | A package's Swift that did not compile shows an empty error: "did not compile:" and nothing after it. | About 3 min and a 2-min build | P3 | [a-package-s-swift-that-did](issues/20261107-a-package-s-swift-that-did.md) |
 | 154 | A drive cannot show a component in a given state (props or app state), so `layout` of a short-lived state needs a contract edit for each measurement. | About 8 min, four drives | P3 | [a-drive-cannot-show-a-component](issues/20261107-a-drive-cannot-show-a-component.md) |
+| 155 | An entry `animation` on a node mounted with a navigation push holds its first keyframe until a later commit, so a button laid out on time appears late. | About 15 min, two probe recordings | P3 | [an-entry-animation-waits-for-a-later-commit](issues/20261107-an-entry-animation-waits-for-a-later-commit.md) |
 
 ## What worked well
 

@@ -341,10 +341,26 @@ had nothing to show at once.
 - [x] The older-messages spinner row was 40 pt and the "Start of the chat" row 36 pt, so the messages
   moved 4 pt when one replaced the other. Both now take the text line's height (the spinner over a
   hidden copy of it): 36 and 36, and 72 and 72 at the largest text size.
-- [ ] The demo staging's rooms list a bridge bot that never joins (the id belongs to the live bridge).
-  The group now has a third contact, so it shows under Groups, but its info page says "3 members"
-  over a list of 4, and seating the contact marked the group read. A real bridged room has its bot
-  joined. A group with one other person on a real bridge still counts as a DM (`fillKind`).
+- [x] The demo staging's rooms list a bridge bot that never joins (the id belongs to the live bridge).
+  Fixed 2026-11-07 (branch `fix/members-composer-groups`, on `fix/demo-bugs`), with evidence in that
+  worktree's `.exact/members-fix/`:
+  - Info page "3 members" over a list of 4: `chatInfo` subtracted every listed service member,
+    `chatMembers` only joined ones. Now both leave out only a joined bot (`ChatInfo.swift`). Same drive:
+    after "4 members" over 4. Core test `testTheCountAndTheListAgreeWhenTheBotIsNoMember`.
+  - A bridged group with one other person counted as a DM (`fillKind`). Now `m.direct` decides first, then
+    the bridge's `m.bridge` room type, read once per ambiguous room (`RoomKinds.swift`, `matrix-core/NOTES.md`,
+    "A chat's kind"); the count only when the room has no bridge state. Push uses the same rule. Real account,
+    read only, same drive on the old and new core: DMs 257 and Groups 75, then 256 and 76 (one bridged group
+    with only the bot besides you). Core tests `testABridgedGroupWithOnePersonIsAGroup`,
+    `testTheBridgedKindAndTheOneToOneRule`.
+  - Seating the contact marked the group read and left "Seen by" (the invite and the join came after the
+    messages). `stage-demo.py` now makes a staged room that lacks a contact again instead of seating it;
+    `--redo hike` restored the badge (1) and no message status. The redone group now sits at the top of the
+    inbox (it is the newest), not in its staged place; a full restage would restore the order.
+- [x] On a chat's first open with no kept copy the composer appeared only with the messages (about 0.6 s
+  after the push). The composer bar was inside `if threadShown`; now it is there from the push's first frame.
+- [ ] The voice button in the composer still fades in only when the messages arrive: its entry animation
+  starts at the next commit (Exact finding 155). Its slot is laid out from the first frame, so nothing moves.
 
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 
