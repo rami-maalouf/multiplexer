@@ -1,5 +1,15 @@
 # Mux: tasks
 
+## Current release execution (2026-11-07)
+
+- [x] Delegate app release and Exact validation to separate lanes with disjoint ownership.
+- [x] Create `Teammates External` and verify the public link, capped at 25 testers:
+  `https://testflight.apple.com/join/h9JBMmDZ`. Group currently has zero builds.
+- [ ] Receive Apple beta-review contact phone and permission to submit staged demo credentials.
+- [ ] Complete TestFlight beta information and attach the newly verified uploaded build.
+- [ ] Submit the new build for external beta review and verify Apple's resulting state.
+- [ ] Finish Exact publication/integration and record each PR and its actual validation.
+
 ## Exact validation continuation (2026-11-07)
 
 - [x] Recover the original thread's later TestFlight check: compliance saved, build 2

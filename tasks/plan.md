@@ -4,6 +4,17 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Release and external-testing execution (2026-11-07):** Rami authorized sub-agents to
+finish the newer TestFlight build, external testing and Exact validation. App release
+and Exact validation are delegated in separate lanes; root owns App Store Connect and
+these checkpoints. Created external group `Teammates External`
+(`3c22679a-5796-4bc0-9c41-7827425edc41`) and verified its public link
+`https://testflight.apple.com/join/h9JBMmDZ`, limited to 25 testers. It has no builds yet;
+the link is not an installability claim. Beta information was empty. Description and
+review notes are drafted locally. Apple review contact phone and authorization to use
+the staged demo credentials are requested from Rami; no credentials were submitted.
+Browser DOM reads and focused controls work despite intermittent snapshot timeouts.
+
 **Exact validation continuation (2026-11-07):** recovered the newer original-thread
 checkpoint: Rami saved export compliance and build 2 showed Ready to Submit, assigned
 to Teammates, which contained only its invited owner. The prior browser blocker below
