@@ -10,9 +10,16 @@
   inspect App Store Connect: Processing. Source `f995eee`, clean Exact `7783ea7012`.
   Receipt: `multiplexer-testflight/docs/releases/testflight-3.md` (`251a157`).
 - [x] Save TestFlight beta information and verify persistence after reload.
-- [ ] Clear build 3 compliance and attach it to Teammates External. Processing finished;
-  Apple asks France again. Await Rami's actual build-2 answer; standard encryption is selected.
-- [ ] Submit the new build for external beta review and verify Apple's resulting state.
+- [x] Clear build 3 compliance using Rami's confirmed no-France answer and the approved
+  standard-encryption selection. Fresh builds-page read shows Ready to Submit.
+- [x] Assign build 3 to the internal Teammates group; its one tester is listed.
+- [ ] Attach build 3 to Teammates External and submit for beta review. Three attempts
+  failed with HTTP 422 `ENTITY_UNPROCESSABLE`: "There was an error processing your
+  request. Please try again later." What to Test saved, but no external submission
+  succeeded. Free/Paid Apps agreements and DSA show Active. No field-specific cause
+  or pending agreement is visible. Retry later or escalate to Apple with app ID
+  6831890438 and build resource `0f53ef69-5696-4c46-8cd5-69afc684cebc`; no support
+  message has been sent. Public link remains unusable for installation until review.
 - [x] Publish CLI refusal fix as Exact PR #1596 and integrate under helper lock
   (`86559f737a`); 49 integration tests passed. Full Rust workspace check passed after
   disposable artifact cleanup; other root gates and 100 related CLI cases passed.

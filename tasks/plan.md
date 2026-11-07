@@ -4,6 +4,21 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Build 3 compliance cleared; beta review blocked (2026-11-07):** Rami confirmed
+no France distribution. Saved that answer with the approved standard-encryption
+selection; a fresh builds-page read shows build 3 Ready to Submit, with internal
+group Teammates assigned. External submission failed three times across the group
+and build-detail workflows. Apple's `POST /iris/v1/betaAppReviewSubmissions`
+returns HTTP 422, code `ENTITY_UNPROCESSABLE`, title "There was an error processing
+your request.", detail "Please try again later." No field-specific cause was returned.
+The What to Test save succeeded, but external review has not started and the external
+group still has no build. Business shows both Free and Paid Apps agreements and DSA
+compliance Active; no pending agreement was visible. No agreement was changed or
+support message sent. Stop blind retries; retry later or escalate the saved error
+with app ID 6831890438, version 0.1.0 (3), build resource
+`0f53ef69-5696-4c46-8cd5-69afc684cebc`. This supersedes the pending-France checkpoint
+below. App source, release archive and isolated Exact candidates were unchanged.
+
 **Review metadata saved and CLI fix published (2026-11-07):** Rami supplied the Apple
 review contact phone and approved the existing staged demo account. Beta description,
 feedback/marketing/contact information, review notes and demo credentials were saved;
