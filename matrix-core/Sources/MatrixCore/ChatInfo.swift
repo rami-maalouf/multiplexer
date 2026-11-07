@@ -76,12 +76,17 @@ extension MatrixAccount {
             roomKinds.remember(roomId, kind)
             summary.fillKind(info, pins: pins, kinds: roomKinds)
         }
-        // the bot of a bridge is a service member (`io.element.functional_members`).
-        let service = UInt64(info.serviceMembers.count)
+        // the people who have joined, as `chatMembers` lists them: a bridge's bot (a service member,
+        // `io.element.functional_members`) is left out only when it has joined. a room may name a
+        // bot that is no member, and the count then said one fewer than the list showed.
+        var joinedService: UInt64 = 0
+        for userId in info.serviceMembers where (try? await target.member(userId: userId))?.membership == .join {
+            joinedService += 1
+        }
         return ChatInfo(id: roomId, name: custom.isEmpty ? roomName : custom, roomName: roomName, customName: custom,
                         topic: info.topic ?? "", pictureUrl: target.avatarUrl() ?? "",
                         network: RoomNetwork.of(info, ownUserId: me), isOneToOne: summary.isOneToOne,
-                        memberCount: Int(info.joinedMembersCount > service ? info.joinedMembersCount - service : 0),
+                        memberCount: Int(info.joinedMembersCount > joinedService ? info.joinedMembersCount - joinedService : 0),
                         canRename: levels?.canOwnUserSendState(stateEvent: .roomName) ?? false,
                         canChangePicture: levels?.canOwnUserSendState(stateEvent: .roomAvatar) ?? false,
                         canInvite: levels?.canOwnUserInvite() ?? false)
