@@ -15,3 +15,5 @@ task: build a chat app's signed iOS archive for TestFlight (internal testers)
 
 ### Checkpoints
 - With the flag and the app's `#if`: `ios --device --archive <out.ipa> --unsigned` passed (cargo 169 s, swift 64 s, arms 70 s, package 6 s), 40.7 MB. No binary in the archive holds the refused name. No uncommitted copy was needed.
+- The development Simulator build of the same source keeps the call (2 hits in the module library); the archive's module library has the module's other strings and 0 hits. A plain `grep` on the binaries gave 0 for both: it needs `LC_ALL=C`.
+- Rough, minor: `ios` (no `--run`) installed the build on the only booted Simulator, which another conversation owned, with no notice before it did. Evidence for the known simulator-choice findings.
