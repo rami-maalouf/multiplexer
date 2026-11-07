@@ -14,7 +14,7 @@ reduced motion. Without WebGL, the logo stands in for it.
 | `src/styles.css` | The look: deep space, glass, and the logo's turquoise, blue and lime (`docs/brand.md`). |
 | `src/main.js` | Reveals, the frosted bar, and the deferred load of the scene. |
 | `src/scene.js` | The plane: three glass panels meeting at a lime nose, with three streams of light converging into it. |
-| `src/public/` | Copied as is: the fonts (Instrument Serif, Instrument Sans, Geist Mono; SIL OFL) and `404.html`. |
+| `src/public/` | Copied as is: the fonts (Sora, Geist, Geist Mono; SIL OFL) and `404.html`. |
 | `src/img/` | The logo cuts, the share image and the network logos. |
 | `build.ts` | Bundles `src/index.html` into `dist/` and adds the fixed-address files. |
 

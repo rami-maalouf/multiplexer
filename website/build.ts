@@ -21,8 +21,8 @@ if (!result.success) {
 await cp("./src/public", "./dist", { recursive: true });
 await cp("./src/img/mux-share.jpg", "./dist/share.jpg");
 
-// preload the headline's two faces, which bun would otherwise try to bundle from the html
-const preload = ["instrument-serif-latin-400-normal", "instrument-serif-latin-400-italic"]
+// preload the two text faces, which bun would otherwise try to bundle from the html
+const preload = ["sora-latin-wght-normal", "geist-latin-wght-normal"]
   .map((f) => `<link rel="preload" href="/fonts/${f}.woff2" as="font" type="font/woff2" crossorigin>`)
   .join("");
 const page = await Bun.file("./dist/index.html").text();
