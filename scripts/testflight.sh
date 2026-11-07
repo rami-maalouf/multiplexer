@@ -41,6 +41,8 @@ unzip -q "$work/unsigned.ipa" -d "$work/ipa"
 cp -R "$work/ipa/Payload/"*.app "$archive/Products/Applications/"
 app_path="$(cd "$archive/Products/Applications" && ls -d *.app | head -1)"
 if [ -d "$work/unsigned.dSYM" ]; then cp -R "$work/unsigned.dSYM" "$archive/dSYMs/$app_path.dSYM"; fi
+# each embedded framework's dsym (<framework>.framework.dSYM), or the symbol upload names it as missing.
+if [ -d "$work/unsigned.dSYMs" ]; then cp -R "$work/unsigned.dSYMs/" "$archive/dSYMs/"; fi
 
 cat > "$work/entitlements.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
