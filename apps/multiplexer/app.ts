@@ -336,13 +336,17 @@ function saveThreadCopies(native: Native) {
 }
 
 /** While the first answer still fills (it holds the newest messages only), the copy's older
- * messages stay in front of them, so text already shown does not go away (R04). Matched by event id. */
+ * messages stay in front of them, so text already shown does not go away (R04). Matched by event id.
+ * A copy that reached the chat's start says so while the answer shows from its first message: the
+ * fill pages back only to learn what the copy knows, so the older-messages spinner does not flash. */
 function withKeptOlder(answer: MessagesAnswer, copy: MessagesAnswer | undefined): MessagesAnswer {
   if (!answer.settling || copy === undefined || answer.messages.length === 0) return answer;
   const live = new Set(answer.messages.map((m) => m.event).filter((e) => e !== ''));
   const firstTime = answer.messages[0].time;
   const older = copy.messages.filter((m) => m.event !== '' && !live.has(m.event) && m.time < firstTime);
-  return older.length === 0 ? answer : { ...answer, messages: older.concat(answer.messages) };
+  const shown = older.length === 0 ? answer : { ...answer, messages: older.concat(answer.messages) };
+  const start = copy.messages[0]?.event ?? '';
+  return copy.atStart && start !== '' && shown.messages[0].event === start ? { ...shown, atStart: true } : shown;
 }
 
 /** The chat's screen from the native side's answer (or its copy). */
@@ -590,8 +594,9 @@ const sources: Sources = {
     const served = `${screen} ${roomId}`;
     if (copy && showingLive.get(screen) !== roomId && !servedCopy.has(served)) {
       servedCopy.add(served);
-      // its "New" line and its start are the live answer's to say.
-      const thread = threadOf({ ...copy, firstUnread: '', atStart: false, settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
+      // its "New" line is the live answer's to say; its start is the copy's (it shows the same first
+      // message), so a chat that shows all of itself opens on "Start of the chat", not a spinner.
+      const thread = threadOf({ ...copy, firstUnread: '', settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
       // its links' kept previews, read at once, so the copy shows its cards too.
       const unknown = [...new Set(thread.messages.map((m) => m.previewUrl).filter((u) => u !== '' && !cards.has(u)))];
       if (unknown.length === 0) return thread;
