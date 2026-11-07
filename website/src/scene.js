@@ -415,8 +415,9 @@ export async function startScene(canvas) {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (camera.aspect >= 1.05) {
-      home.set(MathUtils.mapLinear(Math.min(camera.aspect, 2.2), 1.05, 2.2, 1.3, 2.35), 0.45, 0);
-      scale = 0.78;
+      // clear of the title, whose full stop is a plane of its own
+      home.set(MathUtils.mapLinear(Math.min(camera.aspect, 2.2), 1.05, 2.2, 1.55, 2.65), 0.55, 0);
+      scale = 0.7;
     } else {
       home.set(-0.1, 1.15, 0);
       scale = MathUtils.mapLinear(MathUtils.clamp(camera.aspect, 0.45, 1.05), 0.45, 1.05, 0.4, 0.72);
@@ -437,9 +438,14 @@ export async function startScene(canvas) {
     { passive: true },
   );
 
-  const startPos = V(-7, -2.6, -3);
+  // the plane arrives as the title's own plane lands on its full stop (title-flight.js)
+  const landsAt = window.__muxTitleLandsAt;
+  const introLength = landsAt ? Math.max(2.8, (landsAt - performance.now()) / 1000) : 2.8;
+  // it glides in along its own line from just behind where it rests, so it never crosses the words
+  const startPos = new Vector3();
   function render(t, dt) {
-    const intro = still ? 1 : easeOut(t / 2.8);
+    startPos.copy(home).addScaledVector(fwd, -2.4);
+    const intro = still ? 1 : easeOut(t / introLength);
     const reveal = still ? 1 : easeOut((t - 0.4) / 3.2);
     lean.lerp(leanTo, 0.035);
 

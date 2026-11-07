@@ -41,6 +41,10 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   self-hosted; checked at 1440 and 390 px, the opening flight, reduced motion and scrolled states.
 - [x] Exact findings 137 to 142 (diary `apps/multiplexer/.exact/diary/2026-11-06-a-landing-site.md`).
 - [x] Published at `https://mux.orbitlabs.studio` (`website/deploy.sh`, Vercel project `mux`, 2026-11-06); checked live at 1280 and 390 px.
+- [x] v3 (Rami, 2026-11-06): title "One app for all your chats", Sora and Geist, no gradient on any
+  heading; the plane as the title's full stop with one flight (wind-up around the O, throw, spring
+  down the l, release, roll, spring landing); the 3D plane in the logo's sampled colours with sparks
+  and shooting stars against its flight. Checked at 1440 and 390 px, 320 px, reduced motion.
 - [ ] The setup guide: a server, a domain, the bridges, and the app, for someone other than Rami.
 
 ## Open: "seen" in the list on a long-running device (2026-11-06)

@@ -239,19 +239,102 @@ h2 {
   letter-spacing: -0.045em;
 }
 
+/* the title: a light lead-in, a bold payoff, and the plane as its full stop */
 h1 {
-  font-size: clamp(2.9rem, 7vw, 6.2rem);
-  line-height: 1;
-  text-wrap: balance;
+  position: relative;
+  z-index: 2;
+  font-size: clamp(2.5rem, 7vw, 6.2rem);
+  line-height: 1.04;
+  white-space: nowrap;
 }
 
-h1 em,
-h2 em {
-  padding-right: 0.02em;
-  background: var(--sweep);
+h1 .thin {
+  font-weight: 300;
+  color: var(--ink-muted);
+}
+
+h1 .mark {
+  position: relative;
+  display: inline-block;
+}
+
+h1 .base {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: baseline;
+}
+
+/* the l's contrail: the same l, teal toward its top, shown from the top down as the plane presses it */
+h1 .trail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: transparent;
+  background: linear-gradient(to top, var(--ink) 25%, var(--turquoise) 70%, #7ff7ea);
   -webkit-background-clip: text;
   background-clip: text;
-  color: transparent;
+  clip-path: inset(0 0 100% 0);
+}
+
+h1 .slot {
+  display: inline-block;
+  width: 0.42em;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* the plane itself: the logo's own art; above the words, or behind them when the flight passes behind */
+.title-plane {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  background: url("/img/plane.png") center / contain no-repeat;
+  will-change: transform;
+}
+
+.flight-spark {
+  position: absolute;
+  z-index: 3;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.flight-ripple {
+  position: absolute;
+  z-index: 3;
+  width: 0.5em;
+  height: 0.22em;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 1.5px solid rgb(216 247 88 / 0.85);
+  box-shadow: 0 0 10px rgb(216 247 88 / 0.5);
+}
+
+/* section titles follow the hero: a light lead-in, a bold payoff, no gradient */
+.flow h2,
+.close h2 {
+  font-weight: 300;
+  color: var(--ink-muted);
+}
+
+.flow h2 em,
+.close h2 em {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .lead {

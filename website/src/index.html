@@ -43,10 +43,13 @@
 
         <div class="hero-copy">
           <p class="kicker reveal" style="--d: 0">Self-hosted messaging</p>
+          <!-- the title's full stop is the plane: title-flight.js flies it around the O, onto the l,
+               and down onto the dot. the marks and baselines below tell it where the letters are. -->
           <h1 id="hero-title" class="reveal" style="--d: 1">
-            One app for<br />
-            <em>all your chats.</em>
+            <span class="thin"><span class="mark" data-flight="o">O</span>ne app for</span><br />
+            al<span class="mark" data-flight="l">l<span class="trail" aria-hidden="true">l</span><i class="base" data-flight="l-base"></i></span> your chats<span class="slot" data-flight="slot"><i class="base" data-flight="slot-base"></i><span class="sr-only">.</span></span>
           </h1>
+          <div class="title-plane" aria-hidden="true"></div>
           <p class="lead reveal" style="--d: 2">
             Mux is a self-hosted, all-in-one messenger. Your networks in one native iPhone app,
             through a server that belongs to you.

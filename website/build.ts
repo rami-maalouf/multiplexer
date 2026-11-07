@@ -11,8 +11,8 @@ const result = await Bun.build({
   minify: true,
   splitting: true,
   sourcemap: "none",
-  // the fonts are copied from src/public with their names, so the page can preload them
-  external: ["/fonts/*"],
+  // the fonts and the title plane are copied from src/public with their names
+  external: ["/fonts/*", "/img/*"],
 });
 if (!result.success) {
   for (const log of result.logs) console.error(log);

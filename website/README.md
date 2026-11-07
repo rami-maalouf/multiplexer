@@ -12,9 +12,10 @@ reduced motion. Without WebGL, the logo stands in for it.
 |---|---|
 | `src/index.html` | The page: hero, three reasons, how it works, the close. |
 | `src/styles.css` | The look: deep space, glass, and the logo's turquoise, blue and lime (`docs/brand.md`). |
-| `src/main.js` | Reveals, the frosted bar, and the deferred load of the scene. |
-| `src/scene.js` | The plane: three glass panels meeting at a lime nose, with three streams of light converging into it. |
-| `src/public/` | Copied as is: the fonts (Sora, Geist, Geist Mono; SIL OFL) and `404.html`. |
+| `src/main.js` | Reveals, the frosted bar, the title flight, and the deferred load of the scene. |
+| `src/title-flight.js` | The title's full stop is the plane: one flight around the O, onto the l like a spring, and down onto the dot; then it aims at the cursor, and a click launches it again. |
+| `src/scene.js` | The 3D plane in the logo's colours: three glass panels meeting at a lime nose, sparks shed from its tails, shooting stars passing the other way. It arrives as the title's plane lands. |
+| `src/public/` | Copied as is: the fonts (Sora, Geist, Geist Mono; SIL OFL), the title plane (`img/plane.png`) and `404.html`. |
 | `src/img/` | The logo cuts, the share image and the network logos. |
 | `build.ts` | Bundles `src/index.html` into `dist/` and adds the fixed-address files. |
 

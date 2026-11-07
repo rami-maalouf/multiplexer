@@ -1,7 +1,10 @@
-// the page's own script: reveal the words, then load the plane once the page has painted.
+// the page's own script: reveal the words, fly the title's plane, then load the 3d plane once the
+// page has painted.
+import { startTitleFlight } from "./title-flight.js";
 
 const root = document.documentElement;
 requestAnimationFrame(() => document.body.classList.add("ready"));
+startTitleFlight();
 
 // the bar turns to frosted glass once the page has moved
 const bar = document.querySelector(".bar");
