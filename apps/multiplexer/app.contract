@@ -41,10 +41,11 @@ shape Session
 
 // avatar: the room's picture once it is downloaded (""), else its initials show. network: the
 // chat network its bridge brings it from (whatsapp, instagram, ...), or matrix for none. listed:
-// the list shows it under the filter menu's choice (a pinned chat, or one the filter leaves out,
-// is still here, so an open chat keeps its name). markedUnread: marked unread by hand. muted: its
-// messages do not notify, so its count is grey; mentions: its unread messages that mention you.
-// lowPriority, archived: in those lists, not the inbox.
+// under the filter and network/community (or label), across inbox/Archive/Low Priority; the
+// capsule picks among those with inChatList (a pinned chat under inbox+all still sits in the
+// grid, not the rows). markedUnread: marked unread by hand. muted: its messages do not notify,
+// so its count is grey; mentions: its unread messages that mention you. lowPriority, archived:
+// in those lists, not the inbox.
 shape Room
   id: string
   name: string
@@ -77,12 +78,11 @@ shape Room
   mergeRooms: MergeTab[]
 
 // owner is the account the rooms belong to, so a list never shows under another account; filter
-// the filter menu's choice the list is for, network the filter sheet's ("": every network), list
-// the list shown (inbox, archive or lowPriority). pinned: the network's pinned chats in the inbox,
-// in their pin order; they are not in rooms in the inbox under "all". networks: the filter
-// sheet's rows, each network the account has chats on; community the sheet's community ("" for
-// none), communities its rows; unread, archiveUnread,
-// lowPriorityUnread: each list's unread chats on every network.
+// the filter menu's choice; network the filter sheet's ("": every network). list is unused for
+// fetching (the capsule's chatList state picks rows client-side); kept for shape stability.
+// pinned: the network's pinned chats in the inbox, in their pin order. networks: the filter
+// sheet's rows; community the sheet's community ("" for none), communities its rows; unread,
+// archiveUnread, lowPriorityUnread: each list's unread chats on every network.
 shape RoomList
   owner: string
   filter: string
@@ -290,6 +290,9 @@ fn rowUnread(r: Room): bool = r.unread > 0 or r.markedUnread
 // the inbox's unread count counts it (matrixcore's isInInbox and isLoudlyUnread): in the inbox,
 // unread and not muted, or with a mention.
 fn inboxUnread(r: Room): bool = not r.archived and not r.lowPriority and (loud(r) or r.mentions > 0)
+// the capsule's list: Archive, Low Priority, Reminders, or the inbox (not archived, not low priority).
+// An archived chat that is also low priority stays in Archive, as MatrixCore's ChatList does.
+fn inChatList(r: Room, list: string): bool = list == "archive" ? r.archived : (list == "lowPriority" ? not r.archived and r.lowPriority : (list == "reminders" ? r.reminder > 0 : not r.archived and not r.lowPriority))
 // a time limit not reached yet (0: none), as limits.ts's within.
 fn within(until: number, now: number): bool = until == 0 or now < until
 fn countText(n: number): string = n > 99 ? "99+" : n.toString()
@@ -381,7 +384,9 @@ component Multiplexer
   mutation listShownMark as shape Reply
   task listShownTask when session.userId != "" key=listOnTop
     after(1, markListShown)
-  resource roomList = loadRoomsByRecency(session.userId, filter, network, community, chatList, labelFilter) as shape RoomList else empty()
+  // chatList is not a key: the native answer spans every capsule list under the filter, and
+  // listedRooms picks among them instantly when the capsule flips (no rooms round-trip).
+  resource roomList = loadRoomsByRecency(session.userId, filter, network, community, labelFilter) as shape RoomList else empty()
   resource uploadLimit = loadUploadLimit(session.userId) as shape UploadLimit else empty()
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
   resource profile = loadProfile(session.userId) as shape Profile else empty()
@@ -477,14 +482,16 @@ component Multiplexer
   derive threadShown = thread.room == openRoom
   // a chat marked unread by hand counts one: reading it takes the mark away.
   derive openUnread = match openRoomInfo { case some(r) => r.unread + (r.markedUnread ? 1 : 0), case none => 0 }
-  // the list under the filter menu's choice; the pinned grid shows above it only while no filter is on.
-  derive listedRooms = roomList.rooms.filter(r => r.listed)
+  // under the filter/network/label; the capsule (or a label) picks which of those rows show.
+  // inbox+all: pinned chats leave the rows for the grid above, as MatrixCore's matches() does.
+  derive pinnedIds = roomList.pinned.map(p => p.id)
+  derive listedRooms = roomList.rooms.filter(r => r.listed and (labelFilter != "" or (inChatList(r, chatList) and (chatList != "inbox" or filter != "all" or not pinnedIds.includes(r.id)))))
   // the filter sheet's community, while the list knows it (a space left on another device is not).
   derive shownCommunity = first(roomList.communities.filter(c => c.id == community))
   // the name of what the list is narrowed to, for the title and the empty list: the community's,
   // else the network's ("": every chat).
   derive scopeName = match shownCommunity { case some(c) => c.name, case none => (network == "" ? "" : networkName(network)) }
-  derive gridShown = roomList.label == "" and roomList.filter == "all" and roomList.list == "inbox" and roomList.pinned.length > 0
+  derive gridShown = labelFilter == "" and filter == "all" and chatList == "inbox" and roomList.pinned.length > 0
   // the held chat's last messages, for its menu's preview. loading them reads nothing: only the
   // chat screen marks a chat read.
   derive aimedRoom = first(roomList.rooms.filter(r => r.id == aimed))
@@ -1049,10 +1056,10 @@ component Multiplexer
                     EmptyState(symbol="symbol:icon.tag", title="No Chats in This Label", message="Hold a chat and choose Label to add it here. Deleted chats stay hidden.")
                       button press=toInbox buttonStyle="bordered" testId="label-show-inbox"
                         text "Show Inbox"
-                  else if roomList.list != "inbox"
+                  else if chatList != "inbox"
                     // an empty Archive, Low Priority or Reminders: the capsule's Inbox is the way back.
-                    EmptyState(symbol=(roomList.list == "archive" ? "symbol:icon.archive" : (roomList.list == "reminders" ? "symbol:icon.alarm" : "symbol:icon.arrow-down-circle")),
-                      title=listEmptyTitle(roomList.list), message=listEmptyMessage(roomList.list, scopeName))
+                    EmptyState(symbol=(chatList == "archive" ? "symbol:icon.archive" : (chatList == "reminders" ? "symbol:icon.alarm" : "symbol:icon.arrow-down-circle")),
+                      title=listEmptyTitle(chatList), message=listEmptyMessage(chatList, scopeName))
                       if roomList.network != "" or roomList.community != ""
                         button press=chooseNetwork("") buttonStyle="bordered" testId="show-every-network"
                           text "Show Every Network"
