@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="website/assets/mux-hero.jpg" width="112" height="112" alt="The Mux logo: a glass paper plane of three folded paths that meet at one nose">
+  <img src="website/src/img/mux-hero.jpg" width="112" height="112" alt="The Mux logo: a glass paper plane of three folded paths that meet at one nose">
 </p>
 
 <h1 align="center">Mux</h1>
@@ -23,10 +23,10 @@ one.
 
 ## Why we built it
 
-Mux started as a replacement for [Beeper](https://www.beeper.com). Beeper proved that one inbox
-for every network works. But it is a company's product: the company decides what it costs,
-which features you get, and what happens to the code. Messages are the most personal data
-most of us have. We wanted the same inbox without renting it.
+Mux is a self-hosted, all-in-one messenger. All-in-one inboxes exist, but they are other
+companies' products: the company decides what it costs, which features you get, and where
+your messages pass. Messages are the most personal data most of us have. We wanted one inbox
+for every network without renting it.
 
 - **Your server, your messages.** The bridges and the Matrix server run on a machine you
   control. You can back it up, move it to another host, or turn it off.
@@ -37,8 +37,7 @@ most of us have. We wanted the same inbox without renting it.
 
 ## What it does
 
-Mux takes the features of Beeper that we use every day, and keeps the parts of Apple's
-Messages that already feel right.
+Mux has the features an all-in-one inbox needs every day, with the feel of Apple's Messages.
 
 - **One inbox:** every chat in one list, with its network's logo on the picture.
 - **Filters:** one network, unread chats, people or groups. Communities and message requests
@@ -106,7 +105,7 @@ A few rules held it together:
   real app, never with "it should work". MatrixCore has 125 tests, most of them against a real
   Matrix server.
 - **Biggest unknown first.** First the server and one bridge, then one screen, then daily
-  reading and sending on a real iPhone, then Beeper's features one by one.
+  reading and sending on a real iPhone, then the inbox's features one by one.
 - **Use what exists.** The playbook, the mautrix bridges, Element X and matrix-rust-sdk came
   before any code of our own.
 - **No secrets in git.** Passwords and keys live in the Mac's Keychain. Scripts read them from
@@ -119,7 +118,7 @@ The milestones:
 | Day 1 | Our own Matrix server sent its first messages, and the app signed in, listed chats and sent a message on a real iPhone. |
 | Day 2 | A WhatsApp message reached the iPhone through our own server and bridge, and a reply went back. |
 | Day 5 | The feel of Messages: bubbles with tails, swipe to reply, reactions and a long-press menu. |
-| Week 2 | Beeper's features: filters, pins, archive, GIFs, voice notes, Send Later, search, merged chats, labels. |
+| Week 2 | The inbox's features: filters, pins, archive, GIFs, voice notes, Send Later, search, merged chats, labels. |
 | Next | Push notifications (built and tested on the Simulator; waiting for the Apple setup). |
 | Next | Connect a network from inside the app, instead of a chat with a bridge's bot. |
 | Later | The Mac app, and a guided setup so anyone with a server can run their own. |
@@ -136,7 +135,7 @@ slowed the work became a written finding for its team, in
 | [`matrix-core/`](matrix-core/) | The Swift package that wraps matrix-rust-sdk, with its own tests. `NOTES.md` explains how it links. |
 | [`server/`](server/) | The server's playbook inventory, setup and backup scripts. No secrets: they come from the Keychain. |
 | [`scripts/`](scripts/) | Setup, test and helper scripts for the Mac. |
-| [`website/`](website/) | This project's website, also built with Exact. |
+| [`website/`](website/) | The website at mux.orbitlabs.studio: static HTML and a Three.js scene, bundled with Bun. |
 | [`docs/`](docs/) | The brand ([`brand.md`](docs/brand.md)) and the Exact findings. |
 | [`tasks/`](tasks/) | The plan, the decisions and the task list. Read `plan.md` first. |
 

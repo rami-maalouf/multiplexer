@@ -1,9 +1,13 @@
 {
-  "name": "website",
+  "name": "mux-website",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "bun exact.mjs web-build --out dist",
-    "start": "bun exact.mjs serve dist"
+    "dev": "bun ./src/index.html",
+    "build": "bun run build.ts",
+    "preview": "bun run build.ts && bunx serve dist"
   },
-  "dependencies": {}
+  "dependencies": {
+    "three": "0.187.0"
+  }
 }

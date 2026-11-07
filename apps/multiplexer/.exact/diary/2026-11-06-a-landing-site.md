@@ -27,4 +27,10 @@ task: a one-page landing site for a chat app, from `exact new` and `pattern site
 - editing app.contract / app.ts: rough (gradient size, `grants`, the width branch, `clamp`)
 - driving the app (`test web`, `agent web`): smooth
 - verify: rough (gradient contrast, template testIds), then clean
-- deploy: (see below, a static host)
+- deploy: smooth (`dist/` on a static host)
+
+### Later the same day
+- The site was asked to show a WebGL (Three.js) scene. The native views recipe shows Swift views
+  only, and I found no documented way to place a web canvas from a module in a built site, so the
+  site was rebuilt as plain HTML with a bundler instead. Not measured as a cost; a pointer in the
+  website recipe ("a canvas or WebGL scene on a site: ...") would settle it either way.

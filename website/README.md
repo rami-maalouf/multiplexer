@@ -1,25 +1,28 @@
 # Mux's website
 
-The one-page site at [mux.orbitlabs.studio](https://mux.orbitlabs.studio): what Mux is, why it
-exists and how it was built. It is an [Exact](https://github.com/ccheever/exact2) site, like
-the app, and every page is built ahead (`render=build`), so `dist/` is plain files for any
-static host.
+The one-page site at [mux.orbitlabs.studio](https://mux.orbitlabs.studio): what Mux is and
+what it offers, in a few lines, around a Three.js scene of the glass paper plane.
+
+It is plain HTML, CSS and one module, bundled by [Bun](https://bun.sh) into static files.
+The words and layout load first; the 3D scene is a separate file that loads after the page
+has painted, runs only while the hero is on screen, and holds still for readers who ask for
+reduced motion. Without WebGL, the logo stands in for it.
 
 | File | What it is |
 |---|---|
-| `app.contract` | The page: its sections, the drawn phone in the hero, the header and footer. |
-| `app.ts` | The words: chats in the drawing, reasons, features, steps, stats, milestones. |
-| `app.tamber` | The brand's colours from `docs/brand.md`, fixed (the site is dark only). |
-| `app.test.contract` | Its tests. |
-| `assets/` | The logo, cut from `apps/multiplexer/assets/mux-icon.png`, and the network logos. |
+| `src/index.html` | The page: hero, three reasons, how it works, the close. |
+| `src/styles.css` | The look: deep space, glass, and the logo's turquoise, blue and lime (`docs/brand.md`). |
+| `src/main.js` | Reveals, the frosted bar, and the deferred load of the scene. |
+| `src/scene.js` | The plane: three glass panels meeting at a lime nose, with three streams of light converging into it. |
+| `src/public/` | Copied as is: the fonts (Instrument Serif, Instrument Sans, Geist Mono; SIL OFL) and `404.html`. |
+| `src/img/` | The logo cuts, the share image and the network logos. |
+| `build.ts` | Bundles `src/index.html` into `dist/` and adds the fixed-address files. |
 
 ```sh
-bun exact.mjs web-build --out dist   # build, about a second
-bun exact.mjs serve dist             # serve on 127.0.0.1:8765, rebuilding on each edit
-bun exact.mjs test web               # the tests
-bun exact.mjs verify                 # tests, contrast, clipping, largest text: must be clean
-./deploy.sh                          # build and publish to Vercel (project "mux")
+bun install
+bun run dev        # a dev server with reload
+bun run build      # dist/, ready for any static host
+./deploy.sh        # build and publish to Vercel (project "mux")
 ```
 
-Keep each claim true to the repository: `tasks/plan.md` and `server/README.md` are the
-sources. The chats in the drawing are made up, so no real chat is ever shown.
+Keep each claim true to the repository: `tasks/plan.md` is the source.

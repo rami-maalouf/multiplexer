@@ -1,9 +1,9 @@
 #!/bin/zsh
 # builds the site and publishes it to vercel as a static site: project "mux", served at
-# https://mux.orbitlabs.studio. needs the vercel cli, signed in to the account that owns
-# orbitlabs.studio. the first run creates the project; adding the domain is a one-time step
-# (`vercel domains add mux.orbitlabs.studio mux`).
+# https://mux.orbitlabs.studio. needs bun and the vercel cli, signed in to the account that
+# owns orbitlabs.studio. the domain is already attached to the project.
 set -euo pipefail
 cd "$(dirname "$0")"
-bun exact.mjs web-build --out dist
+bun install --frozen-lockfile
+bun run build
 vercel deploy dist --prod --yes --project mux

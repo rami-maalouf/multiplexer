@@ -5,10 +5,12 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 ## Status
 
 **Website and README (2026-11-06, `feat/mux-website`):** a root `README.md` (what Mux is, why,
-how it works, how it was built) and a one-page site in `website/`, an Exact site built ahead
-(`render=build`), dark only, in the brand's colours (`docs/brand.md`). `verify` clean; tests pass.
-Publishes to Vercel (project `mux`) at `mux.orbitlabs.studio` with `website/deploy.sh`.
-Exact findings 137 to 142. A setup guide for others is the next document.
+how it works, how it was built; no other product named) and the production site in `website/`:
+static HTML and CSS with a Three.js scene of the glass plane (three streams converging into its
+nose), bundled with Bun; the scene loads after first paint and holds still for reduced motion.
+Rami asked for Three.js and very little text, so it replaced the first version, an Exact site
+(Exact findings 137 to 142 came from that one). Live at `mux.orbitlabs.studio` (Vercel project
+`mux`, `website/deploy.sh`). A setup guide for others is the next document.
 
 **Mux identity (2026-11-06):** Rami selected the three-fold glass paper plane and
 named the app Mux. Visible app copy, manifest names, new Matrix device/push display

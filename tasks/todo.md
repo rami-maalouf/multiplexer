@@ -35,8 +35,10 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 ## Website and README (2026-11-06, branch `feat/mux-website`)
 
 - [x] Root `README.md`: what Mux is, why we built it, how it works, how we built it, the folders.
-- [x] `website/`: an Exact site, one page built ahead, dark only, brand tokens in `app.tamber`;
-  `test web` 3 passed, `verify` clean; checked at 1280 and 390 px wide and at the largest text.
+- [x] `website/` v1: an Exact site, one page built ahead; `verify` clean (replaced by v2).
+- [x] `website/` v2 (Rami: "production website", Three.js plane, little text, no other product
+  named): static HTML, CSS, a Three.js scene loaded after first paint (117 KB brotli), fonts
+  self-hosted; checked at 1440 and 390 px, the opening flight, reduced motion and scrolled states.
 - [x] Exact findings 137 to 142 (diary `apps/multiplexer/.exact/diary/2026-11-06-a-landing-site.md`).
 - [x] Published at `https://mux.orbitlabs.studio` (`website/deploy.sh`, Vercel project `mux`, 2026-11-06); checked live at 1280 and 390 px.
 - [ ] The setup guide: a server, a domain, the bridges, and the app, for someone other than Rami.
