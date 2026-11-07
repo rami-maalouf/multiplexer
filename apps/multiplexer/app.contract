@@ -1635,7 +1635,9 @@ component Multiplexer
                     // the field's own padding makes it as tall as the circles beside it (48 points); the row
                     // adds none above or below. a bridged chat's network logo at the field's start says where
                     // the message goes, as the placeholder does ("Reply on WhatsApp").
-                    row align-items="flex-end" padding="0 14px"
+                    // once there is something to send, Send sits inside the field at its end, as Beeper's
+                    // does, and the field reaches the row's end (the voice button's slot goes).
+                    row align-items="flex-end" padding=(recording == "idle" and not voiceOffered ? "0 48px 0 14px" : "0 14px")
                       opacity=(recording != "idle" ? 0 : 1) height=(recording != "idle" ? 0 : "auto") overflow="hidden"
                       pointer-events=(recording != "idle" ? "none" : "auto") aria-hidden=(recording != "idle")
                       if openNetwork != "matrix" and not viewport.accessibilityTextSize and recording == "idle"
@@ -1643,24 +1645,28 @@ component Multiplexer
                       textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
                         placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
                         aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
-                        border="none" background-color="transparent"
+                        border="none" background-color="transparent" line-height=1.25
+                    // Send (or an edit's checkmark): the accent's liquid glass (iOS's prominent glass), 36
+                    // points, 6 from the field's end and bottom, over the field's right padding. It floats:
+                    // beside the text in the row, the text's own height was measured at the row's whole width
+                    // and cut its first line. A long press offers Send Later's times (send-later-members.contract)
+                    // where the chat can have it; it is on a view around Send, as a native button takes no long press.
+                    if recording == "idle" and not voiceOffered
+                      view position="absolute" right=6 bottom=6 contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "")
+                        testId="send-hold"
+                        button press=post buttonStyle="prominent-glass" width=36 height=36 retainFocus=true testId="send"
+                          disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
+                          aria-label=(editing != "" ? "Save Edit" : "Send")
+                          image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 18px)"
+                  // the voice slot: the voice button, Stop while recording, the draft's Send; each liquid glass.
                   if recording == "draft"
-                    button press=sendVoiceDraft disabled=(not draftReady and pending(voicePrepared)) buttonStyle="filled"
-                      color=(pending(voicePrepared) ? "-exact-label" : appearance.onTint) width=48 height=48 flex-shrink=0
-                      retainFocus=true aria-label="Send Voice Message" testId="voice-send"
+                    button press=sendVoiceDraft disabled=(not draftReady and pending(voicePrepared)) buttonStyle="prominent-glass"
+                      width=48 height=48 flex-shrink=0 retainFocus=true aria-label="Send Voice Message" testId="voice-send"
                       image "symbol:send" font-size="min(-exact-body, 22px)"
                   else if recording != "idle"
                     VoiceStop(press=stopVoice, disabled=(recording != "recording"))
                   else if voiceOffered
                     VoiceButton(press=startVoice, disabled=pending(sentVoice))
-                  else
-                    // a long press offers Send Later's times (send-later-members.contract) where the chat can
-                    // have it; it is on a view around Send, as a native button takes no long press.
-                    view contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "") testId="send-hold"
-                      button press=post buttonStyle="filled" color=appearance.onTint width=48 height=48 retainFocus=true testId="send"
-                        disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
-                        aria-label=(editing != "" ? "Save Edit" : "Send")
-                        image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 22px)"
             column id="send-later-menu" popover="auto" role="menu"
               button press=sendLaterAt("tomorrow") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-tomorrow"
                 image "symbol:icon.clock"

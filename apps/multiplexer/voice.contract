@@ -217,18 +217,17 @@ component VoiceCancel
       aria-label=(draft ? "Delete Recording" : "Cancel Recording") testId=(draft ? "voice-delete" : "voice-cancel")
       image "symbol:close" font-size="min(-exact-title3, 24px)" color="-exact-label"
 
-// stop that replaces the voice button while recording: the whole circle is liquid glass with a
-// light red wash; a small red square marks stop (a stop-fill symbol read as a solid red disc).
+// stop that replaces the voice button while recording: iOS's red liquid glass (prominent glass,
+// tinted the system red), with a white square, as Beeper's. A tint painted over a glass view hid
+// the glass; prominent glass is the platform's own tinted glass.
 component VoiceStop
   props
     press: action
     disabled: bool
   view
-    button appearance="none" press=press disabled=disabled width=48 height=48 flex-shrink=0 border-radius=24 border-width=0
-      backgroundMaterial="glass" background-color="voice.stop-glass" retainFocus=true
-      aria-label="Stop Recording" testId="voice-stop"
-      display="flex" align-items="center" justify-content="center"
-      view width=14 height=14 border-radius=3 background-color="-exact-system-red" aria-hidden=true
+    button press=press disabled=disabled buttonStyle="prominent-glass" accent-color="-exact-system-red"
+      width=48 height=48 flex-shrink=0 retainFocus=true aria-label="Stop Recording" testId="voice-stop"
+      image "symbol:stop-fill" font-size="min(-exact-body, 18px)"
 // the recording before it goes: play with its waveform and length inside the capsule; Delete and
 // Send sit outside in the + and voice slots, as while recording.
 component DraftBar
