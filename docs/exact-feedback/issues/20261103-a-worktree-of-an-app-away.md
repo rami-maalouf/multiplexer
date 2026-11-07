@@ -48,3 +48,11 @@ path, and the build refused ("[patch.crates-io] must name exact2's vendored …"
 for the build and back, the next build against the usual checkout failed with "there are multiple
 different versions of crate `exact_markdown`": the app's `target/` still held the other checkout's
 crates. Moving `target/` aside fixed it, at the cost of a full build. About 15 minutes.
+
+## Evidence (2026-11-07): `EXACT2` is a sixth place
+
+To build against a framework worktree with a local fix, five app files were rewritten (three
+`Cargo.toml`, `app.json`'s schema, `package.json`). The first build then stopped at once with
+"[patch.crates-io] must name exact2's vendored ..." and printed the old paths, because
+`exact.mjs` still named the shared checkout. Setting `EXACT2=<checkout>` fixed it. The message
+does not say that `EXACT2` decides which checkout it compares against. About 2 minutes.
