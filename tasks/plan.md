@@ -4,6 +4,23 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Teammate-testing resumption (2026-11-07):** app fixes are committed in PR #14
+(`fix/members-composer-groups`, stacked on #13). Recorded drives show matching group
+counts, the composer mounted during first-open loading, corrected two-person bridged
+groups, and the restored staged unread badge. Focused verification passed: 12 iOS,
+13 app and 15 core tests. The full core run finished with 129 tests, two skipped and
+two failures (unread count stayed 22; recovery first sync timed out). Both failed
+cases passed together in isolation in 191.625 s; the full suite is not claimed green.
+No product code or timeout was changed during resumption. The owned MX demo Simulator
+is shut down. Remaining Exact work is committed locally in `exact2-rm-{expect,largetitle,menu,menusurface}`;
+its broad native validation still contains failures, so those fixes were not published
+or integrated. The drive CLI's 49 tests pass under pinned Bun 1.4.2; caps passes.
+Browser snapshots timed out, including on a fresh tab, and the fallback browser host
+is unavailable. TestFlight build 2's current compliance/installability is unverified;
+Rami previously chose to answer France himself. PR #14 is not in build 2. Export
+metadata remains unchanged pending that answer. The remaining diary was sent with
+Rami's prior authorization: receipt `be9ec5d7-b554-4bc1-8762-38bedae7bf5a`.
+
 **Push setup applied (2026-11-07):** after Rami's explicit approval, created a sandbox-only
 APNs key restricted to `com.ramimaalouf.multiplexer`, stored and verified it in Keychain,
 and deployed it through the playbook (0600, matrix:matrix; hash matches Keychain).

@@ -62,7 +62,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 39 | The docs do not say that a picked file's copy has another name than `Picked.name`. Fixed in PR #1342 (open). | One wrong send, about 10 min | P3 | [the-docs-do-not-say-that](issues/20261102-the-docs-do-not-say-that.md) |
 | 40 | After `check both`, nodes made later in the drive drew in the other color scheme (seen once). | About 8 min and a wrong fix | P3 | [after-check-both-nodes-made-later](issues/20261102-after-check-both-nodes-made-later.md) |
 | 41 | `font-size` still refuses `rem` inside `min()`, which `width` now takes (follows closed finding 21). Partly fixed in PR #1349 (open): the refusal names the forms. | About 3 min | P3 | [font-size-still-refuses-rem-inside](issues/20261102-font-size-still-refuses-rem-inside.md) |
-| 42 | Running a framework script's tests with a newer Bun fails: `ensureBun` drops the `test` verb. Fixed in PR #1345 (open). | About 3 min | P3 | [running-a-framework-script-s-tests](issues/20261102-running-a-framework-script-s-tests.md) |
+| 42 | Running a framework script's tests with a newer Bun fails: `ensureBun` drops the `test` verb. Fixed in PR #1345 (open); seen again on 2026-11-07 before that fix. | About 3 min | P3 | [running-a-framework-script-s-tests](issues/20261102-running-a-framework-script-s-tests.md) |
 | 43 | Parallel sessions on one machine share the default Simulator: an `ios --run` replaced another session's app in the middle of its drive. Fixed in PR #1329 (open). | About 15 min | P3 | [parallel-sessions-on-one-machine-share](issues/20261102-parallel-sessions-on-one-machine-share.md) |
 | 44 | A virtualized list draws rows past its frame, under the bar that follows it, and refuses `overflow`. | About 25 min | P3 | [a-virtualized-list-draws-rows-past](issues/20261102-a-virtualized-list-draws-rows-past.md) |
 | 45 | No keyboard fact: a chat cannot keep a message in view as the keyboard comes up. Further evidence on 2026-11-07: Send and the voice button keep the keyboard's state by hand. | About 15 min | P3 | [no-keyboard-fact-a-chat-cannot](issues/20261102-no-keyboard-fact-a-chat-cannot.md) |
@@ -226,6 +226,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 
 | Date | Receipt | What | Sent by |
 |---|---|---|---|
+| 2026-11-07 | `be9ec5d7-b554-4bc1-8762-38bedae7bf5a` | 1 diary (member/composer/group fixes: finding 155, new evidence for 42 and 116) and 21 command-log lines | Codex, with Rami's prior yes |
 | 2026-11-06 | `a83c1989-e345-4828-8cb5-60c983aeb0df` | One branding diary, isolated from the backlog: native rebuild cost and manifest icon packaging. Zero command-log entries or attachments. | Codex, with Rami's yes |
 | 2026-10-27 | `4c8a0a07-60a8-466e-ae9a-bef9a0b29f82` | 4 diary entries (findings 1 to 15, in their Rough sections) and 77 command-log lines | Rami |
 | 2026-10-27 | `ac63ff5c-08e3-461b-ae7f-5f1598b2125b` | Findings 1 to 15 as issue files, rechecked at exact2 `cee509ac82`, in the entry `2026-10-27-findings-for-the-team.md` | Claude, at Rami's request |

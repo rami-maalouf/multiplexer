@@ -1,5 +1,30 @@
 # Mux: tasks
 
+## Teammate-testing checkpoint (2026-11-07 resumption)
+
+- [x] Recover app helper results and inspect the saved group-info comparison. PR #14
+  holds all four fixes, on #13; its description now explains behavior and evidence.
+- [x] Inspect the full MatrixCore result: 129 tests, two skipped, two failures.
+  Unread-line count stayed 22; recovery first sync timed out. Rerun both together
+  through the shared lock on MX demo: two passed, zero failures, 191.625 s.
+  Logs: `.exact/members-fix/logs/{matrixcore-full,isolated-rerun}.log` in this checkout.
+  Cause remains unresolved; isolated success does not make the full suite green.
+- [x] Verify the Exact CLI refusal branch: 49 tests passed with pinned Bun 1.4.2;
+  caps passed. Newer Bun re-execution hit known finding 42; evidence added.
+- [x] Send the remaining diary with Rami's existing authorization: one diary,
+  21 command-log lines, receipt `be9ec5d7-b554-4bc1-8762-38bedae7bf5a`.
+- [x] Shut down only the owned MX demo Simulator after test teardown.
+- [ ] Finish Exact native validation and publish the four local branches. Large-title
+  validation and the baseline both have native failures; a stress run also found
+  `testAFadeWaitsForTheLatestChangesCommit` failing once in 680 cases. Local branches
+  are `drive-refuses-expect-naming-steps`, `large-title-opens-expanded`,
+  `drive-picks-upward-menu-rows`, and `painted-menu-surface`. None was integrated.
+- [ ] Rami answers the France question and saves it. Inspect TestFlight build 2's
+  current status afterward. Preview snapshots timed out; browser fallback is
+  unavailable. No compliance answer or export metadata was changed.
+- [ ] Include PR #14 in a later TestFlight build after integration and verification.
+  Build 2 does not contain these four fixes.
+
 ## Mux identity (2026-11-06)
 
 - [x] With Rami's approval, send only the branding session's Exact diary. Receipt
