@@ -607,8 +607,11 @@ const sources: Sources = {
     servedCopy.delete(served);
     showingLive.set(screen, roomId);
     return (async (): Promise<Result<'loadMessages'>> => {
-      const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
-      const shown = withKeptOlder(answer, threadCopies.get(roomId));
+      // a chat with no kept copy waits for its full first screen (early: false), under the loading
+      // spinner: a new device's first answer held only the newest message, which then jumped up.
+      const kept = threadCopies.get(roomId);
+      const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT, early: kept !== undefined })) as MessagesAnswer;
+      const shown = withKeptOlder(answer, kept);
       keepThreadCopy(roomId, answer, native);
       const thread = threadOf(shown, roomId, isDirect, roomName, utcOffset, network, false);
       // the chat's links' kept previews join their messages (cards); the module says when a fetch
