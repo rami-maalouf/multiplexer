@@ -2831,7 +2831,16 @@ Spike (step 0) done 2026-11-08 on `feat/mac-spike`. Screens in `apps/multiplexer
 - [x] Run the Exact app on macOS: `bun exact.mjs mac`, then `bun exact.mjs agent macos
   --size 900x700 --chrome platform ...`. Sign-in, the chat list, a chat, sending and Sign Out
   work as `@test1`. `bun exact.mjs test macos` passes, as `test ios` does.
+- [x] Send approved diaries: receipt `d4e3cf84-6906-40a6-8113-9d12066c2420`.
+- [x] Open Exact fixes: [#1603](https://github.com/ccheever/exact2/pull/1603)
+  documents the Mac commands and verify limitation; [#1604](https://github.com/ccheever/exact2/pull/1604)
+  separates module logs from drive replies. Neither is merged or integrated here.
 - [ ] Fix the SIGTRAP after each send (Exact finding 157, AppKit glass layout). Blocks daily use.
+  Reproduced again with the test account on 2026-11-08, signed out afterward.
+  Isolated animated/tinted glass swaps pass in manual drives. The saved authored
+  test crashed with SIGTRAP in 1 of 2 consecutive runs. Intermittent reduction:
+  `tools/mac-glass-probe/`. Next capture its debugger stack and compare with the
+  full app before claiming a shared mechanism.
 - [ ] Visual faults seen at 900x700: the chat's header shows a Back button ("< 11") inside the
   split and lies over the messages; the composer covers the newest message and is cut at the
   window's bottom; the sidebar's bottom bar overlaps the list, with a stray sidebar button.
@@ -2857,3 +2866,5 @@ The diagnostic observer now narrows the blue DISPLAY failure to below correct wi
 tint propagation. Native prominent fill/foreground acceptance remains open; a public-API
 item styling/invalidation correction needs source review and rendered verification.
 `exact2-navigation` stays clean at `7529006ab9` for Inbox.
+
+Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).

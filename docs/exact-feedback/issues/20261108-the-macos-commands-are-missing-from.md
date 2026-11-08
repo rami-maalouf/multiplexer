@@ -30,3 +30,7 @@ refusal that names what to run on the Mac instead.
 ## Evidence
 
 Seen on 2026-11-08 at exact2 `86559f737a`.
+
+## Follow-up
+
+Public documentation fix: https://github.com/ccheever/exact2/pull/1603. Documents the shipped commands and the verify limitation; does not add verify support or change aliases.

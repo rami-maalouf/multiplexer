@@ -4,6 +4,19 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Mac follow-up (2026-11-08):** Rami approved sending the three diaries and opening
+Exact fixes. Sent 3 diaries/19 command records, receipt
+`d4e3cf84-6906-40a6-8113-9d12066c2420`. Public Exact PRs #1603 (Mac command docs)
+and #1604 (reserve stdio replies before native modules start) are open. Carrier
+regression failed before the change; driver tests pass 49 with 1 browser test
+skipped, the full Mac host builds and a live state drive passes. Caps passes.
+The full app still traps after Send as the test account; signed out afterward.
+An account-free composer probe crashed with SIGTRAP in one of two consecutive
+authored-test runs; manual drives passed. `tools/mac-glass-probe/` preserves the
+intermittent reduction. Its stack and shared root cause are still unproved; no
+glass fix is claimed. Finding 157 and daily-Mac readiness stay open.
+
+
 **Mac spike (2026-11-08, branch `feat/mac-spike`, Phase 5 step 0, Rami's yes):** the
 iPhone app runs on the Mac with Exact's AppKit host. Signed in as `@test1`, it listed 74
 chats, opened a chat, sent 5 messages and signed out. The inbox and the chat show side by
@@ -810,3 +823,5 @@ Host result: the one compile and all 31 exact selectors passed on `57fac7b5`, bi
 `3020ad05`, with no retry or ignored test. All owned groups ended and target-openers check
 passed. The proposed managed-owner/foreign-transfer plan remains unaccepted; a custom string
 packet versus bounded typed record needs an explicit design decision before implementation.
+
+Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).

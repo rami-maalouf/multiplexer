@@ -36,3 +36,7 @@ standard error.
 
 Seen on 2026-11-08 at exact2 `86559f737a`, `agent macos` on a chat app whose module logs each
 answer it gives.
+
+## Follow-up
+
+Public fix: https://github.com/ccheever/exact2/pull/1604. Carrier regression failed before the fix and passes after; 49 driver tests pass, 1 Chromium test skipped. Full Mac host builds and a live drive completes. Not merged or integrated into the app.

@@ -44,3 +44,9 @@ bottom bar, where a tap removes one button and adds another in the same commit.
 
 Seen on 2026-11-08 at exact2 `86559f737a` (the macOS host), macOS 27.0.1 (26A434), Apple Silicon,
 `agent macos --size 900x700 --chrome platform`, a send in a chat on a list-detail split.
+
+## Follow-up
+
+Reconfirmed on 2026-11-08 in the full app as a test account, with SIGTRAP after Send. Signed out afterward. Small account-free probes survive nested glass replacement, tint, entry/exit animation and intermediate frames. An authored test of the account-free probe crashed with SIGTRAP in 1 of 2 consecutive runs. Preserved in tools/mac-glass-probe/. The reduced crash has no stack yet; the shared failure mechanism remains unknown.
+
+Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).
