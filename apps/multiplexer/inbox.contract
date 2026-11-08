@@ -44,6 +44,7 @@ fn selectedTitle(n: number): string = n == 0 ? "Select Chats" : `${n} Selected`
 // close merges, as the platform's does.
 component BottomBar
   props
+    desktop: bool
     filter: string
     choose: action
     top: action
@@ -74,16 +75,21 @@ component BottomBar
     // black page to a grey band (about #25 at the bottom edge); the "dark" material and the chat's
     // chat.edge-bottom tint keep it near black. It sits 6 points into the home indicator's band, a
     // little lower than the page's end, as iOS's own floating tab bar does.
-    view position="absolute" left=0 right=0 bottom=-6 pointer-events="none"
+    view position=(desktop ? "relative" : "absolute") left=0 right=0 bottom=(desktop ? 0 : -6) flex-shrink=0 pointer-events="none"
       view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
         mask-image="linear-gradient(to top, black 0%, transparent 100%)"
       view position="absolute" left=0 right=0 top=-24 bottom=-40
         background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
-      row position="relative" padding="0 16px" align-items="center" justify-content="space-between"
+      row position="relative" padding=(desktop ? "8px" : "0 16px") align-items="center" justify-content="space-between"
         glassGroup=12 pointer-events="none" testId="bottom-bar"
-        button popovertarget="filter-menu" buttonStyle=(filtered ? "prominent-glass" : "glass") width=48 height=48 pointer-events="auto"
-          aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
-          image "symbol:filter" font-size=symbolSize
+        if desktop
+          button popovertarget="filter-menu" width=40 height=40 pointer-events="auto"
+            aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") aria-pressed=filtered testId="filter"
+            image "symbol:filter" font-size=symbolSize color="-exact-label"
+        else
+          button popovertarget="filter-menu" buttonStyle=(filtered ? "prominent-glass" : "glass") width=48 height=48 pointer-events="auto"
+            aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
+            image "symbol:filter" font-size=symbolSize
         row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
           button appearance="none" press=top aria-label=(communityName != "" ? communityName : (network == "" ? "Inbox" : networkName(network))) aria-selected=inInbox
             testId="inbox" min-width=68 height=44 border-radius=22 background-color=(inInbox ? "-exact-tertiary-fill" : "transparent")

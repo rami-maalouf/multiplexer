@@ -44,14 +44,26 @@ final class Matrix: ExactModule {
     @MainActor private func observeLifecycle() {
         guard lifecycle.isEmpty else { return }
         #if os(macOS)
-        // a mac window can be on screen while another app is active: in front means visible.
-        lifecycle.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeOcclusionStateNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.inFront = NSApp.occlusionState.contains(.visible); self?.applyReceiptWatch() }
-        })
+        let changed: @MainActor @Sendable () -> Void = { [weak self] in
+            guard let self else { return }
+            self.inFront = NSApp.occlusionState.contains(.visible)
+            self.applyReceiptWatch()
+            self.context.changed("desktop")
+        }
+        for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification,
+                     NSApplication.didChangeOcclusionStateNotification, NSWindow.didChangeOcclusionStateNotification] {
+            lifecycle.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { changed() }
+            })
+        }
         #else
+        let changed: @MainActor @Sendable (Bool) -> Void = { [weak self] front in
+            self?.inFront = front
+            self?.applyReceiptWatch()
+        }
         for (name, front) in [(UIApplication.didEnterBackgroundNotification, false), (UIApplication.willEnterForegroundNotification, true)] {
-            lifecycle.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.inFront = front; self?.applyReceiptWatch() }
+            lifecycle.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { changed(front) }
             })
         }
         #endif
@@ -72,10 +84,12 @@ final class Matrix: ExactModule {
         switch request["op"] as? String {
         case "composerSurface":
             #if os(macOS)
-            return ["groupedGlass": false]
+            return ["groupedGlass": false, "desktop": true]
             #else
-            return ["groupedGlass": true]
+            return ["groupedGlass": true, "desktop": false]
             #endif
+        case "dropBatch":
+            return ["id": UUID().uuidString]
         case "session":
             defer { signOutPending() }
             return ["userId": try stored()?.session.session.userId ?? ""]
@@ -93,6 +107,21 @@ final class Matrix: ExactModule {
                 case "signIn":
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
+                case "desktopRooms":
+                    let account = try await signedIn()
+                    let inbox = try await account.scopedInbox(filter: .all)
+                    let rooms = inbox.chats.filter { !$0.isHidden }
+                    #if os(macOS)
+                    let active = context.agent || NSApp.isActive
+                    let visible = context.agent
+                        ? NSApp.windows.contains { $0.isVisible && $0.canBecomeMain }
+                        : NSApp.occlusionState.contains(.visible)
+                    #else
+                    let active = true, visible = true
+                    #endif
+                    reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
+                                "unread": inbox.unreadChats, "active": active, "visible": visible,
+                                "now": UInt64(Date().timeIntervalSince1970 * 1000)])
                 case "rooms":
                     // every chat under the filter menu and the filter sheet's network ("": every
                     // network) or community; `listed` spans inbox, Archive and Low Priority so the

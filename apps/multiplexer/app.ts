@@ -1,6 +1,6 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
 import { ClipboardItem, write } from '@exact/clipboard';
-import { closeNotification, notificationStatus, showNotification } from '@exact/notifications';
+import { clearAppBadge, closeNotification, notificationStatus, setAppBadge, showNotification } from '@exact/notifications';
 import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
@@ -11,13 +11,18 @@ import { linkOf, noLink } from './links.ts';
 type Card = { url: string; title: string; image: string; width: number; height: number; state: string };
 const noCard: Card = { url: '', title: '', image: '', width: 0, height: 0, state: '' };
 import { appearance } from './appearance.ts';
+import { DesktopNotifications, DesktopNotificationDelivery } from './desktop-notifications.ts';
+import { stageDroppedFiles } from './desktop-files.ts';
+const desktopNotifications = new DesktopNotifications();
+const desktopDelivery = new DesktopNotificationDelivery();
+let desktopRevision = 0;
 
 // app.json’s app.id: change the two together.
 export const appId = 'com.ramimaalouf.multiplexer';
 // picked photos and files are read from the picker's copies; a photo is made smaller beside them
 // before it goes; a file message's file is shared from where the module downloaded it. A voice
 // message is recorded from the microphone into app:/tmp/voice.
-export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/camera', 'device.camera purpose.camera', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
+export const grants = ['fs.read doc:/', 'fs.read app:/tmp/picked', 'fs.read app:/tmp/camera', 'device.camera purpose.camera', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
   'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
   'device.speech-recognition purpose.recognition', 'fs.read app:/data/transcripts.json', 'fs.write app:/data/transcripts.json',
@@ -400,9 +405,44 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
 
 // the web has no Matrix SDK: it shows the sign-in screen and refuses to sign in.
 const sources: Sources = {
+  resolveNotification: ([tag, room], _store, _storage, native): Result<'resolveNotification'> => {
+    const owner = native?.available ? (native.call({ op: 'session' }) as { userId: string }).userId : '';
+    return { owner, room: owner && (!tag.startsWith('chat:') || tag.startsWith(`chat:${owner}:`)) ? room : '' };
+  },
+  importDroppedFiles: async ([owner, room, paths, limit], _store, storage, native): Promise<Result<'importDroppedFiles'>> => {
+    try {
+      const { id } = native!.call({ op: 'dropBatch' }) as { id: string };
+      return { owner, room, ...await stageDroppedFiles(paths, storage.fs, limit, id) };
+    } catch {
+      return { owner, room, items: [], problem: 'Could not attach these files.' };
+    }
+  },
   composerSurface: (_args, _store, _storage, native): Result<'composerSurface'> => {
-    if (!native?.available) return { groupedGlass: false };
+    if (!native?.available) return { groupedGlass: false, desktop: false };
     return native.call({ op: 'composerSurface' }) as Result<'composerSurface'>;
+  },
+  updateDesktop: async ([userId, desktop, permission, enabled, openRoom, visibility], _store, _storage, native): Promise<Result<'updateDesktop'>> => {
+    const revision = ++desktopRevision;
+    const generation = desktopDelivery.configure(desktop ? userId : '', enabled, permission === 'granted');
+    if (!desktop || !userId || !native?.available) {
+      desktopNotifications.update({ userId: '', rooms: [], openRoom: '', foreground: false, visible: false,
+        notificationsEnabled: false, permissionGranted: false, now: 0 });
+      if (desktop && native?.available) await clearAppBadge({});
+      return { unread: 0, notified: 0 };
+    }
+    native.watch('rooms');
+    native.watch('desktop');
+    const snapshot = await native.later({ op: 'desktopRooms' }) as {
+      rooms: Result<'loadRoomsByRecency'>['rooms']; unread: number; active: boolean; visible: boolean; now: number;
+    };
+    if (revision !== desktopRevision) return { unread: 0, notified: 0 };
+    await setAppBadge({ contents: snapshot.unread });
+    if (revision !== desktopRevision) return { unread: 0, notified: 0 };
+    const notices = desktopNotifications.update({ userId, rooms: snapshot.rooms, openRoom,
+      foreground: snapshot.active, visible: snapshot.visible && visibility === 'visible',
+      notificationsEnabled: enabled, permissionGranted: permission === 'granted', now: snapshot.now });
+    const notified = await desktopDelivery.send(notices, generation, showNotification);
+    return { unread: snapshot.unread, notified };
   },
   loadAppearance: ([color]) => appearance(color),
   ...infoSources,

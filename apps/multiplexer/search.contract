@@ -104,6 +104,7 @@ fn audioLine(m: FoundMessage): string = m.seconds > 0 ? `${videoLength(m.seconds
 // chat searched, "" for all chats.
 component SearchBar
   props
+    desktop: bool
     query: string
     kind: string
     scope: string
@@ -118,8 +119,8 @@ component SearchBar
     largeText: bool
     reduced: bool
   view
-    row position="absolute" left=0 right=0 bottom=0 padding="0 16px" align-items="center" gap=12 glassGroup=12
-      translate=(focused ? "0px -10px" : "0px 0px") transition="translate -exact-spring(400, 36, 1)"
+    row position=(desktop ? "relative" : "absolute") order=(desktop ? -1 : 0) z-index=1 flex-shrink=0 left=0 right=0 bottom=0 padding=(desktop ? "8px 12px" : "0 16px") align-items="center" gap=12 glassGroup=12
+      translate=(focused and not desktop ? "0px -10px" : "0px 0px") transition="translate -exact-spring(400, 36, 1)"
       pointer-events="none" testId="search-bar"
       // the field's own fill and border give way to the glass; a chat search takes the plain
       // keyboard with Search, not the web's address keyboard.
@@ -132,9 +133,13 @@ component SearchBar
           enterkeyhint="search"
           placeholder=searchPlaceholder(kind, scope) aria-label=searchPlaceholder(kind, scope) font-size="min(-exact-body, 28px)"
           border="none" background-color="transparent" flex=1 min-width=0 min-height=44 testId="search-field"
-      button buttonStyle="glass" press=close width=48 height=48 pointer-events="auto" aria-label="Close Search" testId="close-search"
-        animation=(reduced ? "none" : "appear 200ms ease 120ms both")
-        image "symbol:close" font-size="min(-exact-title3, 24px)"
+      if desktop
+        button press=close width=32 height=32 pointer-events="auto" aria-label="Close Search" testId="close-search"
+          image "symbol:close" color="-exact-label"
+      else
+        button buttonStyle="glass" press=close width=48 height=48 pointer-events="auto" aria-label="Close Search" testId="close-search"
+          animation=(reduced ? "none" : "appear 200ms ease 120ms both")
+          image "symbol:close" font-size="min(-exact-title3, 24px)"
 
 // a kind above the results: a round button with its symbol and its name under it, filled with
 // the accent while it is chosen (a second press clears it).
@@ -315,6 +320,7 @@ component AudioResult
 // searches and chats before any word). found answers query and kind once shown is true.
 component SearchResults
   props
+    desktop: bool
     appearance: Appearance
     found: SearchFound
     shown: bool
@@ -339,10 +345,10 @@ component SearchResults
     // over the inbox's list, which stays where it was under it; its ground reaches past the
     // screen's top and bottom edges, under the status bar and the home indicator, where the list
     // would show.
-    column position="absolute" left=0 right=0 top=-120 bottom=-60 padding="120px 0 60px" box-sizing="border-box" display="flex"
+    column position="absolute" left=0 right=0 top=(desktop ? 0 : -120) bottom=(desktop ? 0 : -60) padding=(desktop ? "66px 0 0" : "120px 0 60px") box-sizing="border-box" display="flex"
       flex-direction="column" background-color="-exact-background" animation=(reduced ? "none" : "appear 220ms ease both") testId="search-screen"
       // up and down only, as the chat list (R01).
-      list id="search-results" appearance="auto" listStyle="plain" keyboardDismissMode="on-drag" flex=1 min-height=0 padding-bottom=72
+      list id="search-results" appearance="auto" listStyle="plain" keyboardDismissMode="on-drag" flex=1 min-height=0 padding-bottom=(desktop ? 8 : 72)
         overflow-x="hidden"
         testId="search-results"
         section

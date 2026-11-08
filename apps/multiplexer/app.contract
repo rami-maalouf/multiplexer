@@ -36,8 +36,13 @@ keyframes sendOut
 keyframes logoOut
   to opacity=0
 
+shape DesktopState
+  unread: number
+  notified: number
+
 shape ComposerSurface
   groupedGlass: bool
+  desktop: bool
 
 shape Session
   userId: string
@@ -398,6 +403,7 @@ component Multiplexer
   // the app's own preference (Settings' switch), kept across launches. The system permission is
   // separate: register only when both this and notifications.state are on.
   state messageNotifications = true persist
+  resource desktopState = updateDesktop(session.userId, composerSurface.desktop, notifications.state, messageNotifications, openRoom, page.visibilityState) as shape DesktopState
   // with the permission and the preference, the phone's push token goes to the server as a
   // pusher: at each launch and sign-in, and when either changes.
   resource push = registerPush(session.userId, notifications.state, messageNotifications) as shape Push else empty()
@@ -543,6 +549,7 @@ component Multiplexer
   task keepDraftHidden when unsaved != "" and page.visibilityState == "hidden"
     after(1, keepDraftNow)
   members "./appearance-members.contract"
+  members "./desktop-members.contract"
   members "./details-members.contract"
   members "./voice-members.contract"
   members "./search-members.contract"
@@ -694,6 +701,24 @@ component Multiplexer
       else
         composers = withComposer(composers, Composer(composer, text=v))
         unsaved = openRoom
+  action desktopDrop(event: DragEvent)
+    if composerSurface.desktop and composerReady and recording == "idle" and event.files.length > 0
+      preventDefault()
+      dropProblem = ""
+      dropRoom = openRoom
+      composers = withComposer(composers, composer)
+      send droppedFiles = importDroppedFiles(session.userId, openRoom, event.files, uploadLimit.bytes)
+  action didDropFiles
+    match droppedFiles
+      case some(result)
+        if result.owner == session.userId
+          let previous = composerOf(composers, result.room, savedDraft)
+          composers = withComposer(composers, Composer(previous, attachments=previous.attachments.concat(result.items)))
+          send staged = stageMedia(result.items)
+          dropProblem = result.problem
+          dropRoom = result.room
+      case none
+        dropProblem = "Could not attach these files."
   // as Messages does, Send clears the composer at once and scrolls to the end, even from far up.
   action post
     if composerReady
@@ -1053,7 +1078,7 @@ component Multiplexer
 
   view
     main accent-color=appearance.tint testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow notificationclick=openReminder interactive-widget=(top(nav).name == "room" ? "overlays-content" : "resizes-content")
-      width="100%" height="100%"
+      width="100%" height="100%" keycapture=desktopShortcut
       for e in stack(nav) key=e.id
         if e.name == "home"
           if session.userId == ""
@@ -1131,8 +1156,8 @@ component Multiplexer
                   // the rows run on under the home indicator (its 34 points), as Beeper's do, so the softened band
                   // under the floating bar shows rows, not empty background (R06). The bottom padding grows by the
                   // same 34 points: the last row still ends 16 points above the bar.
-                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=98 testId="room-list"
-                    overflow-x="hidden" margin-bottom=-34 margin-top=-62 scroll=roomsScrolledTo
+                  list id="rooms" refresh=reloadRooms refreshing=pending(roomList) flex=1 min-height=0 padding-bottom=(composerSurface.desktop ? 8 : 98) testId="room-list"
+                    overflow-x="hidden" margin-bottom=(composerSurface.desktop ? 0 : -34) margin-top=(composerSurface.desktop ? 0 : -62) scroll=roomsScrolledTo
                     // no UIKit edge effect: the header and the bottom bar draw their own soft edges; UIKit's
                     // under the status bar ended in a dark line at the status bar's foot.
                     -exact-scroll-edge-effect="none"
@@ -1143,7 +1168,7 @@ component Multiplexer
                       InboxHeader(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), selecting=selecting,
                         count=chosenIds.length, done=stopSelecting, busy=pending(changedChats), problem=selectionProblem,
                         select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize,
-                        underStatusBar=true, scrolled=roomsScrolled, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark")
+                        underStatusBar=(not composerSurface.desktop), scrolled=roomsScrolled, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark")
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=tapPinned, aim=aim, menu="chat-menu", selecting=selecting,
                         chosen=selectedChats, busy=pending(changedChats))
@@ -1168,8 +1193,9 @@ component Multiplexer
                           // the swipe's scroll is the row, so the list gives its content no margin: the link keeps the
                           // cell's 16 at each end itself, as the other rows have (Exact puts a row's content at the
                           // cell's margin only where the row writes no padding).
-                          link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
+                          link href=path("room", r.open) hover=desktopHover(r.id) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
                             width="100%" flex-shrink=0 scroll-snap-align="start" padding="0 16px" box-sizing="border-box"
+                            background-color=(composerSurface.desktop and hoveredRoom == r.id ? "-exact-tertiary-fill" : "transparent")
                             RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=true, largeText=viewport.accessibilityTextSize)
                           button id=`swipe-read-${r.id}` press=swipeChat(r.id, rowUnread(r) ? "read" : "unread") accent-color="-exact-system-blue"
                             flex-shrink=0 scroll-snap-align="start" testId=`swipe-read-${r.id}`
@@ -1193,11 +1219,11 @@ component Multiplexer
                   column flex=1 justify-content="center" align-items="center"
                     progress aria-label="Loading chats" testId="rooms-loading"
               if searching
-                SearchResults(appearance=appearance, found=found, shown=foundShown, loading=pending(found), query=searchQuery, kind=searchKind,
+                SearchResults(desktop=composerSurface.desktop, appearance=appearance, found=found, shown=foundShown, loading=pending(found), query=searchQuery, kind=searchKind,
                   recentSearches=recentSearches, now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion, chooseKind=chooseKind, openChat=openFoundChat, openMessage=openFoundMessage, openLink=openFoundLink,
                   useSearch=useSearch, clearSearches=clearSearches)
-                SearchBar(query=searchQuery, kind=searchKind, scope="", type=typeSearch, submit=submitSearch, close=closeSearch,
+                SearchBar(desktop=composerSurface.desktop, query=searchQuery, kind=searchKind, scope="", type=typeSearch, submit=submitSearch, close=closeSearch,
                   focused=searchFocused, focus=searchFocus, blur=searchBlur, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion)
               else if roomsShown and selecting
@@ -1206,7 +1232,7 @@ component Multiplexer
                   merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats),
                   dark=viewport.prefersColorScheme == "dark")
               else if roomsShown
-                BottomBar(filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=(labelFilter == "" ? chatList : "label"), network=network,
+                BottomBar(desktop=composerSurface.desktop, filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=(labelFilter == "" ? chatList : "label"), network=network,
                   communityName=(community != "" ? scopeName : ""), communityPicture=(match shownCommunity { case some(c) => c.avatar, case none => "" }),
                   sheet=openInboxes, search=openSearch, largeText=viewport.accessibilityTextSize,
                   dark=viewport.prefersColorScheme == "dark")
@@ -1417,11 +1443,11 @@ component Multiplexer
             // the search in this chat, in the page's place (chat-search-members.contract); its
             // Bookmarks kind's rows have the list's long-press menu.
             BookmarkMenu(aimedText=aimedBookmarkText, copy=copyBookmark, remove=removeAimedBookmark)
-            ChatSearchResults(appearance=appearance, found=chatFound, shown=chatFoundShown, loading=pending(chatFound), query=chatQuery, kind=chatKind,
+            ChatSearchResults( appearance=appearance, found=chatFound, shown=chatFoundShown, loading=pending(chatFound), query=chatQuery, kind=chatKind,
               bookmarks=chatBookmarks, bookmarksLoaded=bookmarksLoaded, aim=aimBookmark, removeBookmark=removeBookmarkOf,
               now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion,
               chooseKind=chooseChatKind, openMessage=openChatFound, openLink=openChatLink)
-            SearchBar(query=chatQuery, kind=chatKind, scope=infoShown.name, type=typeChatSearch, submit=submitChatSearch,
+            SearchBar(desktop=composerSurface.desktop, query=chatQuery, kind=chatKind, scope=infoShown.name, type=typeChatSearch, submit=submitChatSearch,
               close=closeChatSearch, focused=chatSearchFocused, focus=chatSearchFocus, blur=chatSearchBlur,
               largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion)
         if e.name == "editInfo"
@@ -1438,7 +1464,7 @@ component Multiplexer
           // A zero-height box above the transcript makes the host pad the route under the status
           // bar (finding 53); the bar then reaches back into that band with top=-62 so its soft
           // edge covers the clock instead of leaving the page's colour as a hard shelf.
-          column navigationKey=`${e.id}` navigationBar="none" navigationScroll="transcript" position="absolute" inset=0
+          column navigationKey=`${e.id}` navigationBar="none" navigationScroll="transcript" position="absolute" inset=0 drop=desktopDrop
             display="flex" flex-direction="column"
             view height=0 flex-shrink=0 aria-hidden=true
             if threadShown
@@ -1453,10 +1479,10 @@ component Multiplexer
                 // Top: the list runs under the status bar (margin-top=-62, as the inbox) so the
                 // bar's soft edge blurs real messages there, not empty page colour; padding clears
                 // the floating controls below the clock.
-                column flex=1 min-height=0 margin-bottom=-100 margin-top=-62
+                column flex=1 min-height=0 margin-bottom=(composerSurface.desktop ? 0 : -100) margin-top=(composerSurface.desktop ? 0 : -62)
                   list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
-                    reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=((viewport.accessibilityTextSize ? 178 : 162) + (openMerge == none ? 0 : 56))
-                    padding-bottom=100
+                    reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=(composerSurface.desktop ? 8 : ((viewport.accessibilityTextSize ? 178 : 162) + (openMerge == none ? 0 : 56)))
+                    padding-bottom=(composerSurface.desktop ? 8 : 100)
                     // no UIKit edge effect: the chat bar and the composer draw their own soft edges; UIKit's
                     // under the status bar ended in a dark line at the status bar's foot.
                     -exact-scroll-edge-effect="none"
@@ -1642,7 +1668,12 @@ component Multiplexer
             // (lower than the inbox's bar); the keyboard lifts it by its box less its bottom padding, so
             // with the keyboard up it still rests on the keyboard's top.
             column inert=(held != "") flex-shrink=0 position="relative" role="toolbar" toolbarPlacement="keyboard" testId="composer-bar"
-              margin-bottom=-16
+              margin-bottom=(composerSurface.desktop ? 0 : -16)
+              if dropProblem != "" and dropRoom == openRoom
+                row padding="6px 12px" gap=8 align-items="center"
+                  text dropProblem role="alert" color="-exact-system-red" font="-exact-footnote" flex=1 testId="drop-problem"
+                  button press=dismissDropProblem aria-label="Dismiss attachment error" testId="dismiss-drop-problem"
+                    image "symbol:close"
               // the same soft edge as the home bottom bar (inbox.contract BottomBar): one material,
               // full at the screen's bottom and fading out above the composer, plus the same tint.
               // The earlier solid fade from 32px made a black shelf under the field.
@@ -1707,6 +1738,7 @@ component Multiplexer
                 // voice button keeps its focus; the recording or draft capsule covers it. Its press makes
                 // the glass interactive, as Beeper's field is: held, it swells and follows the finger.
                 column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" press=pressField
+                  border=(composerSurface.desktop and composerFocus ? "1px solid AccentColor" : "none")
                   -exact-press-opacity=1 testId="composer-glass"
                   // it widens into the voice button's slot as Send moves in, and gives it back.
                   -exact-layout-transition=(viewport.prefersReducedMotion ? "none" : "300ms cubic-bezier(.32,.72,0,1)")
@@ -1733,10 +1765,16 @@ component Multiplexer
                     if openNetwork != "matrix" and not viewport.accessibilityTextSize and recording == "idle" and voiceOffered
                       view flex-shrink=0 -exact-exit-animation="logoOut 150ms ease-in both"
                         ComposerNetwork(network=openNetwork)
-                    textarea id="composer" disabled=(not composerReady) value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused blur=composerBlurred rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
-                      placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
-                      aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
-                      border="none" background-color="transparent" line-height=1.25
+                    if composerSurface.desktop
+                      textarea id="composer" key=composeKey appearance="none" outline="none" disabled=(not composerReady) value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused blur=composerBlurred rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
+                        placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
+                        aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
+                        border="none" background-color="transparent" line-height=1.25
+                    else
+                      textarea id="composer" key=composeKey disabled=(not composerReady) value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused blur=composerBlurred rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
+                        placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
+                        aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
+                        border="none" background-color="transparent" line-height=1.25
                   // Send (or an edit's checkmark): the accent's liquid glass (a tinted glass view), 32
                   // points, 8 from the field's end and bottom, over the field's right padding. It floats:
                   // beside the text in the row, the text's own height was measured at the row's whole width
@@ -1782,7 +1820,7 @@ component Multiplexer
                 reduced=viewport.prefersReducedMotion)
             if jumpMissed != "" and jumpMissed == openRoom
               JumpNote(largeText=viewport.accessibilityTextSize)
-            ChatBar(name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
+            ChatBar(desktop=composerSurface.desktop, name=openName, picture=(match openRoomInfo { case some(r) => r.avatar, case none => "" }),
               initials=(match openRoomInfo { case some(r) => r.initials, case none => "" }), network=openNetwork,
               unread=otherUnread, back=back, pinned=openPinned, pin=togglePinOpen, muted=openMuted, mute=toggleMuteOpen,
               markUnread=markUnreadOpen, info=openInfo, covered=(held != ""),

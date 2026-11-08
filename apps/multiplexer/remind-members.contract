@@ -6,7 +6,12 @@
 use showNotification, closeNotification, NotificationEvent from "@exact/notifications"
 use Reminded from "./send-later.contract"
 
+shape NotificationTarget
+  owner: string
+  room: string
+
 members Multiplexer
+  mutation notificationTarget as shape NotificationTarget queue then afterNotificationTarget
   // the chat whose reminder the time sheet sets, and why the last try failed ("" for none).
   state remindFor = ""
   state remindRefused = ""
@@ -59,4 +64,11 @@ members Multiplexer
   action openReminder(tag: string, e: NotificationEvent)
     let id = match e.data { case some(d) => d, case none => "" }
     if id != ""
-      openChat(id)
+      send notificationTarget = resolveNotification(tag, id)
+  action afterNotificationTarget
+    match notificationTarget
+      case some(target)
+        if target.owner == session.userId and target.room != ""
+          openChat(target.room)
+      case none
+        panel = false

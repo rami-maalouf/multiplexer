@@ -13,7 +13,6 @@ if [ ! -f "$framework/macos-arm64/libmatrix_sdk_ffi.a" ] || [ ! -d "$vendor/src/
   exit 1
 fi
 
-# stage an adapter package without editing the generated sdk or the app's copies.
 mkdir -p "$sdk/Sources"
 cp -p "$root/matrix-core/MacTestSupport/Package.swift" "$sdk/Package.swift"
 if [ ! -d "$sdk/MatrixSDKFFI.xcframework" ] || \

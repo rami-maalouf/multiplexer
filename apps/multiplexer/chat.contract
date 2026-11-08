@@ -25,6 +25,7 @@ shape MergeTab
 
 component ChatBar
   props
+    desktop: bool
     name: string
     picture: string
     initials: string
@@ -55,85 +56,101 @@ component ChatBar
   // Back's chevron and count grow a little at the accessibility sizes, as a system bar's stay put.
   derive labelSize = largeText ? 20 : 17
   view
-    // the route's top sits under the status bar (host pad); top=-62 pulls the soft edge into
-    // that band so the page's colour is not a hard shelf above the clock. Controls stay where
-    // a system bar's would (padding restores the 62).
-    view position="absolute" top=-62 left=0 right=0 pointer-events="none" inert=covered testId="chat-bar"
-      // soft edge over the transcript: the home bottom bar's recipe, mirrored (one material,
-      // the dark one in dark mode, plus chat.edge-bottom): a little lighter than the bottom's
-      // (85%), even through the status bar, then an eased fade (smoothstep stops). Two rules
-      // keep a line from showing at the status bar's foot: the strength only falls going
-      // down, and it has no corner (a flat part meeting a straight fade reads as a dark line).
-      if solid
-        view position="absolute" top=0 left=0 right=0 bottom=-40
-          background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 40%, transparent 100%)"
-      else
-        view position="absolute" top=0 left=0 right=0 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
-          mask-image="linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.826) 37%, rgba(0, 0, 0, 0.762) 44%, rgba(0, 0, 0, 0.666) 51%, rgba(0, 0, 0, 0.551) 58%, rgba(0, 0, 0, 0.425) 65%, rgba(0, 0, 0, 0.299) 72%, rgba(0, 0, 0, 0.184) 79%, rgba(0, 0, 0, 0.088) 86%, rgba(0, 0, 0, 0.024) 93%, rgba(0, 0, 0, 0.0) 100%)"
-        view position="absolute" top=0 left=0 right=0 bottom=-40
-          background-color="chat.edge-bottom"
-          mask-image="linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1.0) 30%, rgba(0, 0, 0, 0.972) 37%, rgba(0, 0, 0, 0.896) 44%, rgba(0, 0, 0, 0.784) 51%, rgba(0, 0, 0, 0.648) 58%, rgba(0, 0, 0, 0.5) 65%, rgba(0, 0, 0, 0.352) 72%, rgba(0, 0, 0, 0.216) 79%, rgba(0, 0, 0, 0.104) 86%, rgba(0, 0, 0, 0.028) 93%, rgba(0, 0, 0, 0.0) 100%)"
-      // the two sides share the room the title leaves, so the title stays in the middle of the screen
-      // whatever Back's count, until a long name needs that room.
-      row position="relative" padding="62px 16px 0" align-items="flex-start"
-        view flex="1 1 0" display="flex" justify-content="flex-start"
-          // the edge swipe presses it too: its id is the screen's Back.
-          button id="back" press=back buttonStyle="glass" min-width=44 height=44 flex-shrink=0 pointer-events="auto"
-            aria-label=(unread > 0 ? `Back, ${unread} unread ${unread == 1 ? "chat" : "chats"}` : "Back") testId="back"
-            image "symbol:back" font-size=labelSize
-            if unread > 0
-              text unreadText(unread) font-size=labelSize
-        // nothing in the middle until the chat's name is known (the list still loads).
-        if name != ""
-          // the title, and a merged chat's networks under it.
-          column align-items="center" flex="0 1 auto" min-width=0 margin="0 8px" pointer-events="none"
-            // a tap opens the chat's info page; the page zooms out of it (its id) and shrinks back into it.
-            button appearance="none" press=info id="chat-title" aria-label=`${name}, Chat Info` display="flex" flex-direction="column"
-              align-items="center" max-width="100%" pointer-events="auto" testId="chat-title"
-              // the picture is opaque over the transcript, and sits on the name's capsule.
-              view position="relative" z-index=1 flex-shrink=0 border-radius=22 background-color="-exact-background"
-                Face(picture=picture, initials=initials, size=44)
-                if network != "matrix"
-                  NetworkBadge(network=network, identifier="chat-network")
-              // its own press (the same info) makes the glass interactive: held, it swells and follows the finger.
-              // No dim on press (press-opacity 1): the glass's own response is the feedback.
-              view backgroundMaterial="glass" press=info -exact-press-opacity=1 testId="chat-title-glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
-                // it grows with the text size to a cap, as a system bar's title stays put.
-                // one line, cut short as a system bar's title is; two at the accessibility sizes.
-                text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
-                  line-clamp=(largeText ? 2 : 1)
-                  testId="chat-name"
-            // a merged chat: its networks under the name, the one shown chosen; a tap shows that network's chat.
-            if tabs.length > 1
-              row role="tablist" aria-label="Network" gap=4 margin-top=6 padding=3 border-radius=25 backgroundMaterial="glass"
-                pointer-events="auto" justify-content="center" max-width="100%" box-sizing="border-box" testId="merge-tabs"
-                for t in tabs key=t.id
-                  button appearance="none" role="tab" aria-selected=(t.id == shown) press=switchTo(t.id) aria-label=networkName(t.network)
-                    testId=`merge-tab-${t.network}`
-                    display="flex" flex-direction="row" align-items="center" gap=5 min-height=44 min-width=0 padding="4px 12px" border-radius=22
-                    background-color=(t.id == shown ? "-exact-tertiary-fill" : "transparent")
-                    image `assets/networks/${t.network}.svg` width=(largeText ? 22 : 16) height=(largeText ? 22 : 16) aria-hidden=true
-                    // capped, as the title's; at the accessibility sizes the logos alone, which keep their names.
-                    if not largeText
-                      text networkName(t.network) font="-exact-footnote" font-size="min(-exact-footnote, 17px)" font-weight=(t.id == shown ? 600 : 400)
-                        line-clamp=1 min-width=0 color="-exact-label"
-        view flex="1 1 0" display="flex" justify-content="flex-end"
-          button popovertarget="chat-actions" buttonStyle="glass" width=44 height=44 flex-shrink=0 pointer-events="auto"
-            aria-label="More" testId="chat-more"
-            // three dots alone in the glass, as iOS's bar buttons (not ellipsis.circle, a ring in a ring).
-            // capped as Back's chevron, so the two stay one weight at the accessibility sizes.
-            image "symbol:ellipsis" font-size=labelSize
-        // the inbox's actions that suit an open chat, in Beeper's order; the chat's info page adds the rest.
-        column id="chat-actions" popover="auto" role="menu" pointer-events="auto"
-          button press=pin popovertarget="chat-actions" popovertargetaction="hide" testId="chat-pin"
-            image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
-            text (pinned ? "Unpin" : "Pin")
-          button press=markUnread popovertarget="chat-actions" popovertargetaction="hide" testId="chat-unread"
-            image "symbol:icon.mark-unread"
-            text "Mark as Unread"
-          button press=mute popovertarget="chat-actions" popovertargetaction="hide" testId="chat-mute"
-            image (muted ? "symbol:notifications" : "symbol:icon.bell-slash")
-            text (muted ? "Unmute" : "Mute")
+    if desktop
+      column order=-1 flex-shrink=0 inert=covered border-bottom="1px solid -exact-separator" testId="chat-bar"
+        row min-height=64 padding="10px 16px" gap=12 align-items="center"
+          button appearance="none" press=info id="chat-title" aria-label=`${name}, Chat Info` testId="chat-title"
+            display="flex" align-items="center" gap=10 flex=1 min-width=0 text-align="start"
+            Face(picture=picture, initials=initials, size=32)
+            text name role="heading" aria-level=1 font="-exact-headline" line-clamp=1 testId="chat-name"
+          button popovertarget="chat-actions" aria-label="More" testId="chat-more"
+            image "symbol:ellipsis"
+        if tabs.length > 1
+          row role="tablist" aria-label="Network" gap=6 padding="0 16px 10px" flex-wrap="wrap" testId="merge-tabs"
+            for t in tabs key=t.id
+              button role="tab" aria-selected=(t.id == shown) press=switchTo(t.id) aria-label=networkName(t.network)
+                testId=`merge-tab-${t.network}` min-height=28
+                text networkName(t.network)
+    else
+      // the route's top sits under the status bar (host pad); top=-62 pulls the soft edge into
+      // that band so the page's colour is not a hard shelf above the clock. Controls stay where
+      // a system bar's would (padding restores the 62).
+      view position="absolute" top=-62 left=0 right=0 pointer-events="none" inert=covered testId="chat-bar"
+        // soft edge over the transcript: the home bottom bar's recipe, mirrored (one material,
+        // the dark one in dark mode, plus chat.edge-bottom): a little lighter than the bottom's
+        // (85%), even through the status bar, then an eased fade (smoothstep stops). Two rules
+        // keep a line from showing at the status bar's foot: the strength only falls going
+        // down, and it has no corner (a flat part meeting a straight fade reads as a dark line).
+        if solid
+          view position="absolute" top=0 left=0 right=0 bottom=-40
+            background-image="linear-gradient(to bottom, -exact-background 0%, -exact-background 40%, transparent 100%)"
+        else
+          view position="absolute" top=0 left=0 right=0 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
+            mask-image="linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.826) 37%, rgba(0, 0, 0, 0.762) 44%, rgba(0, 0, 0, 0.666) 51%, rgba(0, 0, 0, 0.551) 58%, rgba(0, 0, 0, 0.425) 65%, rgba(0, 0, 0, 0.299) 72%, rgba(0, 0, 0, 0.184) 79%, rgba(0, 0, 0, 0.088) 86%, rgba(0, 0, 0, 0.024) 93%, rgba(0, 0, 0, 0.0) 100%)"
+          view position="absolute" top=0 left=0 right=0 bottom=-40
+            background-color="chat.edge-bottom"
+            mask-image="linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1.0) 30%, rgba(0, 0, 0, 0.972) 37%, rgba(0, 0, 0, 0.896) 44%, rgba(0, 0, 0, 0.784) 51%, rgba(0, 0, 0, 0.648) 58%, rgba(0, 0, 0, 0.5) 65%, rgba(0, 0, 0, 0.352) 72%, rgba(0, 0, 0, 0.216) 79%, rgba(0, 0, 0, 0.104) 86%, rgba(0, 0, 0, 0.028) 93%, rgba(0, 0, 0, 0.0) 100%)"
+        // the two sides share the room the title leaves, so the title stays in the middle of the screen
+        // whatever Back's count, until a long name needs that room.
+        row position="relative" padding="62px 16px 0" align-items="flex-start"
+          view flex="1 1 0" display="flex" justify-content="flex-start"
+            // the edge swipe presses it too: its id is the screen's Back.
+            button id="back" press=back buttonStyle="glass" min-width=44 height=44 flex-shrink=0 pointer-events="auto"
+              aria-label=(unread > 0 ? `Back, ${unread} unread ${unread == 1 ? "chat" : "chats"}` : "Back") testId="back"
+              image "symbol:back" font-size=labelSize
+              if unread > 0
+                text unreadText(unread) font-size=labelSize
+          // nothing in the middle until the chat's name is known (the list still loads).
+          if name != ""
+            // the title, and a merged chat's networks under it.
+            column align-items="center" flex="0 1 auto" min-width=0 margin="0 8px" pointer-events="none"
+              // a tap opens the chat's info page; the page zooms out of it (its id) and shrinks back into it.
+              button appearance="none" press=info id="chat-title" aria-label=`${name}, Chat Info` display="flex" flex-direction="column"
+                align-items="center" max-width="100%" pointer-events="auto" testId="chat-title"
+                // the picture is opaque over the transcript, and sits on the name's capsule.
+                view position="relative" z-index=1 flex-shrink=0 border-radius=22 background-color="-exact-background"
+                  Face(picture=picture, initials=initials, size=44)
+                  if network != "matrix"
+                    NetworkBadge(network=network, identifier="chat-network")
+                // its own press (the same info) makes the glass interactive: held, it swells and follows the finger.
+                // No dim on press (press-opacity 1): the glass's own response is the feedback.
+                view backgroundMaterial="glass" press=info -exact-press-opacity=1 testId="chat-title-glass" border-radius=18 padding="6px 14px" margin-top=-4 max-width="100%" box-sizing="border-box"
+                  // it grows with the text size to a cap, as a system bar's title stays put.
+                  // one line, cut short as a system bar's title is; two at the accessibility sizes.
+                  text name role="heading" aria-level=1 font-size="min(-exact-headline, 22px)" font-weight=600 text-align="center"
+                    line-clamp=(largeText ? 2 : 1)
+                    testId="chat-name"
+              // a merged chat: its networks under the name, the one shown chosen; a tap shows that network's chat.
+              if tabs.length > 1
+                row role="tablist" aria-label="Network" gap=4 margin-top=6 padding=3 border-radius=25 backgroundMaterial="glass"
+                  pointer-events="auto" justify-content="center" max-width="100%" box-sizing="border-box" testId="merge-tabs"
+                  for t in tabs key=t.id
+                    button appearance="none" role="tab" aria-selected=(t.id == shown) press=switchTo(t.id) aria-label=networkName(t.network)
+                      testId=`merge-tab-${t.network}`
+                      display="flex" flex-direction="row" align-items="center" gap=5 min-height=44 min-width=0 padding="4px 12px" border-radius=22
+                      background-color=(t.id == shown ? "-exact-tertiary-fill" : "transparent")
+                      image `assets/networks/${t.network}.svg` width=(largeText ? 22 : 16) height=(largeText ? 22 : 16) aria-hidden=true
+                      // capped, as the title's; at the accessibility sizes the logos alone, which keep their names.
+                      if not largeText
+                        text networkName(t.network) font="-exact-footnote" font-size="min(-exact-footnote, 17px)" font-weight=(t.id == shown ? 600 : 400)
+                          line-clamp=1 min-width=0 color="-exact-label"
+          view flex="1 1 0" display="flex" justify-content="flex-end"
+            button popovertarget="chat-actions" buttonStyle="glass" width=44 height=44 flex-shrink=0 pointer-events="auto"
+              aria-label="More" testId="chat-more"
+              // three dots alone in the glass, as iOS's bar buttons (not ellipsis.circle, a ring in a ring).
+              // capped as Back's chevron, so the two stay one weight at the accessibility sizes.
+              image "symbol:ellipsis" font-size=labelSize
+    // the inbox's actions that suit an open chat, in Beeper's order; the chat's info page adds the rest.
+    column id="chat-actions" popover="auto" role="menu" pointer-events="auto"
+      button press=pin popovertarget="chat-actions" popovertargetaction="hide" testId="chat-pin"
+        image (pinned ? "symbol:icon.pin-slash" : "symbol:pin")
+        text (pinned ? "Unpin" : "Pin")
+      button press=markUnread popovertarget="chat-actions" popovertargetaction="hide" testId="chat-unread"
+        image "symbol:icon.mark-unread"
+        text "Mark as Unread"
+      button press=mute popovertarget="chat-actions" popovertargetaction="hide" testId="chat-mute"
+        image (muted ? "symbol:notifications" : "symbol:icon.bell-slash")
+        text (muted ? "Unmute" : "Mute")
 
 // a bridged chat's network logo at the start of the composer's field. It sits in a box one line of
 // the field's text tall, so it stays on the field's last line as the text grows.
