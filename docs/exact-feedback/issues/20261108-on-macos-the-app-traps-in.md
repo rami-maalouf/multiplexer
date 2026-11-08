@@ -50,3 +50,14 @@ Seen on 2026-11-08 at exact2 `86559f737a` (the macOS host), macOS 27.0.1 (26A434
 Reconfirmed on 2026-11-08 in the full app as a test account, with SIGTRAP after Send. Signed out afterward. Small account-free probes survive nested glass replacement, tint, entry/exit animation and intermediate frames. An authored test of the account-free probe crashed with SIGTRAP in 1 of 2 consecutive runs. Preserved in tools/mac-glass-probe/. The reduced crash has no stack yet; the shared failure mechanism remains unknown.
 
 Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).
+
+## app workaround (2026-11-08)
+
+A normal native launch also crashed after a real send. The local crash report
+confirms main-thread SIGTRAP in AppKit layout. Removing only the composer row's
+`glassGroup=8` survived three test-account sends. The final app omits that group on
+macOS while retaining it on iOS. Five consecutive sends appeared in the final
+Mac chat, with light/dark captures inspected; account signed out afterward.
+The individual materials remain. This avoids the observed trigger; it does not
+establish a root-cause fix in AppKit or Exact. The original field/header/bottom-bar
+layout faults remain separate.

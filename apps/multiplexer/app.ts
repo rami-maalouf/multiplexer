@@ -400,6 +400,10 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
 
 // the web has no Matrix SDK: it shows the sign-in screen and refuses to sign in.
 const sources: Sources = {
+  composerSurface: (_args, _store, _storage, native): Result<'composerSurface'> => {
+    if (!native?.available) return { groupedGlass: false };
+    return native.call({ op: 'composerSurface' }) as Result<'composerSurface'>;
+  },
   loadAppearance: ([color]) => appearance(color),
   ...infoSources,
   currentSession: (_args, _store, _storage, native): Result<'currentSession'> => {

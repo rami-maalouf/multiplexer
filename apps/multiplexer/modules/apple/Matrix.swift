@@ -70,13 +70,19 @@ final class Matrix: ExactModule {
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
         switch request["op"] as? String {
+        case "composerSurface":
+            #if os(macOS)
+            return ["groupedGlass": false]
+            #else
+            return ["groupedGlass": true]
+            #endif
         case "session":
             defer { signOutPending() }
             return ["userId": try stored()?.session.session.userId ?? ""]
         case "keptLinkPreviews":
             // a kept copy of a chat shows its links' cards at once: the kept previews, read now.
             return ["items": ((request["known"] as? [String]) ?? []).compactMap { Self.keptLinkPreview(Self.linkPreviewName($0), in: media) }]
-        default: throw ExactNativeRefusal("matrix answers session and keptLinkPreviews")
+        default: throw ExactNativeRefusal("matrix answers composerSurface, session and keptLinkPreviews")
         }
     }
 

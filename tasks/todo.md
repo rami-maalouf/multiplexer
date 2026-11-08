@@ -2839,7 +2839,11 @@ Spike (step 0) done 2026-11-08 on `feat/mac-spike`. Screens in `apps/multiplexer
   `9a78f32cd9`, integration `afac7b1370`, 24 HeaderMacTests pass after a red regression.
   Return from the password field worked around it in the running app. Corrected
   build completed; current process remains on its original binary until relaunch.
-- [ ] Fix the SIGTRAP after each send (Exact finding 157, AppKit glass layout). Blocks daily use.
+- [x] Work around the Mac send SIGTRAP: omit the composer's glass group on macOS,
+  keep iOS grouped. Three removal-control sends and five final-build sends survived;
+  final messages inspected in light/dark captures. All Mac authored and 13 TypeScript
+  tests pass. Test account signed out. Underlying Exact finding 157 remains open.
+- [ ] Fix the underlying AppKit glass-layout SIGTRAP in Exact (finding 157).
   Reproduced again with the test account on 2026-11-08, signed out afterward.
   Isolated animated/tinted glass swaps pass in manual drives. The saved authored
   test crashed with SIGTRAP in 1 of 2 consecutive runs. Intermittent reduction:

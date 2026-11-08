@@ -4,6 +4,19 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Mac send-crash workaround (2026-11-08):** after a normal-app Send closed Mux,
+the crash report confirmed main-thread SIGTRAP in AppKit layout. Removing only the
+composer glass group survived three test-account sends. The final implementation
+asks the native module whether composer glass can be grouped: false on macOS,
+true on iOS. A slot wrapper shares all composer controls and selects a grouped or
+ungrouped row. Contract/TypeScript checks and all Mac authored tests pass; all 13
+TypeScript tests pass. Five consecutive sends on the final Mac build appeared in
+the test chat, then the account signed out. Light/dark captures inspected at
+`.exact/mac/send-fixed-{light,dark}.png`; existing Mac chrome overlaps remain.
+The framework's underlying glass fault (157) stays open; this is an app workaround.
+The iOS branch keeps spacing 8 but has no new native runtime verification this turn.
+
+
 **Mac sign-in click (2026-11-08):** reproduced an enabled toolbar button ignoring
 clicks in the normal Mac app. Return from the password field signed in; the running
 user session is left open. Root cause: AppKit forwards item.action changes to the

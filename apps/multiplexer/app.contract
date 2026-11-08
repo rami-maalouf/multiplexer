@@ -5,7 +5,7 @@ use notificationclick, requestNotificationPermission, notificationStatus, Notifi
 use EmptyState from "exact:content"
 use Appearance, AccentBadge from "./appearance.contract"
 use Balloon, Face from "./bubble.contract"
-use Attachment, chosenOf, isPicture, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
+use ComposerRow, Attachment, chosenOf, isPicture, AddButton, AddPanel, Tray, FileBubble, UploadRing, sizeText, fileDetail from "./attach.contract"
 use BottomBar, PinnedGrid, PinnedChat, TitleMenu, InboxHeader, ChooseMark, SelectTitle, SelectBar, emptyTitle, emptyMessage, listTitle, listEmptyTitle, listEmptyMessage, deleteMessage, deleteChatsTitle, deleteChatsMessage from "./inbox.contract"
 use NetworkBadge, NetworkBadges, networkName from "./network.contract"
 use InboxSheet, NetworkCount, CommunityCount from "./sheet.contract"
@@ -35,6 +35,9 @@ keyframes sendOut
   to opacity=0
 keyframes logoOut
   to opacity=0
+
+shape ComposerSurface
+  groupedGlass: bool
 
 shape Session
   userId: string
@@ -375,6 +378,7 @@ component Multiplexer
   state revealing = ""
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
+  resource composerSurface = composerSurface() as shape ComposerSurface
   resource page = exactPage() as shape Page
   resource session = currentSession() as shape Session else empty()
   // newest activity first: the order the server ranks the rooms in.
@@ -1688,7 +1692,8 @@ component Multiplexer
               // one glass group (iOS 26's glass container), so the + button, the field and the voice
               // button are glass on one plane, as Beeper's: apart at rest (the group's spacing is the
               // row's gap), they blend where a pressed, swelling glass comes near its neighbour.
-              row inert=(not composerReady) align-items="flex-end" gap=8 margin="6px 12px" glassGroup=8
+              // appkit traps while this group replaces glass controls after send; keep ios grouping.
+              ComposerRow(ready=composerReady, groupedGlass=composerSurface.groupedGlass)
                 if recording != "idle"
                   VoiceCancel(press=cancelVoice, draft=(recording == "draft"))
                 else
