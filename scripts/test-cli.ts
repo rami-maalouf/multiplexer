@@ -7,6 +7,7 @@ const root = join(import.meta.dir, "..");
 const binary = join(root, "cli/.build/release/mx");
 const base = join(homedir(), "Library/Application Support/com.ramimaalouf.multiplexer.cli");
 const policyPath = join(base, "write-policy.json");
+const auditPath = join(base, "audit.jsonl");
 const user = "@test1:ramimaalouf.com";
 let checks = 0;
 let sessionCreated = false, policyReplaced = false;
@@ -24,6 +25,8 @@ async function run(args: string[], stdin?: string, success = true) {
 }
 function lines(text: string) { return text.trim().split("\n").filter(Boolean).map(line => JSON.parse(line)); }
 const existing = await readFile(policyPath).catch(error => { if (error.code === "ENOENT") return null; throw error; });
+const auditBefore = await readFile(auditPath).catch(error => { if (error.code === "ENOENT") return Buffer.alloc(0); throw error; });
+if (auditBefore.length && auditBefore[auditBefore.length - 1] !== 10) throw new Error("existing audit log has an incomplete final record");
 let watch: ReturnType<typeof Bun.spawn> | undefined;
 try {
   const identity = Bun.spawn([binary, "whoami"], { stdout: "pipe", stderr: "pipe" });
@@ -104,8 +107,17 @@ try {
   expect(lines(output).filter(x => x.text === live).length === 1, "watch duplicated a message");
   watch.kill(); await watch.exited; watch = undefined;
   await reader.cancel();
-  const audit = (await readFile(join(base, "audit.jsonl"), "utf8")).trim().split("\n").map(x => JSON.parse(x));
-  expect(audit.some(x => x.outcome === "denied") && audit.some(x => x.outcome === "dry-run") && audit.some(x => x.outcome === "accepted"), "audit outcomes missing");
+  const auditAfter = await readFile(auditPath);
+  expect(auditAfter.subarray(0, auditBefore.length).equals(auditBefore), "existing audit records changed");
+  const audit = lines(auditAfter.subarray(auditBefore.length).toString("utf8"));
+  expect(audit.every(x => x.account === user && [room.id, other.id].includes(x.roomId)), "audit appended an unexpected account or room");
+  expect(audit.some(x => x.outcome === "denied" && x.roomId === other.id), "current run denial audit missing");
+  expect(audit.some(x => x.outcome === "dry-run" && x.roomId === room.id), "current run dry-run audit missing");
+  for (const action of ["send", "react", "mark-read", "later"]) {
+    const started = audit.find(x => x.action === action && x.outcome === "started");
+    expect(started && audit.some(x => x.operation === started.operation && x.action === action && x.outcome === "accepted"),
+      "current run write lacks matching started/accepted audit records: " + action);
+  }
   expect(!JSON.stringify(audit).includes(marker), "audit exposed message content");
   console.log(`cli acceptance passed (${checks} checks); JSON chats, warm newest order, JSONL read/search, send/react/read receipt/later, deny/dry-run/audit, live watch and process lock`);
 } finally {

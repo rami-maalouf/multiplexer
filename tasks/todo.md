@@ -56,7 +56,10 @@ MatrixCore (shared with the app) -> matrix-rust-sdk built for macOS -> our Synap
 Verification commands: `swift test --package-path cli --filter ArgumentsTests`;
 `scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts`.
 The release linker currently warns about one missing Rust debug object referenced by the
-prebuilt archive; executable linking and live acceptance work. Record separately from Exact.
+prebuilt archive; executable linking and live acceptance work. SDK xtask deletes the
+Rust object referenced by its debug map. A trial whole-archive strip changed global symbol
+addresses and broke third-party assembly linking; the pristine archive was restored and
+rebuilt successfully. No strip workaround shipped. Record separately from Exact.
 
 ## Mux identity (2026-11-06)
 

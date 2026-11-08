@@ -8,8 +8,14 @@
   },
   "results": {
     "releaseBuild": "passed",
-    "unitTests": {"passed": 3, "failed": 0},
-    "liveAcceptance": {"checks": 35, "exitCode": 0},
+    "unitTests": {
+      "passed": 3,
+      "failed": 0
+    },
+    "liveAcceptance": {
+      "checks": 35,
+      "exitCode": 0
+    },
     "verified": [
       "JSON chat output and warm newest synthetic message first",
       "JSONL reads by id and exact name with message/reaction fields",
@@ -37,5 +43,20 @@
     "release linker warns about one missing external Rust debug object; executable builds and runs"
   ],
   "followupTestHarnessChange": "after the passing run, cleared pending timeout timers and ensured policy restoration also runs when logout fails; bundled with bun after edit",
-  "ui": "not applicable: no app UI or Exact source changes"
+  "ui": "not applicable: no app UI or Exact source changes",
+  "archiveWarningInvestigation": {
+    "diagnosis": "SDK xtask localize_private_symbols uses ld -r then deletes temporary Rust objects, leaving external debug-map references",
+    "attempt": "strip -S on the copied macOS static archive",
+    "result": "rejected: global symbol addresses changed and linker rejected third-party assembly addresses outside any section",
+    "restoration": "copied pristine archive back from untouched SDK generated directory; release build passed with original warning",
+    "disposition": "no setup/source change shipped; no further archive mutation"
+  },
+  "postReviewAuditAcceptance": {
+    "command": "scripts/mx-lock.sh matrixcore cli-audit-proof -- bun scripts/test-cli.ts",
+    "checks": 42,
+    "exitCode": 0,
+    "auditProof": "records only after starting byte offset, original bytes unchanged, current account/room denial and dry-run, matching operation started/accepted for all four write actions",
+    "binary": "simplified main.swift with intact original SDK archive",
+    "cleanup": "CLI signed out and temporary policy restored"
+  }
 }
