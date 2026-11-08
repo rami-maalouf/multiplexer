@@ -1,16 +1,27 @@
 import Foundation
 import MatrixCore
+import CLIKit
+import Darwin
 
 // mx: read and act on the chat app's Matrix account from a terminal.
-// c0 (the spike): login, whoami, chats, logout. one process per command; a background
-// process that keeps the sync running comes in c1.
 
 let usage = """
 usage:
-  mx login <@user:server> --password-stdin   sign in as a new device; the password comes on stdin
-  mx whoami                                   the signed-in account and device
-  mx chats [--json] [--limit <n>]             the chats, most recent first
-  mx logout                                   sign out on the server and forget the session here
+  mx login <@user:server> --password-stdin
+  mx whoami
+  mx chats [--json] [--limit <1..1000>]
+  mx read <chat> [--limit <1..1000>]
+  mx search <text> [--chat <chat>] [--limit <1..1000>]
+  mx watch [--chat <chat>] [--limit <1..1000>]
+  mx recover --key-stdin
+  mx send <chat> <text> [--dry-run]
+  mx react <chat> <$event-id> <reaction> [--dry-run]
+  mx mark-read <chat> [--dry-run]
+  mx later <chat> <text> --at <ISO8601-with-timezone> [--dry-run]
+  mx logout
+chat: exact room id or exact name; duplicate names are an error.
+writes require write-policy.json in mx's application support folder.
+read/search/watch emit JSON lines; watch is a foreground, best-effort stream.
 """
 
 /// where mx keeps the session (the Keychain) and the sdk's store (application support).
@@ -88,6 +99,7 @@ func whoami() async throws {
 /// one chat as mx prints it: plain fields, stable names, for agents to parse.
 struct Chat: Encodable {
     var id: String
+    var roomIds: [String]
     var name: String
     var network: String
     var isDirect: Bool
@@ -105,6 +117,7 @@ struct Chat: Encodable {
 
     init(_ room: RoomSummary) {
         id = room.id
+        roomIds = room.mergeRooms.isEmpty ? [room.id] : room.mergeRooms.map(\.id)
         name = room.name
         network = room.network
         isDirect = room.isDirect
@@ -163,19 +176,242 @@ func logout() async throws {
     print("signed out \(stored.session.userId), device \(stored.session.deviceId)")
 }
 
+// one owner for the sdk store, keychain session and audit file, including watch.
+final class ProcessLock {
+    private let descriptor: Int32
+    init() throws {
+        try FileManager.default.createDirectory(at: Place.base, withIntermediateDirectories: true,
+                                                 attributes: [.posixPermissions: 0o700])
+        guard chmod(Place.base.path, 0o700) == 0 else { throw Failure("cannot protect the session directory") }
+        descriptor = open(Place.base.appendingPathComponent("process.lock").path, O_CREAT | O_RDWR | O_NOFOLLOW, 0o600)
+        guard descriptor >= 0 else { throw Failure("cannot open the session lock") }
+        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
+            close(descriptor)
+            throw Failure("another mx command owns the session (stop watch before another command)")
+        }
+    }
+    deinit { close(descriptor) }
+}
+
+func jsonLine<T: Encodable>(_ value: T) throws {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+    var data = try encoder.encode(value)
+    data.append(10)
+    try FileHandle.standardOutput.write(contentsOf: data)
+}
+
+func resolve(_ name: String, in rooms: [RoomSummary]) throws -> RoomSummary {
+    let matches = rooms.filter { $0.id == name || $0.name == name }
+    guard matches.count == 1, let room = matches.first else {
+        if matches.isEmpty { throw Failure("no joined chat matches that id or exact name") }
+        throw Failure("ambiguous chat name; use a room id:\n" + matches.map { "\($0.id)\t\($0.name)" }.joined(separator: "\n"))
+    }
+    return room
+}
+
+struct MessageLine: Encodable {
+    struct Reaction: Encodable {
+        let key: String, count: Int, isMine: Bool
+    }
+    let type = "message"
+    let roomId: String, id: String, eventId: String, sender: String, senderName: String, text: String
+    let timestamp: UInt64
+    let isOwn: Bool, waitingForKey: Bool, deleted: Bool, edited: Bool
+    let reactions: [Reaction]
+    init(_ message: Message, roomId: String) {
+        self.roomId = roomId; id = message.id; eventId = message.eventId
+        sender = message.sender; senderName = message.senderName; text = message.body
+        timestamp = message.timestamp; isOwn = message.isOwn; waitingForKey = message.waitingForKey
+        deleted = message.isDeleted; edited = message.isEdited
+        reactions = message.reactions.map { Reaction(key: $0.key, count: $0.count, isMine: $0.isMine) }
+    }
+}
+
+func read(_ command: Command) async throws {
+    let (account, _) = try await signedIn()
+    let room = try resolve(command.positionals[0], in: await account.rooms(timeout: 120))
+    var messages: [(Message, String)] = []
+    for id in await account.roomsOf(room.id) {
+        messages += try await account.messages(roomId: id, limit: command.limit, timeout: 120).map { ($0, id) }
+    }
+    for (message, id) in messages.sorted(by: { $0.0.timestamp < $1.0.timestamp }).suffix(command.limit) {
+        try jsonLine(MessageLine(message, roomId: id))
+    }
+}
+
+func search(_ command: Command) async throws {
+    let (account, _) = try await signedIn()
+    let rooms = try await account.rooms(timeout: 120)
+    let room = try command.options["--chat"].map { try resolve($0, in: rooms).id }
+    var results = try await account.search(command.positionals[0], in: room, limit: command.limit, timeout: 120)
+    if let room, room.hasPrefix("merge:") {
+        results.messages = []; results.links = []
+        for id in await account.roomsOf(room) {
+            let part = try await account.search(command.positionals[0], in: id, limit: command.limit, timeout: 120)
+            results.messages += part.messages; results.links += part.links
+        }
+    }
+    for chat in results.chats.prefix(command.limit) { try jsonLine(["type": "chat", "roomId": chat.id, "name": chat.name]) }
+    struct Hit: Encodable {
+        let type = "search-message"
+        let roomId: String, eventId: String, sender: String, senderName: String, text: String
+        let timestamp: UInt64
+    }
+    for hit in (results.messages + results.links).sorted(by: { $0.timestamp > $1.timestamp }).prefix(command.limit) {
+        try jsonLine(Hit(roomId: hit.chat.id, eventId: hit.eventId, sender: hit.sender, senderName: hit.senderName,
+                         text: hit.body, timestamp: hit.timestamp))
+    }
+    let status = await account.searchIndexStatus()
+    struct Status: Encodable {
+        let type = "search-status"
+        let scope = "local-index; synced messages and backfill up to 3 months; not exhaustive server history"
+        let backfillDone: Bool
+    }
+    try jsonLine(Status(backfillDone: status.backfillDone))
+}
+
+func watch(_ command: Command) async throws {
+    let (account, _) = try await signedIn()
+    let initial = try await account.rooms(timeout: 120)
+    let selected = try command.options["--chat"].map { try resolve($0, in: initial).id }
+    let selectedRooms: Set<String>?
+    if let selected { selectedRooms = Set(await account.roomsOf(selected)) } else { selectedRooms = nil }
+    // snapshots are bounded; timestamps avoid replaying cached history after dedupe eviction.
+    var seen: [String: Set<String>] = [:]
+    var previous: [String: UInt64] = [:]
+    for room in initial where room.id.hasPrefix("!") && (selectedRooms == nil || selectedRooms!.contains(room.id)) {
+        previous[room.id] = room.lastTimestamp
+        let messages = try await account.messages(roomId: room.id, limit: command.limit, timeout: 120)
+        seen[room.id] = Set(messages.map(\.eventId))
+        account.closeMessages(roomId: room.id)
+    }
+    let started = UInt64(Date().timeIntervalSince1970 * 1000)
+    try jsonLine(["type": "ready", "scope": "new messages after startup; best effort, no durable cursor"])
+    while true {
+        try await Task.sleep(nanoseconds: 500_000_000)
+        let rooms = try await account.rooms(timeout: 120)
+        for room in rooms where room.id.hasPrefix("!") && (selectedRooms == nil || selectedRooms!.contains(room.id)) {
+            guard previous[room.id] != room.lastTimestamp else { continue }
+            let messages = try await account.messages(roomId: room.id, limit: command.limit, timeout: 120)
+            account.closeMessages(roomId: room.id)
+            let ids = Set(messages.map(\.eventId))
+            for message in messages.suffix(command.limit) where !message.eventId.isEmpty && message.timestamp >= started
+                && !(seen[room.id]?.contains(message.eventId) ?? false) {
+                try jsonLine(MessageLine(message, roomId: room.id))
+            }
+            seen[room.id] = ids
+            if messages.last?.timestamp ?? 0 >= room.lastTimestamp { previous[room.id] = room.lastTimestamp }
+        }
+        let live = Set(rooms.map(\.id))
+        seen = seen.filter { live.contains($0.key) }
+        previous = previous.filter { live.contains($0.key) }
+    }
+}
+
+func recover() async throws {
+    guard let key = readLine(), !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw Failure("no recovery key on stdin") }
+    let (account, _) = try await signedIn()
+    do { try await account.recover(recoveryKey: key) }
+    catch { throw Failure("recovery failed; check the key and server connection") }
+    try jsonLine(["status": "recovered"])
+}
+
+// errors from the sdk may contain message text or server responses: audit only fixed outcomes.
+struct AuditLine: Encodable {
+    let operation: String, account: String, roomId: String, action: String, outcome: String
+    let at: String
+}
+func audit(_ operation: String, user: String, room: String, action: String, outcome: String) throws {
+    let url = Place.base.appendingPathComponent("audit.jsonl")
+    let fd = open(url.path, O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW, 0o600)
+    guard fd >= 0 else { throw Failure("cannot open the audit log; write refused") }
+    defer { close(fd) }
+    guard fchmod(fd, 0o600) == 0 else { throw Failure("cannot protect audit log") }
+    let encoder = JSONEncoder()
+    var data = try encoder.encode(AuditLine(operation: operation, account: user, roomId: room, action: action,
+                                            outcome: outcome, at: ISO8601DateFormatter().string(from: Date())))
+    data.append(10)
+    try data.withUnsafeBytes { bytes in
+        var offset = 0
+        while offset < bytes.count {
+            let written = Darwin.write(fd, bytes.baseAddress!.advanced(by: offset), bytes.count - offset)
+            guard written > 0 else { throw Failure("cannot append audit log; write refused") }
+            offset += written
+        }
+    }
+    guard fsync(fd) == 0 else { throw Failure("cannot flush audit log; write refused") }
+}
+
+func writeCommand(_ command: Command) async throws {
+    let (account, _) = try await signedIn()
+    let room = try resolve(command.positionals[0], in: await account.rooms(timeout: 120))
+    guard room.id.hasPrefix("!") else { throw Failure("write refused: a merged chat needs an explicit underlying room id (see chats roomIds)") }
+    let user = try account.userId
+    let operation = UUID().uuidString
+    let policyURL = Place.base.appendingPathComponent("write-policy.json")
+    let policy: WritePolicy
+    do { policy = try JSONDecoder().decode(WritePolicy.self, from: Data(contentsOf: policyURL)) }
+    catch {
+        try audit(operation, user: user, room: room.id, action: command.name, outcome: "denied")
+        throw Failure("write refused: create a valid private write-policy.json (see cli/README.md)")
+    }
+    guard policy.allows(user: user, room: room.id) else {
+        try audit(operation, user: user, room: room.id, action: command.name, outcome: "denied")
+        throw Failure("write refused: account and room id are not in write-policy.json")
+    }
+    if command.dryRun {
+        try audit(operation, user: user, room: room.id, action: command.name, outcome: "dry-run")
+        try jsonLine(["status": "dry-run", "action": command.name, "roomId": room.id]); return
+    }
+    try audit(operation, user: user, room: room.id, action: command.name, outcome: "started")
+    var eventId: String?
+    do {
+        switch command.name {
+        case "send": eventId = try await account.sendTextConfirmed(roomId: room.id, text: command.positionals[1])
+        case "react":
+            eventId = try await account.addReactionConfirmed(roomId: room.id, eventId: command.positionals[1], key: command.positionals[2])
+        case "mark-read": try await account.markRead(roomId: room.id, timeout: 120)
+        case "later":
+            let id = try await account.sendLater(roomId: room.id, text: command.positionals[1], at: command.date!, timeout: 120)
+            try jsonLine(["status": "scheduled", "delayId": id, "roomId": room.id])
+        default: throw Failure("unsupported write")
+        }
+    } catch {
+        try audit(operation, user: user, room: room.id, action: command.name, outcome: "failed-or-unknown")
+        throw Failure("write failed or its result is unknown; inspect the chat before retrying")
+    }
+    try audit(operation, user: user, room: room.id, action: command.name, outcome: "accepted")
+    if command.name != "later" {
+        var result = ["status": "accepted", "action": command.name, "roomId": room.id]
+        if let eventId { result["eventId"] = eventId }
+        try jsonLine(result)
+    }
+}
+
 let args = Array(CommandLine.arguments.dropFirst())
 do {
-    switch args.first {
-    case "login": try await login(Array(args.dropFirst()))
+    // parse before touching the session: an unknown flag can never turn into a send.
+    let command = try Command(args)
+    if ["help", "-h", "--help"].contains(command.name) { print(usage); exit(0) }
+    let sessionLock = try ProcessLock()
+    switch command.name {
+    case "login": try await login(command.positionals + ["--password-stdin"])
     case "whoami": try await whoami()
     case "chats": try await chats(Array(args.dropFirst()))
+    case "read": try await read(command)
+    case "search": try await search(command)
+    case "watch": try await watch(command)
+    case "recover": try await recover()
+    case "send", "react", "mark-read", "later": try await writeCommand(command)
     case "logout": try await logout()
-    case "-h", "--help", "help", nil: print(usage)
     default: throw Failure(usage)
     }
-    // the sdk's background tasks would keep the process alive.
+    withExtendedLifetime(sessionLock) {}
     exit(0)
 } catch {
-    FileHandle.standardError.write(Data("mx: \(error)\n".utf8))
+    // keep arbitrary sdk diagnostics (which may contain user content) out of agent logs.
+    let text = (error as? UsageError)?.description ?? (error as? Failure)?.description ?? "operation failed; check the server connection and session"
+    FileHandle.standardError.write(Data("mx: \(text)\n".utf8))
     exit(1)
 }

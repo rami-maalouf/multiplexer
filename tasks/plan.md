@@ -4,13 +4,16 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
-**Agent CLI, C0 done (2026-11-08, `feat/cli-c0`):** `mx`, a Swift command line on the Mac that links
-the same MatrixCore as the app (D12). We build matrix-rust-sdk for macOS ourselves from the app's
-release commit (`14a0ada`; Element publishes iOS slices only): about 5 min, and MatrixCore compiled
-for macOS with no change. As `@test1` on our server: sign-in 12.6 s, a warm `mx chats` 0.3 to 0.5 s
-with a message sent a moment before at the top, three parallel calls fine, sign-out removed the
-device. Next: C1 (read only: messages, search, watch), then C2 (writes, with an allow-list).
-Tasks in `tasks/todo.md`, "Agent CLI".
+**Agent CLI, read and guarded write commands implemented (2026-11-08, `feat/cli-c0`):**
+Swift `mx` shares MatrixCore and the macOS SDK. Added JSONL read/search, foreground watch,
+stdin recovery, confirmed text/reaction sends, explicit read receipts and Send Later.
+All writes require an external exact account/room policy; dry-run and durable local audit
+are built in. Reactions add only. One process owns the SDK store; stop watch before another
+command. No daemon or MCP is needed for the scripted acceptance. Cold first-list order still
+changes during SDK hydration; attempted readiness barriers did not prove completion and were
+removed. Valid recovery-key and real-account checks remain unverified because credentials
+were unavailable. Test-user live acceptance and parser/policy verification are recorded in
+`tasks/todo.md` and `tasks/evidence/cli-acceptance-20261108.json`. No real account was accessed.
 
 **Website and README (2026-11-06, `feat/mux-website`):** a root `README.md` (what Mux is, why,
 how it works, how it was built; no other product named) and the production site in `website/`:

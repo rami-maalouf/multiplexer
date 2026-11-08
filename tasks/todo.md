@@ -18,31 +18,45 @@ MatrixCore (shared with the app) -> matrix-rust-sdk built for macOS -> our Synap
 - Seen: the cold first run printed chats before the server's order arrived (not by recency).
   Fix in C1: wait for the room list's order, or keep a background process synced.
 
-### C1 Read only
+### C1 Read only (implemented 2026-11-08; proof limits below)
 
-- [ ] `mx read <chat> [--limit n]`: messages as JSON lines (sender, text, time, ids, reactions).
-- [ ] A chat by room id or by name; a name that matches more than one chat is an error that
+- [x] `mx read <chat> [--limit n]`: messages as JSON lines (sender, text, time, ids, reactions).
+- [x] A chat by room id or by name; a name that matches more than one chat is an error that
   lists the matches.
-- [ ] `mx search "<text>"`, `mx watch` (new messages as JSON lines, until stopped).
-- [ ] Decide from measurements: one process per command, or a background `mxd` (launchd) that
+- [x] `mx search "<text>"`, `mx watch` (new messages as JSON lines, until stopped).
+- [x] Decide from measurements: one process per command, or a background `mxd` (launchd) that
   stays synced, with `mx` as its client over a Unix socket. `watch` needs a long-lived process.
-- [ ] Read receipts never go out in C1.
-- [ ] Encrypted chats: `mx recover` with the recovery key on stdin, so the device reads history.
-- [ ] Proof: as `@test1`, then on `@rami` read only (allowed without a new OK; sign out after).
+- [x] Read receipts never go out in C1.
+- [x] `mx recover --key-stdin` opens the existing backup through MatrixCore; wrong-key refusal tested.
+- [ ] Valid-key recovery on a new CLI device: no recovery key was available for this run.
+- [x] Live read/write/watch acceptance as `@test1`, with synthetic incoming messages from `@test2`.
+- [ ] Real-account read-only acceptance: no password in the documented Keychain service.
+- [ ] Cold first-run order: rank coverage and before/after rank consistency were insufficient
+  while SDK latest-event hydration continues; both attempted barriers removed.
+  Cold ordering remains observational; warm newest-message ordering is asserted.
 
-### C2 Writes, with safety
+### C2 Writes, with safety (implemented 2026-11-08)
 
-- [ ] `send`, `react`, `mark-read`, `later` (Send Later).
-- [ ] Read-only unless a write is asked for; read receipts off unless `--mark-read`.
-- [ ] An allow-list of chats a write may reach, kept outside git; on `@rami` the five test
-  chats only (memory `real-account-read-only-ok`). The check is in `mx`, not in the agent:
-  messages from other people reach the agent's context and can ask for anything.
-- [ ] `--dry-run`, and a local audit log of every write.
-- [ ] Proof: writes as `@test1`/`@test2` in test rooms; one allowed and one refused chat on `@rami`.
+- [x] `send`, `react`, `mark-read`, `later` (Send Later).
+- [x] Read-only unless a write is asked for; read receipts off except the explicit `mark-read` command.
+- [x] External exact account/room allow-list, deny by default including test accounts.
+  No CLI policy-edit operation. Real account stays denied until its five test-room ids are
+  independently confirmed by the operator. This is a CLI guard, not a same-user OS sandbox.
+- [x] `--dry-run`, and a local audit log of every write.
+- [x] Proof: allowed/refused test-room writes, dry-run absence, audit outcomes and process lock.
+  Text/reaction return server event ids; reactions add only and do not toggle.
+- [ ] Allowed/refused dry-run on `@rami`: credential unavailable; no real-account writes attempted.
 
 ### C3 Agent door (optional)
 
-- [ ] A skill or an MCP wrapper over `mx --json`, only if the plain CLI is not enough.
+- [x] Plain CLI and agent usage documentation suffice for the scripted acceptance; no MCP
+  wrapper or daemon added. Watch is a foreground best-effort stream with a bounded snapshot,
+  not a durable event queue. Stop it before another session command.
+
+Verification commands: `swift test --package-path cli --filter ArgumentsTests`;
+`scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts`.
+The release linker currently warns about one missing Rust debug object referenced by the
+prebuilt archive; executable linking and live acceptance work. Record separately from Exact.
 
 ## Mux identity (2026-11-06)
 
