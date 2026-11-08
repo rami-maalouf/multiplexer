@@ -16,3 +16,8 @@
 
 # the beeper walkthrough: a screen recording of real chats, kept out of git
 /research/
+
+# the cli: the macOS sdk build that scripts/setup-cli-sdk.sh writes, and swift build output
+/cli/.sdk/
+/cli/.build/
+/cli/.swiftpm/

@@ -235,6 +235,15 @@ public final class MatrixAccount: @unchecked Sendable {
         return rooms
     }
 
+    /// releases a timeline after a serialized snapshot consumer has finished reading it.
+    /// do not call while another operation is opening or using this room.
+    public func closeMessages(roomId: String) {
+        lock.withLock {
+            timelines[roomId] = nil
+            readyTimelines[roomId] = nil
+        }
+    }
+
     /// A room's messages, oldest first. The first call opens the chat's live timeline with
     /// its last `limit` messages; later calls return those and every message since, so a
     /// new message never pushes one the reader has loaded out of the chat.

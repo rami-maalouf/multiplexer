@@ -1,5 +1,97 @@
 # Mux: tasks
 
+## Agent CLI (2026-11-08, branch `feat/cli-c0`)
+
+`mx`: agents read the account and act on it from the Mac (plan D12). Layers: `mx` (Swift) ->
+MatrixCore (shared with the app) -> matrix-rust-sdk built for macOS -> our Synapse.
+
+### C0 Spike: MatrixCore on the Mac (done 2026-11-08)
+
+- [x] The SDK built for macOS from the app's release commit (`scripts/setup-cli-sdk.sh`).
+- [x] MatrixCore compiles for macOS with no change; `cli/` links it through a folder link.
+- [x] `mx login`, `whoami`, `chats [--json] [--limit]`, `logout`.
+- [x] As `@test1`: sign-in 12.6 s; `mx chats` lists the chats; `whoami` names SDK `14a0ada`.
+- [x] Warm runs 0.3 to 0.5 s, fresh: a message `@test2` sent a moment before is at the top, unread 1.
+- [x] Three `mx chats` at once on one store: all exit 0 with the same answer.
+- [x] `mx logout`: the device is gone from the server (`clean-test-devices.sh --older-than 0`),
+  and the local store and Keychain item are deleted.
+- Seen: the cold first run printed chats before the server's order arrived (not by recency).
+  Fix in C1: wait for the room list's order, or keep a background process synced.
+
+### C1 Read only (implemented 2026-11-08; proof limits below)
+
+- [x] `mx read <chat> [--limit n]`: messages as JSON lines (sender, text, time, ids, reactions).
+- [x] A chat by room id or by name; a name that matches more than one chat is an error that
+  lists the matches.
+- [x] `mx search "<text>"`, `mx watch` (new messages as JSON lines, until stopped).
+- [x] Decide from measurements: one process per command, or a background `mxd` (launchd) that
+  stays synced, with `mx` as its client over a Unix socket. `watch` needs a long-lived process.
+- [x] Read receipts never go out in C1.
+- [x] `mx recover --key-stdin` opens the existing backup through MatrixCore; wrong-key refusal tested.
+- [x] Valid-key recovery on a new CLI device: expanded suite proves an initially undecryptable
+  historical message is readable after recovery. Private test key retained in Keychain.
+- [x] Live read/write/watch acceptance as `@test1`, with synthetic incoming messages from `@test2`.
+- [ ] Real-account read-only acceptance: no password in the documented Keychain service.
+- [ ] Cold first-run order: rank coverage and before/after rank consistency were insufficient
+  while SDK latest-event hydration continues; both attempted barriers removed.
+  Cold ordering remains observational; warm newest-message ordering is asserted.
+
+### C2 Writes, with safety (implemented 2026-11-08)
+
+- [x] `send`, `react`, `mark-read`, `later` (Send Later).
+- [x] Read-only unless a write is asked for; read receipts off except the explicit `mark-read` command.
+- [x] External exact account/room allow-list, deny by default including test accounts.
+  No CLI policy-edit operation. Real account stays denied until its five test-room ids are
+  independently confirmed by the operator. This is a CLI guard, not a same-user OS sandbox.
+- [x] `--dry-run`, and a local audit log of every write.
+- [x] Proof: allowed/refused test-room writes, dry-run absence, audit outcomes and process lock.
+  Text/reaction return server event ids; reactions add only and do not toggle.
+- [ ] Allowed/refused dry-run on `@rami`: credential unavailable; no real-account writes attempted.
+
+### C3 Agent door (optional)
+
+- [x] Plain CLI and agent usage documentation suffice for the scripted acceptance; no MCP
+  wrapper or daemon added. Watch is a foreground best-effort stream with a bounded snapshot,
+  not a durable event queue. Stop it before another session command.
+
+Final review (2026-11-08): five mechanical findings applied; release build, three unit tests,
+and 50 live checks passed. An injected incomplete audit record refused a send without
+appending; scheduled delivery now uses a bounded poll. Server-confirmed writes report
+postaccept audit failure explicitly and schedule success follows the durable audit.
+- [ ] Add attachment metadata and reply context to read/watch JSON; current text can be empty
+  for an uncaptioned attachment. Review finding 3 requires a richer public output schema.
+
+Current-main integration (`f6169a8`): retained both sets of additive plan/task entries;
+release build, three parser/policy tests and 51 live checks passed on the combined source.
+
+Verification expansion (2026-11-08, requested after the smoke-test coverage audit):
+- [x] 58 XCTest entries (57 substantive and a subprocess helper): every command's arguments,
+  output/resolution/watch contracts, policy, audit short-write/fsync faults, confirmed-write
+  failure reporting and real process contention/SIGKILL release.
+- [x] 18 named live scenarios passed, zero blocked: recovery, encrypted wire data and peer
+  decryption, merged read/search, receipt absence and explicit receipt arrival at a peer,
+  scoped/merged/unscoped watch, restart, bursts, scheduling and server-side logout revocation.
+- [x] Fractional-second ISO scheduling regression reproduced through the CLI and a failing
+  unit case, then fixed. Postaccept output-failure regression also failed before its fix.
+- [x] Coverage and limits: `docs/cli-test-coverage.md`; per-feature live evidence:
+  `tasks/evidence/cli-feature-coverage-20261108.json`. Passing tests do not certify cold ordering,
+  durable watch replay, real-account acceptance or a whole-server outage.
+- [x] Reviewed full-suite rerun: 58 XCTest entries, five Bun policy-backup cases, 19 live
+  scenarios (zero blocked), legacy smoke passed. Real closed-stdout regression failed before
+  explicit SIGPIPE ignore and now verifies exact output-failure reporting after server acceptance.
+  Encrypted scheduling verifies refusal reached the mutation boundary plus no pending/delivered
+  event; each scheduling command computes a fresh deadline. Private on-disk policy backups
+  survive interrupted runs and refuse stale overwrite. Review methods/limits are recorded in
+  `docs/reviews/2026-11-08-cli-coverage.md`.
+
+Verification commands: `swift test --package-path cli --filter ArgumentsTests`;
+`scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts`.
+The release linker currently warns about one missing Rust debug object referenced by the
+prebuilt archive; executable linking and live acceptance work. SDK xtask deletes the
+Rust object referenced by its debug map. A trial whole-archive strip changed global symbol
+addresses and broke third-party assembly linking; the pristine archive was restored and
+rebuilt successfully. No strip workaround shipped. Record separately from Exact.
+
 ## Exact validation continuation (2026-11-07)
 
 - [x] Recover the original thread's later TestFlight check: compliance saved, build 2
