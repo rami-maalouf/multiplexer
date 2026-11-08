@@ -2,6 +2,7 @@
 # builds mux for the app store and uploads it to testflight.
 #   ./scripts/testflight.sh <build number>            # build, sign, upload
 #   ./scripts/testflight.sh <build number> --export   # build and sign only (no upload)
+#   ./scripts/testflight.sh <build number> --archive-only # package only (no export/upload)
 # the build number must rise with each upload (app store connect refuses a repeat).
 #
 # exact builds an unsigned archive; xcode then signs it with the team's cloud-managed
@@ -13,12 +14,19 @@
 set -euo pipefail
 
 if [ $# -lt 1 ] || ! [[ "$1" =~ ^[0-9]+$ ]]; then
-  echo "usage: $0 <build number> [--export]" >&2
+  echo "usage: $0 <build number> [--export|--archive-only]" >&2
   exit 1
 fi
 build="$1"
 destination="upload"
-if [ "${2:-}" = "--export" ]; then destination="export"; fi
+archive_only=false
+case "${2:-}" in
+  "") ;;
+  --export) destination="export" ;;
+  --archive-only) destination="export"; archive_only=true ;;
+  *) echo "unknown option: $2" >&2; exit 2 ;;
+esac
+[ $# -le 2 ] || { echo "too many arguments" >&2; exit 2; }
 
 team="3V2UU7RRK9"
 bundle="com.ramimaalouf.multiplexer"
@@ -39,21 +47,15 @@ archive="$work/Mux.xcarchive"
 mkdir -p "$archive/Products/Applications" "$archive/dSYMs"
 unzip -q "$work/unsigned.ipa" -d "$work/ipa"
 cp -R "$work/ipa/Payload/"*.app "$archive/Products/Applications/"
-app_path="$(cd "$archive/Products/Applications" && ls -d *.app | head -1)"
+apps=("$archive/Products/Applications/"*.app)
+[ "${#apps[@]}" -eq 1 ] && [ -d "${apps[0]}" ] || { echo "expected one archived app" >&2; exit 1; }
+app_path="${apps[0]##*/}"
 if [ -d "$work/unsigned.dSYM" ]; then cp -R "$work/unsigned.dSYM" "$archive/dSYMs/$app_path.dSYM"; fi
 # each embedded framework's dsym (<framework>.framework.dSYM), or the symbol upload names it as missing.
 if [ -d "$work/unsigned.dSYMs" ]; then cp -R "$work/unsigned.dSYMs/" "$archive/dSYMs/"; fi
 
-cat > "$work/entitlements.plist" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>application-identifier</key><string>$team.$bundle</string>
-<key>com.apple.developer.team-identifier</key><string>$team</string>
-<key>get-task-allow</key><false/>
-</dict></plist>
-EOF
-codesign -f -s - --entitlements "$work/entitlements.plist" "$archive/Products/Applications/$app_path"
+# package and sign the nested extension first, then the containing app. no device is installed.
+"$here/add-notification-extension.sh" --store "$archive/dSYMs" "$archive/Products/Applications/$app_path"
 
 cat > "$archive/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -65,7 +67,7 @@ cat > "$archive/Info.plist" <<EOF
 <key>CFBundleIdentifier</key><string>$bundle</string>
 <key>CFBundleShortVersionString</key><string>$version</string>
 <key>CFBundleVersion</key><string>$build</string>
-<key>SigningIdentity</key><string>Apple Development</string>
+<key>SigningIdentity</key><string>Ad Hoc</string>
 <key>Team</key><string>$team</string>
 </dict>
 <key>ArchiveVersion</key><integer>2</integer>
@@ -88,6 +90,12 @@ cat > "$work/export.plist" <<EOF
 <key>manageAppVersionAndBuildNumber</key><false/>
 </dict></plist>
 EOF
+if [ "$archive_only" = true ]; then
+  echo "archive: $archive"
+  echo "export options: $work/export.plist"
+  exit 0
+fi
+
 xcodebuild -exportArchive -archivePath "$archive" -exportPath "$work/out" \
   -exportOptionsPlist "$work/export.plist" -allowProvisioningUpdates
 
