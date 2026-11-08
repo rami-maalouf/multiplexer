@@ -4,6 +4,12 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Main merge (2026-11-08):** PR #16 (`fix/release-readiness`) merged to `main`
+(`2f5a35a`). Product fixes from #12 and #13 landed with it; #14 closed as
+superseded. Exact archive-refusal scope is open as ccheever/exact2#1602 (clean;
+needs Exact maintainer merge — no push on that repo). Next: TestFlight archive
+build 4 with that Exact fix applied locally if upstream is not merged yet.
+
 **R03 read-only phone recheck (2026-11-07):** with Rami's OK, scrolled the signed-in orbit
 Mux inbox on the paired iPhone only (no chats opened, nothing sent or marked read). Home
 put the app in `runningBackgroundSuspended`; after reopen, two more scrolls each changed
