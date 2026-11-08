@@ -134,13 +134,9 @@ struct Chat: Encodable {
     }
 }
 
-func chats(_ args: [String]) async throws {
-    let json = args.contains("--json")
-    var limit = Int.max
-    if let i = args.firstIndex(of: "--limit") {
-        guard i + 1 < args.count, let n = Int(args[i + 1]), n > 0 else { throw Failure("--limit needs a positive number") }
-        limit = n
-    }
+func chats(_ command: Command) async throws {
+    let json = command.flags.contains("--json")
+    let limit = command.options["--limit"].flatMap(Int.init) ?? Int.max
     let (account, _) = try await signedIn()
     // a new device's first sync is slow (the sdk's start is cpu-bound): the tests allow 120 s.
     let rooms = try await account.rooms(timeout: 120)
@@ -176,7 +172,6 @@ func logout() async throws {
     print("signed out \(stored.session.userId), device \(stored.session.deviceId)")
 }
 
-// one owner for the sdk store, keychain session and audit file, including watch.
 final class ProcessLock {
     private let descriptor: Int32
     init() throws {
@@ -202,7 +197,8 @@ func jsonLine<T: Encodable>(_ value: T) throws {
 }
 
 func resolve(_ name: String, in rooms: [RoomSummary]) throws -> RoomSummary {
-    let matches = rooms.filter { $0.id == name || $0.name == name }
+    if let room = rooms.first(where: { $0.id == name }) { return room }
+    let matches = rooms.filter { !$0.isHidden && $0.foldedInto == nil && $0.name == name }
     guard matches.count == 1, let room = matches.first else {
         if matches.isEmpty { throw Failure("no joined chat matches that id or exact name") }
         throw Failure("ambiguous chat name; use a room id:\n" + matches.map { "\($0.id)\t\($0.name)" }.joined(separator: "\n"))
@@ -244,13 +240,14 @@ func search(_ command: Command) async throws {
     let (account, _) = try await signedIn()
     let rooms = try await account.rooms(timeout: 120)
     let room = try command.options["--chat"].map { try resolve($0, in: rooms).id }
-    var results = try await account.search(command.positionals[0], in: room, limit: command.limit, timeout: 120)
-    if let room, room.hasPrefix("merge:") {
-        results.messages = []; results.links = []
-        for id in await account.roomsOf(room) {
-            let part = try await account.search(command.positionals[0], in: id, limit: command.limit, timeout: 120)
-            results.messages += part.messages; results.links += part.links
-        }
+    let searchRooms: [String]
+    if let room, room.hasPrefix("merge:") { searchRooms = await account.roomsOf(room) }
+    else { searchRooms = [] }
+    var results = try await account.search(command.positionals[0], in: searchRooms.first ?? room,
+                                           limit: command.limit, timeout: 120)
+    for id in searchRooms.dropFirst() {
+        let part = try await account.search(command.positionals[0], in: id, limit: command.limit, timeout: 120)
+        results.messages += part.messages; results.links += part.links
     }
     for chat in results.chats.prefix(command.limit) { try jsonLine(["type": "chat", "roomId": chat.id, "name": chat.name]) }
     struct Hit: Encodable {
@@ -265,10 +262,11 @@ func search(_ command: Command) async throws {
     let status = await account.searchIndexStatus()
     struct Status: Encodable {
         let type = "search-status"
-        let scope = "local-index; synced messages and backfill up to 3 months; not exhaustive server history"
+        let scope: String
         let backfillDone: Bool
     }
-    try jsonLine(Status(backfillDone: status.backfillDone))
+    let pages = room == nil ? 3 : 30
+    try jsonLine(Status(scope: "local-index; synced messages and backfill up to 3 months; scan capped at \(pages) pages of 20 index hits per query; results may be truncated even when backfillDone is true; not exhaustive history", backfillDone: status.backfillDone))
 }
 
 func watch(_ command: Command) async throws {
@@ -324,9 +322,19 @@ struct AuditLine: Encodable {
 }
 func audit(_ operation: String, user: String, room: String, action: String, outcome: String) throws {
     let url = Place.base.appendingPathComponent("audit.jsonl")
-    let fd = open(url.path, O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW, 0o600)
+    let fd = open(url.path, O_RDWR | O_APPEND | O_CREAT | O_NOFOLLOW, 0o600)
     guard fd >= 0 else { throw Failure("cannot open the audit log; write refused") }
     defer { close(fd) }
+    var info = stat()
+    guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG else {
+        throw Failure("audit log must be a regular file; write refused")
+    }
+    if info.st_size > 0 {
+        var last: UInt8 = 0
+        guard pread(fd, &last, 1, info.st_size - 1) == 1, last == 10 else {
+            throw Failure("audit log has an incomplete record; preserve it and repair its final line before writing")
+        }
+    }
     guard fchmod(fd, 0o600) == 0 else { throw Failure("cannot protect audit log") }
     let encoder = JSONEncoder()
     var data = try encoder.encode(AuditLine(operation: operation, account: user, roomId: room, action: action,
@@ -366,6 +374,7 @@ func writeCommand(_ command: Command) async throws {
     }
     try audit(operation, user: user, room: room.id, action: command.name, outcome: "started")
     var eventId: String?
+    var delayId: String?
     do {
         switch command.name {
         case "send": eventId = try await account.sendTextConfirmed(roomId: room.id, text: command.positionals[1])
@@ -373,16 +382,18 @@ func writeCommand(_ command: Command) async throws {
             eventId = try await account.addReactionConfirmed(roomId: room.id, eventId: command.positionals[1], key: command.positionals[2])
         case "mark-read": try await account.markRead(roomId: room.id, timeout: 120)
         case "later":
-            let id = try await account.sendLater(roomId: room.id, text: command.positionals[1], at: command.date!, timeout: 120)
-            try jsonLine(["status": "scheduled", "delayId": id, "roomId": room.id])
+            delayId = try await account.sendLater(roomId: room.id, text: command.positionals[1], at: command.date!, timeout: 120)
         default: throw Failure("unsupported write")
         }
     } catch {
-        try audit(operation, user: user, room: room.id, action: command.name, outcome: "failed-or-unknown")
+        try? audit(operation, user: user, room: room.id, action: command.name, outcome: "failed-or-unknown")
         throw Failure("write failed or its result is unknown; inspect the chat before retrying")
     }
-    try audit(operation, user: user, room: room.id, action: command.name, outcome: "accepted")
-    if command.name != "later" {
+    do { try audit(operation, user: user, room: room.id, action: command.name, outcome: "accepted") }
+    catch { throw Failure("server accepted the write but the audit log failed; do not resend; inspect the chat and repair the audit log") }
+    if let delayId {
+        try jsonLine(["status": "scheduled", "delayId": delayId, "roomId": room.id])
+    } else {
         var result = ["status": "accepted", "action": command.name, "roomId": room.id]
         if let eventId { result["eventId"] = eventId }
         try jsonLine(result)
@@ -391,14 +402,13 @@ func writeCommand(_ command: Command) async throws {
 
 let args = Array(CommandLine.arguments.dropFirst())
 do {
-    // parse before touching the session: an unknown flag can never turn into a send.
     let command = try Command(args)
     if ["help", "-h", "--help"].contains(command.name) { print(usage); exit(0) }
     let sessionLock = try ProcessLock()
     switch command.name {
     case "login": try await login(command.positionals + ["--password-stdin"])
     case "whoami": try await whoami()
-    case "chats": try await chats(Array(args.dropFirst()))
+    case "chats": try await chats(command)
     case "read": try await read(command)
     case "search": try await search(command)
     case "watch": try await watch(command)

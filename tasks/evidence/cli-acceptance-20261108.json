@@ -31,6 +31,17 @@
       "owned CLI session logged out and temporary policy restored"
     ]
   },
+  "finalReviewFixAcceptance": {
+    "command": "scripts/mx-lock.sh matrixcore cli-review -- bun scripts/test-cli.ts",
+    "checks": 50,
+    "exitCode": 0,
+    "unitTestsPassed": 3,
+    "releaseBuild": "passed; original upstream debug-map warning retained",
+    "verified": "current-run audit records, incomplete audit tail refuses send without appending, scheduled delivery with bounded polling, existing read/write/watch acceptance",
+    "cleanup": "CLI signed out, temporary policy restored, injected audit fragment removed while preserving original records",
+    "review": "20261108-mx-c1c2: six confirmed findings; five mechanical fixes applied; attachment/reply schema addition deferred",
+    "proofLimits": "postaccept disk-failure reporting and merged-name resolution reviewed in source, not independently fault-injected or exercised in merged-room fixture"
+  },
   "accounts": "test1/test2 only; no real-account session accessed",
   "limitations": [
     "cold first-list order changes during asynchronous SDK latest-event hydration; remains unfixed",

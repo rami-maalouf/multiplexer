@@ -1,7 +1,7 @@
 // live cli acceptance as the test account only; hold mx-lock matrixcore around this script.
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { chmod, readFile, writeFile, unlink } from "node:fs/promises";
+import { appendFile, chmod, readFile, writeFile, unlink } from "node:fs/promises";
 
 const root = join(import.meta.dir, "..");
 const binary = join(root, "cli/.build/release/mx");
@@ -67,10 +67,13 @@ try {
   messages = lines(await run(["read", room.id, "--limit", "20"]));
   expect(messages.find(x => x.eventId === sent.eventId)?.reactions.some(x => x.key === "ok" && x.isMine), "reaction absent after process exit");
   await run(["mark-read", room.id]);
-  const at = new Date(Date.now() + 2500).toISOString().replace(/\.\d{3}Z$/, "Z");
+  const at = new Date(Date.now() + 10_000).toISOString().replace(/\.\d{3}Z$/, "Z");
   await run(["later", room.id, `${marker}later`, "--at", at]);
-  await Bun.sleep(3000);
-  messages = lines(await run(["read", room.id, "--limit", "20"]));
+  const scheduleDeadline = Date.now() + 60_000;
+  do {
+    await Bun.sleep(1000);
+    messages = lines(await run(["read", room.id, "--limit", "20"]));
+  } while (!messages.some(x => x.text === `${marker}later`) && Date.now() < scheduleDeadline);
   expect(messages.some(x => x.text === `${marker}later`), "scheduled message did not arrive");
   const found = lines(await run(["search", marker, "--chat", room.id]));
   expect(found.some(x => x.type === "search-status"), "search has no index-scope status");
@@ -119,6 +122,17 @@ try {
       "current run write lacks matching started/accepted audit records: " + action);
   }
   expect(!JSON.stringify(audit).includes(marker), "audit exposed message content");
+  try {
+    await appendFile(auditPath, '{"interrupted":');
+    const damaged = await readFile(auditPath);
+    await run(["send", room.id, `${marker}refused`], undefined, false);
+    expect((await readFile(auditPath)).equals(damaged), "write appended after incomplete audit record");
+    messages = lines(await run(["read", room.id, "--limit", "20"]));
+    expect(!messages.some(x => x.text === `${marker}refused`), "incomplete audit did not refuse mutation");
+  } finally {
+    // remove only the incomplete record injected by this test, preserving all real audit entries.
+    await writeFile(auditPath, auditAfter, { mode: 0o600 });
+  }
   console.log(`cli acceptance passed (${checks} checks); JSON chats, warm newest order, JSONL read/search, send/react/read receipt/later, deny/dry-run/audit, live watch and process lock`);
 } finally {
   watch?.kill(); if (watch) await watch.exited;

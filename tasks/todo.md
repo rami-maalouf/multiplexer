@@ -53,6 +53,13 @@ MatrixCore (shared with the app) -> matrix-rust-sdk built for macOS -> our Synap
   wrapper or daemon added. Watch is a foreground best-effort stream with a bounded snapshot,
   not a durable event queue. Stop it before another session command.
 
+Final review (2026-11-08): five mechanical findings applied; release build, three unit tests,
+and 50 live checks passed. An injected incomplete audit record refused a send without
+appending; scheduled delivery now uses a bounded poll. Server-confirmed writes report
+postaccept audit failure explicitly and schedule success follows the durable audit.
+- [ ] Add attachment metadata and reply context to read/watch JSON; current text can be empty
+  for an uncaptioned attachment. Review finding 3 requires a richer public output schema.
+
 Verification commands: `swift test --package-path cli --filter ArgumentsTests`;
 `scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts`.
 The release linker currently warns about one missing Rust debug object referenced by the

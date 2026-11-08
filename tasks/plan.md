@@ -14,6 +14,10 @@ changes during SDK hydration; attempted readiness barriers did not prove complet
 removed. Valid recovery-key and real-account checks remain unverified because credentials
 were unavailable. Test-user live acceptance and parser/policy verification are recorded in
 `tasks/todo.md` and `tasks/evidence/cli-acceptance-20261108.json`. No real account was accessed.
+Final review corrections passed 50 live checks and three unit tests. Audit records block
+writes after an incomplete tail; postaccept audit errors cannot report a refused send.
+Name resolution uses visible rows; search reports its bounded index scan. Rich attachment
+and reply metadata remain a documented output limitation for follow-up.
 
 **Website and README (2026-11-06, `feat/mux-website`):** a root `README.md` (what Mux is, why,
 how it works, how it was built; no other product named) and the production site in `website/`:
