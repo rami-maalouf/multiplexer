@@ -4,6 +4,14 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Agent CLI, C0 done (2026-11-08, `feat/cli-c0`):** `mx`, a Swift command line on the Mac that links
+the same MatrixCore as the app (D12). We build matrix-rust-sdk for macOS ourselves from the app's
+release commit (`14a0ada`; Element publishes iOS slices only): about 5 min, and MatrixCore compiled
+for macOS with no change. As `@test1` on our server: sign-in 12.6 s, a warm `mx chats` 0.3 to 0.5 s
+with a message sent a moment before at the top, three parallel calls fine, sign-out removed the
+device. Next: C1 (read only: messages, search, watch), then C2 (writes, with an allow-list).
+Tasks in `tasks/todo.md`, "Agent CLI".
+
 **Website and README (2026-11-06, `feat/mux-website`):** a root `README.md` (what Mux is, why,
 how it works, how it was built; no other product named) and the production site in `website/`:
 static HTML and CSS with a Three.js scene of the glass plane (three streams converging into its
@@ -323,6 +331,7 @@ Use these to check that we work on the right thing.
 | D9 | Beeper's features, Messages' feel. Take every feature from Beeper (the whole inbox, its chat top bar, "Reply on WhatsApp", the full message menu, chat info, voice notes, photos, GIFs, Send Later). Keep what Messages already gives through Exact's recipe (bubble tails, sender runs, the long-press overlay, the "Replying to" bar, reaction pills). Follow the iPhone's light or dark setting; design and check dark first. | Rami, 2026-11-02: "Take the best from Beeper and Messages. I care more about the features of Beeper. But the user experience of Messages is pretty good, and if it's already there from the recipe, let's keep that." "I'll predominantly be using dark mode." |
 | D10 | GIFs come from KLIPY. The phone calls KLIPY directly, the one exception to invariant 1. Rami makes the account; the key stays out of git. | Rami, 2026-11-02. Beeper uses KLIPY; Google shut down Tenor's API on 2026-06-30; KLIPY's test key is free (100 calls an hour), its production key is asked for with a form and has no published price, its ads can be turned off; KLIPY requires calls from the user's app, not through a server. GIPHY's production key has a fee. |
 | D11 | Send Later: hold the Send button, as in Slack, and pick a time. The message waits on our server (Synapse's delayed events, MSC4140), so it goes with the phone off. Turning them on is a server change: Rami's OK first. | Rami, 2026-11-02. iOS does not promise to wake an app at an exact time; the SDK's bindings cannot send a delayed event, so MatrixCore calls the Matrix API itself (to check). |
+| D12 | Agents reach the account through `mx`, a Swift command line on the Mac that links MatrixCore. Not a desktop app first, not Rust or TypeScript, not on the server. | Rami, 2026-11-08 ("go ahead"). Exact has no production door for agents (`exact agent` is development only; its MCP plan, LLP 1111, is parked). One copy of the chat logic: the app's own state (archive, merges, labels, ...) is account data that only MatrixCore reads and writes. The macOS SDK build also serves M5. On the server it would need the access token there (invariant 7). Fallback after 3 failed tries: Rust with matrix-sdk. |
 
 ## Facts we rely on
 
@@ -389,7 +398,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Unexpected Oracle charges for 4 CPUs and 23 GiB. | Medium | Rami checks billing. | Q5 |
 | A network blocks logins from cloud IP addresses (not verified). | Medium | Test each network before we depend on it. | Phase 4 |
 | The notification extension runs out of memory or fails to decrypt. | High for M3 | Test early in Phase 3. | Phase 3 |
-| matrix-rust-components-swift is iOS only. | High for M5 | Build the SDK's Swift bindings for macOS ourselves. | Phase 5 |
+| matrix-rust-components-swift is iOS only. | High for M5 | Build the SDK's Swift bindings for macOS ourselves. Done for the CLI (2026-11-08): `scripts/setup-cli-sdk.sh`. | Phase 5 |
 | SDK API changes often. | Medium | Pin the version. Only MatrixCore touches the SDK. | Always |
 | The bridges see message text, so a server breach exposes chats. | High | SSH keys only, few services, updates. End-to-bridge encryption is optional. | Phase 2 |
 
@@ -506,6 +515,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-04 | Later ready for serialized integration: tested code head `1a38b7c` incorporates main `03fec0f` and UI main `cebda48`. New Space `149843c`; room-member preview resolution and fallback wrapping `dc70b9a`; merged-space compatibility `840eea5`. Ten existing focused core tests and both corrected compatibility tests passed; the latter proves new children survive a later failure and retry completes membership. Final `verify ios`: 7 tests, no findings, 9 largest-text screens. Signed-in Select Chats fallback wraps in both appearances at largest text; account signed out and own simulator shut down. Prior real-account 29-to-zero raw-sender evidence retained; no new real-account drive. Main `316e116` arrived during verification and is deliberately left for coordinator integration, preserving push/shared-store migration. No main merge by this lane. |
 | 2026-11-04 | Integrated the complete Later branch e93aa0e with main 316e116, preserving shared-store migration. Combined verify ios: 7 passed, light/dark clean, 9 largest-text screens without overflow (186.9 s). Combined MatrixCore selection: 25 passed, 0 failed/skipped (224.2 s), covering communities, Requests, preview senders, push and session stores under the shared lock. Labels remains outside this integration pending review fixes. |
 | 2026-11-04 | Integrated full Labels branch 2b55caf after the combined 39-test selection passed on main under the shared lock (no failures/skips, 1062.9 s). Preserved all earlier UI, Spaces, Requests and session-migration work. Contract build clean; app/core code identical to the lane’s final 9-test iOS verification, with light/dark and 11 largest-text screens clean. The archive fix changes only test event sequencing. Feedback remains local per Rami. |
+| 2026-11-08 | D12: an agent CLI, `mx` (Swift, MatrixCore, macOS SDK built by us). C0 passed as `@test1`: sign in, chats (fresh, 0.3 to 0.5 s warm), parallel calls, sign out removed the device. A cold first run lists chats before the server's order arrives (not by recency); warm runs are in order. |
 
 ### Appearance preference (2026-11-04)
 

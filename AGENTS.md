@@ -24,6 +24,8 @@ WhatsApp, Signal, ...  <->  mautrix bridges  ->  Synapse (Matrix server)  <->  i
 | `apps/multiplexer/` | The Exact app (iOS; Mac later). `app.contract` is the view, `app.ts` the data, `modules/apple/Matrix.swift` the native module. Its own `AGENTS.md` is Exact's generated guide. |
 | `matrix-core/` | The only code that calls matrix-rust-sdk. A Swift package with its own tests. Its public API uses plain types only. `NOTES.md` explains how it links. |
 | `scripts/setup-matrix-sdk.sh` | Downloads the pinned SDK (`26.10.27`), checks its checksum, and copies the SDK and `matrix-core` into `apps/multiplexer/modules/apple/`. |
+| `cli/` | `mx`, the command line for agents (Swift). It links the same MatrixCore (`cli/Sources/MatrixCore` is a link) and a macOS build of the SDK. `cli/README.md` explains it. |
+| `scripts/setup-cli-sdk.sh` | Builds the SDK for macOS from the commit of the app's release (about 5 min the first time) and copies it into `cli/.sdk`. |
 | `scripts/test-matrix-core.sh` | Runs MatrixCore's end-to-end test on the iOS Simulator against matrix.org. |
 | `vendor/` | The downloaded SDK. Not in git. |
 | `tasks/` | The plan and the task list. |

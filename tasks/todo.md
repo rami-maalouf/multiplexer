@@ -1,5 +1,49 @@
 # Mux: tasks
 
+## Agent CLI (2026-11-08, branch `feat/cli-c0`)
+
+`mx`: agents read the account and act on it from the Mac (plan D12). Layers: `mx` (Swift) ->
+MatrixCore (shared with the app) -> matrix-rust-sdk built for macOS -> our Synapse.
+
+### C0 Spike: MatrixCore on the Mac (done 2026-11-08)
+
+- [x] The SDK built for macOS from the app's release commit (`scripts/setup-cli-sdk.sh`).
+- [x] MatrixCore compiles for macOS with no change; `cli/` links it through a folder link.
+- [x] `mx login`, `whoami`, `chats [--json] [--limit]`, `logout`.
+- [x] As `@test1`: sign-in 12.6 s; `mx chats` lists the chats; `whoami` names SDK `14a0ada`.
+- [x] Warm runs 0.3 to 0.5 s, fresh: a message `@test2` sent a moment before is at the top, unread 1.
+- [x] Three `mx chats` at once on one store: all exit 0 with the same answer.
+- [x] `mx logout`: the device is gone from the server (`clean-test-devices.sh --older-than 0`),
+  and the local store and Keychain item are deleted.
+- Seen: the cold first run printed chats before the server's order arrived (not by recency).
+  Fix in C1: wait for the room list's order, or keep a background process synced.
+
+### C1 Read only
+
+- [ ] `mx read <chat> [--limit n]`: messages as JSON lines (sender, text, time, ids, reactions).
+- [ ] A chat by room id or by name; a name that matches more than one chat is an error that
+  lists the matches.
+- [ ] `mx search "<text>"`, `mx watch` (new messages as JSON lines, until stopped).
+- [ ] Decide from measurements: one process per command, or a background `mxd` (launchd) that
+  stays synced, with `mx` as its client over a Unix socket. `watch` needs a long-lived process.
+- [ ] Read receipts never go out in C1.
+- [ ] Encrypted chats: `mx recover` with the recovery key on stdin, so the device reads history.
+- [ ] Proof: as `@test1`, then on `@rami` read only (allowed without a new OK; sign out after).
+
+### C2 Writes, with safety
+
+- [ ] `send`, `react`, `mark-read`, `later` (Send Later).
+- [ ] Read-only unless a write is asked for; read receipts off unless `--mark-read`.
+- [ ] An allow-list of chats a write may reach, kept outside git; on `@rami` the five test
+  chats only (memory `real-account-read-only-ok`). The check is in `mx`, not in the agent:
+  messages from other people reach the agent's context and can ask for anything.
+- [ ] `--dry-run`, and a local audit log of every write.
+- [ ] Proof: writes as `@test1`/`@test2` in test rooms; one allowed and one refused chat on `@rami`.
+
+### C3 Agent door (optional)
+
+- [ ] A skill or an MCP wrapper over `mx --json`, only if the plain CLI is not enough.
+
 ## Mux identity (2026-11-06)
 
 - [x] With Rami's approval, send only the branding session's Exact diary. Receipt
