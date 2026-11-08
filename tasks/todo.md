@@ -2,6 +2,10 @@
 
 ## Current release execution (2026-11-07)
 
+- [x] With Rami's explicit approval, send the prepared Apple Support report through
+  Distribution > TestFlight. Confirmed case **30000008606157**; reply will go to the
+  signed-in Apple Account email. No demo credentials included.
+- [ ] Follow up on Apple's response to case 30000008606157 and complete external review.
 - [x] Retry external review with Rami's logged-in session after explicit go-ahead.
   Fourth attempt returned the same generic processing error. Developer Account
   confirms the latest program license accepted November 7. Support report drafted

@@ -1,6 +1,12 @@
 # Beta review submission failure
 
-Status: draft only, not sent.
+Status: sent through Apple Developer Support's Distribution > TestFlight email form
+on November 7, 2026 (Toronto), after Rami's explicit approval. Apple confirmed
+case ID **30000008606157** and said it would review the message and reply by email.
+The form used the signed-in Apple Account email. No demo credentials were sent.
+
+The report below was submitted as the message, with app/build/platform, last
+occurrence and reproduction steps also entered in the form's dedicated fields.
 
 Subject: Mux Chat build 0.1.0 (3) cannot be submitted to Beta App Review
 

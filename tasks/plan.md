@@ -4,6 +4,14 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Apple Support request sent (2026-11-07 evening):** after Rami explicitly approved
+the prepared report, submitted it through Apple Developer Support's Distribution >
+TestFlight email form. Apple displayed confirmation with case ID **30000008606157**
+and said it would review the message and reply by email to the signed-in Apple
+Account. No demo credentials were sent. Receipt and submitted report are in
+`docs/releases/apple-beta-review-support-draft.md`. This opens a support case only;
+build 3 remains blocked from external review. No app or framework source changed.
+
 **Logged-in retry still blocked (2026-11-07 evening):** with Rami's go-ahead, retried
 build 3 submission in a fresh browser tab using the logged-in session. The same
 generic processing error returned; this is the fourth failed attempt. Saved contact,
