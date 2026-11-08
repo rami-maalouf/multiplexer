@@ -2,6 +2,11 @@
 
 ## Current release execution (2026-11-07)
 
+- [x] Retry external review with Rami's logged-in session after explicit go-ahead.
+  Fourth attempt returned the same generic processing error. Developer Account
+  confirms the latest program license accepted November 7. Support report drafted
+  in `docs/releases/apple-beta-review-support-draft.md`; not sent.
+- [ ] Resolve Apple's beta-review submission error or obtain Apple Support diagnosis.
 - [x] Delegate app release and Exact validation to separate lanes with disjoint ownership.
 - [x] Create `Teammates External` and verify the public link, capped at 25 testers:
   `https://testflight.apple.com/join/h9JBMmDZ`. Group currently has zero builds.

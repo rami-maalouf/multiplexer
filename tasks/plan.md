@@ -4,6 +4,16 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Logged-in retry still blocked (2026-11-07 evening):** with Rami's go-ahead, retried
+build 3 submission in a fresh browser tab using the logged-in session. The same
+generic processing error returned; this is the fourth failed attempt. Saved contact,
+sign-in and description fields remain populated. The optional privacy-policy URL
+and custom license text are empty; no replacement policy was invented. Developer
+Account also confirms the October 29 program license was accepted November 7, with
+no pending acceptance banner. Draft support report:
+`docs/releases/apple-beta-review-support-draft.md`. Not sent; no external review or
+external installation is claimed. No app or framework source changed.
+
 **Build 3 compliance cleared; beta review blocked (2026-11-07):** Rami confirmed
 no France distribution. Saved that answer with the approved standard-encryption
 selection; a fresh builds-page read shows build 3 Ready to Submit, with internal
