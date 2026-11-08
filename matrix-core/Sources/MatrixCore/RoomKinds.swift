@@ -48,14 +48,14 @@ extension RoomSummary {
 }
 
 /// The bridged kinds read from the server, kept in the account's store folder: a chat's kind does
-/// not change, so each room is asked once, and the next launch (and the notification extension,
+/// not change, so each successful lookup is cached, and the next launch (and the notification extension,
 /// which opens the same folder) has it at once.
 final class RoomKinds: @unchecked Sendable {
     static let fileName = "room-kinds.json"
     private let file: URL?
     private let lock = NSLock()
     private var kinds: [String: BridgedKind]
-    private var asked: Set<String> = []
+    private var inFlight: Set<String> = []
     /// The asks under way, which a sign-out stops and waits for (as `NewestMessages`).
     private var running: [Task<Void, Never>] = []
     private var stopped = false
@@ -84,31 +84,33 @@ final class RoomKinds: @unchecked Sendable {
         if changed { save() }
     }
 
-    /// Asks the server for each room's kind not known yet, each room once per launch, one at a
-    /// time (only the few rooms the count leaves open are asked); `done` runs once when one is found.
+    /// Asks the server for each room's kind not known yet, one request per room at a time.
+    /// Failed lookups can be retried by a later ask; `done` runs once when one is found.
     func ask(_ roomIds: [String], fetch: @escaping @Sendable (String) async -> BridgedKind?, done: @escaping @Sendable () -> Void) {
-        let todo = lock.withLock { () -> [String] in
-            guard !stopped else { return [] }
-            let todo = roomIds.filter { kinds[$0] == nil && !asked.contains($0) }
-            asked.formUnion(todo)
-            return todo
-        }
-        guard !todo.isEmpty else { return }
-        let task = Task.detached(priority: .utility) { [weak self] in
-            var found = false
-            for id in todo {
-                guard !Task.isCancelled else { break }
-                if let kind = await fetch(id), let self {
-                    self.lock.withLock { self.kinds[id] = kind }
-                    found = true
+        lock.withLock {
+            guard !stopped else { return }
+            let todo = roomIds.filter { kinds[$0] == nil && inFlight.insert($0).inserted }
+            guard !todo.isEmpty else { return }
+            let task = Task.detached(priority: .utility) { [weak self] in
+                var found = false
+                for id in todo {
+                    let kind = Task.isCancelled ? nil : await fetch(id)
+                    if let self {
+                        self.lock.withLock {
+                            if let kind { self.kinds[id] = kind }
+                            self.inFlight.remove(id)
+                        }
+                    }
+                    if kind != nil { found = true }
+                }
+                if found, let self, !Task.isCancelled {
+                    self.save()
+                    done()
                 }
             }
-            if found, let self, !Task.isCancelled {
-                self.save()
-                done()
-            }
+            // stop must see the task before it can return, even if this ask has just begun.
+            running.append(task)
         }
-        if lock.withLock({ running.append(task); return stopped }) { task.cancel() }
     }
 
     /// Stops the asks under way and waits for them to end; no ask starts after.
@@ -123,8 +125,11 @@ final class RoomKinds: @unchecked Sendable {
     }
 
     private func save() {
-        let data = lock.withLock { try? JSONEncoder().encode(kinds) }
-        if let data, let file { try? data.write(to: file, options: .atomic) }
+        lock.withLock {
+            if let file, let data = try? JSONEncoder().encode(kinds) {
+                try? data.write(to: file, options: .atomic)
+            }
+        }
     }
 }
 

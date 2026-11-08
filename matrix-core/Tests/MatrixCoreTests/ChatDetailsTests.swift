@@ -282,13 +282,14 @@ final class ChatDetailsTests: XCTestCase {
     }
 
     /// The room's unread count once it matches `done`, within 20 s.
-    private func unread(_ account: MatrixAccount, _ roomId: String, _ done: (Int) -> Bool) async throws -> Int {
+    private func unread(_ account: MatrixAccount, _ roomId: String, file: StaticString = #filePath, line: UInt = #line,
+                        _ done: (Int) -> Bool) async throws -> Int {
         let start = Date()
         while true {
             let count = try await account.rooms().first { $0.id == roomId }?.unreadCount ?? -1
             if done(count) { return count }
             if Date().timeIntervalSince(start) > 20 {
-                XCTFail("the unread count stayed \(count)")
+                XCTFail("the unread count stayed \(count)", file: file, line: line)
                 return count
             }
             try await Task.sleep(nanoseconds: 300_000_000)

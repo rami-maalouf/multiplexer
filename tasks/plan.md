@@ -4,6 +4,20 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**R03 read-only phone recheck (2026-11-07):** with Rami's OK, scrolled the signed-in orbit
+Mux inbox on the paired iPhone only (no chats opened, nothing sent or marked read). Home
+put the app in `runningBackgroundSuspended`; after reopen, two more scrolls each changed
+the visible rows. Freeze did not reproduce under automation. R03 stays open until a real
+finger freeze is gone or a proved fix lands. Evidence `/tmp/mx-ready-r03/`.
+
+**Release readiness continuation (2026-11-07):** branch `fix/release-readiness` holds
+TestFlight push packaging (`90736ae`) and the production push gateway with a separate
+scoped key (`7fcb305`). Controlled APNs probes for both environments returned the expected
+rejection for invalid tokens. RoomKinds now retries failed bridged-kind lookups (unit tests
+6/6 pass; uncommitted). Full MatrixCore run: 129 tests, 2 skipped, 1 failure
+(`testANewLineFurtherBackThanTheChatLoads`, unread stayed 24). Self-host guide is in
+`docs/self-hosting.md`. App PRs #12–#14 remain open and mergeable. Branch not pushed yet.
+
 **Exact validation continuation (2026-11-07):** recovered the newer original-thread
 checkpoint: Rami saved export compliance and build 2 showed Ready to Submit, assigned
 to Teammates, which contained only its invited owner. The prior browser blocker below

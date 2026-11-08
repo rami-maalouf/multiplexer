@@ -216,6 +216,12 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   `isEnabled` on began/changed recognizers (`e2b58b6992`) did **not** stop the freeze; Rami
   confirmed; that workaround was reverted (`4251663c25`). Keep the log; do not ship speculative
   remount/release hacks until a real fix is proved on the phone.
+  Read-only recheck 2026-11-07 on the installed orbit build (`com.ramimaalouf.multiplexer.orbitb4a3b6a2`,
+  signed-in `@rami`): inbox scroll before background worked; after Home →
+  `runningBackgroundSuspended` → reopen, two further scrolls each moved the list (AX diffs
+  non-empty). No chats opened; nothing sent or marked read. Evidence `/tmp/mx-ready-r03/`.
+  Does not close R03: automation did not reproduce the stuck pan; leave open until a finger
+  freeze is gone or a real fix is proved.
 - [x] Inbox↔Archive capsule waited on a full native `rooms` reload (2026-11-07, with R03):
   `chatList` keyed `roomList`. Now `scopedInbox` lists every chat under the filter; the contract
   picks inbox/Archive/Low Priority/Reminders with `inChatList` (pinned still leave inbox+all for
