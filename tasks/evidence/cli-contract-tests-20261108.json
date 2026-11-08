@@ -18,6 +18,20 @@
   "liveEvidence": "tasks/evidence/cli-feature-coverage-20261108.json",
   "coverageMap": "docs/cli-test-coverage.md",
   "cleanup": "CLI signed out; CLI and fixture device absence independently observed; observer logout succeeded; prior policy restored",
+  "reviewedFinalRun": {
+    "command": "./scripts/test-cli.sh",
+    "exitCode": 0,
+    "releaseBinarySHA256": "769c9f7cfe9f1ab641661220e9a863ad0b3ec333a6a5ad9b886e5764f7408493",
+    "swiftEntriesPassed": 58,
+    "policyBackupTestsPassed": 5,
+    "liveScenariosPassed": 19,
+    "liveBlocked": 0,
+    "smokeChecks": 51,
+    "closedPipe": "actual readerless OS pipe and default SIGPIPE before exec; server acceptance observed, exit 1 and exact output-failure warning required",
+    "regressionRed": "the real-CLI readerless-pipe case failed before explicit SIGPIPE ignore; snapshot-sync failure test failed before failed-snapshot cleanup",
+    "review": "two independent bounded manual Sonnet reads, supplemented by host source inspection; full multi-agent skill pipeline was unavailable",
+    "reviewReceipt": "docs/reviews/2026-11-08-cli-coverage.md"
+  },
   "limits": [
     "cold ordering and bounded watch delivery remain documented limitations, not fixed by these tests",
     "physical network partition, full-server outage and power-loss durability were not exercised",

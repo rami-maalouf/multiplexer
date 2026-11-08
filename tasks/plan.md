@@ -26,6 +26,10 @@ confirmed sends, merged reads/search, independent receipt observation and unscop
 are now verified on the test accounts. Fractional-second scheduling and postaccept output
 failure reporting have regression fixes. `docs/cli-test-coverage.md` maps each command to
 proof and retains the cold-order/watch-delivery/real-account limits.
+Final reviewed suite: 58 XCTest entries, five Bun policy-backup tests, 19 live scenarios
+(zero blocked) and the legacy smoke suite all pass through `scripts/test-cli.sh`. A real
+closed-pipe regression exposed SIGPIPE termination after acceptance; explicit signal handling
+now produces the output-failure warning. Test policy has a private on-disk recovery snapshot.
 
 **TestFlight build 4 uploaded (2026-11-08):** archive built with Exact tip
 `ba8256a4a8` (mx-testflight + archive-refusal scope), notification extension packaged,

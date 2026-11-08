@@ -76,6 +76,13 @@ Verification expansion (2026-11-08, requested after the smoke-test coverage audi
 - [x] Coverage and limits: `docs/cli-test-coverage.md`; per-feature live evidence:
   `tasks/evidence/cli-feature-coverage-20261108.json`. Passing tests do not certify cold ordering,
   durable watch replay, real-account acceptance or a whole-server outage.
+- [x] Reviewed full-suite rerun: 58 XCTest entries, five Bun policy-backup cases, 19 live
+  scenarios (zero blocked), legacy smoke passed. Real closed-stdout regression failed before
+  explicit SIGPIPE ignore and now verifies exact output-failure reporting after server acceptance.
+  Encrypted scheduling verifies refusal reached the mutation boundary plus no pending/delivered
+  event; each scheduling command computes a fresh deadline. Private on-disk policy backups
+  survive interrupted runs and refuse stale overwrite. Review methods/limits are recorded in
+  `docs/reviews/2026-11-08-cli-coverage.md`.
 
 Verification commands: `swift test --package-path cli --filter ArgumentsTests`;
 `scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts`.

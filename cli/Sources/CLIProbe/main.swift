@@ -1,6 +1,9 @@
 import Foundation
 import MatrixCore
 import Security
+import Darwin
+
+signal(SIGPIPE, SIG_IGN)
 
 // private stdin/stdout protocol for the live test runner; never print this stream to logs.
 func emit(_ value: [String: Any]) throws {

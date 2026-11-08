@@ -35,6 +35,7 @@ swift build --package-path cli -c release
 | later | past/malformed times refused; fractional ISO timestamps accepted; audit precedes success output | dry-run absent, scheduled id returned and message delivered; encrypted room refused |
 | watch | baseline, deduplication, timestamp boundary, lagging snapshot retry, removed rooms, bounded loss/replay and same-timestamp limitations | scoped, merged and unscoped streams; lock contention; SIGKILL release; restart without historical replay; burst recovered through read |
 | logout | syntax and no implicit mutation paths | device absent from server afterward; signed-out identity and repeated logout |
+| closed stdout after send | output-file error and accepted-audit order | real OS pipe has no reader; server acceptance is observed, CLI exits 1 and reports the exact output-failure/do-not-resend message |
 
 ## Failure and safety coverage
 
@@ -49,6 +50,10 @@ swift build --package-path cli -c release
   server acceptance reports acceptance and says not to resend.
 - A real child process holds the lock. Another process is refused; SIGKILL releases the lock.
   A symlink lock is refused and the directory uses private permissions.
+- Five Bun cases cover private on-disk policy backups: original bytes and absence restore,
+  stale backups refuse overwrite, restoration failure retains the snapshot, and snapshot
+  creation failure leaves the original policy untouched. Both runners use the helper before
+  replacing policy. A SIGKILL can leave a recovery snapshot, not just an in-memory original.
 - Live credentials and recovery keys travel through private pipes. CLIProbe refuses every
   account except the two designated test users. It never resets or deletes an existing
   backup. A newly enabled test backup is retained with its key in the private Keychain
@@ -62,12 +67,17 @@ swift build --package-path cli -c release
 ## Results and limits
 
 The initial expanded run passed 58 XCTest entries: 57 substantive cases and one subprocess
-helper. The live suite passed 18 named scenarios, with zero blocked. The recorded live result
-is in `tasks/evidence/cli-feature-coverage-20261108.json`.
+helper, plus 18 named live scenarios. The review added a real closed-pipe regression and
+private-policy preservation tests. The latest live result is recorded in
+`tasks/evidence/cli-feature-coverage-20261108.json`.
+The final single-command run exited 0: all 58 XCTest entries, five Bun policy-backup cases,
+19 named live scenarios (zero blocked), and the original smoke suite passed.
 
-Two defects were reproduced and fixed: output failure after server acceptance now explicitly
-says not to resend, and scheduling accepts fractional-second ISO timestamps. Their regression
-tests failed before the fixes and pass afterward.
+Output failure after server acceptance now explicitly says not to resend, scheduling accepts
+fractional-second ISO timestamps, and SIGPIPE is ignored explicitly so a closed pipe reaches
+the output-error handler. Regression tests failed before these fixes and pass afterward.
+The closed-pipe launcher creates an OS pipe with no reader and restores SIGPIPE's default
+before exec: cancelling a Bun stream alone was insufficient to reproduce the signal failure.
 
 This covers every implemented command and the named failure boundaries, not every possible
 environmental failure. SDK outage/partition behavior is represented at the mutation boundary;
@@ -81,3 +91,7 @@ messages; dedupe eviction or reset can replay a message within the time window. 
 characterize these bounds and do not certify durable delivery. Attachment metadata and reply
 context remain absent from the text output. These limitations are not marked fixed by passing
 the suites.
+The bounded text-only `print` paths (help, identity, login/logout and chat-list text/JSON)
+can still exit successfully if stdout is closed. Read/watch and mutation JSONL use throwing
+writes; accepted mutations report output failure explicitly. The tests do not claim delivery
+of discarded text output.

@@ -16,6 +16,10 @@
       "status": "passed"
     },
     {
+      "feature": "closed stdout reports confirmed acceptance without inviting a retry",
+      "status": "passed"
+    },
+    {
       "feature": "chat formats, limits and ambiguous names",
       "status": "passed"
     },
@@ -77,6 +81,11 @@
     }
   ],
   "cleanup": [],
+  "closedOutputObservation": {
+    "exitCode": 1,
+    "serverAccepted": true,
+    "retryWarning": true
+  },
   "limits": [
     "real-account credentials not requested or used",
     "cold ordering remains a known hydration limitation",

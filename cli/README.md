@@ -123,7 +123,12 @@ capability for these operations.
 ./scripts/test-cli.sh
 ```
 
-This runs the full deterministic and live suites. Individual checks:
+This runs the full deterministic and live suites.
+The suites require Bun, uv, the macOS Swift toolchain and the designated test credentials in
+Keychain. The broken-pipe regression uses uv/Python to create a pipe with no reader and reset
+SIGPIPE before launching the actual CLI.
+
+Individual checks:
 
 ```sh
 swift test --package-path cli
@@ -134,6 +139,11 @@ swift test --package-path cli
 The live acceptance script refuses to replace an existing CLI session, uses only test1/test2,
 temporarily installs a test-room-only policy, and signs out and restores policy on exit.
 It writes synthetic messages and a reaction/read receipt, and sends a scheduled test message.
+Before replacing policy, each runner fsyncs a private `write-policy.json.cli-test-backup.json`
+beside the policy. It removes that snapshot only after restoration succeeds. A stale snapshot
+blocks another run; preserve it and restore its original `base64` bytes (or absence when
+`existed` is false) before running tests again. Recovery is explicit so a stale backup cannot
+silently overwrite later operator edits.
 
 Known limits from acceptance: the first `chats` after login can reorder on later calls while
 the SDK hydrates latest events. It is not a settled-order barrier. A rank-list coverage check

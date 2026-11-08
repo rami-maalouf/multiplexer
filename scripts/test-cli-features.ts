@@ -2,6 +2,7 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { chmod, readFile, writeFile, unlink } from "node:fs/promises";
+import { ensureNoPolicyBackup, preservePolicy } from "./cli-test-policy";
 
 const root = join(import.meta.dir, "..");
 const mx = join(root, "cli/.build/release/mx");
@@ -93,10 +94,12 @@ async function eventually(work: () => Promise<boolean>, timeout = 60_000) {
   do { if (await work()) return; await Bun.sleep(500); } while (Date.now() < end);
   throw new Error("expected remote state did not arrive");
 }
-let sessionCreated = false, policyReplaced = false, completed = false;
+let sessionCreated = false, completed = false;
+let closedOutputObservation: { exitCode: number; serverAccepted: boolean; retryWarning: boolean } | undefined;
+let restorePolicy: (() => Promise<void>) | undefined;
 let cliDevice = "";
 let probeDevice = "";
-const oldPolicy = await readFile(policy).catch(error => { if (error.code === "ENOENT") return null; throw error; });
+await ensureNoPolicyBackup(policy);
 try {
   await feature("signed-out commands and help", async () => {
     check((await command(["help"])).out.includes("mx read"), "missing command help");
@@ -134,8 +137,9 @@ try {
     check(cliDevice, "device identity missing");
     await command(["login", user, "--password-stdin"], firstPassword + "\n", false);
   });
+  restorePolicy = await preservePolicy(policy);
   await writeFile(policy, JSON.stringify({ version: 1, accounts: { [user]: [a, b, encrypted] } }), { mode: 0o600 });
-  policyReplaced = true; await chmod(policy, 0o600);
+  await chmod(policy, 0o600);
   await feature("missing/malformed/unsupported/wrong-account policies deny real sends", async () => {
     const allowed = await readFile(policy);
     try {
@@ -146,6 +150,23 @@ try {
       const events = await api(ownerToken, "GET", `rooms/${encodeURIComponent(a)}/messages?dir=b&limit=20`);
       check(!events.chunk.some((x: any) => x.content?.body === marker + "denied"), "denied write reached server");
     } finally { await writeFile(policy, allowed, { mode: 0o600 }); }
+  });
+  await feature("closed stdout reports confirmed acceptance without inviting a retry", async () => {
+    const text = marker + "closedoutput";
+    // create a real pipe with no reader; stream cancellation alone may keep bun's pipe open.
+    const launcher = "import os,signal,sys; r,w=os.pipe(); os.close(r); os.dup2(w,1); os.close(w); signal.signal(signal.SIGPIPE, signal.SIG_DFL); os.execv(sys.argv[1], sys.argv[1:])";
+    const child = Bun.spawn(["uv", "run", "--no-project", "python", "-c", launcher, mx, "send", a, text], { stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+    await child.stdout.cancel();
+    const timer = setTimeout(() => child.kill("SIGKILL"), 150_000);
+    let error: string, code: number;
+    try { [error, code] = await Promise.all([new Response(child.stderr).text(), child.exited]); }
+    finally { clearTimeout(timer); }
+    const events = await api(ownerToken, "GET", `rooms/${encodeURIComponent(a)}/messages?dir=b&limit=10`);
+    const serverAccepted = events.chunk.some((x: any) => x.content?.body === text);
+    const outputFailure = error.includes("server accepted the write but output failed");
+    closedOutputObservation = { exitCode: code, serverAccepted, retryWarning: outputFailure && error.includes("do not resend") };
+    check(serverAccepted, "closed-output send was not accepted by server");
+    check(code === 1 && outputFailure && error.includes("do not resend"), `closed-output error contract failed with exit ${code}`);
   });
   await feature("chat formats, limits and ambiguous names", async () => {
     const chats = JSON.parse((await command(["chats", "--json", "--limit", "2"])).out);
@@ -172,7 +193,15 @@ try {
     const raw = await api(ownerToken, "GET", `rooms/${encodeURIComponent(encrypted)}/event/${encodeURIComponent(sent.eventId)}`);
     check(raw.type === "m.room.encrypted" && !JSON.stringify(raw).includes(text), "encrypted send exposed plaintext");
     await eventually(async () => (await rpc("read", { roomId: encrypted })).messages.some((x: any) => x.text === text));
-    await command(["later", encrypted, marker + "noschedule", "--at", new Date(Date.now() + 60_000).toISOString()], undefined, false);
+    const refusal = await command(["later", encrypted, marker + "noschedule", "--at", new Date(Date.now() + 60_000).toISOString()], undefined, false);
+    check(refusal.error.includes("write failed or its result is unknown"), "encrypted schedule failed before reaching its mutation boundary");
+    const pendingResponse = await fetch(server + "/_matrix/client/unstable/org.matrix.msc4140/delayed_events", {
+      headers: { Authorization: `Bearer ${ownerToken}` }, signal: AbortSignal.timeout(30_000) });
+    check(pendingResponse.ok, "could not independently inspect scheduled events");
+    const pending = await pendingResponse.json();
+    check(Array.isArray(pending.delayed_events), "scheduled-event response schema missing");
+    check(!pending.delayed_events.some((x: any) => x.room_id === encrypted && x.content?.body === marker + "noschedule"), "encrypted schedule reached server");
+    check(!(await rpc("read", { roomId: encrypted })).messages.some((x: any) => x.text === marker + "noschedule"), "refused scheduled text was delivered");
   });
   await feature("JSONL round-trip, chronology and read limit", async () => {
     const text = marker + ' quote " slash \\ newline\nsecond line é';
@@ -255,8 +284,8 @@ try {
   });
   await feature("scheduled confirmation, delayed delivery and invalid times", async () => {
     await command(["later", a, "invalid", "--at", "yesterday"], undefined, false);
-    const at = new Date(Date.now() + 15_000).toISOString();
-    await command(["later", a, marker + "drylater", "--at", at, "--dry-run"]);
+    await command(["later", a, marker + "drylater", "--at", new Date(Date.now() + 20_000).toISOString(), "--dry-run"]);
+    const at = new Date(Date.now() + 20_000).toISOString();
     const accepted = jsonl((await command(["later", a, marker + "scheduled", "--at", at])).out)[0];
     check(accepted.status === "scheduled" && accepted.delayId, "scheduled confirmation missing");
     await eventually(async () => jsonl((await command(["read", a, "--limit", "20"])).out).some(x => x.text === marker + "scheduled"));
@@ -286,11 +315,8 @@ try {
     } catch { cleanup.push("owned device absence not confirmed"); }
   }
   for (const token of [ownerToken, peerToken]) { if (token) { try { await api(token, "POST", "logout", {}); } catch { cleanup.push("observer logout failed"); } } }
-  if (policyReplaced) {
-    if (oldPolicy) await writeFile(policy, oldPolicy, { mode: 0o600 });
-    else await unlink(policy);
-  }
-  const report = { date: "2026-11-08", suite: "CLI feature integration", completed, results, cleanup,
+  if (restorePolicy) { try { await restorePolicy(); } catch { cleanup.push("prior policy restoration failed; backup retained"); } }
+  const report = { date: "2026-11-08", suite: "CLI feature integration", completed, results, cleanup, closedOutputObservation,
     limits: ["real-account credentials not requested or used", "cold ordering remains a known hydration limitation", "watch is best effort, not durable replay", "test rooms/merges and newly enabled test recovery are retained; no server data deleted"] };
   await writeFile(join(root, "tasks/evidence/cli-feature-coverage-20261108.json"), JSON.stringify(report, null, 2) + "\n");
   check(cleanup.length === 0, "test cleanup incomplete; inspect evidence");

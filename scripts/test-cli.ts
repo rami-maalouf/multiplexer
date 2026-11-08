@@ -1,7 +1,8 @@
 // live cli acceptance as the test account only; hold mx-lock matrixcore around this script.
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { appendFile, chmod, readFile, writeFile, unlink } from "node:fs/promises";
+import { appendFile, chmod, readFile, writeFile } from "node:fs/promises";
+import { ensureNoPolicyBackup, preservePolicy } from "./cli-test-policy";
 
 const root = join(import.meta.dir, "..");
 const binary = join(root, "cli/.build/release/mx");
@@ -10,7 +11,8 @@ const policyPath = join(base, "write-policy.json");
 const auditPath = join(base, "audit.jsonl");
 const user = "@test1:ramimaalouf.com";
 let checks = 0;
-let sessionCreated = false, policyReplaced = false;
+let sessionCreated = false;
+let restorePolicy: (() => Promise<void>) | undefined;
 function expect(value: unknown, description: string) {
   if (!value) throw new Error(description);
   checks++;
@@ -24,7 +26,7 @@ async function run(args: string[], stdin?: string, success = true) {
   return out;
 }
 function lines(text: string) { return text.trim().split("\n").filter(Boolean).map(line => JSON.parse(line)); }
-const existing = await readFile(policyPath).catch(error => { if (error.code === "ENOENT") return null; throw error; });
+await ensureNoPolicyBackup(policyPath);
 const auditBefore = await readFile(auditPath).catch(error => { if (error.code === "ENOENT") return Buffer.alloc(0); throw error; });
 if (auditBefore.length && auditBefore[auditBefore.length - 1] !== 10) throw new Error("existing audit log has an incomplete final record");
 let watch: ReturnType<typeof Bun.spawn> | undefined;
@@ -46,8 +48,8 @@ try {
   expect(room, "test room unavailable");
   const other = cold.find(x => x.id !== room.id);
   expect(other, "second room needed for denial proof");
+  restorePolicy = await preservePolicy(policyPath);
   await writeFile(policyPath, JSON.stringify({ version: 1, accounts: { [user]: [room.id] } }), { mode: 0o600 });
-  policyReplaced = true;
   await chmod(policyPath, 0o600);
   const marker = `cliaccept${Date.now()}`;
   await run(["send", other.id, marker], undefined, false);
@@ -139,7 +141,6 @@ try {
   try {
     if (sessionCreated) await run(["logout"]).catch(error => { console.error("cleanup: logout failed"); throw error; });
   } finally {
-    if (policyReplaced && existing === null) await unlink(policyPath).catch(error => { if (error.code !== "ENOENT") throw error; });
-    else if (policyReplaced && existing !== null) await writeFile(policyPath, existing, { mode: 0o600 });
+    if (restorePolicy) await restorePolicy();
   }
 }

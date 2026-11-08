@@ -3,6 +3,9 @@ import MatrixCore
 import CLIKit
 import Darwin
 
+// report broken output after server acceptance instead of silently dying with sigpipe.
+signal(SIGPIPE, SIG_IGN)
+
 // mx: read and act on the chat app's Matrix account from a terminal.
 
 let usage = """
