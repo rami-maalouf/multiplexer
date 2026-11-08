@@ -78,5 +78,11 @@ public struct Command {
 public struct WritePolicy: Decodable {
     public let version: Int
     public let accounts: [String: [String]]
-    public func allows(user: String, room: String) -> Bool { version == 1 && (accounts[user]?.contains(room) ?? false) }
+    /// only version 1 with physical Matrix room ids (`!…`) can authorize a write.
+    public var isWellFormed: Bool {
+        version == 1 && accounts.values.allSatisfy { $0.allSatisfy { $0.hasPrefix("!") } }
+    }
+    public func allows(user: String, room: String) -> Bool {
+        isWellFormed && room.hasPrefix("!") && (accounts[user]?.contains(room) ?? false)
+    }
 }

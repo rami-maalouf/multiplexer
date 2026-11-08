@@ -28,3 +28,10 @@ The fix review found no blockers on extraction, cleanup or secret handling. Its 
 bounded text-output behavior is documented in the coverage map. The review did not certify
 whole-server/network outages, physical power-loss durability, real-account acceptance or
 durable watch replay.
+
+## Merge review (2026-11-08, continuation)
+
+A later pass confirmed merged-chat writes (including `mark-read`) already fail before policy
+at the physical-room guard. Hardening added: a write-policy that lists any non-`!` room id
+is treated as malformed and authorizes nothing. Accepted residual remains the documented
+MessageLine attachment/reply omission.

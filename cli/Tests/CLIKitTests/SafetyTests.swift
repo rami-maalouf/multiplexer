@@ -56,7 +56,9 @@ final class WriteSafetyTests: XCTestCase {
         }
     }
     func testMissingMalformedUnknownVersionAndDeniedPolicyNeverReachServer() async throws {
-        for policy in [Data(), Data("{".utf8), Data(#"{"version":2,"accounts":{"@u:h":["!r:h"]}}"#.utf8), Data(#"{"version":1,"accounts":{}}"#.utf8)] {
+        for policy in [Data(), Data("{".utf8), Data(#"{"version":2,"accounts":{"@u:h":["!r:h"]}}"#.utf8),
+                       Data(#"{"version":1,"accounts":{}}"#.utf8),
+                       Data(#"{"version":1,"accounts":{"@u:h":["!r:h","merge:x"]}}"#.utf8)] {
             for dry in [false, true] {
                 let (error, trace, rows) = try await exercise(dry: dry, policy: policy)
                 XCTAssertTrue(error?.contains("write refused") == true)

@@ -197,6 +197,10 @@ public func performWrite(_ command: Command, user: String, room: String,
         try audit("denied")
         throw Failure("write refused: create a valid private write-policy.json (see cli/README.md)")
     }
+    guard policy.isWellFormed else {
+        try audit("denied")
+        throw Failure("write refused: create a valid private write-policy.json (see cli/README.md)")
+    }
     guard policy.allows(user: user, room: room) else {
         try audit("denied")
         throw Failure("write refused: account and room id are not in write-policy.json")

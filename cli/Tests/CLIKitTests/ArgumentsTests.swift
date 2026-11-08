@@ -106,6 +106,7 @@ final class ArgumentsTests: XCTestCase {
     }
     func testPolicyExactIdentityAndDefaultDeny() throws {
         let policy = try decode(#"{"version":1,"accounts":{"@u:h":["!r:h"]}}"#)
+        XCTAssertTrue(policy.isWellFormed)
         XCTAssertTrue(policy.allows(user: "@u:h", room: "!r:h"))
         for (user, room) in [("@U:h", "!r:h"), ("@u:H", "!r:h"), ("@u:h", "!R:h"), ("@u:h", "r"), ("*", "!r:h"), ("@u:h", "!r:h ")] {
             XCTAssertFalse(policy.allows(user: user, room: room))
@@ -114,6 +115,11 @@ final class ArgumentsTests: XCTestCase {
                      #"{"version":1,"accounts":{}}"#, #"{"version":1,"accounts":{"*":["*"]}}"#] {
             XCTAssertFalse(try decode(text).allows(user: "@u:h", room: "!r:h"))
         }
+        // a merged or name-like entry corrupts the whole policy: no write can be authorized.
+        let bad = try decode(#"{"version":1,"accounts":{"@u:h":["!r:h","merge:x"]}}"#)
+        XCTAssertFalse(bad.isWellFormed)
+        XCTAssertFalse(bad.allows(user: "@u:h", room: "!r:h"))
+        XCTAssertFalse(bad.allows(user: "@u:h", room: "merge:x"))
     }
     func testMalformedPolicyCannotDecode() {
         for text in ["", "{", "null", "[]", "{}", #"{"accounts":{}}"#, #"{"version":"1","accounts":{}}"#,

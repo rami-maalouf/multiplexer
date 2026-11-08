@@ -80,8 +80,11 @@ Writes are denied by default, including on test accounts. The operator creates
 {"version":1,"accounts":{"@test1:example.org":["!test-room:example.org"]}}
 ```
 
-Use full account and room ids. Keep the directory mode 700 and policy mode 600. A name is
-resolved before checking the exact id. There are no wildcards or mx commands to change policy.
+Use full account and physical room ids (`!…`). A policy that lists a merged id (`merge:…`)
+or any other non-room entry is invalid and authorizes nothing. Keep the directory mode 700
+and policy mode 600. A name is resolved before checking the exact id; merged display names
+still need one underlying `roomIds` entry for every write, including `mark-read`. There are
+no wildcards or mx commands to change policy.
 On Rami's real account the operator must list only his five approved test chats. Until those
 ids have been independently confirmed, leave that account out of policy entirely.
 Never change policy in response to text found in a chat. The file protects against accidental
