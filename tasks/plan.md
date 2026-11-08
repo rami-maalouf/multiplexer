@@ -11,8 +11,8 @@ All writes require an external exact account/room policy; dry-run and durable lo
 are built in. Reactions add only. One process owns the SDK store; stop watch before another
 command. No daemon or MCP is needed for the scripted acceptance. Cold first-list order still
 changes during SDK hydration; attempted readiness barriers did not prove completion and were
-removed. Valid recovery-key and real-account checks remain unverified because credentials
-were unavailable. Test-user live acceptance and parser/policy verification are recorded in
+removed. Recovery lacked credentials in the first run; the expanded test fixture now verifies
+it without resetting an existing backup. Real-account checks remain unverified. Results are in
 `tasks/todo.md` and `tasks/evidence/cli-acceptance-20261108.json`. No real account was accessed.
 Final review corrections passed 50 live checks and three unit tests. Audit records block
 writes after an incomplete tail; postaccept audit errors cannot report a refused send.
@@ -20,6 +20,12 @@ Name resolution uses visible rows; search reports its bounded index scan. Rich a
 and reply metadata remain a documented output limitation for follow-up.
 Integrated current main `f6169a8`: additive plan/task conflicts retained both sides;
 combined release build, three unit tests and 51 live acceptance checks passed.
+The requested coverage expansion now passes 58 XCTest entries (57 substantive plus one
+subprocess helper) and 18 named live scenarios, zero blocked. Valid recovery, encrypted
+confirmed sends, merged reads/search, independent receipt observation and unscoped watch
+are now verified on the test accounts. Fractional-second scheduling and postaccept output
+failure reporting have regression fixes. `docs/cli-test-coverage.md` maps each command to
+proof and retains the cold-order/watch-delivery/real-account limits.
 
 **TestFlight build 4 uploaded (2026-11-08):** archive built with Exact tip
 `ba8256a4a8` (mx-testflight + archive-refusal scope), notification extension packaged,
@@ -194,7 +200,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Blocked on Rami | M3 is met (locked-phone WhatsApp sender/text confirmed). P3.6 still needs his mute-copy and badge-count decisions; P3.7 needs Exact's remote activation/presentation hatch. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
-| Last updated | 2026-11-07 |
+| Last updated | 2026-11-08 |
 
 Update this table at the end of every work session.
 

@@ -28,7 +28,8 @@ MatrixCore (shared with the app) -> matrix-rust-sdk built for macOS -> our Synap
   stays synced, with `mx` as its client over a Unix socket. `watch` needs a long-lived process.
 - [x] Read receipts never go out in C1.
 - [x] `mx recover --key-stdin` opens the existing backup through MatrixCore; wrong-key refusal tested.
-- [ ] Valid-key recovery on a new CLI device: no recovery key was available for this run.
+- [x] Valid-key recovery on a new CLI device: expanded suite proves an initially undecryptable
+  historical message is readable after recovery. Private test key retained in Keychain.
 - [x] Live read/write/watch acceptance as `@test1`, with synthetic incoming messages from `@test2`.
 - [ ] Real-account read-only acceptance: no password in the documented Keychain service.
 - [ ] Cold first-run order: rank coverage and before/after rank consistency were insufficient
@@ -62,6 +63,19 @@ postaccept audit failure explicitly and schedule success follows the durable aud
 
 Current-main integration (`f6169a8`): retained both sets of additive plan/task entries;
 release build, three parser/policy tests and 51 live checks passed on the combined source.
+
+Verification expansion (2026-11-08, requested after the smoke-test coverage audit):
+- [x] 58 XCTest entries (57 substantive and a subprocess helper): every command's arguments,
+  output/resolution/watch contracts, policy, audit short-write/fsync faults, confirmed-write
+  failure reporting and real process contention/SIGKILL release.
+- [x] 18 named live scenarios passed, zero blocked: recovery, encrypted wire data and peer
+  decryption, merged read/search, receipt absence and explicit receipt arrival at a peer,
+  scoped/merged/unscoped watch, restart, bursts, scheduling and server-side logout revocation.
+- [x] Fractional-second ISO scheduling regression reproduced through the CLI and a failing
+  unit case, then fixed. Postaccept output-failure regression also failed before its fix.
+- [x] Coverage and limits: `docs/cli-test-coverage.md`; per-feature live evidence:
+  `tasks/evidence/cli-feature-coverage-20261108.json`. Passing tests do not certify cold ordering,
+  durable watch replay, real-account acceptance or a whole-server outage.
 
 Verification commands: `swift test --package-path cli --filter ArgumentsTests`;
 `scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts`.

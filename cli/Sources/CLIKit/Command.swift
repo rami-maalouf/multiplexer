@@ -12,9 +12,15 @@ public struct Command {
     public var flags: Set<String> = []
     public var limit: Int { Int(options["--limit"] ?? "20")! }
     public var dryRun: Bool { flags.contains("--dry-run") }
-    public var date: Date? { options["--at"].flatMap { ISO8601DateFormatter().date(from: $0) } }
+    public var date: Date? {
+        guard let value = options["--at"] else { return nil }
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: value) { return date }
+        formatter.formatOptions.insert(.withFractionalSeconds)
+        return formatter.date(from: value)
+    }
 
-    public init(_ args: [String]) throws {
+    public init(_ args: [String], now: Date = Date()) throws {
         name = args.first ?? "help"
         let counts: [String: Int] = ["login": 1, "whoami": 0, "chats": 0, "logout": 0, "read": 1,
             "search": 1, "watch": 0, "recover": 0, "send": 2, "react": 3, "mark-read": 1, "later": 2,
@@ -55,7 +61,7 @@ public struct Command {
             guard let n = Int(value), (1...1000).contains(n) else { throw UsageError("--limit must be 1 to 1000") }
         }
         if name == "later" {
-            guard let date, date > Date() else { throw UsageError("--at needs a future ISO 8601 timestamp with timezone") }
+            guard let date, date > now else { throw UsageError("--at needs a future ISO 8601 timestamp with timezone") }
         }
         if name == "login", !flags.contains("--password-stdin") { throw UsageError("add --password-stdin") }
         if name == "recover", !flags.contains("--key-stdin") { throw UsageError("add --key-stdin") }

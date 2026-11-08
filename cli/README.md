@@ -120,7 +120,14 @@ capability for these operations.
 ## Verify
 
 ```sh
-swift test --package-path cli --filter ArgumentsTests
+./scripts/test-cli.sh
+```
+
+This runs the full deterministic and live suites. Individual checks:
+
+```sh
+swift test --package-path cli
+./scripts/mx-lock.sh matrixcore cli-features -- bun scripts/test-cli-features.ts
 ./scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts
 ```
 
@@ -133,7 +140,12 @@ the SDK hydrates latest events. It is not a settled-order barrier. A rank-list c
 and a before/after snapshot comparison both failed to prove completion and were removed.
 Warm reads show freshly sent synthetic messages first. Merged chat rows expose `roomIds`;
 reads/search expand their component rooms, while writes require one explicit physical room id.
-Valid-key recovery and real-account reads were not exercised in this session because those
-credentials were unavailable; wrong-key recovery refusal was exercised as a test user.
+Expanded test-account verification now exercises valid-key recovery, encrypted sends,
+merged reads/search, scoped/unscoped watch and independent read-receipt observation.
+The test-only `CLIProbe` executable exchanges credentials and recovery keys through private
+pipes with the runner; do not print its protocol stream to logs. Its test recovery key is
+kept in Keychain for repeatable runs, without resetting an existing backup. Real-account
+reads remain unverified. [Coverage details](../docs/cli-test-coverage.md) distinguish component
+fault injection from live verification and list the remaining limits.
 Read/watch currently expose text and reactions, without attachment metadata or reply context;
 an uncaptioned attachment can therefore have empty text. Rich message output remains follow-up.

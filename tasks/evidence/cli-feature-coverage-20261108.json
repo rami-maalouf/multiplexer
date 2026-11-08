@@ -1,0 +1,86 @@
+{
+  "date": "2026-11-08",
+  "suite": "CLI feature integration",
+  "completed": true,
+  "results": [
+    {
+      "feature": "signed-out commands and help",
+      "status": "passed"
+    },
+    {
+      "feature": "login, identity and persistent session",
+      "status": "passed"
+    },
+    {
+      "feature": "missing/malformed/unsupported/wrong-account policies deny real sends",
+      "status": "passed"
+    },
+    {
+      "feature": "chat formats, limits and ambiguous names",
+      "status": "passed"
+    },
+    {
+      "feature": "wrong and empty recovery input are refused",
+      "status": "passed"
+    },
+    {
+      "feature": "valid recovery decrypts older history on a fresh CLI device",
+      "status": "passed"
+    },
+    {
+      "feature": "encrypted confirmed sends are encrypted on the server",
+      "status": "passed"
+    },
+    {
+      "feature": "JSONL round-trip, chronology and read limit",
+      "status": "passed"
+    },
+    {
+      "feature": "merged read/search and folded-name resolution",
+      "status": "passed"
+    },
+    {
+      "feature": "read/search/watch leave read receipts unchanged",
+      "status": "passed"
+    },
+    {
+      "feature": "explicit mark-read reaches an independent device",
+      "status": "passed"
+    },
+    {
+      "feature": "cross-room reactions and disallowed dry-runs fail closed",
+      "status": "passed"
+    },
+    {
+      "feature": "watch crash releases lock and restart has no historical replay",
+      "status": "passed"
+    },
+    {
+      "feature": "merged-scope watch receives both physical rooms",
+      "status": "passed"
+    },
+    {
+      "feature": "unscoped watch works with merged rooms",
+      "status": "passed"
+    },
+    {
+      "feature": "watch burst remains bounded and read recovers current history",
+      "status": "passed"
+    },
+    {
+      "feature": "scheduled confirmation, delayed delivery and invalid times",
+      "status": "passed"
+    },
+    {
+      "feature": "logout revokes the device and repeated logout is harmless",
+      "status": "passed"
+    }
+  ],
+  "cleanup": [],
+  "limits": [
+    "real-account credentials not requested or used",
+    "cold ordering remains a known hydration limitation",
+    "watch is best effort, not durable replay",
+    "test rooms/merges and newly enabled test recovery are retained; no server data deleted"
+  ]
+}

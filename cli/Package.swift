@@ -14,8 +14,9 @@ let package = Package(
         .binaryTarget(name: "MatrixSDKFFI", path: ".sdk/MatrixSDKFFI.xcframework"),
         .target(name: "MatrixRustSDK", dependencies: ["MatrixSDKFFI"], path: ".sdk/MatrixRustSDK"),
         .target(name: "MatrixCore", dependencies: ["MatrixRustSDK"]),
-        .target(name: "CLIKit"),
+        .target(name: "CLIKit", dependencies: ["MatrixCore"]),
+        .executableTarget(name: "CLIProbe", dependencies: ["MatrixCore"]),
         .executableTarget(name: "mx", dependencies: ["MatrixCore", "CLIKit"]),
-        .testTarget(name: "CLIKitTests", dependencies: ["CLIKit"]),
+        .testTarget(name: "CLIKitTests", dependencies: ["CLIKit", "MatrixCore"]),
     ]
 )
