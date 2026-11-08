@@ -4,6 +4,13 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Mac spike (2026-11-08, branch `feat/mac-spike`, Phase 5 step 0, Rami's yes):** the
+iPhone app runs on the Mac with Exact's AppKit host. Signed in as `@test1`, it listed 74
+chats, opened a chat, sent 5 messages and signed out. The inbox and the chat show side by
+side with no layout work (Exact's list-detail split). Blocker: every send ends with a
+SIGTRAP in AppKit's glass layout (Exact finding 157). Mac push: local notifications only,
+while the app runs (Rami, 2026-11-08). Full Mac work waits for Phase 2 and Phase 4.
+
 **Main merge (2026-11-08):** PR #16 (`fix/release-readiness`) merged to `main`
 (`2f5a35a`). Product fixes from #12 and #13 landed with it; #14 closed as
 superseded. Exact archive-refusal scope is open as ccheever/exact2#1602 (clean;
@@ -476,7 +483,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Unexpected Oracle charges for 4 CPUs and 23 GiB. | Medium | Rami checks billing. | Q5 |
 | A network blocks logins from cloud IP addresses (not verified). | Medium | Test each network before we depend on it. | Phase 4 |
 | The notification extension runs out of memory or fails to decrypt. | High for M3 | Test early in Phase 3. | Phase 3 |
-| matrix-rust-components-swift is iOS only. | High for M5 | Build the SDK's Swift bindings for macOS ourselves. | Phase 5 |
+| matrix-rust-components-swift is iOS only. | Low (was High for M5) | Retired 2026-11-08: `scripts/build-matrix-sdk-macos.sh` builds the macOS slice from the pinned SDK commit (about 5 min); its Swift bindings and headers match the release byte for byte. | Phase 5 |
 | SDK API changes often. | Medium | Pin the version. Only MatrixCore touches the SDK. | Always |
 | The bridges see message text, so a server breach exposes chats. | High | SSH keys only, few services, updates. End-to-bridge encryption is optional. | Phase 2 |
 
@@ -595,6 +602,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-04 | Integrated full Labels branch 2b55caf after the combined 39-test selection passed on main under the shared lock (no failures/skips, 1062.9 s). Preserved all earlier UI, Spaces, Requests and session-migration work. Contract build clean; app/core code identical to the lane’s final 9-test iOS verification, with light/dark and 11 largest-text screens clean. The archive fix changes only test event sequencing. Feedback remains local per Rami. |
 | 2026-11-07 | R04 changed for chats with no kept copy (branch `fix/demo-bugs`): such a chat now waits for its full first screen under the loading spinner, instead of answering on the timeline's first diff. Why: on a new device that diff holds only the newest message, which showed alone for about 0.35 s and then jumped up (seen in the demo recording). A chat with a kept copy keeps R04's early answer, since the copy covers the older rows. The older-messages row keeps one height in both states. The demo staging seats a third contact in its group: its bot is listed but never joins, so the app's member count (which subtracts listed service members, right for real bridges) read the group as a DM. |
 | 2026-11-07 | DMs or Groups for a bridged chat (branch `fix/members-composer-groups`): `m.direct` decides first; a bridged room not marked direct with at most 2 people besides its bot is what its bridge's `m.bridge` says (`com.beeper.room_type` `dm`, else a group), read once per room from the server and kept; with no bridge state the count decides, as before. Why: the count cannot tell a group with one other person from a DM. A read-only audit of the real account (349 rooms) found every bridged DM in `m.direct` with room type `dm` and no bridged group there, so only a few rooms are asked. Also: the info page counts a service member out only when it has joined (the list's rule), and the chat's composer shows from its first frame. |
+| 2026-11-08 | Rami said yes to a Mac spike now, and to local notifications only on the Mac (no APNs there). Spike result: the SDK builds for macOS from the pinned commit; the app builds for the Mac with `#if os(macOS)` branches in four module files; sign-in, the chat list, a chat and sending work. Exact findings 156 to 158. The risk "matrix-rust-components-swift is iOS only" is retired. |
 
 ### Appearance preference (2026-11-04)
 

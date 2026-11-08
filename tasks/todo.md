@@ -2823,8 +2823,26 @@ notifications reach no app code (no `willPresent` / `didReceive` hatch).
 
 ## Phase 5: Mac app (M5), rough
 
-- Build matrix-rust-sdk's Swift bindings for macOS. The components package is iOS only.
-- Run the Exact app on macOS.
+Spike (step 0) done 2026-11-08 on `feat/mac-spike`. Screens in `apps/multiplexer/.exact/mac/`
+(gitignored, on the worktree that ran it).
+
+- [x] Build matrix-rust-sdk's Swift bindings for macOS: `./scripts/build-matrix-sdk-macos.sh`
+  (once per SDK version, about 5 min), then `./scripts/setup-matrix-sdk.sh` adds the slice.
+- [x] Run the Exact app on macOS: `bun exact.mjs mac`, then `bun exact.mjs agent macos
+  --size 900x700 --chrome platform ...`. Sign-in, the chat list, a chat, sending and Sign Out
+  work as `@test1`. `bun exact.mjs test macos` passes, as `test ios` does.
+- [ ] Fix the SIGTRAP after each send (Exact finding 157, AppKit glass layout). Blocks daily use.
+- [ ] Visual faults seen at 900x700: the chat's header shows a Back button ("< 11") inside the
+  split and lies over the messages; the composer covers the newest message and is cut at the
+  window's bottom; the sidebar's bottom bar overlaps the list, with a stray sidebar button.
+- [ ] MatrixCore tests on macOS (no Simulator): a local binary target for the combined
+  xcframework, and `.macOS(.v14)` in `matrix-core/Package.swift`.
+- [ ] Desktop input: Enter sends, Shift+Enter adds a line, ⌘K switcher, ⌘N, right-click menus
+  for long-press and swipe actions, hover, drag and drop of files.
+- [ ] Local notifications from the live sync, a Dock badge, `keepRunning`.
+- [ ] Ship: Developer ID, notarization, `.dmg`, auto-update.
+- Keychain on the Mac: the session went to the login keychain without a prompt in drives.
+  Check again in a signed build.
 
 ## Phase 6: others can install it (M6), rough
 

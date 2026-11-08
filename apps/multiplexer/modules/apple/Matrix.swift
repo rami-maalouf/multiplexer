@@ -1,7 +1,15 @@
 import Foundation
-#if canImport(UIKit)
+#if os(macOS)
+import AppKit
+#else
 import UIKit
 #endif
+
+/// The module's log line, on standard error. Exact's mac host answers a drive on standard
+/// output, so a `print` there would be read as the drive's reply.
+func moduleLog(_ line: String) {
+    FileHandle.standardError.write(Data((line + "\n").utf8))
+}
 
 /// Answers app.ts's asks with MatrixCore (the core-*.swift files beside this one).
 /// the session is in the keychain; its store is in data or the app group's container.
@@ -16,7 +24,12 @@ final class Matrix: ExactModule {
     private lazy var pending = SessionKeychain(service: keychain.service, slot: "sign-out")
     private var signingOutPending = false
     private var sessionStore: SessionStore {
+        // the mac has no notification extension to share the store with, so no app group.
+        #if os(macOS)
+        let group: URL? = nil
+        #else
         let group = context.agent ? nil : FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ramimaalouf.multiplexer")
+        #endif
         return SessionStore(dataDirectory: context.data, groupContainer: group, agent: context.agent)
     }
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
@@ -30,11 +43,18 @@ final class Matrix: ExactModule {
     }
     @MainActor private func observeLifecycle() {
         guard lifecycle.isEmpty else { return }
+        #if os(macOS)
+        // a mac window can be on screen while another app is active: in front means visible.
+        lifecycle.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeOcclusionStateNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.inFront = NSApp.occlusionState.contains(.visible); self?.applyReceiptWatch() }
+        })
+        #else
         for (name, front) in [(UIApplication.didEnterBackgroundNotification, false), (UIApplication.willEnterForegroundNotification, true)] {
             lifecycle.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.inFront = front; self?.applyReceiptWatch() }
             })
         }
+        #endif
     }
     /// Topics that changed and app.ts has not heard of yet: a burst of changes becomes one ask.
     private var changedTopics: Set<String> = []
@@ -89,7 +109,7 @@ final class Matrix: ExactModule {
                     let community = communities.first { $0.id == chosen }
                     let inbox = community != nil ? all.on(community: community) : all.on(network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
-                    print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+                    moduleLog("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
                        "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
@@ -293,7 +313,7 @@ final class Matrix: ExactModule {
                     } catch RecoveryKeyError.wrongKey {
                         reply.send(["ok": false, "problem": "wrongKey"])
                     } catch {
-                        print("matrix: recovery failed: \(error)")
+                        moduleLog("matrix: recovery failed: \(error)")
                         reply.send(["ok": false, "problem": "failed"])
                     }
                 case "maxUploadSize":
@@ -410,7 +430,7 @@ final class Matrix: ExactModule {
         Task { @MainActor in
             if await MatrixAccount.signOutOnServer(stale.session, scratchDirectory: scratch) {
                 try? pending.delete()
-                print("matrix: signed out a session whose store was gone")
+                moduleLog("matrix: signed out a session whose store was gone")
             }
             signingOutPending = false
         }
@@ -574,7 +594,7 @@ final class Matrix: ExactModule {
             case .scheduleRefused(let why): problem = why.contains("DELAY_TOO_LARGE") || why.contains("too large") ? "far" : (why.contains("past") ? "past" : "failed")
             default: throw error
             }
-            print("matrix: send later refused (\(problem)): \(error)")
+            moduleLog("matrix: send later refused (\(problem)): \(error)")
             return op == "scheduledAction" ? ["ok": false, "problem": problem] : ["id": "", "at": 0, "problem": problem]
         }
     }
@@ -603,7 +623,7 @@ final class Matrix: ExactModule {
             let found = try await account.search(query)
             (chats, messages, links) = (found.chats, found.messages, found.links)
         }
-        print("matrix: search answered \(chats.count) chats, \(messages.count) messages and \(links.count) links in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+        moduleLog("matrix: search answered \(chats.count) chats, \(messages.count) messages and \(links.count) links in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
         func hit(_ m: FoundMessage) -> [String: Any] {
             ["room": m.chat.id, "chatName": m.chat.name, "isDirect": m.chat.isDirect, "network": m.chat.network,
              "avatar": cached(m.chat.avatarName, topic: "search") { _ = try await account.avatarFile(roomId: m.chat.id, directory: self.media) },
@@ -630,7 +650,7 @@ final class Matrix: ExactModule {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
                 guard let account else { return }
                 let status = await account.searchIndexStatus()
-                print("matrix: search index \(mb(status.indexBytes)), event cache \(mb(status.eventCacheBytes)), backfill \(status.backfillDone ? "done" : "running") after \(Int(status.backfillSeconds)) s")
+                moduleLog("matrix: search index \(mb(status.indexBytes)), event cache \(mb(status.eventCacheBytes)), backfill \(status.backfillDone ? "done" : "running") after \(Int(status.backfillSeconds)) s")
                 if status.backfillDone { return }
             }
         }

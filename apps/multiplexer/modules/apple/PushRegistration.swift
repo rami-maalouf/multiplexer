@@ -1,5 +1,5 @@
 import Foundation
-#if canImport(UIKit)
+#if os(iOS)
 import UIKit
 #endif
 
@@ -18,15 +18,15 @@ extension Matrix {
     @MainActor func registerPush() async throws -> Bool {
         let account = try await signedIn()
         guard try sendsReadReceipts(account) else { return false }
-        #if canImport(UIKit)
+        #if os(iOS)
         let token: Data
         do {
             token = try await PushToken.request()
         } catch {
-            print("matrix: no push token: \(error.localizedDescription)")
+            moduleLog("matrix: no push token: \(error.localizedDescription)")
             return false
         }
-        if PushToken.isDevelopment { print("matrix: push token \(token.map { String(format: "%02x", $0) }.joined())") }
+        if PushToken.isDevelopment { moduleLog("matrix: push token \(token.map { String(format: "%02x", $0) }.joined())") }
         guard var stored = try keychain.read() else { return false }
         let pusher = Pusher(appId: PushToken.appId, pushkey: Pusher.pushkey(apnsToken: token), url: Self.pushGateway,
                             appDisplayName: "Mux", deviceDisplayName: context.agent ? "Mux test" : "Mux")
@@ -37,9 +37,10 @@ extension Matrix {
         stored.pushkey = pusher.pushkey
         stored.pusherAppId = pusher.appId
         try keychain.write(stored)
-        print("matrix: pusher set for \(pusher.appId)")
+        moduleLog("matrix: pusher set for \(pusher.appId)")
         return true
         #else
+        // the mac app shows local notifications from its own sync while it runs: no apns pusher.
         return false
         #endif
     }
@@ -51,7 +52,7 @@ extension Matrix {
             try await account.deletePusher(appId: appId, pushkey: pushkey)
         } catch {
             // the server also drops a device's pushers when the device signs out.
-            print("matrix: the pusher stays until the server forgets the device: \(error.localizedDescription)")
+            moduleLog("matrix: the pusher stays until the server forgets the device: \(error.localizedDescription)")
         }
     }
 
@@ -65,11 +66,11 @@ extension Matrix {
         stored.pushkey = nil
         stored.pusherAppId = nil
         try keychain.write(stored)
-        print("matrix: pusher cleared after notifications left granted")
+        moduleLog("matrix: pusher cleared after notifications left granted")
     }
 }
 
-#if canImport(UIKit)
+#if os(iOS)
 /// The APNs token: iOS hands it to the app delegate, which is Exact's, so its two callbacks are
 /// added to the delegate's class the first time (`class_addMethod`). A delegate that already has
 /// them (a later Exact) keeps its own, and the token does not come here: that is logged.
@@ -130,7 +131,7 @@ extension Matrix {
             class_addMethod(type, #selector(UIApplicationDelegate.application(_:didFailToRegisterForRemoteNotificationsWithError:)),
                             imp_implementationWithBlock(failed), "v@:@@"),
         ]
-        if added.contains(false) { print("matrix: the app delegate has its own push token callbacks; the token will not come here") }
+        if added.contains(false) { moduleLog("matrix: the app delegate has its own push token callbacks; the token will not come here") }
     }
 }
 #endif

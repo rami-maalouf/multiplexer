@@ -1,7 +1,13 @@
 import CryptoKit
 import Foundation
 import LinkPresentation
+#if os(macOS)
+import AppKit
+typealias PreviewImage = NSImage
+#else
 import UIKit
+typealias PreviewImage = UIImage
+#endif
 
 /// Link previews (R11): a card with a page's title and picture for a link in a message. The phone
 /// fetches the page itself with Apple's LinkPresentation, never the Matrix server's preview, so a
@@ -63,7 +69,7 @@ extension Matrix {
         let provider = LPMetadataProvider()
         provider.timeout = 12
         var metadata: LPLinkMetadata?
-        do { metadata = try await provider.startFetchingMetadata(for: page) } catch { print("matrix: link preview failed for \(page.host ?? ""): \(error)") }
+        do { metadata = try await provider.startFetchingMetadata(for: page) } catch { moduleLog("matrix: link preview failed for \(page.host ?? ""): \(error)") }
         if let metadata {
             title = (metadata.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             if let image = await loadImage(metadata.imageProvider), let jpeg = smaller(image) {
@@ -77,25 +83,38 @@ extension Matrix {
                                    "at": Date().timeIntervalSince1970]
         let data = try JSONSerialization.data(withJSONObject: kept)
         try data.write(to: directory.appendingPathComponent(name), options: .atomic)
-        print("matrix: link preview \(kept["state"] ?? "") for \(page.host ?? "")")
+        moduleLog("matrix: link preview \(kept["state"] ?? "") for \(page.host ?? "")")
     }
 
-    private static func loadImage(_ provider: NSItemProvider?) async -> UIImage? {
-        guard let provider, provider.canLoadObject(ofClass: UIImage.self) else { return nil }
+    private static func loadImage(_ provider: NSItemProvider?) async -> PreviewImage? {
+        guard let provider, provider.canLoadObject(ofClass: PreviewImage.self) else { return nil }
         return await withCheckedContinuation { done in
-            provider.loadObject(ofClass: UIImage.self) { object, _ in done.resume(returning: object as? UIImage) }
+            provider.loadObject(ofClass: PreviewImage.self) { object, _ in done.resume(returning: object as? PreviewImage) }
         }
     }
 
-    private static func smaller(_ image: UIImage) -> (data: Data, width: Int, height: Int)? {
+    private static func smaller(_ image: PreviewImage) -> (data: Data, width: Int, height: Int)? {
         let side = max(image.size.width, image.size.height)
         guard side > 0 else { return nil }
         let scale = min(1, 900 / side)
         let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        #if os(macOS)
+        // one pixel per point, as on the phone: the bitmap is the jpeg's exact size.
+        guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width), pixelsHigh: Int(size.height),
+                                            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        image.draw(in: CGRect(origin: .zero, size: size))
+        NSGraphicsContext.restoreGraphicsState()
+        guard let data = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else { return nil }
+        #else
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let drawn = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
         guard let data = drawn.jpegData(compressionQuality: 0.8) else { return nil }
+        #endif
         return (data, Int(size.width), Int(size.height))
     }
 }
