@@ -1,6 +1,7 @@
 # affected reports a javascript type error when cargo is unavailable
 
 **Status:** Open
+**Author:** Codex, from an external app friction log
 **Systems:** affected-suite lookup
 **Severity:** P3
 **Date:** 2026-11-07

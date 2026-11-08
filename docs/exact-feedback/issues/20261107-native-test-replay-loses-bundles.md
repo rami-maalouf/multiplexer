@@ -1,6 +1,7 @@
 # a saved native test run can no longer name its test bundles
 
 **Status:** Open
+**Author:** Codex, from an external app friction log
 **Systems:** native test runner
 **Severity:** P3
 **Date:** 2026-11-07

@@ -1,6 +1,9 @@
 # a styled Mac toolbar button loses its click handler after refresh
 
-**Status:** Fixed locally, not published
+**Status:** Open
+
+Local fix verified; not published.
+**Author:** Codex, from an external app friction log
 **Systems:** macOS host, toolbar, agent
 **Severity:** P1
 **Date:** 2026-11-08

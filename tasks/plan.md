@@ -4,6 +4,40 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Remaining Mac features (2026-11-08):** desktop Enter/Shift+Enter, Cmd+K/Cmd+N
+conversation search, hover, context menus and staged file drops are implemented.
+The header and bottom controls use Mac spacing without the phone's negative
+insets; the header retains merged-network switching. The native module supplies
+unfiltered live summaries for local notifications and the global unread Dock
+badge, and the manifest enables `keepRunning`. Snapshot policy suppresses history,
+outgoing messages, focused chats and muted children of merges. Pending delivery
+survives ordinary refreshes and cancels on account/permission changes. Notification
+clicks validate against the current Keychain account before opening a room.
+
+Native auth-free MatrixCore tests pass 27/27 on Mac (commit `5cd0b8c`); iOS keeps
+its default package selection. All 38 TypeScript tests and all 12 Mac authored
+tests pass. A real test-account file drop and send succeeded. Light/dark and
+700x600 screenshots were inspected. A hidden-window test received a new message,
+reported one delivered local notification and a Dock badge of 12. Agent delivery
+is intercepted; no actual macOS system banner has been verified. Final chooser
+and merged-network screenshots were inspected in light/dark; the selector changed
+the open test room from WhatsApp to Instagram. A notification click opened the
+right room while signed in, and the same saved entry left a signed-out launch on
+sign-in. The test account signed out and the badge cleared. App commit `fdce07a`. Latest normal bundle rebuilt and reopened; native window
+inspected read-only at the inbox, with no real-account room opened.
+
+Independent `ce-code-review` receipt: `mac-20261108-remaining`, completed in
+`/tmp/compound-engineering-501/ce-code-review/mac-20261108-remaining`.
+All three actionable findings have local fixes and regression evidence.
+Distribution preparation is committed as `af9ddca`: a supplied production-bundle
+wrapper and operator guide. This Mac has no valid Developer ID Application
+identity; the existing app has development trust. Signing, real DMG generation,
+notarization, clean-Mac installation and updates remain unverified. No upload,
+notarization or update feed was configured. The underlying Exact glass fault
+remains open; the app uses its verified ungrouped-composer workaround. Shared iOS
+runtime and native IME composition were not rechecked in this Mac session.
+
+
 **Mac send-crash workaround (2026-11-08):** after a normal-app Send closed Mux,
 the crash report confirmed main-thread SIGTRAP in AppKit layout. Removing only the
 composer glass group survived three test-account sends. The final implementation

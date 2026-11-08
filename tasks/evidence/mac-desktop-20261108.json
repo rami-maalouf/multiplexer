@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-08",
+  "branch": "feat/mac-spike",
+  "implementation": "fdce07a",
+  "core_tests_commit": "5cd0b8c",
+  "distribution_commit": "af9ddca",
+  "review": {
+    "status": "complete",
+    "run_id": "mac-20261108-remaining",
+    "artifact_path": "/tmp/compound-engineering-501/ce-code-review/mac-20261108-remaining",
+    "applied": [
+      1,
+      2,
+      3
+    ],
+    "followup": "notification delivery generation, post-badge revision check, desktop network tabs and child-level mute/read policy. Actual-source race harness now delivers 2 of 2."
+  },
+  "checks": {
+    "typescript": "38 passed, 0 failed; /tmp/mx-mac-desktop-unit-final.log",
+    "mac_authored": "12 passed, 0 failed; /tmp/mx-mac-desktop-tests-final.log",
+    "matrixcore_macos": "27 passed, 0 failed; /tmp/mx-mac-core-green.log",
+    "contract": "[]; typecheck passed",
+    "shell": "bash -n and distribution refusal/dry-run controls passed",
+    "issue_format": "passed"
+  },
+  "runtime": {
+    "keyboard_files": "/tmp/mx-mac-desktop-final-drive.log: Shift+Enter newline, Enter send, file staged then file/caption delivered, Cmd+N, hover and context menu.",
+    "hidden_window": "/tmp/mx-mac-notification-drive.log: close true, live receive, notified 1 and badge 12. Shell wrapper exited 1 because its original sender readiness wait expired during the native build; the separately coordinated test sender and all agent operations succeeded.",
+    "routing": "/tmp/mx-mac-final-ui.log: saved notification opened matching test room; /tmp/mx-mac-final-visible.log: signed-out click opened no room.",
+    "merge": "/tmp/mx-mac-final-merge.log and /tmp/mx-mac-final-visible.log: WhatsApp room changed to Instagram through native segmented control.",
+    "cleanup": "final-visible drive signed test account out, userId empty, badge null."
+  },
+  "screenshots": [
+    "desktop-final-inbox-light.png",
+    "desktop-final-search-light.png",
+    "desktop-final-search-dark.png",
+    "desktop-final-merge-light.png",
+    "desktop-merge-narrow.png",
+    "desktop-dropped-file.png",
+    "desktop-final-dark.png",
+    "desktop-final-narrow.png"
+  ],
+  "screenshots_directory": "apps/multiplexer/.exact/mac/ (local, gitignored)",
+  "limits": [
+    "Actual OS notification banner not exercised: agent intercepts delivery.",
+    "Native IME and shared iOS runtime not rerun.",
+    "Summary timestamps lack event identity; equal-timestamp/backdated messages stay silent.",
+    "Already delivered notification cards can remain after signout; clicks validate the current Keychain account.",
+    "No Developer ID Application identity; current bundle has development trust. Real signing/DMG/notarization, clean-Mac install and updates unverified.",
+    "Underlying Exact glass fault open; ungrouped Mac composer workaround retained."
+  ],
+  "normal_app": "Latest normal bundle built and reopened; native window screenshot inspected read-only. Inbox, split and desktop controls present. No real-account room opened or message/receipt action performed."
+}

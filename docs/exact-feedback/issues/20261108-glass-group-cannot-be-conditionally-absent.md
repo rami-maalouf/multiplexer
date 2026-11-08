@@ -1,6 +1,7 @@
 # glassGroup cannot be conditionally absent
 
 **Status:** Open
+**Author:** Codex, from an external app friction log
 **Systems:** compiler, glass
 **Severity:** P3
 **Date:** 2026-11-08

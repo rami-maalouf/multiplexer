@@ -47,3 +47,12 @@ no box, so a custom player is a hidden `audio`) came from the video LLP (§3 and
 minutes. A recipe for "a custom audio player" (play and pause through `paused`, progress through
 `timeupdate`, `ended`, speed through `playbackRate`) would have saved the search; once found,
 each of these worked on the first drive.
+
+
+## Further evidence: desktop keys, 2026-11-08
+
+At Exact `afac7b1370`, ordinary shortcut and keyboard vocabulary searches did not
+lead to textarea key handling. The keyboard-and-focus recipe covers input submit;
+compiler diagnostics and the `KeyboardEvent` card supplied `isComposing`. About
+4 minutes looking through docs and source. An Enter-to-send example with
+Shift+Enter and composition handling would make the desktop path discoverable.

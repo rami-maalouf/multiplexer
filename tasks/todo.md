@@ -2849,15 +2849,31 @@ Spike (step 0) done 2026-11-08 on `feat/mac-spike`. Screens in `apps/multiplexer
   test crashed with SIGTRAP in 1 of 2 consecutive runs. Intermittent reduction:
   `tools/mac-glass-probe/`. Next capture its debugger stack and compare with the
   full app before claiming a shared mechanism.
-- [ ] Visual faults seen at 900x700: the chat's header shows a Back button ("< 11") inside the
+- [x] Visual faults seen at 900x700: the chat's header shows a Back button ("< 11") inside the
   split and lies over the messages; the composer covers the newest message and is cut at the
   window's bottom; the sidebar's bottom bar overlaps the list, with a stray sidebar button.
-- [ ] MatrixCore tests on macOS (no Simulator): a local binary target for the combined
-  xcframework, and `.macOS(.v14)` in `matrix-core/Package.swift`.
-- [ ] Desktop input: Enter sends, Shift+Enter adds a line, ⌘K switcher, ⌘N, right-click menus
-  for long-press and swipe actions, hover, drag and drop of files.
-- [ ] Local notifications from the live sync, a Dock badge, `keepRunning`.
+  Desktop in-flow header/composer/bottom bar and separate phone offsets verified in light/dark
+  at 900x700 and narrow at 700x600. Sidebar controls no longer cover the final list rows.
+- [x] MatrixCore tests on macOS (no Simulator): opt-in local adapter and combined
+  XCFramework; 27 auth-free XCTest cases pass, including SDK link smoke. Default iOS
+  dependency/test selection preserved. Commit `5cd0b8c`; `/tmp/mx-mac-core-green.log`.
+  Authenticated Mac core coverage remains outside this runner.
+- [x] Desktop input: Enter sends, Shift+Enter adds a line, Cmd+K and Cmd+N open the
+  existing conversation chooser; Escape closes it. Hover and right-click controls verified.
+  A real text-file drop staged an attachment and Send delivered the file/caption as `@test1`.
+  New conversation creation is not bound to Cmd+N. Native IME behavior remains unverified.
+- [x] Local notifications from live sync, global unread Dock badge and `keepRunning`.
+  A hidden-window drive received a test message, recorded one delivered notification and
+  badge 12. Notification-click routing passed signed in; a saved click after signout
+  opened no room. Test account signed out and the badge cleared. Agent intercepts OS delivery; actual system banner/permission presentation
+  remains a manual check. Policy and delivery tests cover mute, merge, focus, startup,
+  account resets and overlapping refreshes. Timestamp collisions/backdated messages
+  remain silent because summaries do not expose an event identity.
 - [ ] Ship: Developer ID, notarization, `.dmg`, auto-update.
+  Preparation only is complete (`af9ddca`): `scripts/package-macos.sh` and
+  `docs/mac-distribution.md`, refusal/dry-run checks passed. Blocked by no valid Developer
+  ID Application identity and a development-trust bundle. Real signing/DMG generation,
+  notarization, clean-Mac install and update delivery are unverified; updates stay disabled.
 - Keychain on the Mac: the session went to the login keychain without a prompt in drives.
   Check again in a signed build.
 
