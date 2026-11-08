@@ -2835,6 +2835,10 @@ Spike (step 0) done 2026-11-08 on `feat/mac-spike`. Screens in `apps/multiplexer
 - [x] Open Exact fixes: [#1603](https://github.com/ccheever/exact2/pull/1603)
   documents the Mac commands and verify limitation; [#1604](https://github.com/ccheever/exact2/pull/1604)
   separates module logs from drive replies. Neither is merged or integrated here.
+- [x] Fix the enabled Mac Sign In toolbar button ignoring clicks: Exact local
+  `9a78f32cd9`, integration `afac7b1370`, 24 HeaderMacTests pass after a red regression.
+  Return from the password field worked around it in the running app. Corrected
+  build completed; current process remains on its original binary until relaunch.
 - [ ] Fix the SIGTRAP after each send (Exact finding 157, AppKit glass layout). Blocks daily use.
   Reproduced again with the test account on 2026-11-08, signed out afterward.
   Isolated animated/tinted glass swaps pass in manual drives. The saved authored

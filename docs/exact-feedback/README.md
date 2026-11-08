@@ -182,6 +182,8 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 157 | On macOS 27 the app traps (SIGTRAP) in AppKit's `NSGlassEffectContainerView.layout()` right after a send from a glass composer bar; no crash report, no Exact frame on the stack. | About 30 min; no workaround yet | P1 | [on-macos-the-app-traps-in](issues/20261108-on-macos-the-app-traps-in.md) |
 | 158 | Docs proposed: Exact [#1603](https://github.com/ccheever/exact2/pull/1603). The Mac commands are missing from start-here, the build verb is `mac` but drives take `macos`, and `verify macos` is refused. | About 10 min | P3 | [the-macos-commands-are-missing-from](issues/20261108-the-macos-commands-are-missing-from.md) |
 
+| 159 | A styled macOS toolbar button loses its click handler after refresh; clicks do nothing while keyboard submission works. | About 10 min tracing; Return workaround | P1 | [macos-styled-toolbar-click-loses-handler](issues/20261108-macos-styled-toolbar-click-loses-handler.md) |
+
 ## What worked well
 
 - Compiler errors name the fix (`lower-grouped-list`, `lower-empty-state-in-list`, symbol aliases).

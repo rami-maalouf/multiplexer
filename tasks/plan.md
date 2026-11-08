@@ -4,6 +4,16 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Mac sign-in click (2026-11-08):** reproduced an enabled toolbar button ignoring
+clicks in the normal Mac app. Return from the password field signed in; the running
+user session is left open. Root cause: AppKit forwards item.action changes to the
+custom NSButton, replacing its specialized handler on toolbar sync. Exact local
+commit `9a78f32cd9` restores the button target/action each refresh, integrated as
+`afac7b1370`. The native regression failed before the fix; all 24 HeaderMacTests
+pass afterward, and caps passes. Corrected app build completed; no upstream PR or
+feedback send for this new finding (159).
+
+
 **Mac follow-up (2026-11-08):** Rami approved sending the three diaries and opening
 Exact fixes. Sent 3 diaries/19 command records, receipt
 `d4e3cf84-6906-40a6-8113-9d12066c2420`. Public Exact PRs #1603 (Mac command docs)
