@@ -42,3 +42,28 @@ The diagnostic should name the package-specific remedy instead of requesting
 xcframework slices. This report does not establish which implementation is correct.
 
 Feedback remains local; nothing sent publicly.
+
+## Evidence (2026-11-07): the cause, and a local fix
+
+Seen again with `ios --device --archive <out.ipa> --unsigned` (the archive for a re-signing
+install-link service), at the integration checkout `e2b58b6992`, after about 3.5 minutes of compiling.
+
+Cause: `host/apple/build.mjs` compiles the Swift packages once, for the build's own target, and
+marks every roster route that does not share that target as lacking. A simulator build's simulator
+route shares it; a device build has no such route, so with packages and a module tag a device
+archive can never pass.
+
+Local fix, on exact2's `main` of 2026-11-07 (`f3fa06164e`): commit `71382b8307` on the local
+branch `local/mx-device-ipa`. Package compiles take a place (a directory and a target). The build
+keeps its own place; on a device build each roster route compiles the packages for its own target,
+in its own directory, keyed by the existing arm cache. A simulator build keeps the old skip, so a
+probe that cannot link does not compile again on each build. Result: "the module roster was read on
+iOS Simulator", and the archive was made. `host/apple/arms.test.mjs` passes. Not yet a pull request.
+
+## Evidence (2026-11-07): development fallback still succeeds
+
+At integration checkout `4251663c25`, device development builds emitted the same
+qualification diagnostic, then continued with the manifest roster. The signed app
+and a post-build notification extension were installed and verified on a physical
+iPhone. This is development-build evidence only; the separate archive fix above
+was not integrated or bypassed in this run.

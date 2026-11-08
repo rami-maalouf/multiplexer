@@ -8,18 +8,30 @@
 
 <p align="center">
   <a href="https://mux.orbitlabs.studio">Website</a> ·
+  <a href="#get-started">Get started</a> ·
   <a href="#why-we-built-it">Why</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#how-we-built-it">How we built it</a>
 </p>
 
-Mux is an iPhone app that puts WhatsApp, Instagram, LinkedIn and other chat networks in one
-inbox. Every message goes through a [Matrix](https://matrix.org) server that you run, not
-through a company's cloud. The name is short for multiplexer: several streams combined into
-one.
+Mux is an iPhone app that puts WhatsApp, Instagram, LinkedIn and your other chat networks in
+one beautiful inbox. Every message goes through a [Matrix](https://matrix.org) server that you
+run, not through a company's cloud. The name is short for multiplexer: several streams combined
+into one.
 
-> **Status:** Mux has one user today: its author, on his iPhone, against his own server. A guide to run Mux on your own server comes next. Until then, this repository is
-> a record of how it was built, not an installer.
+## Get started
+
+1. **Run your server.** [`docs/self-hosting.md`](docs/self-hosting.md) takes you from an empty
+   Linux box and a domain to a Matrix server with WhatsApp, Instagram and LinkedIn bridges, and
+   it tells you which login traps to skip.
+2. **Install Mux on your iPhone** from [appdrop.app/d/nb2nfrv68c](https://appdrop.app/d/nb2nfrv68c).
+   Pair once with your own Apple ID, and every new build arrives at the same link.
+3. **Sign in** with your server's domain, your user name and your password. Your chats are there.
+
+Push notifications run on development builds today, and they come to the shared builds next.
+
+Prefer the browser or Android? Any Matrix client, such as Element Web at
+[app.element.io](https://app.element.io) or Element X, opens the same chats from the same server.
 
 ## Why we built it
 
@@ -42,7 +54,8 @@ Mux has the features an all-in-one inbox needs every day, with the feel of Apple
 - **One inbox:** every chat in one list, with its network's logo on the picture.
 - **Filters:** one network, unread chats, people or groups. Communities and message requests
   have their own rows.
-- **Organize:** pin, archive, Low Priority, and your own labels. Select many chats at once.
+- **Organize:** pin, archive, Low Priority, and your own labels. Swipe a row to archive, mute or
+  mark it read. Select many chats at once.
 - **Merge chats:** one person on WhatsApp and Instagram becomes one chat, with a tab for each
   network.
 - **Send Later:** hold Send and pick a time. The server sends it, even when the phone is off.
@@ -50,6 +63,9 @@ Mux has the features an all-in-one inbox needs every day, with the feel of Apple
 - **Media:** voice notes (record, play at your speed, transcribe), photos, videos, files, and
   GIFs.
 - **Search:** every chat at once, or inside one chat. Bookmarks for messages to find again.
+- **Read receipts:** Sent and Seen in the inbox, the moment the other person reads.
+- **Notifications:** a new WhatsApp message lights up a locked iPhone with its sender and its
+  text, and a switch in Settings turns them off for this phone.
 - **The feel of Messages:** bubbles, swipe to reply, reactions with every emoji, liquid glass,
   and dark mode first.
 
@@ -94,7 +110,7 @@ Inside the app there are two layers:
 
 ## How we built it
 
-The first eleven days of Mux (October 27 to November 6, 2026) took more than 500 commits. Rami built it with a team of AI coding agents. Several agents worked
+The first twelve days of Mux (October 27 to November 7, 2026) took more than 530 commits. Rami built it with a team of AI coding agents. Several agents worked
 at once, each in its own git worktree, guided by one shared plan
 ([`tasks/plan.md`](tasks/plan.md)) and one task list with acceptance criteria
 ([`tasks/todo.md`](tasks/todo.md)).
@@ -102,7 +118,7 @@ at once, each in its own git worktree, guided by one shared plan
 A few rules held it together:
 
 - **Prove each step before the next.** A task ended with a passing test or a screenshot of the
-  real app, never with "it should work". MatrixCore has 125 tests, most of them against a real
+  real app, never with "it should work". MatrixCore has 139 tests, most of them against a real
   Matrix server.
 - **Biggest unknown first.** First the server and one bridge, then one screen, then daily
   reading and sending on a real iPhone, then the inbox's features one by one.
@@ -119,9 +135,9 @@ The milestones:
 | Day 2 | A WhatsApp message reached the iPhone through our own server and bridge, and a reply went back. |
 | Day 5 | The feel of Messages: bubbles with tails, swipe to reply, reactions and a long-press menu. |
 | Week 2 | The inbox's features: filters, pins, archive, GIFs, voice notes, Send Later, search, merged chats, labels. |
-| Next | Push notifications (built and tested on the Simulator; waiting for the Apple setup). |
+| Day 12 | The Mux name and icon, a self-host guide for anyone with a server, an install link, and push notifications on a locked iPhone, through our own push gateway. |
 | Next | Connect a network from inside the app, instead of a chat with a bridge's bot. |
-| Later | The Mac app, and a guided setup so anyone with a server can run their own. |
+| Next | The Mac app. |
 
 Mux is also a field test of Exact, a new framework for native apps. Each place where Exact
 slowed the work became a written finding for its team, in
@@ -136,15 +152,15 @@ slowed the work became a written finding for its team, in
 | [`server/`](server/) | The server's playbook inventory, setup and backup scripts. No secrets: they come from the Keychain. |
 | [`scripts/`](scripts/) | Setup, test and helper scripts for the Mac. |
 | [`website/`](website/) | The website at mux.orbitlabs.studio: static HTML and a Three.js scene, bundled with Bun. |
-| [`docs/`](docs/) | The brand ([`brand.md`](docs/brand.md)) and the Exact findings. |
+| [`docs/`](docs/) | The self-host guide ([`self-hosting.md`](docs/self-hosting.md)), the brand ([`brand.md`](docs/brand.md)) and the Exact findings. |
 | [`tasks/`](tasks/) | The plan, the decisions and the task list. Read `plan.md` first. |
 
 The app is still named `multiplexer` in folders, the bundle id
 (`com.ramimaalouf.multiplexer`) and storage paths. Only the visible name changed to Mux, so
 installs, data and tests keep working.
 
-## Run it yourself
+## Build it yourself
 
-Not yet. A setup guide (a server, a domain, the bridges, and the app) is the next document.
-The instructions for agents in [`AGENTS.md`](AGENTS.md) show how the app is built and tested
-today, on a Mac with Xcode and [Bun](https://bun.sh).
+Want to change Mux, not just run it? [`AGENTS.md`](AGENTS.md) shows how the app is built and
+tested, on a Mac with Xcode and [Bun](https://bun.sh). Build it, change it, ship it to your own
+phone: it is your inbox.

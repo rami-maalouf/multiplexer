@@ -3,3 +3,8 @@
 # keychain (service multiplexer-server, one item per name below).
 matrix_homeserver_generic_secret_key: "<64 hex characters>"
 postgres_connection_password: "<64 hex characters>"
+# only after the apple setup (p3.0), from the keychain (service multiplexer-apns):
+multiplexer_apns_key_p8_base64: "<the .p8 file, base64>"
+multiplexer_apns_key_id: "<10 characters>"
+multiplexer_apns_production_key_p8_base64: "<the production .p8 file, base64>"
+multiplexer_apns_production_key_id: "<10 characters>"

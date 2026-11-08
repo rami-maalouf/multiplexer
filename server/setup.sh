@@ -49,13 +49,32 @@ for name in "${secrets[@]}"; do
     security add-generic-password -s "$keychain_service" -a "$name" -w "$(openssl rand -hex 32)"
   fi
 done
+# the sandbox and production apns keys for sygnal: base64 .p8 files and key ids.
+# sygnal's settings in config.yml need them, so without them the playbook stops with
+# an undefined variable instead of installing a sygnal that cannot send.
+apns_service="multiplexer-apns"
+apns() { security find-generic-password -s "$apns_service" -a "$1" -w 2>/dev/null; }
 umask 077
 {
-  echo "# written by server/setup.sh from the keychain (service $keychain_service). do not edit."
+  echo "# written by server/setup.sh from the keychain (services $keychain_service, $apns_service). do not edit."
   echo "# the server's settings are in config.yml, next to this file."
   for name in "${secrets[@]}"; do
     echo "$name: \"$(secret "$name")\""
   done
+  if apns key > /dev/null && apns key-id > /dev/null; then
+    echo "multiplexer_apns_key_p8_base64: \"$(apns key | tr -d '[:space:]')\""
+    echo "multiplexer_apns_key_id: \"$(apns key-id | tr -d '[:space:]')\""
+  fi
+  if apns production-key > /dev/null && apns production-key-id > /dev/null; then
+    echo "multiplexer_apns_production_key_p8_base64: \"$(apns production-key | tr -d '[:space:]')\""
+    echo "multiplexer_apns_production_key_id: \"$(apns production-key-id | tr -d '[:space:]')\""
+  fi
 } > "$host_vars/vars.yml"
+if ! apns key > /dev/null; then
+  echo "note: no apns key in the keychain (service $apns_service), so sygnal cannot be installed yet." >&2
+fi
+if ! apns production-key > /dev/null; then
+  echo "note: no production apns key in the keychain (service $apns_service), so production sygnal cannot be installed yet." >&2
+fi
 
 echo "ready: ansible $ansible_version, playbook ${playbook_commit:0:10}, secrets in $host_vars/vars.yml"

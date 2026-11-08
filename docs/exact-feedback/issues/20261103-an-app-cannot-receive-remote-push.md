@@ -41,3 +41,35 @@ distribution one), and the archive check allowing the call when that grant is de
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS 26.5 Simulator: the token callback added at run
 time received a 64-byte sandbox token once the binary's simulated entitlements had
 `aps-environment`; without it, the error above.
+
+## Evidence (2026-11-07): the app's own module has no development flag
+
+For a TestFlight archive, the app needed to keep its push-registration call out of the archive
+and keep it in development builds. Packages compile with `-D EXACT_DEVELOPMENT` in a development
+build. The app's own `modules/apple/` Swift compiles with no such flag, so the app had no
+compile-time way to do it. Local fix in exact2 (`8e547ca606`, branch `local/mx-testflight`):
+the app module's compile takes the same flag as packages, and `docs/reference.md` says to put a
+development-only call inside `#if EXACT_DEVELOPMENT`. With that and the `#if` in the app, the
+archive passed with 0 hits of the refused name in its binaries, and a development Simulator build
+kept the call. Not yet a pull request. About 15 minutes.
+
+## Evidence (2026-11-07): it also blocks an install-link archive
+
+Once the roster check passed (finding 126's local fix), `ios --device --archive <out.ipa> --unsigned`
+stopped at `ExactModules.framework/ExactModules: registerForRemoteNotifications refused (LLP 1126.001
+WP9)`. For that one archive, the call was replaced by an immediate "no token" answer in an
+uncommitted copy (a re-signing service signs with the recipient's own Apple ID, which has no push
+entitlement, so nothing was lost). The archive was then made. The refusal applies to every archive,
+also to an app with no Live Activity, which is what the WP9 ruling is about.
+
+## Evidence (2026-11-07): delivery works through the development workaround
+
+At integration checkout `4251663c25`, the custom registration callbacks and post-build
+extension delivered real APNs notifications while the app was terminated. Plain and
+encrypted messages showed their sender and text on an iOS 26.5 Simulator; extension
+processing took 120 to 227 ms with a 17 to 19 MB peak footprint. A person confirmed a
+fallback banner on a locked physical iPhone using a development-signed build.
+
+This verifies the workaround, not framework support. The host's notification presenter
+still accepts only its own activation envelope, and exposes no app-defined remote tap
+or foreground-presentation callback. No private activation key was used as a workaround.

@@ -1,0 +1,82 @@
+{
+  "status": "sandbox push installed; M3 met (locked-phone WhatsApp sender/text confirmed by user); simulator plain/encrypted content verified",
+  "apns": {
+    "environment": "sandbox",
+    "scope": "com.ramimaalouf.multiplexer",
+    "keychain_service": "multiplexer-apns",
+    "remote_key_matches_keychain": true,
+    "remote_permissions": "0600 matrix:matrix",
+    "production_enabled": false
+  },
+  "provisioning": {
+    "app_profile_uuid": "8b141000-b0a2-4dc5-bfd8-b1f74aae7c3e",
+    "extension_profile_uuid": "87c094e8-6f73-48b3-ad62-c1c4e531c379",
+    "both_cover_phone_and_signing_identity": true,
+    "app_group": "group.com.ramimaalouf.multiplexer",
+    "app_aps_environment": "development"
+  },
+  "gateway": {
+    "dns": "sygnal.ramimaalouf.com CNAME matrix.ramimaalouf.com; DNS only",
+    "service": "active",
+    "health_http_status": 200,
+    "tls_certificate_verified": true,
+    "invalid_token_probe": "APNs 400 BadDeviceToken; gateway 200 with rejected pushkey",
+    "install_recap": {
+      "ok": 35,
+      "changed": 7,
+      "failed": 0
+    },
+    "logs": [
+      "/tmp/multiplexer-sygnal-install.log",
+      "/tmp/multiplexer-sygnal-start.log",
+      "/tmp/multiplexer-sygnal-tls-retry.log"
+    ],
+    "phone_token_probe": "accepted with no rejected pushkeys; generic payload only"
+  },
+  "limits": [
+    "phone extension log extraction refused by CoreDevice container access policy; no physical memory/timing claim",
+    "no reboot or ten-trial end-to-end latency measurement",
+    "@test1/@test2 physical-phone plain/encrypted room lab still open",
+    "notification tap routing, foreground suppression and badge semantics remain follow-ups (P3.6/P3.7)",
+    "production APNs disabled; sandbox key only",
+    "no real-account drive or chat message by agents"
+  ],
+  "device": {
+    "signed_app_and_extension_installed": true,
+    "strict_signatures_and_entitlements_verified": true,
+    "direct_apns_http_status": 200,
+    "locked_phone_generic_banner_confirmed_by_user": true,
+    "locked_phone_whatsapp_sender_and_text_confirmed_by_user": true,
+    "real_account_ui_drive": false,
+    "agents_sent_through_real_account": false
+  },
+  "simulator": {
+    "udid": "3C1F1770-78D8-4A05-AD2D-E733977F97D7",
+    "app_terminated_during_delivery": true,
+    "plain_sender_text_banner": true,
+    "encrypted_sender_text_banner": true,
+    "extension_ms": [
+      198,
+      227,
+      211,
+      127,
+      120
+    ],
+    "peak_mb": [
+      17,
+      19,
+      19,
+      19,
+      19
+    ],
+    "encrypted_screenshot": "apps/multiplexer/.exact/push-live/encrypted-banner.png",
+    "core_test": "PushTests/testAPushShowsTheSenderAndTheText",
+    "core_test_result": "passed, 76.578 s",
+    "core_log": "/tmp/multiplexer-push-core-20261107-retry.log",
+    "core_result_bundle": "/tmp/multiplexer-push-core-20261107-retry.xcresult",
+    "prior_failure": "fresh-store fixture used default 30 s first sync; corrected to existing fresh-test-device 120 s bootstrap",
+    "signed_out": true,
+    "test_pusher_count_after_signout": 0,
+    "shutdown": true
+  }
+}

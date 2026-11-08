@@ -68,20 +68,23 @@ final class Matrix: ExactModule {
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "rooms":
-                    // every chat, each saying whether the list (inbox, archive or lowPriority) shows it
-                    // under the filter menu's choice and the filter sheet's network ("": every network),
-                    // the pinned ones' ids in their pin order, and the sheet's rows with their unread chats.
-                    // a community (a space's id) narrows it instead of a network.
+                    // every chat under the filter menu and the filter sheet's network ("": every
+                    // network) or community; `listed` spans inbox, Archive and Low Priority so the
+                    // app can flip the capsule without another rooms round-trip. Labels stay their
+                    // own set. list "" or "*": scoped; a concrete list keeps the old single-list
+                    // answer for older callers.
                     let started = Date(), account = try await signedIn()
                     let network = request["network"] as? String ?? "", chosen = request["community"] as? String ?? ""
                     let filter = RoomFilter(rawValue: request["filter"] as? String ?? "") ?? .all
-                    // Reminders is not a list a chat is in: it shows the chats with a reminder, from every list.
                     let label = request["label"] as? String ?? ""
+                    let listRaw = request["list"] as? String ?? ""
                     let all = !label.isEmpty
                         ? try await account.labelInbox(id: label, filter: filter)
-                        : request["list"] as? String == "reminders"
+                        : listRaw == "reminders"
                         ? try await account.reminderList(filter: filter)
-                        : try await account.inbox(filter: filter, list: ChatList(rawValue: request["list"] as? String ?? "") ?? .inbox)
+                        : (listRaw.isEmpty || listRaw == "*"
+                            ? try await account.scopedInbox(filter: filter)
+                            : try await account.inbox(filter: filter, list: ChatList(rawValue: listRaw) ?? .inbox))
                     let communities = await account.communities(among: all.chats)
                     let community = communities.first { $0.id == chosen }
                     let inbox = community != nil ? all.on(community: community) : all.on(network: network.isEmpty ? nil : network)
@@ -199,7 +202,9 @@ final class Matrix: ExactModule {
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     // the chat's messages at once, with its "New" line (the first message after this
                     // account's read receipt) when known; settling: more comes, and the chat hears of it.
-                    let opening = try await account.opening(roomId: roomId, limit: request["limit"] as? Int ?? 20)
+                    // early: the app has a kept copy to show in front; else it waits for the full first screen.
+                    let opening = try await account.opening(roomId: roomId, limit: request["limit"] as? Int ?? 20,
+                                                            early: request["early"] as? Bool ?? true)
                     let messages = opening.messages
                     reply.send(["atStart": opening.atStart, "firstUnread": opening.firstUnread ?? "", "settling": opening.settling,
                                 "messages": messages.map {
@@ -338,6 +343,10 @@ final class Matrix: ExactModule {
                 case "registerPush":
                     // with the notification permission: the push token to the server (PushRegistration.swift).
                     reply.send(["registered": try await registerPush()])
+                case "unregisterPush":
+                    // permission no longer granted: stop the server pushing to this device.
+                    try await unregisterPush()
+                    reply.send(["ok": true])
                 case "readCopies":
                     // the chats' kept last answers (R04), "" for none (app.ts's threadCopies).
                     reply.send(["text": try readThreadCopies()])
@@ -348,7 +357,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers registerPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, linkPreviews, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers registerPush, unregisterPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, linkPreviews, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))

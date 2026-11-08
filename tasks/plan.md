@@ -18,6 +18,95 @@ Final review corrections passed 50 live checks and three unit tests. Audit recor
 writes after an incomplete tail; postaccept audit errors cannot report a refused send.
 Name resolution uses visible rows; search reports its bounded index scan. Rich attachment
 and reply metadata remain a documented output limitation for follow-up.
+Integrated current main `f6169a8`: additive plan/task conflicts retained both sides;
+combined release build, three unit tests and 51 live acceptance checks passed.
+
+**TestFlight build 4 uploaded (2026-11-08):** archive built with Exact tip
+`ba8256a4a8` (mx-testflight + archive-refusal scope), notification extension packaged,
+and App Store Connect upload succeeded (`Mux.ipa`). Extension Info.plist now carries
+`DTPlatformName`, `DTPlatformVersion` and `UIRequiredDeviceCapabilities` (`arm64`) so
+distribution export accepts it. ASC is processing the build for TestFlight.
+
+**Main merge (2026-11-08):** PR #16 (`fix/release-readiness`) merged to `main`
+(`2f5a35a`). Product fixes from #12 and #13 landed with it; #14 closed as
+superseded. Exact archive-refusal scope is open as ccheever/exact2#1602 (clean;
+needs Exact maintainer merge — no push on that repo). Next: TestFlight archive
+build 4 with that Exact fix applied locally if upstream is not merged yet.
+
+**R03 read-only phone recheck (2026-11-07):** with Rami's OK, scrolled the signed-in orbit
+Mux inbox on the paired iPhone only (no chats opened, nothing sent or marked read). Home
+put the app in `runningBackgroundSuspended`; after reopen, two more scrolls each changed
+the visible rows. Freeze did not reproduce under automation. R03 stays open until a real
+finger freeze is gone or a proved fix lands. Evidence `/tmp/mx-ready-r03/`.
+
+**Release readiness continuation (2026-11-07):** branch `fix/release-readiness` holds
+TestFlight push packaging (`90736ae`) and the production push gateway with a separate
+scoped key (`7fcb305`). Controlled APNs probes for both environments returned the expected
+rejection for invalid tokens. RoomKinds now retries failed bridged-kind lookups (unit tests
+6/6 pass; uncommitted). Full MatrixCore run: 129 tests, 2 skipped, 1 failure
+(`testANewLineFurtherBackThanTheChatLoads`, unread stayed 24). Self-host guide is in
+`docs/self-hosting.md`. App PRs #12–#14 remain open and mergeable. Branch not pushed yet.
+
+**Exact validation continuation (2026-11-07):** recovered the newer original-thread
+checkpoint: Rami saved export compliance and build 2 showed Ready to Submit, assigned
+to Teammates, which contained only its invited owner. The prior browser blocker below
+is historical. App PRs #12, #13 and #14 and Exact #1560 are linked to this thread.
+Exact text fade retiming sampled the clock twice, shifting the calculated endpoint
+when execution was delayed between samples. Local commit `a7ae7d07b0` uses one sample
+for progress and the layer clock origin. All 35 TextPlace iOS cases passed, including
+the hosted pixel comparison; the existing endpoint assertion is unchanged. The endpoint
+test also passed 100 consecutive repetitions, and caps passed. Feedback receipt:
+`ac9481f6-814f-49b1-bbc1-33193c87b718` (one diary). This does
+not resolve the separately observed fade-completion callback timeout. Earlier tracing
+edits remain uncommitted and were present during this run. Navigation, menu and surface
+candidates remain local. Broad prerequisite validation was stopped for disk pressure;
+Cargo cleaned the disposable dev artifacts, recovering 24 GB free. No upload or shared
+Exact integration was performed.
+
+**Teammate-testing resumption (2026-11-07):** app fixes are committed in PR #14
+(`fix/members-composer-groups`, stacked on #13). Recorded drives show matching group
+counts, the composer mounted during first-open loading, corrected two-person bridged
+groups, and the restored staged unread badge. Focused verification passed: 12 iOS,
+13 app and 15 core tests. The full core run finished with 129 tests, two skipped and
+two failures (unread count stayed 22; recovery first sync timed out). Both failed
+cases passed together in isolation in 191.625 s; the full suite is not claimed green.
+No product code or timeout was changed during resumption. The owned MX demo Simulator
+is shut down. Remaining Exact work is committed locally in `exact2-rm-{expect,largetitle,menu,menusurface}`;
+its broad native validation still contains failures, so those fixes were not published
+or integrated. The drive CLI's 49 tests pass under pinned Bun 1.4.2; caps passes.
+Browser snapshots timed out, including on a fresh tab, and the fallback browser host
+is unavailable. TestFlight build 2's current compliance/installability is unverified;
+Rami previously chose to answer France himself. PR #14 is not in build 2. Export
+metadata remains unchanged pending that answer. The remaining diary was sent with
+Rami's prior authorization: receipt `be9ec5d7-b554-4bc1-8762-38bedae7bf5a`.
+
+**Push setup applied (2026-11-07):** after Rami's explicit approval, created a sandbox-only
+APNs key restricted to `com.ramimaalouf.multiplexer`, stored and verified it in Keychain,
+and deployed it through the playbook (0600, matrix:matrix; hash matches Keychain).
+The App Group, both App IDs and two development profiles are configured; decoded profiles
+cover the connected phone, shared group and this Mac's signing identity; the app grants
+`aps-environment: development`. Cloudflare's DNS-only Sygnal CNAME is published.
+Sygnal runs with only the sandbox app; HTTPS health is 200 with a valid certificate,
+and an intentional invalid-token probe reached APNs and returned `BadDeviceToken`.
+Production remains disabled. DNS now resolves through the Mac's system resolver too;
+normal HTTPS health is 200 without address overrides or disabled verification.
+The fresh app and extension are signed and installed on the connected iPhone; strict
+signature verification and exact App Group/Keychain entitlements pass for both. Fixed
+missing/dotted entitlement insertion and selected the existing signer's fingerprint.
+Earlier signing errors did not reproduce after rebuilding the artifacts removed during
+a pause; their precise cause remains unknown.
+Rami opened the phone app, allowed notifications and locked it; APNs returned 200
+and he confirmed the "New message" banner. A generic push through Sygnal also
+returned no rejected pushkeys. On the Simulator, terminated-app plain and encrypted
+notifications displayed sender/text, with 120 to 227 ms extension processing and
+17 to 19 MB peak footprint. The focused core test passed in 76.578 s after aligning
+its fresh-store initial-sync bootstrap with the existing 120 s test-device budget.
+M3 is met (2026-11-07): with the phone locked, a natural WhatsApp message showed
+its sender and text; Rami confirmed, and agents sent nothing through his chats.
+P3.6 (mute/badge decisions) and P3.7 (tap routing / foreground suppression) remain
+open. The test account signed out, its pusher count returned to zero, and the owned
+simulator is off. No agent drive of the real account was performed.
+Other feature lanes remain outside this authorization.
 
 **Website and README (2026-11-06, `feat/mux-website`):** a root `README.md` (what Mux is, why,
 how it works, how it was built; no other product named) and the production site in `website/`:
@@ -41,6 +130,12 @@ visually inspected, as were both sign-in appearances. Receipt:
 `tasks/evidence/mux-branding-20261106.json`. Physical iPhone installation was not
 part of this run. This authorization covers branding
 only and does not reopen the halted feature queue below.
+
+**R03 / capsule tabs (2026-11-07, `fix/r03-scroll-and-tabs`):** phone log still points at
+`_UIFlexInteractionPanGestureRecognizer` (finding 151). An Exact `isEnabled` release workaround
+did not fix the freeze on device and was reverted (`4251663c25`). R03 remains open. Capsule
+Inbox↔Archive no longer re-keys `roomList` (`scopedInbox` + `inChatList`): kept. Exact tip
+`4251663c25`.
 
 **Daily chat chrome (2026-11-06, `fix/daily-chat-experience`):** mid-scroll keyboard rise
 fixed in Exact (`KeyboardToolbarIOS` shifts offset when not at the end;
@@ -95,11 +190,11 @@ after the one-time stop. This deadline overrides the work queue below.
 |---|---|
 | Current phase | Phase 0 done: M0 passed on 2026-10-28 (Synapse and WhatsApp on our server). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
 | Beeper parity | Tasks B1 to B22 in `tasks/todo.md` ("Beeper parity"), from Rami's walkthrough (`research/beeper-walkthrough/report/index.html`, local only). Every question of the report is answered (decision log, 2026-11-02). Order: B1, then photos and files (B10, B11 with T2.12), then the rest of the inbox (B3 to B8), then push (Phase 3), then the chat details. Rules: D9 (Beeper's features, Messages' feel; dark mode first), D10 (GIFs from KLIPY), D11 (Send Later on our server). |
-| Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; push (P3.0) waits for Rami's Apple setup. Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is prepared on `server/p3.3-sygnal`, not merged: it installs once P3.0's APNs key and DNS record exist (Rami's OK). |
-| Blocked on Rami | Phase 3's Apple setup (P3.0 in `tasks/todo.md`): an App Group, two App IDs, an APNs key in the Keychain, two development profiles, and the DNS name `sygnal.ramimaalouf.com`. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
+| Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; P3.0 is complete and sandbox push is installed (2026-11-07); M3 is met (locked-phone WhatsApp sender/text confirmed). Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is deployed with the approved sandbox-only key and DNS record (2026-11-07); production is disabled. |
+| Blocked on Rami | M3 is met (locked-phone WhatsApp sender/text confirmed). P3.6 still needs his mute-copy and badge-count decisions; P3.7 needs Exact's remote activation/presentation hatch. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
-| Exact | Root host/compiler: clean `exact2-multiplexer-integration` at `d0d66b107e`; package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
-| Last updated | 2026-11-06 |
+| Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
+| Last updated | 2026-11-07 |
 
 Update this table at the end of every work session.
 
@@ -523,6 +618,8 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-04 | Integrated the complete Later branch e93aa0e with main 316e116, preserving shared-store migration. Combined verify ios: 7 passed, light/dark clean, 9 largest-text screens without overflow (186.9 s). Combined MatrixCore selection: 25 passed, 0 failed/skipped (224.2 s), covering communities, Requests, preview senders, push and session stores under the shared lock. Labels remains outside this integration pending review fixes. |
 | 2026-11-04 | Integrated full Labels branch 2b55caf after the combined 39-test selection passed on main under the shared lock (no failures/skips, 1062.9 s). Preserved all earlier UI, Spaces, Requests and session-migration work. Contract build clean; app/core code identical to the lane’s final 9-test iOS verification, with light/dark and 11 largest-text screens clean. The archive fix changes only test event sequencing. Feedback remains local per Rami. |
 | 2026-11-08 | D12: an agent CLI, `mx` (Swift, MatrixCore, macOS SDK built by us). C0 passed as `@test1`: sign in, chats (fresh, 0.3 to 0.5 s warm), parallel calls, sign out removed the device. A cold first run lists chats before the server's order arrives (not by recency); warm runs are in order. |
+| 2026-11-07 | R04 changed for chats with no kept copy (branch `fix/demo-bugs`): such a chat now waits for its full first screen under the loading spinner, instead of answering on the timeline's first diff. Why: on a new device that diff holds only the newest message, which showed alone for about 0.35 s and then jumped up (seen in the demo recording). A chat with a kept copy keeps R04's early answer, since the copy covers the older rows. The older-messages row keeps one height in both states. The demo staging seats a third contact in its group: its bot is listed but never joins, so the app's member count (which subtracts listed service members, right for real bridges) read the group as a DM. |
+| 2026-11-07 | DMs or Groups for a bridged chat (branch `fix/members-composer-groups`): `m.direct` decides first; a bridged room not marked direct with at most 2 people besides its bot is what its bridge's `m.bridge` says (`com.beeper.room_type` `dm`, else a group), read once per room from the server and kept; with no bridge state the count decides, as before. Why: the count cannot tell a group with one other person from a DM. A read-only audit of the real account (349 rooms) found every bridged DM in `m.direct` with room type `dm` and no bridged group there, so only a few rooms are asked. Also: the info page counts a service member out only when it has joined (the list's rule), and the chat's composer shows from its first frame. |
 
 ### Appearance preference (2026-11-04)
 

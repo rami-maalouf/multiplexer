@@ -30,6 +30,8 @@ public final class MatrixAccount: @unchecked Sendable {
     let latest: LatestMessages
     /// The newest message of a chat the sdk has no latest event for, from the server (NewestMessages.swift).
     let newestMessages: NewestMessages
+    /// What each bridged chat the member count leaves open is, from its bridge (RoomKinds.swift).
+    let roomKinds: RoomKinds
     let accountDataWatch = AccountDataWatch()
     /// The list preview's receipts and the watch that reads them again (PreviewReceipts.swift).
     let receipts = PreviewReceipts()
@@ -52,6 +54,7 @@ public final class MatrixAccount: @unchecked Sendable {
         self.client = client
         latest = LatestMessages(file: storeDirectory.appendingPathComponent("latest-messages.json"))
         newestMessages = NewestMessages(file: storeDirectory.appendingPathComponent("newest-messages.json"))
+        roomKinds = RoomKinds.stored(in: storeDirectory)
         // a photo or file on its way tells how much of it is uploaded (`Message.uploadProgress`).
         client.enableSendQueueUploadProgress(enable: true)
     }
@@ -181,6 +184,8 @@ public final class MatrixAccount: @unchecked Sendable {
         let me = (try? client.userId()) ?? ""
         // the chats the sdk has no latest event for, and no newest message is known for yet.
         var unknown: [String] = []
+        // the chats whose kind waits on their bridge's word.
+        var unkinded: [String] = []
         for room in joined {
             let info = try? await room.roomInfo()
             var summary = RoomSummary(id: room.id(), name: room.displayName() ?? room.id(), isDirect: await room.isDirect(),
@@ -189,7 +194,7 @@ public final class MatrixAccount: @unchecked Sendable {
                                       unreadCount: Int(info?.numUnreadMessages ?? 0),
                                       network: info.map { RoomNetwork.of($0, ownUserId: me) } ?? RoomNetwork.matrix)
             if let info {
-                summary.fillKind(info, pins: pins)
+                if summary.fillKind(info, pins: pins, kinds: roomKinds) { unkinded.append(summary.id) }
                 summary.fillActions(info, chats: chats)
             }
             switch await room.latestEvent() {
@@ -219,6 +224,8 @@ public final class MatrixAccount: @unchecked Sendable {
         latest.save()
         newestMessages.ask(unknown, fetch: { [weak self] id in await self?.newestMessage(roomId: id) },
                            done: { [weak self] in self?.notify(.rooms) })
+        roomKinds.ask(unkinded, fetch: { [weak self] id in await self?.bridgedKind(roomId: id) },
+                      done: { [weak self] in self?.notify(.rooms) })
         receipts.remember(rooms)
         await fillPinOrders(&rooms)
         await fillChatStates(&rooms)
@@ -502,6 +509,7 @@ public final class MatrixAccount: @unchecked Sendable {
         receiptWatch.stop()
         // no request of the newest-message asks may still run when the client signs out.
         await newestMessages.stop()
+        await roomKinds.stop()
         let service = lock.withLock {
             syncStart = nil
             return syncService

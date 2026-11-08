@@ -31,3 +31,7 @@ https://github.com/ccheever/exact2/pull/1345 (fixes it): under `bun test`, `ensu
 
 `bun test ./scripts/agent-keys.test.mjs` in exact2 with Bun 1.4.3 on PATH: "Cannot use test outside
 of the test runner". `~/.bun-1.4.2/bin/bun test …` ran it. About 3 minutes.
+
+## More evidence, 2026-11-07
+
+At framework commit `eddc967dc3`, `bun test scripts/agent.test.mjs` under Bun 1.4.3 re-executed under pinned Bun 1.4.2 and failed with `Cannot use test outside of the test runner`. Directly invoking the pinned binary passed all 49 tests in 2.46 s. About one minute lost.

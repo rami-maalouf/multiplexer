@@ -336,13 +336,17 @@ function saveThreadCopies(native: Native) {
 }
 
 /** While the first answer still fills (it holds the newest messages only), the copy's older
- * messages stay in front of them, so text already shown does not go away (R04). Matched by event id. */
+ * messages stay in front of them, so text already shown does not go away (R04). Matched by event id.
+ * A copy that reached the chat's start says so while the answer shows from its first message: the
+ * fill pages back only to learn what the copy knows, so the older-messages spinner does not flash. */
 function withKeptOlder(answer: MessagesAnswer, copy: MessagesAnswer | undefined): MessagesAnswer {
   if (!answer.settling || copy === undefined || answer.messages.length === 0) return answer;
   const live = new Set(answer.messages.map((m) => m.event).filter((e) => e !== ''));
   const firstTime = answer.messages[0].time;
   const older = copy.messages.filter((m) => m.event !== '' && !live.has(m.event) && m.time < firstTime);
-  return older.length === 0 ? answer : { ...answer, messages: older.concat(answer.messages) };
+  const shown = older.length === 0 ? answer : { ...answer, messages: older.concat(answer.messages) };
+  const start = copy.messages[0]?.event ?? '';
+  return copy.atStart && start !== '' && shown.messages[0].event === start ? { ...shown, atStart: true } : shown;
 }
 
 /** The chat's screen from the native side's answer (or its copy). */
@@ -402,25 +406,25 @@ const sources: Sources = {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;
   },
-  // matrixcore filters the list (list: inbox, archive or lowPriority; filter: all, unread,
-  // unanswered, people or groups; network: one network's chats, or "" for every network;
-  // community: one community's chats instead, a space's id or ""); in the inbox under all, the
-  // pinned chats are not in it.
-  loadRoomsByRecency: async ([userId, filter, network, community, list, label], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
+  // matrixcore answers every capsule list under the filter (list: "" scoped); network: one
+  // network's chats, or "" for every network; community: one community's chats instead, a space's
+  // id or "". The contract's chatList picks inbox/Archive/Low Priority/Reminders without refetch.
+  // inbox+all: pinned chats leave the rows for the grid (listedRooms).
+  loadRoomsByRecency: async ([userId, filter, network, community, label], _store, storage, native): Promise<Result<'loadRoomsByRecency'>> => {
     if (userId === '' || !native?.available) {
-      return { owner: userId, filter, network, community, list, label, rooms: [], pinned: [], networks: [], communities: [], unread: 0,
+      return { owner: userId, filter, network, community, list: '', label, rooms: [], pinned: [], networks: [], communities: [], unread: 0,
         archiveUnread: 0, lowPriorityUnread: 0, reminders: 0 };
     }
     native.watch('rooms'); // Matrix.swift says when a room's last message or the list changes
     // the chats' kept copies, read while the list loads (not awaited), and a write held back.
     void readThreadCopies(userId, native);
     saveThreadCopies(native);
-    const answer = (await native.later({ op: 'rooms', filter, network, community, list, label })) as RoomsAnswer;
+    const answer = (await native.later({ op: 'rooms', filter, network, community, list: '', label })) as RoomsAnswer;
     const byId = new Map(answer.rooms.map((r) => [r.id, r]));
     // the reminders' notifications follow the account's reminders; a failure leaves the list as it is.
     syncReminders(answer.rooms, storage).catch((e) => console.log(`reminders: ${e}`));
     return {
-      owner: userId, filter, network, community, list, label, networks: answer.networks, communities: answer.communities, unread: answer.unread,
+      owner: userId, filter, network, community, list: '', label, networks: answer.networks, communities: answer.communities, unread: answer.unread,
       archiveUnread: answer.archiveUnread, lowPriorityUnread: answer.lowPriorityUnread, reminders: answer.reminders,
       rooms: answer.rooms.map(({ oneToOne: _, ...r }) => ({ ...r, initials: initials(r.name) })),
       pinned: answer.pinned.flatMap((id) => {
@@ -590,8 +594,9 @@ const sources: Sources = {
     const served = `${screen} ${roomId}`;
     if (copy && showingLive.get(screen) !== roomId && !servedCopy.has(served)) {
       servedCopy.add(served);
-      // its "New" line and its start are the live answer's to say.
-      const thread = threadOf({ ...copy, firstUnread: '', atStart: false, settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
+      // its "New" line is the live answer's to say; its start is the copy's (it shows the same first
+      // message), so a chat that shows all of itself opens on "Start of the chat", not a spinner.
+      const thread = threadOf({ ...copy, firstUnread: '', settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
       // its links' kept previews, read at once, so the copy shows its cards too.
       const unknown = [...new Set(thread.messages.map((m) => m.previewUrl).filter((u) => u !== '' && !cards.has(u)))];
       if (unknown.length === 0) return thread;
@@ -602,8 +607,11 @@ const sources: Sources = {
     servedCopy.delete(served);
     showingLive.set(screen, roomId);
     return (async (): Promise<Result<'loadMessages'>> => {
-      const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
-      const shown = withKeptOlder(answer, threadCopies.get(roomId));
+      // a chat with no kept copy waits for its full first screen (early: false), under the loading
+      // spinner: a new device's first answer held only the newest message, which then jumped up.
+      const kept = threadCopies.get(roomId);
+      const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT, early: kept !== undefined })) as MessagesAnswer;
+      const shown = withKeptOlder(answer, kept);
       keepThreadCopy(roomId, answer, native);
       const thread = threadOf(shown, roomId, isDirect, roomName, utcOffset, network, false);
       // the chat's links' kept previews join their messages (cards); the module says when a fetch
@@ -709,9 +717,18 @@ const sources: Sources = {
   },
   // the largest file the server takes, in bytes; 0 while it is not known.
   // the module asks for the phone's push token and gives it to the server as a pusher; a drive
-  // does that only for a test user. Without the permission, nothing.
-  registerPush: async ([userId, permission], _store, _storage, native): Promise<Result<'registerPush'>> => {
-    if (userId === '' || permission !== 'granted' || !native?.available) return { registered: false };
+  // does that only for a test user. Without the permission, or with Settings' switch off, drop
+  // any pusher left from when it was on.
+  registerPush: async ([userId, permission, enabled], _store, _storage, native): Promise<Result<'registerPush'>> => {
+    if (userId === '' || !native?.available) return { registered: false };
+    if (permission !== 'granted' || !enabled) {
+      try {
+        await native.later({ op: 'unregisterPush' });
+      } catch {
+        // no session yet, or the server already dropped the pusher.
+      }
+      return { registered: false };
+    }
     return (await native.later({ op: 'registerPush' })) as { registered: boolean };
   },
   loadUploadLimit: async ([userId], _store, _storage, native): Promise<Result<'loadUploadLimit'>> => {

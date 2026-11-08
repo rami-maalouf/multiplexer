@@ -60,6 +60,9 @@ postaccept audit failure explicitly and schedule success follows the durable aud
 - [ ] Add attachment metadata and reply context to read/watch JSON; current text can be empty
   for an uncaptioned attachment. Review finding 3 requires a richer public output schema.
 
+Current-main integration (`f6169a8`): retained both sets of additive plan/task entries;
+release build, three parser/policy tests and 51 live checks passed on the combined source.
+
 Verification commands: `swift test --package-path cli --filter ArgumentsTests`;
 `scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts`.
 The release linker currently warns about one missing Rust debug object referenced by the
@@ -67,6 +70,54 @@ prebuilt archive; executable linking and live acceptance work. SDK xtask deletes
 Rust object referenced by its debug map. A trial whole-archive strip changed global symbol
 addresses and broke third-party assembly linking; the pristine archive was restored and
 rebuilt successfully. No strip workaround shipped. Record separately from Exact.
+
+## Exact validation continuation (2026-11-07)
+
+- [x] Recover the original thread's later TestFlight check: compliance saved, build 2
+  Ready to Submit, Teammates contains only its invited owner. This supersedes the
+  earlier pending-France checklist below. PR #14 is still absent from build 2.
+- [x] Fix the text fade endpoint clock mismatch, local Exact commit `a7ae7d07b0`.
+  All 35 TextPlace iOS cases pass, including the hosted pixel comparison. Existing
+  endpoint assertion unchanged. Earlier tracing edits were present and are not
+  committed with the production fix. Logs: `/tmp/mx-continue-fade-tests.log`.
+  Endpoint stress: 100 consecutive passes (`/tmp/mx-continue-fade-repeat.log`);
+  caps passed (`/tmp/mx-continue-fade-caps-final.log`).
+- [x] Recheck the drive refusal fix: 49 focused tests pass with pinned Bun 1.4.2.
+- [x] Send one validation diary with existing authorization, receipt
+  `ac9481f6-814f-49b1-bbc1-33193c87b718`; owned Simulator is shut down.
+- [ ] Complete publication gates and publish the isolated endpoint fix. Broad build
+  prerequisites consumed disk space and were stopped before completion. Cargo's
+  supported dev cleanup recovered 24 GB. No broad suite is claimed green.
+- [ ] Resolve the separate fade-completion callback timeout and hosted navigation
+  failure. Do not replace either with a relaxed assertion or another timeout increase.
+- [ ] Finish menu/surface validation. Direct replay of the saved menu xctestrun
+  failed because it had no test bundles; the fresh rebuild was stopped for disk pressure.
+- [ ] Integrate validated fixes under the helper lock before making another release.
+
+## Teammate-testing checkpoint (2026-11-07 resumption)
+
+- [x] Recover app helper results and inspect the saved group-info comparison. PR #14
+  holds all four fixes, on #13; its description now explains behavior and evidence.
+- [x] Inspect the full MatrixCore result: 129 tests, two skipped, two failures.
+  Unread-line count stayed 22; recovery first sync timed out. Rerun both together
+  through the shared lock on MX demo: two passed, zero failures, 191.625 s.
+  Logs: `.exact/members-fix/logs/{matrixcore-full,isolated-rerun}.log` in this checkout.
+  Cause remains unresolved; isolated success does not make the full suite green.
+- [x] Verify the Exact CLI refusal branch: 49 tests passed with pinned Bun 1.4.2;
+  caps passed. Newer Bun re-execution hit known finding 42; evidence added.
+- [x] Send the remaining diary with Rami's existing authorization: one diary,
+  21 command-log lines, receipt `be9ec5d7-b554-4bc1-8762-38bedae7bf5a`.
+- [x] Shut down only the owned MX demo Simulator after test teardown.
+- [ ] Finish Exact native validation and publish the four local branches. Large-title
+  validation and the baseline both have native failures; a stress run also found
+  `testAFadeWaitsForTheLatestChangesCommit` failing once in 680 cases. Local branches
+  are `drive-refuses-expect-naming-steps`, `large-title-opens-expanded`,
+  `drive-picks-upward-menu-rows`, and `painted-menu-surface`. None was integrated.
+- [ ] Rami answers the France question and saves it. Inspect TestFlight build 2's
+  current status afterward. Preview snapshots timed out; browser fallback is
+  unavailable. No compliance answer or export metadata was changed.
+- [ ] Include PR #14 in a later TestFlight build after integration and verification.
+  Build 2 does not contain these four fixes.
 
 ## Mux identity (2026-11-06)
 
@@ -229,40 +280,23 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   server, with no error logged; 4 later sign-outs with logging all worked. Watch for it.
 - [ ] Minor: a preview that starts with a long link leaves "You:" alone on its first line (native text
   wraps whole words). Left as it is.
-- [ ] R03 scrolling frozen after a return to the app (2026-11-06, Simulator): not reproduced, so a
-  diagnostic and a reset ship first. Tried with real touches (exact2's `bench/bakeoff/drive.mjs`, which drives
-  the running app; Exact's own drive cannot cross a trip to the background): Home idle and mid-fling, the
-  bottom-edge Home gesture, the bottom-edge app switch, 45 s and 17 min away while messages arrived (`@test1`),
-  and on the pre-R01/R02 build with `@rami`'s real chats (read only, signed out after): a sideways drag then
-  Home, the app switch, lock and unlock. Each time the first scroll after the return moved the list.
-  The video shows the stuck state belongs to one list on screen (taps work; Archive and back recovers).
-  Shipped in the Exact integration checkout (`dd9343b324`, `ScrollReturnIOS.swift`):
-  - On every return to the app (`didBecomeActive`) one log line per list: scroll enabled, pan state, content
-    size against bounds, offset, a smooth correction running, the interaction pin; then a "cleared" line:
-    a running smooth correction cancelled where it stands, a held pin released, a swipe whose touch never
-    ended released (an open swipe stays open).
-  - For 2 minutes after a return, a vertical drag of 30 points or more that leaves its list where it was logs
-    a "stuck" line, once a list a return.
-  - Shown harmless (`apps/multiplexer/.exact/r03/harm5.mov` in the swipe checkout): a list scrolled midway with
-    a row's swipe open, Home and back: the same offset, the swipe still open, no flicker; the log said
-    `swipes-projected=1 swipes-released=0 corrections=0`. A drag that started on the bottom bar gave the one
-    "stuck" line. `verify ios` clean.
-  - Collect from the iPhone (cable or paired, unlocked), on this Mac:
-    `sudo /usr/bin/log collect --device-udid 00008140-0002155C01F3001C --last 2h --output ~/Desktop/multiplexer-r03.logarchive`
-    then `/usr/bin/log show ~/Desktop/multiplexer-r03.logarchive --info --style compact --predicate 'subsystem == "com.ramimaalouf.multiplexer" AND category == "scroll-return"'`
-    (`/usr/bin/log`: in zsh `log` is a shell builtin). The same `log show` read a Simulator archive
-    (`xcrun simctl spawn <udid> log collect --last 10m --output x.logarchive`): 24 lines, the "stuck" one among them.
-  - Next: Rami's build with R01's fix; if it freezes again, collect the log right after.
-  - 2026-11-06 (later): Rami: it still freezes on the iPhone after a return, and the back swipe and
-    sideways swipes die too (taps work; another tab or screen recovers). So one gesture blocks every
-    drag, not one list. Exact `584858860a`: the log also goes to `Library/Caches/scroll-return.log`
-    (read without root: `xcrun devicectl device copy from --device 00008140-0002155C01F3001C
-    --domain-type appDataContainer --domain-identifier com.ramimaalouf.multiplexer --source
-    Library/Caches/scroll-return.log --destination /tmp/r03/phone.log`), with lines on leaving, and
-    for the first 8 drags of 30 points or more in the 30 minutes after a return, every recognizer
-    that heard the finger and its state, plus any recognizer still active in the window. Real-touch
-    Simulator tries (inbox and chat, Home mid-fling, the bottom-edge swipe over the composer, the
-    back swipe) did not freeze. Installed on the iPhone; waiting for one freeze there.
+- [ ] R03 scrolling frozen after a return to the app (2026-11-06 → 2026-11-07): still open on
+  the iPhone. Simulator never reproduced; diagnostics remain (`dd9343b324`, file log
+  `584858860a`). Phone log (return=2): `_UIFlexInteractionPanGestureRecognizer` on the Exact
+  window stayed `.changed` after the finger lifted (finding 151). A host try that toggled
+  `isEnabled` on began/changed recognizers (`e2b58b6992`) did **not** stop the freeze; Rami
+  confirmed; that workaround was reverted (`4251663c25`). Keep the log; do not ship speculative
+  remount/release hacks until a real fix is proved on the phone.
+  Read-only recheck 2026-11-07 on the installed orbit build (`com.ramimaalouf.multiplexer.orbitb4a3b6a2`,
+  signed-in `@rami`): inbox scroll before background worked; after Home →
+  `runningBackgroundSuspended` → reopen, two further scrolls each moved the list (AX diffs
+  non-empty). No chats opened; nothing sent or marked read. Evidence `/tmp/mx-ready-r03/`.
+  Does not close R03: automation did not reproduce the stuck pan; leave open until a finger
+  freeze is gone or a real fix is proved.
+- [x] Inbox↔Archive capsule waited on a full native `rooms` reload (2026-11-07, with R03):
+  `chatList` keyed `roomList`. Now `scopedInbox` lists every chat under the filter; the contract
+  picks inbox/Archive/Low Priority/Reminders with `inChatList` (pinned still leave inbox+all for
+  the grid). Capsule flip does not await native. Same branch; `verify ios` clean.
 - [x] Jump to newest and Send stopped short of the chat's end (2026-11-06, Rami): `block="end"`
   put the last row at the list's edge, behind the composer (the list's 100-point bottom padding)
   and, with the keyboard up, under the keyboard; never at the end, so the list never followed it.
@@ -423,6 +457,35 @@ had nothing to show at once.
   text size. Screenshots with real data only in `/tmp/mx-wide-text/`.
 - [ ] After a long time away, the newest message shows about 1 s before the ones between it and the
   older ones (the sync's gap, filled by the SDK). Hide the gap until it fills?
+- [x] A new device's first open showed the newest message alone for about 0.35 s, then the full
+  screen (demo recording, 2026-11-07, branch `fix/demo-bugs`). Cause: the early answer above, with no
+  kept copy in front. Fix: the app asks `messages` with `early` only when it has a copy; without one,
+  `opening(early: false)` waits for the fill, so the chat shows the loading spinner, then the full
+  first screen in one frame. Core test `testAChatWithNothingKeptOpensOnItsFullFirstScreen`. Frames:
+  `.exact/demo-bugs/bug1/` (in that worktree; a copy in the testflight checkout's `.exact/demo-bugs/`).
+- [x] The older-messages spinner row was 40 pt and the "Start of the chat" row 36 pt, so the messages
+  moved 4 pt when one replaced the other. Both now take the text line's height (the spinner over a
+  hidden copy of it): 36 and 36, and 72 and 72 at the largest text size.
+- [x] The demo staging's rooms list a bridge bot that never joins (the id belongs to the live bridge).
+  Fixed 2026-11-07 (branch `fix/members-composer-groups`, on `fix/demo-bugs`), with evidence in that
+  worktree's `.exact/members-fix/`:
+  - Info page "3 members" over a list of 4: `chatInfo` subtracted every listed service member,
+    `chatMembers` only joined ones. Now both leave out only a joined bot (`ChatInfo.swift`). Same drive:
+    after "4 members" over 4. Core test `testTheCountAndTheListAgreeWhenTheBotIsNoMember`.
+  - A bridged group with one other person counted as a DM (`fillKind`). Now `m.direct` decides first, then
+    the bridge's `m.bridge` room type, read once per ambiguous room (`RoomKinds.swift`, `matrix-core/NOTES.md`,
+    "A chat's kind"); the count only when the room has no bridge state. Push uses the same rule. Real account,
+    read only, same drive on the old and new core: DMs 257 and Groups 75, then 256 and 76 (one bridged group
+    with only the bot besides you). Core tests `testABridgedGroupWithOnePersonIsAGroup`,
+    `testTheBridgedKindAndTheOneToOneRule`.
+  - Seating the contact marked the group read and left "Seen by" (the invite and the join came after the
+    messages). `stage-demo.py` now makes a staged room that lacks a contact again instead of seating it;
+    `--redo hike` restored the badge (1) and no message status. The redone group now sits at the top of the
+    inbox (it is the newest), not in its staged place; a full restage would restore the order.
+- [x] On a chat's first open with no kept copy the composer appeared only with the messages (about 0.6 s
+  after the push). The composer bar was inside `if threadShown`; now it is there from the push's first frame.
+- [ ] The voice button in the composer still fades in only when the messages arrive: its entry animation
+  starts at the next commit (Exact finding 155). Its slot is laid out from the first frame, so nothing moves.
 
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 
@@ -2561,18 +2624,25 @@ What the research found:
 
 ### P3.0 The Apple setup (Rami)
 
+**Applied 2026-11-07 with Rami's explicit approval:** sandbox/topic-specific APNs key
+created, verified in Keychain and installed through the playbook. Both App IDs and the
+shared group are configured. Both decoded development profiles include the phone and
+this Mac's signing certificate; the app includes development push. DNS-only CNAME is
+published. Public DNS, the server and the Mac's system resolver reach it. Production
+needs a separate credential and remains disabled.
+
 **Description:** push and an App Group need explicit App IDs and profiles; the team wildcard
 profile grants neither. Rami can do this now, while the inbox tasks run.
 
 **Acceptance criteria:**
-- [ ] App Group `group.com.ramimaalouf.multiplexer` exists.
-- [ ] App ID `com.ramimaalouf.multiplexer` has Push Notifications and App Groups; App ID
+- [x] App Group `group.com.ramimaalouf.multiplexer` exists.
+- [x] App ID `com.ramimaalouf.multiplexer` has Push Notifications and App Groups; App ID
   `com.ramimaalouf.multiplexer.notifications` has App Groups (the same group).
-- [ ] An APNs key (`.p8`) is in the Mac's Keychain as base64 (service `multiplexer-apns`, account
+- [x] An APNs key (`.p8`) is in the Mac's Keychain as base64 (service `multiplexer-apns`, account
   `key`), with its Key ID (account `key-id`). Never in chat or git.
-- [ ] A development profile for each App ID, with the iPhone `00008140-0002155C01F3001C`, is
+- [x] A development profile for each App ID, with the iPhone `00008140-0002155C01F3001C`, is
   installed on the Mac.
-- [ ] Cloudflare: `CNAME sygnal -> matrix.ramimaalouf.com`, DNS only.
+- [x] Cloudflare: `CNAME sygnal -> matrix.ramimaalouf.com`, DNS only.
 
 **Verification:** `security cms -D -i` on each profile shows `aps-environment development`, the
 group and the phone; `security find-generic-password -s multiplexer-apns` finds the key.
@@ -2580,6 +2650,17 @@ group and the phone; `security find-generic-password -s multiplexer-apns` finds 
 **Dependencies:** none. **Scope:** XS (Rami)
 
 ### P3.1 Spike: a notification extension inside the Exact app
+
+**Device proof, 2026-11-07:** signed development app and extension installed on the
+connected iPhone. Strict signatures, application identifiers, shared Keychain group,
+App Group and the app's development push entitlement all verified. A direct APNs test
+returned 200; Rami confirmed its "New message" banner on the locked phone. A second
+generic test through Sygnal returned no rejected pushkeys. No real chat was read or sent.
+Device extension log extraction was refused by CoreDevice's container access policy;
+physical extension memory/timing and fetched message text are not claimed.
+The post-build script now escapes the App Group plist key path and reuses the original
+signer's certificate fingerprint. Earlier transient signing errors disappeared after a
+fresh build. A later Exact build still needs this script reapplied.
 
 **Description:** the biggest unknown. Prove that the app ships a notification service extension,
 signed for push, on Rami's iPhone. No Matrix code yet: the extension only changes the text. The
@@ -2600,15 +2681,19 @@ push goes from the Mac straight to APNs, so no server is needed.
   the token. (2026-11-03, the Simulator: it asks after sign-in; Settings has a Notifications row
   with "Turn On" when not asked yet; the token arrives through the callbacks added at run time,
   `modules/apple/PushRegistration.swift`.)
-- [ ] `scripts/send-test-push.sh` sends a push to APNs sandbox, signed with the `.p8` from the Keychain.
+- [x] `scripts/send-test-push.sh` sends a push to APNs sandbox, signed with the `.p8` from the Keychain.
   (2026-11-03: written; `--dry-run` signs with a throwaway key and checks the signature. The real
   send waits for P3.0's key. It works for the Simulator too: the Simulator has a real sandbox token,
   so the extension can be proved on the Simulator before the iPhone.)
-- [ ] The locked iPhone shows the text the extension wrote (Rami confirms once).
-- [ ] A phone drive after the script still runs the app with the extension, or the gap is written down.
+- [x] The locked iPhone shows the text the extension wrote (Rami confirms once).
+  (2026-11-07: generic APNs "New message" on the locked phone; later a natural WhatsApp
+  message showed sender and text.)
+- [x] A phone drive after the script still runs the app with the extension, or the gap is written down.
   (2026-11-03, the Simulator: a drive keeps it, as the script patches Exact's build in place; an
-  Exact rebuild drops it until the script runs again.)
-- [ ] After 3 failed rounds: stop, write down the blocker, and decide whether to wait for Exact.
+  Exact rebuild drops it until the script runs again. 2026-11-07: the entitled device build with
+  the script applied stayed installed through permission grant and locked-phone delivery.)
+- [x] After 3 failed rounds: stop, write down the blocker, and decide whether to wait for Exact.
+  (Not needed: device delivery succeeded.)
 
 **Verification:** `codesign -d --entitlements -` on the app and the extension; the extension logs
 one line per push into the App Group.
@@ -2616,6 +2701,19 @@ one line per push into the App Group.
 **Dependencies:** P3.0. **Scope:** M
 
 ### P3.2 Spike: MatrixCore in the extension, with the sender and the text
+
+**Live Simulator proof, 2026-11-07:** real Synapse -> Sygnal -> APNs delivery with the
+app terminated showed chat, sender and text for a plain message and an encrypted event.
+The encrypted event's server timestamp matches the extension's successful log entry.
+An APNs replay of that event was visually captured at `.exact/push-live/encrypted-banner.png`.
+Measured extension processing: 120 to 227 ms, peak 17 to 19 MB; these are Simulator
+figures, not physical-phone metrics or end-to-end latency. The focused core test passed
+in 76.578 s (encrypted fetch 2.14 s; plain fetch 2.30 s). An earlier run failed at the
+fresh-store fixture's default 30 s first sync. The fixture now waits for its initial
+sync with the existing test-device 120 s budget; no product timeout or assertion changed.
+Artifacts: `/tmp/multiplexer-push-core-20261107{,-retry}.log` and matching `.xcresult`.
+The native test account signed out; its pusher count returned to zero and the owned
+Simulator was shut down. Cleanup used the shared helper only around each drive.
 
 **Description:** the plan's high risk. The extension restores the session from the shared
 Keychain, opens the store in the App Group, fetches one event, and shows the chat, the sender and
@@ -2657,8 +2755,10 @@ Integrated into main from `86d3a80`. Conservative limitation: when both the grou
 unavailable and legacy data is absent, the app retains the session and refuses replacement
 login. This also affects a genuinely deleted legacy store, because it cannot distinguish that
 case from a move completed before its metadata was saved.
-The acceptance criterion above stays unchecked until P3.0 permits a real entitled migration
-without signing in again. Phone delivery, memory and timing also remain unproved.
+The entitled App Group is live on the phone (2026-11-07). Fresh sign-in after install
+proved delivery; a no-relogin migration from a pre-group install remains unchecked.
+Physical extension memory/timing stay unclaimed (CoreDevice refused container logs);
+Simulator figures are recorded above.
 After incorporating main cebda48, `verify ios` passed all 6 tests, light/dark checks and
 8 largest-text screens (75.2 s; `/tmp/mx-store-migration-logs/integrated-verify.log`).
 Settings matches cebda48. Test sessions signed out; MX main shut down.
@@ -2667,16 +2767,26 @@ the documented Exact notification activation/presentation integration. Neither i
 
 ### P3.3 Server: Sygnal (server conversation)
 
+**Applied 2026-11-07:** adapted the prepared branch to the new sandbox-only key,
+installed with `install-sygnal,install-aux,install-traefik` (35 ok, 7 changed, 0 failed),
+and started only Sygnal/Traefik through the playbook. Key is 0600 and matches Keychain.
+HTTPS `/health` is 200, certificate validated, and an all-zero token probe reached APNs
+and returned `BadDeviceToken` through the gateway. A later valid phone-token probe
+through Sygnal returned no rejected pushkeys; locked-phone delivery is confirmed.
+
 **Acceptance criteria:**
-- [ ] Rami's OK, and the DNS record from P3.0. (Rami's OK, 2026-11-03: install it when P3.0's
-  APNs key is in the Keychain and the DNS record exists. Neither exists yet.)
-- [ ] Through the playbook (invariant 6): `matrix_sygnal_enabled: true`; two APNs apps,
-  `com.ramimaalouf.multiplexer.ios.dev` (`platform: sandbox`) and `com.ramimaalouf.multiplexer.ios`
-  (production), both with team `3V2UU7RRK9` and topic `com.ramimaalouf.multiplexer`; the key from
+- [x] Rami's OK, and the DNS record from P3.0. (Explicit key creation and deployment approval,
+  2026-11-07; the key and DNS record now exist.)
+- [x] Through the playbook (invariant 6): `matrix_sygnal_enabled: true`; APNs app
+  `com.ramimaalouf.multiplexer.ios.dev` (`platform: sandbox`), with team `3V2UU7RRK9` and
+  topic `com.ramimaalouf.multiplexer`; production stays disabled because the approved
+  key is sandbox-only; the key from
   the Keychain into the gitignored `vars.yml`, then to the server with mode 0600
   (`aux_file_definitions`). Keep the default host name; no path prefix.
-- [ ] Sygnal answers from the Mac, and a test POST with the phone's pushkey reaches the phone.
-- [ ] No key in git; `server/README.md` names the Keychain item, never the key.
+- [x] Sygnal answers from the Mac, and a test POST with the phone's pushkey reaches the phone.
+  (2026-11-07: HTTPS health 200; phone-token probe accepted with no rejected pushkeys;
+  Rami confirmed the locked-phone banner.)
+- [x] No key in git; `server/README.md` names the Keychain item, never the key.
 
 **Prepared (2026-11-03, branch `server/p3.3-sygnal`, not merged, not applied).** `config.yml`
 turns Sygnal on with the two APNs apps above (`keyfile: /data/apns-key.p8`, the Key ID from
@@ -2718,11 +2828,20 @@ the right values, and none after Sign Out.
 
 ### P3.5 End to end: a message wakes the locked iPhone (M3)
 
+**M3 met, 2026-11-07:** Rami opened the newly entitled build, allowed notifications and
+locked it. APNs accepted the generic test, and he confirmed the banner. Plain/encrypted
+sender/text delivery passed on the Simulator. With the phone still locked, a natural
+WhatsApp message showed its sender and text; Rami confirmed ("Yes, sender and text
+appear"). Agents sent nothing through his chats and did not drive the real account.
+Remaining P3.5 phone-lab items (`@test1`/`@test2`, reboot, ten-trial latency) stay open.
+P3.6 badge/clearing semantics and P3.7 remote activation/presentation remain follow-ups.
+
 **Acceptance criteria:**
 - [ ] `@test1` on the iPhone, `@test2` sends: chat, sender and text within 5 s with the app swiped
   away, in the background, and after a reboot and one unlock; also in an encrypted room.
-- [ ] M3: on Rami's iPhone, signed in as `@rami` for his own use, a WhatsApp message from another
+- [x] M3: on Rami's iPhone, signed in as `@rami` for his own use, a WhatsApp message from another
   person shows its sender and text. Rami confirms. Agents send nothing as `@rami`.
+  (2026-11-07: Rami confirmed sender and text on the locked phone.)
 - [ ] The delay from send to banner over 10 tries goes into `tasks/plan.md`.
 
 **Dependencies:** P3.2, P3.3, P3.4. **Scope:** S

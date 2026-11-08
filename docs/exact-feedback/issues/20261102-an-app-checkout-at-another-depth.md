@@ -68,3 +68,5 @@ path-refresh command before execution. `app-cli.mjs` maps `update` to `new --upd
 compiler preparation in a fresh checkout. About three minutes of source lookup; no update
 or build was run. This is scheduling/documentation evidence for dependency refresh, not a
 new reproduction of the earlier path failure. The command card could name the compiler step.
+
+Additional evidence (2026-11-07, exact2 `f53339adc8`): a new app checkout at the usual depth had its Cargo paths and `exact.mjs` on one framework checkout and its `package.json` packages on another. The first build failed at a package's Swift with an empty "did not compile:" message (finding 153). Pointing `package.json` at the same checkout fixed it. One switch for every framework path would have avoided it.

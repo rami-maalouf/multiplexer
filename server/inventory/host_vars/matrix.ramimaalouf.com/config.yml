@@ -120,3 +120,40 @@ matrix_synapse_max_event_delay_duration: 365d
 matrix_bridge_mautrix_whatsapp_network_displayname_template: '{% raw %}{{or .BusinessName .PushName .Phone}}{% endraw %}'
 matrix_bridge_mautrix_meta_instagram_bridge_displayname_suffix: ''
 matrix_bridge_mautrix_linkedin_network_displayname_template: "{% raw %}{{ with .Organization }}{{ . }}{{ else }}{{ .FirstName }} {{ .LastName }}{{ end }}{% endraw %}"
+
+# p3.3: sygnal, the push gateway. synapse sends a push for the iphone to sygnal, and sygnal
+# sends it to apple (apns) with rami's apns key. it answers at sygnal.ramimaalouf.com (the
+# playbook's default host name, no path prefix), so it needs cloudflare's
+# `CNAME sygnal -> matrix.ramimaalouf.com` (dns only) before the first install (p3.0).
+# the development build registers its pusher with the `.dev` app id (apple's sandbox).
+# separate topic-specific keys keep development and production credentials independent.
+# it is in the mac's keychain (service multiplexer-apns,
+# accounts `key` and `key-id`); server/setup.sh copies it into the gitignored vars.yml, and
+# the aux role writes it to the server, readable only by the matrix user.
+matrix_sygnal_enabled: true
+matrix_sygnal_apps:
+  com.ramimaalouf.multiplexer.ios:
+    type: apns
+    keyfile: /data/apns-production-key.p8
+    key_id: "{{ multiplexer_apns_production_key_id }}"
+    team_id: 3V2UU7RRK9
+    topic: com.ramimaalouf.multiplexer
+    platform: production
+  com.ramimaalouf.multiplexer.ios.dev:
+    type: apns
+    keyfile: /data/apns-key.p8
+    key_id: "{{ multiplexer_apns_key_id }}"
+    team_id: 3V2UU7RRK9
+    topic: com.ramimaalouf.multiplexer
+    platform: sandbox
+aux_file_definitions_custom:
+  - dest: "{{ matrix_sygnal_data_path }}/apns-production-key.p8"
+    content: "{{ multiplexer_apns_production_key_p8_base64 | b64decode }}"
+    mode: '0600'
+    owner: "{{ matrix_user_name }}"
+    group: "{{ matrix_group_name }}"
+  - dest: "{{ matrix_sygnal_data_path }}/apns-key.p8"
+    content: "{{ multiplexer_apns_key_p8_base64 | b64decode }}"
+    mode: '0600'
+    owner: "{{ matrix_user_name }}"
+    group: "{{ matrix_group_name }}"

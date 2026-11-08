@@ -44,6 +44,38 @@ final class ChatInfoTests: XCTestCase {
         XCTAssertFalse(theirs.canRename)
     }
 
+    /// A room may name a bridge's bot that is not a member (a staged chat; a bot that left): the
+    /// header's count and the members' list then still agree.
+    func testTheCountAndTheListAgreeWhenTheBotIsNoMember() async throws {
+        let (homeserver, user, password, user2, password2) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let other = try await signIn(homeserver, user2, password2)
+        let session = try owner.savedSession(), otherSession = try other.savedSession()
+        let name = "Multiplexer info test absent bot"
+        let id: String
+        if let found = try await owner.rooms().first(where: { $0.roomName == name })?.id {
+            id = found
+        } else {
+            let server = user.split(separator: ":", maxSplits: 1).last.map(String.init) ?? "example.org"
+            let created = try await api("POST", ["createRoom"], [
+                "name": name, "preset": "private_chat", "invite": [user2],
+                "initial_state": [["type": "io.element.functional_members", "state_key": "",
+                                   "content": ["service_members": ["@whatsappbot:\(server)"]]]],
+            ], session: session)
+            id = try XCTUnwrap(created["room_id"] as? String, "createRoom: \(created)")
+            _ = try await api("POST", ["join", id], [:], session: otherSession)
+        }
+        var info = try await owner.chatInfo(roomId: id)
+        let start = Date()
+        while info.memberCount < 2, Date().timeIntervalSince(start) < 20 {
+            try await Task.sleep(nanoseconds: 300_000_000)
+            info = try await owner.chatInfo(roomId: id)
+        }
+        let members = try await owner.chatMembers(roomId: id)
+        XCTAssertEqual(Set(members.map(\.userId)), [user, user2])
+        XCTAssertEqual(info.memberCount, members.count, "the header says \(info.memberCount), the list shows \(members.count)")
+    }
+
     func testAnUnresolvedPreviewSenderFallsBackToTheId() {
         let sender = "@sender:example.org"
         for memberName: String? in [nil, "", " \n", "Room sender"] {

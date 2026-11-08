@@ -42,6 +42,16 @@
     "review": "20261108-mx-c1c2: six confirmed findings; five mechanical fixes applied; attachment/reply schema addition deferred",
     "proofLimits": "postaccept disk-failure reporting and merged-name resolution reviewed in source, not independently fault-injected or exercised in merged-room fixture"
   },
+  "mainIntegrationAcceptance": {
+    "base": "f6169a86a3a8680c22ab66374b33f915d367261e",
+    "conflicts": "additive plan/task entries only; retained both sides",
+    "releaseBuild": "passed",
+    "unitTestsPassed": 3,
+    "liveCommand": "scripts/mx-lock.sh matrixcore cli-integrated -- bun scripts/test-cli.ts",
+    "liveChecks": 51,
+    "exitCode": 0,
+    "note": "check count varies with scheduled-delivery polling iterations; core acceptance assertions unchanged"
+  },
   "accounts": "test1/test2 only; no real-account session accessed",
   "limitations": [
     "cold first-list order changes during asynchronous SDK latest-event hydration; remains unfixed",

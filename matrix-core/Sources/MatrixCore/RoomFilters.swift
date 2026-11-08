@@ -74,8 +74,11 @@ extension RoomSummary {
         }
     }
 
-    /// What the room list service knows of a room beside its name and last message.
-    mutating func fillKind(_ info: RoomInfo, pins: Pins) {
+    /// What the room list service knows of a room beside its name and last message, and the
+    /// bridge's word on what the chat is (`kinds`); true when the rule waits on that word and
+    /// `kinds` has none yet (`RoomKinds.ask`).
+    @discardableResult
+    mutating func fillKind(_ info: RoomInfo, pins: Pins, kinds: RoomKinds) -> Bool {
         isMarkedUnread = info.isMarkedUnread
         // a bridge's bot is a service member (`io.element.functional_members`): a bridged chat
         // with one person on the other network has two other members, that person and the bot.
@@ -83,8 +86,10 @@ extension RoomSummary {
         // count of active service members stays 0 until the members load, so the list counts.
         let service = UInt64(info.serviceMembers.count)
         let people = info.activeMembersCount > service ? info.activeMembersCount - service : 0
-        isOneToOne = people <= 2 && (isDirect || service > 0)
+        let kind = kinds.kind(id)
+        isOneToOne = Self.isOneToOne(people: people, isDirect: isDirect, bridged: service > 0, kind: kind)
         isPinned = pins.isPinned(id, onServer: info.isFavourite)
+        return kind == nil && Self.needsKind(people: people, isDirect: isDirect, bridged: service > 0)
     }
 }
 
@@ -94,6 +99,15 @@ extension MatrixAccount {
     public func inbox(filter: RoomFilter = .all, list: ChatList = .inbox, timeout: TimeInterval = 30) async throws -> Inbox {
         let all = try await rooms(timeout: timeout)
         return Inbox(chats: all, listed: Set(all.filter { $0.matches(filter, in: list) }.map(\.id)),
+                     pinned: Self.inPinOrder(all).filter(\.isInInbox))
+    }
+
+    /// Every non-hidden chat under `filter`, across inbox, Archive and Low Priority. The app
+    /// picks the capsule list client-side so Inbox↔Archive does not wait on another rooms call.
+    public func scopedInbox(filter: RoomFilter = .all, timeout: TimeInterval = 30) async throws -> Inbox {
+        let all = try await rooms(timeout: timeout)
+        return Inbox(chats: all,
+                     listed: Set(all.filter { !$0.isHidden && $0.foldedInto == nil && $0.passes(filter) }.map(\.id)),
                      pinned: Self.inPinOrder(all).filter(\.isInInbox))
     }
 }
