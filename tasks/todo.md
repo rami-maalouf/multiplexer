@@ -1,5 +1,53 @@
 # Mux: tasks
 
+## Exact validation continuation (2026-11-07)
+
+- [x] Recover the original thread's later TestFlight check: compliance saved, build 2
+  Ready to Submit, Teammates contains only its invited owner. This supersedes the
+  earlier pending-France checklist below. PR #14 is still absent from build 2.
+- [x] Fix the text fade endpoint clock mismatch, local Exact commit `a7ae7d07b0`.
+  All 35 TextPlace iOS cases pass, including the hosted pixel comparison. Existing
+  endpoint assertion unchanged. Earlier tracing edits were present and are not
+  committed with the production fix. Logs: `/tmp/mx-continue-fade-tests.log`.
+  Endpoint stress: 100 consecutive passes (`/tmp/mx-continue-fade-repeat.log`);
+  caps passed (`/tmp/mx-continue-fade-caps-final.log`).
+- [x] Recheck the drive refusal fix: 49 focused tests pass with pinned Bun 1.4.2.
+- [x] Send one validation diary with existing authorization, receipt
+  `ac9481f6-814f-49b1-bbc1-33193c87b718`; owned Simulator is shut down.
+- [ ] Complete publication gates and publish the isolated endpoint fix. Broad build
+  prerequisites consumed disk space and were stopped before completion. Cargo's
+  supported dev cleanup recovered 24 GB. No broad suite is claimed green.
+- [ ] Resolve the separate fade-completion callback timeout and hosted navigation
+  failure. Do not replace either with a relaxed assertion or another timeout increase.
+- [ ] Finish menu/surface validation. Direct replay of the saved menu xctestrun
+  failed because it had no test bundles; the fresh rebuild was stopped for disk pressure.
+- [ ] Integrate validated fixes under the helper lock before making another release.
+
+## Teammate-testing checkpoint (2026-11-07 resumption)
+
+- [x] Recover app helper results and inspect the saved group-info comparison. PR #14
+  holds all four fixes, on #13; its description now explains behavior and evidence.
+- [x] Inspect the full MatrixCore result: 129 tests, two skipped, two failures.
+  Unread-line count stayed 22; recovery first sync timed out. Rerun both together
+  through the shared lock on MX demo: two passed, zero failures, 191.625 s.
+  Logs: `.exact/members-fix/logs/{matrixcore-full,isolated-rerun}.log` in this checkout.
+  Cause remains unresolved; isolated success does not make the full suite green.
+- [x] Verify the Exact CLI refusal branch: 49 tests passed with pinned Bun 1.4.2;
+  caps passed. Newer Bun re-execution hit known finding 42; evidence added.
+- [x] Send the remaining diary with Rami's existing authorization: one diary,
+  21 command-log lines, receipt `be9ec5d7-b554-4bc1-8762-38bedae7bf5a`.
+- [x] Shut down only the owned MX demo Simulator after test teardown.
+- [ ] Finish Exact native validation and publish the four local branches. Large-title
+  validation and the baseline both have native failures; a stress run also found
+  `testAFadeWaitsForTheLatestChangesCommit` failing once in 680 cases. Local branches
+  are `drive-refuses-expect-naming-steps`, `large-title-opens-expanded`,
+  `drive-picks-upward-menu-rows`, and `painted-menu-surface`. None was integrated.
+- [ ] Rami answers the France question and saves it. Inspect TestFlight build 2's
+  current status afterward. Preview snapshots timed out; browser fallback is
+  unavailable. No compliance answer or export metadata was changed.
+- [ ] Include PR #14 in a later TestFlight build after integration and verification.
+  Build 2 does not contain these four fixes.
+
 ## Mux identity (2026-11-06)
 
 - [x] With Rami's approval, send only the branding session's Exact diary. Receipt
@@ -168,6 +216,12 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   `isEnabled` on began/changed recognizers (`e2b58b6992`) did **not** stop the freeze; Rami
   confirmed; that workaround was reverted (`4251663c25`). Keep the log; do not ship speculative
   remount/release hacks until a real fix is proved on the phone.
+  Read-only recheck 2026-11-07 on the installed orbit build (`com.ramimaalouf.multiplexer.orbitb4a3b6a2`,
+  signed-in `@rami`): inbox scroll before background worked; after Home →
+  `runningBackgroundSuspended` → reopen, two further scrolls each moved the list (AX diffs
+  non-empty). No chats opened; nothing sent or marked read. Evidence `/tmp/mx-ready-r03/`.
+  Does not close R03: automation did not reproduce the stuck pan; leave open until a finger
+  freeze is gone or a real fix is proved.
 - [x] Inbox↔Archive capsule waited on a full native `rooms` reload (2026-11-07, with R03):
   `chatList` keyed `roomList`. Now `scopedInbox` lists every chat under the filter; the contract
   picks inbox/Archive/Low Priority/Reminders with `inChatList` (pinned still leave inbox+all for
@@ -332,6 +386,35 @@ had nothing to show at once.
   text size. Screenshots with real data only in `/tmp/mx-wide-text/`.
 - [ ] After a long time away, the newest message shows about 1 s before the ones between it and the
   older ones (the sync's gap, filled by the SDK). Hide the gap until it fills?
+- [x] A new device's first open showed the newest message alone for about 0.35 s, then the full
+  screen (demo recording, 2026-11-07, branch `fix/demo-bugs`). Cause: the early answer above, with no
+  kept copy in front. Fix: the app asks `messages` with `early` only when it has a copy; without one,
+  `opening(early: false)` waits for the fill, so the chat shows the loading spinner, then the full
+  first screen in one frame. Core test `testAChatWithNothingKeptOpensOnItsFullFirstScreen`. Frames:
+  `.exact/demo-bugs/bug1/` (in that worktree; a copy in the testflight checkout's `.exact/demo-bugs/`).
+- [x] The older-messages spinner row was 40 pt and the "Start of the chat" row 36 pt, so the messages
+  moved 4 pt when one replaced the other. Both now take the text line's height (the spinner over a
+  hidden copy of it): 36 and 36, and 72 and 72 at the largest text size.
+- [x] The demo staging's rooms list a bridge bot that never joins (the id belongs to the live bridge).
+  Fixed 2026-11-07 (branch `fix/members-composer-groups`, on `fix/demo-bugs`), with evidence in that
+  worktree's `.exact/members-fix/`:
+  - Info page "3 members" over a list of 4: `chatInfo` subtracted every listed service member,
+    `chatMembers` only joined ones. Now both leave out only a joined bot (`ChatInfo.swift`). Same drive:
+    after "4 members" over 4. Core test `testTheCountAndTheListAgreeWhenTheBotIsNoMember`.
+  - A bridged group with one other person counted as a DM (`fillKind`). Now `m.direct` decides first, then
+    the bridge's `m.bridge` room type, read once per ambiguous room (`RoomKinds.swift`, `matrix-core/NOTES.md`,
+    "A chat's kind"); the count only when the room has no bridge state. Push uses the same rule. Real account,
+    read only, same drive on the old and new core: DMs 257 and Groups 75, then 256 and 76 (one bridged group
+    with only the bot besides you). Core tests `testABridgedGroupWithOnePersonIsAGroup`,
+    `testTheBridgedKindAndTheOneToOneRule`.
+  - Seating the contact marked the group read and left "Seen by" (the invite and the join came after the
+    messages). `stage-demo.py` now makes a staged room that lacks a contact again instead of seating it;
+    `--redo hike` restored the badge (1) and no message status. The redone group now sits at the top of the
+    inbox (it is the newest), not in its staged place; a full restage would restore the order.
+- [x] On a chat's first open with no kept copy the composer appeared only with the messages (about 0.6 s
+  after the push). The composer bar was inside `if threadShown`; now it is there from the push's first frame.
+- [ ] The voice button in the composer still fades in only when the messages arrive: its entry animation
+  starts at the next commit (Exact finding 155). Its slot is laid out from the first frame, so nothing moves.
 
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 

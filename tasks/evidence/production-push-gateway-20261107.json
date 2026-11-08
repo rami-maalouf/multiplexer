@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-08T02:50:41Z",
+  "scope": "production gateway configuration, not device delivery",
+  "production_key": {
+    "id": "52JT8242BG",
+    "environment": "production",
+    "topic": "com.ramimaalouf.multiplexer",
+    "keychain_service": "multiplexer-apns",
+    "keychain_accounts": ["production-key", "production-key-id"],
+    "deployed_file": "/matrix/sygnal/data/apns-production-key.p8",
+    "mode": "0600",
+    "owner": "matrix:matrix",
+    "matches_keychain": true
+  },
+  "before": "gateway rejected production app ID as unknown",
+  "checks": {
+    "playbook_syntax": "passed",
+    "playbook_check": "passed, 3 predicted changes, zero failures",
+    "playbook_install": "passed, 2 changes, zero failures",
+    "service": "active after restart",
+    "https_health": 200,
+    "configured_app_ids": ["com.ramimaalouf.multiplexer.ios", "com.ramimaalouf.multiplexer.ios.dev"],
+    "production_invalid_token_probe": "HTTP 200 with rejected dummy key; APNs returned 400 BadDeviceToken",
+    "sandbox_invalid_token_probe": "HTTP 200 with rejected dummy key; APNs returned 400 BadDeviceToken"
+  },
+  "limitations": [
+    "no valid phone token was used and no real conversation was accessed",
+    "an initial malformed probe used a string alert and returned 500; corrected probes used the app's event_id_only format and object alert",
+    "the TestFlight app archive, distribution entitlements and actual locked-phone delivery need separate validation"
+  ],
+  "logs": ["/tmp/mx-ready-sygnal-syntax.log", "/tmp/mx-ready-sygnal-check.log", "/tmp/mx-ready-sygnal-install.log"]
+}

@@ -49,7 +49,7 @@ for name in "${secrets[@]}"; do
     security add-generic-password -s "$keychain_service" -a "$name" -w "$(openssl rand -hex 32)"
   fi
 done
-# the sandbox apns key for sygnal: a base64 .p8 and its key id from the keychain.
+# the sandbox and production apns keys for sygnal: base64 .p8 files and key ids.
 # sygnal's settings in config.yml need them, so without them the playbook stops with
 # an undefined variable instead of installing a sygnal that cannot send.
 apns_service="multiplexer-apns"
@@ -65,9 +65,16 @@ umask 077
     echo "multiplexer_apns_key_p8_base64: \"$(apns key | tr -d '[:space:]')\""
     echo "multiplexer_apns_key_id: \"$(apns key-id | tr -d '[:space:]')\""
   fi
+  if apns production-key > /dev/null && apns production-key-id > /dev/null; then
+    echo "multiplexer_apns_production_key_p8_base64: \"$(apns production-key | tr -d '[:space:]')\""
+    echo "multiplexer_apns_production_key_id: \"$(apns production-key-id | tr -d '[:space:]')\""
+  fi
 } > "$host_vars/vars.yml"
 if ! apns key > /dev/null; then
   echo "note: no apns key in the keychain (service $apns_service), so sygnal cannot be installed yet." >&2
+fi
+if ! apns production-key > /dev/null; then
+  echo "note: no production apns key in the keychain (service $apns_service), so production sygnal cannot be installed yet." >&2
 fi
 
 echo "ready: ansible $ansible_version, playbook ${playbook_commit:0:10}, secrets in $host_vars/vars.yml"

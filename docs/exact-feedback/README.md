@@ -62,7 +62,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 39 | The docs do not say that a picked file's copy has another name than `Picked.name`. Fixed in PR #1342 (open). | One wrong send, about 10 min | P3 | [the-docs-do-not-say-that](issues/20261102-the-docs-do-not-say-that.md) |
 | 40 | After `check both`, nodes made later in the drive drew in the other color scheme (seen once). | About 8 min and a wrong fix | P3 | [after-check-both-nodes-made-later](issues/20261102-after-check-both-nodes-made-later.md) |
 | 41 | `font-size` still refuses `rem` inside `min()`, which `width` now takes (follows closed finding 21). Partly fixed in PR #1349 (open): the refusal names the forms. | About 3 min | P3 | [font-size-still-refuses-rem-inside](issues/20261102-font-size-still-refuses-rem-inside.md) |
-| 42 | Running a framework script's tests with a newer Bun fails: `ensureBun` drops the `test` verb. Fixed in PR #1345 (open). | About 3 min | P3 | [running-a-framework-script-s-tests](issues/20261102-running-a-framework-script-s-tests.md) |
+| 42 | Running a framework script's tests with a newer Bun fails: `ensureBun` drops the `test` verb. Fixed in PR #1345 (open); seen again on 2026-11-07 before that fix. | About 3 min | P3 | [running-a-framework-script-s-tests](issues/20261102-running-a-framework-script-s-tests.md) |
 | 43 | Parallel sessions on one machine share the default Simulator: an `ios --run` replaced another session's app in the middle of its drive. Fixed in PR #1329 (open). | About 15 min | P3 | [parallel-sessions-on-one-machine-share](issues/20261102-parallel-sessions-on-one-machine-share.md) |
 | 44 | A virtualized list draws rows past its frame, under the bar that follows it, and refuses `overflow`. | About 25 min | P3 | [a-virtualized-list-draws-rows-past](issues/20261102-a-virtualized-list-draws-rows-past.md) |
 | 45 | No keyboard fact: a chat cannot keep a message in view as the keyboard comes up. Further evidence on 2026-11-07: Send and the voice button keep the keyboard's state by hand. | About 15 min | P3 | [no-keyboard-fact-a-chat-cannot](issues/20261102-no-keyboard-fact-a-chat-cannot.md) |
@@ -175,6 +175,9 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 150 | `state` does not show a state that a `members` file declares. | About 3 min | P3 | [state-does-not-show-a-state](issues/20261107-state-does-not-show-a-state.md) |
 | 151 | After a return, liquid-glass `_UIFlexInteractionPanGestureRecognizer` can stay `.changed` and block every drag (scroll, row swipe, back); taps still work. An `isEnabled` release try did not fix it on device and was reverted. | About 15 min reading the phone log | P1 | [flex-pan-blocks-every-drag-after](issues/20261106-flex-pan-blocks-every-drag-after.md) |
 | 152 | A native popover action is reachable by its visible label but does not expose its authored test id to an external native drive. | About 2 min | P3 | [native-popover-action-test-id](issues/20261107-a-native-popover-action-does-not.md) |
+| 153 | A package's Swift that did not compile shows an empty error: "did not compile:" and nothing after it. | About 3 min and a 2-min build | P3 | [a-package-s-swift-that-did](issues/20261107-a-package-s-swift-that-did.md) |
+| 154 | A drive cannot show a component in a given state (props or app state), so `layout` of a short-lived state needs a contract edit for each measurement. | About 8 min, four drives | P3 | [a-drive-cannot-show-a-component](issues/20261107-a-drive-cannot-show-a-component.md) |
+| 155 | An entry `animation` on a node mounted with a navigation push holds its first keyframe until a later commit, so a button laid out on time appears late. | About 15 min, two probe recordings | P3 | [an-entry-animation-waits-for-a-later-commit](issues/20261107-an-entry-animation-waits-for-a-later-commit.md) |
 
 ## What worked well
 
@@ -213,7 +216,18 @@ task down. Record that in the task's notes (`tasks/todo.md`), not here.
 If a new diary file does not show in `git status`, check `apps/multiplexer/.gitignore`:
 it must keep `!/.exact/diary/`.
 
+## Validation resumption findings
+
+| Finding | Cost | Severity | Evidence |
+|---|---|---|---|
+| saved native test run loses its bundles | about 2 min plus rebuilding | P3 | [native replay](issues/20261107-native-test-replay-loses-bundles.md) |
+| affected hides an unavailable cargo executable | about 1 min | P3 | [affected lookup](issues/20261107-affected-hides-missing-cargo.md) |
+
 ## Sent to the Exact team
+
+Validation continuation, 2026-11-07: receipt `ac9481f6-814f-49b1-bbc1-33193c87b718`,
+one diary, zero logged commands, sent with Rami's prior authorization. Findings:
+saved native-test replay and the missing-cargo diagnostic above.
 
 Findings go to the team through Exact's private feedback tool. Run it from
 `apps/multiplexer/`: `bun exact.mjs feedback preview` shows what would go, and
@@ -223,6 +237,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 
 | Date | Receipt | What | Sent by |
 |---|---|---|---|
+| 2026-11-07 | `be9ec5d7-b554-4bc1-8762-38bedae7bf5a` | 1 diary (member/composer/group fixes: finding 155, new evidence for 42 and 116) and 21 command-log lines | Codex, with Rami's prior yes |
 | 2026-11-06 | `a83c1989-e345-4828-8cb5-60c983aeb0df` | One branding diary, isolated from the backlog: native rebuild cost and manifest icon packaging. Zero command-log entries or attachments. | Codex, with Rami's yes |
 | 2026-10-27 | `4c8a0a07-60a8-466e-ae9a-bef9a0b29f82` | 4 diary entries (findings 1 to 15, in their Rough sections) and 77 command-log lines | Rami |
 | 2026-10-27 | `ac63ff5c-08e3-461b-ae7f-5f1598b2125b` | Findings 1 to 15 as issue files, rechecked at exact2 `cee509ac82`, in the entry `2026-10-27-findings-for-the-team.md` | Claude, at Rami's request |
@@ -231,6 +246,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 | 2026-11-02 | `f63c011a-dedb-4c1e-ae6b-4bee50181ae4` | 7 diary entries (findings 21 to 29, 33 and 34, and new evidence for findings 13 and 15; from the B1 and inbox entries, findings 30 to 32 and 35 to 37, and new evidence for findings 13 and 17) and 287 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `623dd86e-723a-4d6d-a5e1-d671e965d0d9` | 17 diary entries (the tasks of 2026-11-02 and 2026-11-03, B19 included; the app's README not attached) and 63 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `c0048b5e-44e2-40f5-aae3-63299084a8f0` | 2 diary entries (swipe to reply on media and Copy for a photo; Send Later: findings 90, 91 and 93 to 95) and 1 command-log line | Claude, with Rami's yes |
+| 2026-11-07 | `77e85bbe-29ca-49f0-9931-aac5ff2eb9d4` | 6 diary entries (the landing site of 2026-11-06; the TestFlight build, keyboard, Send, spinner and demo bug tasks of 2026-11-07: findings 143 to 150, 153 and 154, and new evidence for 45, 46, 116, 132 and 149) and 34 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `1a0285c9-b1bf-4f21-a7f9-69a05a6cfc20` | 1 diary entry (GIFs: finding 92, new evidence for 61) and 18 command-log lines | Claude, with Rami's yes |
 
 The first two sends include finding 14, which was withdrawn after they were sent.

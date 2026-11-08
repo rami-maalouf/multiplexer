@@ -58,12 +58,14 @@ public enum MatrixPush {
         guard case .event(let item) = try await notifications.getNotification(roomId: roomId, eventId: eventId) else { return nil }
         let me = (try? client.userId()) ?? saved.userId
         let names = CustomNames.names(json: (try? await client.accountData(eventType: CustomNames.type)) ?? nil)
-        return PushContent(item, roomId: roomId, eventId: eventId, ownUserId: me, customName: names[roomId])
+        return PushContent(item, roomId: roomId, eventId: eventId, ownUserId: me, customName: names[roomId],
+                           kind: RoomKinds.stored(in: storeDirectory).kind(roomId))
     }
 }
 
 extension PushContent {
-    init(_ item: NotificationItem, roomId: String, eventId: String, ownUserId: String, customName: String?) {
+    /// `kind`: the bridge's word on the chat, as the app kept it (`RoomKinds`); nil when not known.
+    init(_ item: NotificationItem, roomId: String, eventId: String, ownUserId: String, customName: String?, kind: BridgedKind?) {
         let room = item.roomInfo
         var sender = ""
         var body = "Message"
@@ -84,7 +86,7 @@ extension PushContent {
                   body: body,
                   // in a bridged chat the sender is a ghost of the bridge (`@whatsapp_123:server`).
                   network: RoomNetwork.of(serviceMembers: room.serviceMembers, heroes: [sender], ownUserId: ownUserId),
-                  isDirect: people <= 2 && (room.isDirect || service > 0),
+                  isDirect: RoomSummary.isOneToOne(people: people, isDirect: room.isDirect, bridged: service > 0, kind: kind),
                   isNoisy: item.isNoisy ?? false, hasMention: item.hasMention ?? false, threadId: item.threadId)
     }
 }

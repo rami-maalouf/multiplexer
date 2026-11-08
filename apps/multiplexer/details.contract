@@ -256,7 +256,8 @@ component VideoPlayer
           progress aria-label="Loading the video"
 
 // above the oldest loaded message: a small spinner while older messages load, then, quietly, where
-// the chat starts.
+// the chat starts. Both take the line's height (the spinner sits over a hidden copy of it), so the
+// messages do not move when one gives way to the other, at any text size.
 component OlderLine
   props
     atStart: bool
@@ -265,4 +266,7 @@ component OlderLine
       if atStart
         text "Start of the chat" font="-exact-footnote" color="-exact-secondary-label" testId="chat-start"
       else
-        progress aria-label="Loading older messages" testId="loading-older"
+        view position="relative"
+          text "Start of the chat" font="-exact-footnote" opacity=0 aria-hidden=true
+          view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+            progress aria-label="Loading older messages" testId="loading-older"

@@ -179,6 +179,26 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   `instagramgo`, `facebookgo` (Messenger), `telegram`, `signal`, `discordgo`, `linkedin`.
 - The test: `RoomNetworkTests` (a room of its own, "Multiplexer network test").
 
+## A chat's kind: one person or a group
+
+`RoomSummary.isOneToOne` (the DMs and Groups filters, the info page, a notification's title) uses
+one rule (`RoomKinds.swift`, `RoomSummary.isOneToOne`). `people` are the members but the
+service members.
+
+- More than 2 people: a group. Marked direct (`m.direct`) with at most 2: one person.
+- A bridged room (it has service members) not marked direct, with at most 2 people, is what its
+  bridge says: `com.beeper.room_type` (or `.v2`) in its `m.bridge` or `uk.half-shot.bridge` state.
+  `dm` is one person; any other value, or none, is a group (bridgev2 writes no room type for a
+  group). With no bridge state at all, the count decides: one person.
+- The sync does not bring `m.bridge` (above), so `GET /rooms/{id}/state` asks for it, once per room
+  (the state of a room of at most two people is small). The answer is kept in the store folder
+  (`room-kinds.json`), so the next launch and the notification extension have it.
+- Measured on a real account (2026-11-07, read only): 349 rooms, 340 bridged. Every bridged chat
+  with one person (251) is in `m.direct` with room type `dm`; no bridged group is. The bridge's bot
+  had joined all 340. So `m.direct` decides nearly every room, and only a few rooms are asked.
+- The info page's count leaves out a service member only when it has joined, as the members'
+  list does: a room may name a bot that is not a member.
+
 ## A chat's actions
 
 The long-press menu's actions (`ChatActions.swift`), how each is kept on the server, and what

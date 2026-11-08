@@ -202,7 +202,9 @@ final class Matrix: ExactModule {
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     // the chat's messages at once, with its "New" line (the first message after this
                     // account's read receipt) when known; settling: more comes, and the chat hears of it.
-                    let opening = try await account.opening(roomId: roomId, limit: request["limit"] as? Int ?? 20)
+                    // early: the app has a kept copy to show in front; else it waits for the full first screen.
+                    let opening = try await account.opening(roomId: roomId, limit: request["limit"] as? Int ?? 20,
+                                                            early: request["early"] as? Bool ?? true)
                     let messages = opening.messages
                     reply.send(["atStart": opening.atStart, "firstUnread": opening.firstUnread ?? "", "settling": opening.settling,
                                 "messages": messages.map {

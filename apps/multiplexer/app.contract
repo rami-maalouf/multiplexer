@@ -446,6 +446,10 @@ component Multiplexer
   resource thread = loadMessages(openRoom, openIsDirect, openRoomName, time.utcOffset, openNetwork, "thread") as shape Thread else empty()
   // the open chat's kept draft, so a draft outlives the app (its photos and files do not).
   resource savedDraft = loadDraft(openRoom) as shape Composer else empty()
+  // a local draft is authoritative; otherwise wait for this room's successful saved read.
+  // the empty loading fallback must never become a replacement draft.
+  derive composerReady = openRoom != "" and (composers.map(c => c.room).includes(openRoom) or
+    (savedDraft.room == openRoom and not pending(savedDraft) and not failed(savedDraft)))
   derive composer = composerOf(composers, openRoom, savedDraft)
   derive unsavedComposer = composerOf(composers, unsaved, savedDraft)
   derive lastId = match thread.messages.at(-1) { case some(m) => m.id, case none => "" }
@@ -581,7 +585,7 @@ component Multiplexer
   action readNow
     send markedRead = markRead(openRoom)
   action keepDraftNow
-    if unsaved != ""
+    if unsaved != "" and composers.map(c => c.room).includes(unsaved)
       send keptDraft = saveDraft(unsaved, unsavedComposer.text, unsavedComposer.replyTo)
       unsaved = ""
   // the newest message is in view while its row's top is above the chat's bottom edge.
@@ -657,63 +661,87 @@ component Multiplexer
     unsaved = ""
   action reloadRooms
     refresh roomList
+  action retryDraft
+    refresh savedDraft
+  action beginVoice
+    if composerReady
+      startVoice()
+  action postVoice
+    if composerReady
+      sendVoiceDraft()
+  action scheduleDraft(choice: string)
+    if composerReady and canLater
+      sendLaterAt(choice)
+  action pickDraftTime
+    if composerReady and canLater
+      pickLaterTime()
+  action saveDraftLater
+    if composerReady
+      saveLater()
   action reloadThread
     refresh thread
   action reloadPeek
     refresh peek
   // while an edit is under way the field holds its text; the draft waits.
   action editDraft(v: string)
-    if editing != ""
-      editText = v
-    else
-      composers = withComposer(composers, Composer(composer, text=v))
-      unsaved = openRoom
+    if composerReady
+      if editing != ""
+        editText = v
+      else
+        composers = withComposer(composers, Composer(composer, text=v))
+        unsaved = openRoom
   // as Messages does, Send clears the composer at once and scrolls to the end, even from far up.
   action post
-    // an edit that changed nothing just ends.
-    if editing != ""
-      if editText.trim() != "" and editText.trim() != editOld
-        send edited = editMessage(openRoom, editing, editText.trim())
-      editing = ""
-      editText = ""
-    else if composer.attachments.length > 0
-      if not pending(sentMedia)
-        // the text is the caption: it goes with the last photo or file, the reply with the first.
-        send sentMedia = sendMedia(openRoom, composer.attachments, composer.text.trim(), composer.replyTo)
-        composers = withComposer(composers, Composer(composer, text="", replyTo="", attachments=[]))
+    if composerReady
+      // an edit that changed nothing just ends.
+      if editing != ""
+        if editText.trim() != "" and editText.trim() != editOld
+          send edited = editMessage(openRoom, editing, editText.trim())
+        editing = ""
+        editText = ""
+      else if composer.attachments.length > 0
+        if not pending(sentMedia)
+          // the text is the caption: it goes with the last photo or file, the reply with the first.
+          send sentMedia = sendMedia(openRoom, composer.attachments, composer.text.trim(), composer.replyTo)
+          composers = withComposer(composers, Composer(composer, text="", replyTo="", attachments=[]))
+          unsaved = openRoom
+          tooLarge = ""
+      else if composer.text.trim() != "" and not pending(sent)
+        send sent = sendMessage(openRoom, composer.text.trim(), composer.replyTo)
+        composers = withComposer(composers, Composer(composer, text="", replyTo=""))
         unsaved = openRoom
-        tooLarge = ""
-    else if composer.text.trim() != "" and not pending(sent)
-      send sent = sendMessage(openRoom, composer.text.trim(), composer.replyTo)
-      composers = withComposer(composers, Composer(composer, text="", replyTo=""))
-      unsaved = openRoom
-    // Send keeps a keyboard that is up (its button retains the composer's focus), and raises none
-    // the person put away (a drag down).
-    if composerFocus
-      focus("composer")
+      // Send keeps a keyboard that is up (its button retains the composer's focus), and raises none
+      // the person put away (a drag down).
+      if composerFocus
+        focus("composer")
   // a press on the field's glass (around the text, or held): the keyboard comes up, as a tap on the
   // text does. The press also makes the glass interactive (it swells and follows the finger).
   action pressField
-    if recording == "idle"
-      panel = false
-      focus("composer")
+    if composerReady
+      if recording == "idle"
+        panel = false
+        focus("composer")
   // "+" puts the keyboard away and shows the panel in its place; X brings the keyboard back.
   action togglePanel
-    if panel
-      panel = false
-      focus("composer")
-    else
-      panel = true
-      blur("composer")
+    if composerReady
+      if panel
+        panel = false
+        focus("composer")
+      else
+        panel = true
+        blur("composer")
   action composerFocused
-    panel = false
-    composerFocus = true
+    if composerReady
+      panel = false
+      composerFocus = true
   action composerBlurred
     composerFocus = false
   action choosePhotos
-    showPicker("pick-photos")
+    if composerReady
+      showPicker("pick-photos")
   action chooseFiles
-    showPicker("pick-files")
+    if composerReady
+      showPicker("pick-files")
   // what was picked joins the open chat's composer, and the keyboard comes back for a caption.
   // Photos are made ready (smaller, upright, without location) while the caption is typed; videos
   // and GIFs stay as they are. Nothing goes until Send.
@@ -721,20 +749,23 @@ component Multiplexer
     attachPhotos(files.map(f => Attachment(file=chosenOf(f), photo=isPicture(f.type))))
   // a camera photo or a staged KLIPY GIF comes here too (camera-members, gif-members).
   action attachPhotos(picked: Attachment[])
-    composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(picked)))
-    send staged = stageMedia(picked)
-    panel = false
-    tooLarge = ""
-    focus("composer")
+    if composerReady
+      composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(picked)))
+      send staged = stageMedia(picked)
+      panel = false
+      tooLarge = ""
+      focus("composer")
   // a file over the server's limit would only fail: it stays out, and a line says why.
   action filesPicked(files: Picked[])
-    let fit = files.filter(f => uploadLimit.bytes == 0 or f.size <= uploadLimit.bytes)
-    composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(fit.map(f => Attachment(file=chosenOf(f), photo=false)))))
-    tooLarge = files.filter(f => uploadLimit.bytes > 0 and f.size > uploadLimit.bytes).map(f => f.name).join(", ")
-    panel = false
-    focus("composer")
+    if composerReady
+      let fit = files.filter(f => uploadLimit.bytes == 0 or f.size <= uploadLimit.bytes)
+      composers = withComposer(composers, Composer(composer, attachments=composer.attachments.concat(fit.map(f => Attachment(file=chosenOf(f), photo=false)))))
+      tooLarge = files.filter(f => uploadLimit.bytes > 0 and f.size > uploadLimit.bytes).map(f => f.name).join(", ")
+      panel = false
+      focus("composer")
   action unpick(path: string)
-    composers = withComposer(composers, Composer(composer, attachments=composer.attachments.filter(a => a.file.path != path)))
+    if composerReady
+      composers = withComposer(composers, Composer(composer, attachments=composer.attachments.filter(a => a.file.path != path)))
   // a tap on a file downloads it once, then opens the share sheet, where it opens in its app.
   action openFile(id: string)
     if not pending(opened)
@@ -751,20 +782,23 @@ component Multiplexer
   // a swipe right on a bubble, or Reply in its menu: the open chat's composer answers it. The
   // swipe's haptic is Exact's, at the point where letting go replies; a second one here doubled it.
   action startReply(id: string, name: string, body: string)
-    composers = withComposer(composers, Composer(composer, replyTo=id, replyName=name, replyBody=body))
-    unsaved = openRoom
-    held = ""
-    editing = ""
-    revealing = id
-    focus("composer")
+    if composerReady
+      composers = withComposer(composers, Composer(composer, replyTo=id, replyName=name, replyBody=body))
+      unsaved = openRoom
+      held = ""
+      editing = ""
+      revealing = id
+      focus("composer")
   // Send Later's text now waits on the server: the composer empties, its reply too. A root action,
   // as a members file cannot name Composer (send-later-members.contract calls it).
   action clearComposer
-    composers = withComposer(composers, Composer(composer, text="", replyTo=""))
-    unsaved = openRoom
+    if composerReady
+      composers = withComposer(composers, Composer(composer, text="", replyTo=""))
+      unsaved = openRoom
   action cancelReply
-    composers = withComposer(composers, Composer(composer, replyTo=""))
-    unsaved = openRoom
+    if composerReady
+      composers = withComposer(composers, Composer(composer, replyTo=""))
+      unsaved = openRoom
   // a long press lifts the bubble where it is, with reactions above it and actions under it.
   action hold(id: string, body: string, name: string, own: bool, tail: bool)
     // the clock moves once a minute: Edit and Delete read it fresh.
@@ -848,15 +882,16 @@ component Multiplexer
       haptic("success")
   // Edit: the composer takes the message's text, under an "Editing" bar.
   action startEdit
-    editing = held
-    editText = heldText
-    editOld = heldText
-    revealing = held
-    held = ""
-    panel = false
-    focus("composer")
-    // the caret at the text's end, ready to add to it (an offset past the end is clamped).
-    setSelectionRange("composer", 1000000, 1000000)
+    if composerReady
+      editing = held
+      editText = heldText
+      editOld = heldText
+      revealing = held
+      held = ""
+      panel = false
+      focus("composer")
+      // the caret at the text's end, ready to add to it (an offset past the end is clamped).
+      setSelectionRange("composer", 1000000, 1000000)
   action cancelEdit
     editing = ""
     editText = ""
@@ -1285,7 +1320,7 @@ component Multiplexer
         if e.name == "later"
           LaterSheet(appearance=appearance, route=`${e.id}`, title="Send Later", body=composer.text.trim(), bodyLabel="Message", verb="Send", saveLabel="Schedule",
             note=laterNote, picked=laterWhen, saving=laterSaving, refused=laterRefused, choices=false, monday=false, choose=pickLater,
-            pick=pickLater, close=closeLater, save=saveLater)
+            pick=pickLater, close=closeLater, save=saveDraftLater)
         if e.name == "laterChange"
           LaterSheet(appearance=appearance, route=`${e.id}`, title="Change Time",
             body=(match first(scheduledShown.filter(m => m.id == laterFor)) { case some(m) => m.body, case none => "" }),
@@ -1593,145 +1628,151 @@ component Multiplexer
             // messages under them use the same soft edge as the home bottom bar (one material plus
             // chat.edge-bottom), fading in above the bar and reaching under the home indicator.
             // With Reduce Transparency the bar is the page's colour, fading in above it.
-            if threadShown
-              // the keyboard's own toolbar while the chat is on top (the root's interactive-widget): it rides
-              // the keyboard's top and the transcript keeps its size under the keyboard, which shows the
-              // messages through its glass, as Beeper's does; the transcript gains a bottom inset instead.
-              // Every other screen keeps the default, where the page ends at the keyboard's top.
-              // With the keyboard down it sits 16 points into the home indicator's band, low as Beeper's
-              // (lower than the inbox's bar); the keyboard lifts it by its box less its bottom padding, so
-              // with the keyboard up it still rests on the keyboard's top.
-              column inert=(held != "") flex-shrink=0 position="relative" role="toolbar" toolbarPlacement="keyboard" testId="composer-bar"
-                margin-bottom=-16
-                // the same soft edge as the home bottom bar (inbox.contract BottomBar): one material,
-                // full at the screen's bottom and fading out above the composer, plus the same tint.
-                // The earlier solid fade from 32px made a black shelf under the field.
-                if viewport.prefersReducedTransparency
-                  view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none" aria-hidden=true
-                    background-image="linear-gradient(to top, -exact-background 0%, transparent 100%)"
+            // it is there from the chat's first frame, also while its messages load, so nothing pops in
+            // when they arrive.
+            // the keyboard's own toolbar while the chat is on top (the root's interactive-widget): it rides
+            // the keyboard's top and the transcript keeps its size under the keyboard, which shows the
+            // messages through its glass, as Beeper's does; the transcript gains a bottom inset instead.
+            // Every other screen keeps the default, where the page ends at the keyboard's top.
+            // With the keyboard down it sits 16 points into the home indicator's band, low as Beeper's
+            // (lower than the inbox's bar); the keyboard lifts it by its box less its bottom padding, so
+            // with the keyboard up it still rests on the keyboard's top.
+            column inert=(held != "") flex-shrink=0 position="relative" role="toolbar" toolbarPlacement="keyboard" testId="composer-bar"
+              margin-bottom=-16
+              // the same soft edge as the home bottom bar (inbox.contract BottomBar): one material,
+              // full at the screen's bottom and fading out above the composer, plus the same tint.
+              // The earlier solid fade from 32px made a black shelf under the field.
+              if viewport.prefersReducedTransparency
+                view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none" aria-hidden=true
+                  background-image="linear-gradient(to top, -exact-background 0%, transparent 100%)"
+              else
+                view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
+                  aria-hidden=true backgroundMaterial=(viewport.prefersColorScheme == "dark" ? "dark" : "ultra-thin")
+                  mask-image="linear-gradient(to top, black 0%, transparent 100%)"
+                view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
+                  aria-hidden=true background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
+              // above the bar, at the right, while the newest message is out of view. Its tap area is
+              // 44 points and its circle 28, centred in it, so the circle stays 8 points above the bar.
+              if away and thread.messages.length > 0
+                view position="absolute" bottom="100%" right=12
+                  JumpButton(appearance=appearance, count=belowUnread, press=jumpToEnd)
+              // this chat's messages waiting on the server (Send Later): how many, and when the first goes.
+              match first(openScheduled)
+                case some(m)
+                  ScheduledBar(count=openScheduled.length, first=m.at, now=shown, offset=time.utcOffset, open=openScheduledList)
+                case none
+                  view
+              if not composerReady and failed(savedDraft) and not pending(savedDraft)
+                row align-items="center" gap=8 margin="6px 12px 0" testId="draft-load-error"
+                  text "Couldn’t load your draft." font="-exact-footnote" color="-exact-secondary-label" flex=1
+                  button press=retryDraft testId="retry-draft"
+                    text "Retry"
+              // an edit's bar takes the reply bar's place, in its look; the reply waits with the draft.
+              if editing != ""
+                row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="edit-bar"
+                  column flex=1 min-width=0
+                    text "Editing" font="-exact-caption1" font-weight=600 color="AccentColor"
+                    text editOld font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
+                  button press=cancelEdit aria-label="Cancel Editing" testId="cancel-edit"
+                    image "symbol:close"
+              else if composer.replyTo != ""
+                row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="reply-bar"
+                  column flex=1 min-width=0
+                    text `Replying to ${composer.replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
+                    text composer.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
+                  button press=cancelReply disabled=(not composerReady) aria-label="Cancel Reply" testId="cancel-reply"
+                    image "symbol:close"
+              // "+" on the left, the field, and the voice button or Send on the right, each its own glass,
+              // as Beeper has them. While recording or as a draft: X replaces "+", Stop or Send replaces
+              // voice; the capsule holds only the waveform. The photos and files picked sit above the text.
+              // one glass group (iOS 26's glass container), so the + button, the field and the voice
+              // button are glass on one plane, as Beeper's: apart at rest (the group's spacing is the
+              // row's gap), they blend where a pressed, swelling glass comes near its neighbour.
+              row inert=(not composerReady) align-items="flex-end" gap=8 margin="6px 12px" glassGroup=8
+                if recording != "idle"
+                  VoiceCancel(press=cancelVoice, draft=(recording == "draft"))
                 else
-                  view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
-                    aria-hidden=true backgroundMaterial=(viewport.prefersColorScheme == "dark" ? "dark" : "ultra-thin")
-                    mask-image="linear-gradient(to top, black 0%, transparent 100%)"
-                  view position="absolute" top=-24 left=0 right=0 bottom=-40 pointer-events="none"
-                    aria-hidden=true background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
-                // above the bar, at the right, while the newest message is out of view. Its tap area is
-                // 44 points and its circle 28, centred in it, so the circle stays 8 points above the bar.
-                if away and thread.messages.length > 0
-                  view position="absolute" bottom="100%" right=12
-                    JumpButton(appearance=appearance, count=belowUnread, press=jumpToEnd)
-                // this chat's messages waiting on the server (Send Later): how many, and when the first goes.
-                match first(openScheduled)
-                  case some(m)
-                    ScheduledBar(count=openScheduled.length, first=m.at, now=shown, offset=time.utcOffset, open=openScheduledList)
-                  case none
-                    view
-                // an edit's bar takes the reply bar's place, in its look; the reply waits with the draft.
-                if editing != ""
-                  row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="edit-bar"
-                    column flex=1 min-width=0
-                      text "Editing" font="-exact-caption1" font-weight=600 color="AccentColor"
-                      text editOld font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
-                    button press=cancelEdit aria-label="Cancel Editing" testId="cancel-edit"
-                      image "symbol:close"
-                else if composer.replyTo != ""
-                  row align-items="center" gap=8 margin="6px 12px 0" padding-left=12 border-left="2px solid AccentColor" testId="reply-bar"
-                    column flex=1 min-width=0
-                      text `Replying to ${composer.replyName}` font="-exact-caption1" font-weight=600 color="AccentColor"
-                      text composer.replyBody font="-exact-footnote" color="-exact-secondary-label" line-clamp=2
-                    button press=cancelReply aria-label="Cancel Reply" testId="cancel-reply"
-                      image "symbol:close"
-                // "+" on the left, the field, and the voice button or Send on the right, each its own glass,
-                // as Beeper has them. While recording or as a draft: X replaces "+", Stop or Send replaces
-                // voice; the capsule holds only the waveform. The photos and files picked sit above the text.
-                // one glass group (iOS 26's glass container), so the + button, the field and the voice
-                // button are glass on one plane, as Beeper's: apart at rest (the group's spacing is the
-                // row's gap), they blend where a pressed, swelling glass comes near its neighbour.
-                row align-items="flex-end" gap=8 margin="6px 12px" glassGroup=8
-                  if recording != "idle"
-                    VoiceCancel(press=cancelVoice, draft=(recording == "draft"))
-                  else
-                    AddButton(open=panel, press=togglePanel, disabled=(editing != ""))
-                  // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
-                  // Videos join the tray the same way (caption, remove, Send): they are not sent on pick.
-                  input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/mpeg" multiple=true display="none"
-                    change=photosPicked testId="pick-photos"
-                  input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
-                  // the field stays mounted while recording (hidden) so the keyboard does not fall when the
-                  // voice button keeps its focus; the recording or draft capsule covers it. Its press makes
-                  // the glass interactive, as Beeper's field is: held, it swells and follows the finger.
-                  column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" press=pressField
-                    -exact-press-opacity=1 testId="composer-glass"
-                    // it widens into the voice button's slot as Send moves in, and gives it back.
-                    -exact-layout-transition=(viewport.prefersReducedMotion ? "none" : "300ms cubic-bezier(.32,.72,0,1)")
-                    if recording == "draft"
-                      DraftBar(appearance=appearance, bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
-                        playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, play=playVoice("draft"))
-                    else if recording != "idle"
-                      RecordingBar(track=recordTrack, milliseconds=recorderState.duration, starting=(recording != "recording"))
-                    else
-                      if composer.attachments.length > 0 and editing == ""
-                        Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
-                      if tooLarge != ""
-                        text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
-                          font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
-                    // the field's own padding makes it as tall as the circles beside it (48 points); the row
-                    // adds none above or below. a bridged chat's network logo at the field's start says where
-                    // the message goes, as the placeholder does ("Reply on WhatsApp").
-                    // once there is something to send, Send sits inside the field at its end, as Beeper's
-                    // does, and the field reaches the row's end (the voice button's slot goes).
-                    row align-items="flex-end" padding=(recording == "idle" and not voiceOffered ? "0 48px 0 14px" : "0 14px")
-                      opacity=(recording != "idle" ? 0 : 1) height=(recording != "idle" ? 0 : "auto") overflow="hidden"
-                      pointer-events=(recording != "idle" ? "none" : "auto") aria-hidden=(recording != "idle")
-                      // the network's logo only while the field is empty, as Beeper's: typing takes its room.
-                      if openNetwork != "matrix" and not viewport.accessibilityTextSize and recording == "idle" and voiceOffered
-                        view flex-shrink=0 -exact-exit-animation="logoOut 150ms ease-in both"
-                          ComposerNetwork(network=openNetwork)
-                      textarea id="composer" value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused blur=composerBlurred rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
-                        placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
-                        aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
-                        border="none" background-color="transparent" line-height=1.25
-                    // Send (or an edit's checkmark): the accent's liquid glass (a tinted glass view), 32
-                    // points, 8 from the field's end and bottom, over the field's right padding. It floats:
-                    // beside the text in the row, the text's own height was measured at the row's whole width
-                    // and cut its first line. A long press offers Send Later's times (send-later-members.contract)
-                    // where the chat can have it; it is on a view around Send, as a native button takes no long press.
-                    if recording == "idle" and not voiceOffered
-                      view position="absolute" right=8 bottom=8 contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "")
-                        testId="send-hold"
-                        animation=(viewport.prefersReducedMotion ? "none" : "sendIn 280ms 60ms cubic-bezier(.32,.72,0,1) both")
-                        -exact-exit-animation="sendOut 160ms ease-in both"
-                        // a glass circle tinted the accent (UIKit's tinted glass), not a native button, so it is
-                        // glass on the same plane as the field it sits in. Disabled, only its arrow dims.
-                        button appearance="none" press=post backgroundMaterial="glass" -exact-tint-color=appearance.tint
-                          border-radius=16 -exact-press-opacity=1 width=32 height=32 retainFocus=true testId="send"
-                          display="flex" align-items="center" justify-content="center"
-                          disabled=(editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia)))
-                          aria-label=(editing != "" ? "Save Edit" : "Send")
-                          image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 16px)" color=appearance.onTint
-                  // the voice slot: the voice button, Stop while recording, the draft's Send; each liquid glass.
+                  AddButton(open=panel, press=togglePanel, disabled=(not composerReady or editing != ""))
+                // no HEIC in the list, so the picker hands over an iPhone photo as a JPEG, which the tray can show.
+                // Videos join the tray the same way (caption, remove, Send): they are not sent on pick.
+                input type="file" id="pick-photos" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/mpeg" multiple=true display="none"
+                  change=photosPicked testId="pick-photos"
+                input type="file" id="pick-files" multiple=true display="none" change=filesPicked testId="pick-files"
+                // the field stays mounted while recording (hidden) so the keyboard does not fall when the
+                // voice button keeps its focus; the recording or draft capsule covers it. Its press makes
+                // the glass interactive, as Beeper's field is: held, it swells and follows the finger.
+                column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" press=pressField
+                  -exact-press-opacity=1 testId="composer-glass"
+                  // it widens into the voice button's slot as Send moves in, and gives it back.
+                  -exact-layout-transition=(viewport.prefersReducedMotion ? "none" : "300ms cubic-bezier(.32,.72,0,1)")
                   if recording == "draft"
-                    button appearance="none" press=sendVoiceDraft disabled=(not draftReady and pending(voicePrepared))
-                      backgroundMaterial="glass" -exact-tint-color=appearance.tint border-radius=24 -exact-press-opacity=1
-                      width=48 height=48 flex-shrink=0 retainFocus=true aria-label="Send Voice Message" testId="voice-send"
-                      display="flex" align-items="center" justify-content="center"
-                      image "symbol:send" font-size="min(-exact-body, 22px)" color=appearance.onTint
+                    DraftBar(appearance=appearance, bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
+                      playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, play=playVoice("draft"))
                   else if recording != "idle"
-                    VoiceStop(press=stopVoice, disabled=(recording != "recording"))
-                  else if voiceOffered
-                    VoiceButton(press=startVoice, disabled=pending(sentVoice), still=viewport.prefersReducedMotion)
-            column id="send-later-menu" popover="auto" role="menu"
-              button press=sendLaterAt("tomorrow") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-tomorrow"
+                    RecordingBar(track=recordTrack, milliseconds=recorderState.duration, starting=(recording != "recording"))
+                  else
+                    if composer.attachments.length > 0 and editing == ""
+                      Tray(items=composer.attachments, stacked=viewport.accessibilityTextSize, remove=unpick)
+                    if tooLarge != ""
+                      text `${tooLarge} ${tooLarge.includes(", ") ? "are" : "is"} over ${sizeText(uploadLimit.bytes)}, the most this server takes.`
+                        font="-exact-footnote" color="-exact-system-red" padding="8px 12px 0" testId="too-large"
+                  // the field's own padding makes it as tall as the circles beside it (48 points); the row
+                  // adds none above or below. a bridged chat's network logo at the field's start says where
+                  // the message goes, as the placeholder does ("Reply on WhatsApp").
+                  // once there is something to send, Send sits inside the field at its end, as Beeper's
+                  // does, and the field reaches the row's end (the voice button's slot goes).
+                  row align-items="flex-end" padding=(recording == "idle" and not voiceOffered ? "0 48px 0 14px" : "0 14px")
+                    opacity=(recording != "idle" ? 0 : 1) height=(recording != "idle" ? 0 : "auto") overflow="hidden"
+                    pointer-events=(recording != "idle" ? "none" : "auto") aria-hidden=(recording != "idle")
+                    // the network's logo only while the field is empty, as Beeper's: typing takes its room.
+                    if openNetwork != "matrix" and not viewport.accessibilityTextSize and recording == "idle" and voiceOffered
+                      view flex-shrink=0 -exact-exit-animation="logoOut 150ms ease-in both"
+                        ComposerNetwork(network=openNetwork)
+                    textarea id="composer" disabled=(not composerReady) value=(editing != "" ? editText : composer.text) input=editDraft focus=composerFocused blur=composerBlurred rows=1 field-sizing="content" max-height=(viewport.accessibilityTextSize ? 240 : 140)
+                      placeholder=composerPlaceholder(openNetwork, composer.attachments.length > 0, viewport.accessibilityTextSize)
+                      aria-label=replyPlaceholder(openNetwork) testId="composer" flex=1 min-width=0 padding="13px 0"
+                      border="none" background-color="transparent" line-height=1.25
+                  // Send (or an edit's checkmark): the accent's liquid glass (a tinted glass view), 32
+                  // points, 8 from the field's end and bottom, over the field's right padding. It floats:
+                  // beside the text in the row, the text's own height was measured at the row's whole width
+                  // and cut its first line. A long press offers Send Later's times (send-later-members.contract)
+                  // where the chat can have it; it is on a view around Send, as a native button takes no long press.
+                  if recording == "idle" and not voiceOffered
+                    view position="absolute" right=8 bottom=8 contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "")
+                      testId="send-hold"
+                      animation=(viewport.prefersReducedMotion ? "none" : "sendIn 280ms 60ms cubic-bezier(.32,.72,0,1) both")
+                      -exact-exit-animation="sendOut 160ms ease-in both"
+                      // a glass circle tinted the accent (UIKit's tinted glass), not a native button, so it is
+                      // glass on the same plane as the field it sits in. Disabled, only its arrow dims.
+                      button appearance="none" press=post backgroundMaterial="glass" -exact-tint-color=appearance.tint
+                        border-radius=16 -exact-press-opacity=1 width=32 height=32 retainFocus=true testId="send"
+                        display="flex" align-items="center" justify-content="center"
+                        disabled=(not composerReady or (editing != "" ? editText.trim() == "" : ((composer.text.trim() == "" and composer.attachments.length == 0) or pending(sent) or pending(sentMedia))))
+                        aria-label=(editing != "" ? "Save Edit" : "Send")
+                        image (editing != "" ? "symbol:checkmark" : "symbol:send") font-size="min(-exact-body, 16px)" color=appearance.onTint
+                // the voice slot: the voice button, Stop while recording, the draft's Send; each liquid glass.
+                if recording == "draft"
+                  button appearance="none" press=postVoice disabled=(not composerReady or (not draftReady and pending(voicePrepared)))
+                    backgroundMaterial="glass" -exact-tint-color=appearance.tint border-radius=24 -exact-press-opacity=1
+                    width=48 height=48 flex-shrink=0 retainFocus=true aria-label="Send Voice Message" testId="voice-send"
+                    display="flex" align-items="center" justify-content="center"
+                    image "symbol:send" font-size="min(-exact-body, 22px)" color=appearance.onTint
+                else if recording != "idle"
+                  VoiceStop(press=stopVoice, disabled=(recording != "recording"))
+                else if voiceOffered
+                  VoiceButton(press=beginVoice, disabled=(not composerReady or pending(sentVoice)), still=viewport.prefersReducedMotion)
+            column id="send-later-menu" inert=(not composerReady) popover="auto" role="menu"
+              button press=scheduleDraft("tomorrow") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-tomorrow"
                 image "symbol:icon.clock"
                 text "Tomorrow, 9:00 AM"
               if laterMonday
-                button press=sendLaterAt("monday") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-monday"
+                button press=scheduleDraft("monday") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-monday"
                   image "symbol:icon.clock"
                   text "Monday, 9:00 AM"
-              button press=pickLaterTime popovertarget="send-later-menu" popovertargetaction="hide" testId="later-custom"
+              button press=pickDraftTime popovertarget="send-later-menu" popovertargetaction="hide" testId="later-custom"
                 image "symbol:calendar"
                 text "Custom Time…"
-            if threadShown and panel
+            if threadShown and panel and composerReady
               AddPanel(photos=choosePhotos, camera=openCamera, cameraOffered=cameraOffered, files=chooseFiles, gifs=openGifs,
                 reduced=viewport.prefersReducedMotion)
             if jumpMissed != "" and jumpMissed == openRoom

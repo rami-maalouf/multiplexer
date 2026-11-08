@@ -4,6 +4,53 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**R03 read-only phone recheck (2026-11-07):** with Rami's OK, scrolled the signed-in orbit
+Mux inbox on the paired iPhone only (no chats opened, nothing sent or marked read). Home
+put the app in `runningBackgroundSuspended`; after reopen, two more scrolls each changed
+the visible rows. Freeze did not reproduce under automation. R03 stays open until a real
+finger freeze is gone or a proved fix lands. Evidence `/tmp/mx-ready-r03/`.
+
+**Release readiness continuation (2026-11-07):** branch `fix/release-readiness` holds
+TestFlight push packaging (`90736ae`) and the production push gateway with a separate
+scoped key (`7fcb305`). Controlled APNs probes for both environments returned the expected
+rejection for invalid tokens. RoomKinds now retries failed bridged-kind lookups (unit tests
+6/6 pass; uncommitted). Full MatrixCore run: 129 tests, 2 skipped, 1 failure
+(`testANewLineFurtherBackThanTheChatLoads`, unread stayed 24). Self-host guide is in
+`docs/self-hosting.md`. App PRs #12–#14 remain open and mergeable. Branch not pushed yet.
+
+**Exact validation continuation (2026-11-07):** recovered the newer original-thread
+checkpoint: Rami saved export compliance and build 2 showed Ready to Submit, assigned
+to Teammates, which contained only its invited owner. The prior browser blocker below
+is historical. App PRs #12, #13 and #14 and Exact #1560 are linked to this thread.
+Exact text fade retiming sampled the clock twice, shifting the calculated endpoint
+when execution was delayed between samples. Local commit `a7ae7d07b0` uses one sample
+for progress and the layer clock origin. All 35 TextPlace iOS cases passed, including
+the hosted pixel comparison; the existing endpoint assertion is unchanged. The endpoint
+test also passed 100 consecutive repetitions, and caps passed. Feedback receipt:
+`ac9481f6-814f-49b1-bbc1-33193c87b718` (one diary). This does
+not resolve the separately observed fade-completion callback timeout. Earlier tracing
+edits remain uncommitted and were present during this run. Navigation, menu and surface
+candidates remain local. Broad prerequisite validation was stopped for disk pressure;
+Cargo cleaned the disposable dev artifacts, recovering 24 GB free. No upload or shared
+Exact integration was performed.
+
+**Teammate-testing resumption (2026-11-07):** app fixes are committed in PR #14
+(`fix/members-composer-groups`, stacked on #13). Recorded drives show matching group
+counts, the composer mounted during first-open loading, corrected two-person bridged
+groups, and the restored staged unread badge. Focused verification passed: 12 iOS,
+13 app and 15 core tests. The full core run finished with 129 tests, two skipped and
+two failures (unread count stayed 22; recovery first sync timed out). Both failed
+cases passed together in isolation in 191.625 s; the full suite is not claimed green.
+No product code or timeout was changed during resumption. The owned MX demo Simulator
+is shut down. Remaining Exact work is committed locally in `exact2-rm-{expect,largetitle,menu,menusurface}`;
+its broad native validation still contains failures, so those fixes were not published
+or integrated. The drive CLI's 49 tests pass under pinned Bun 1.4.2; caps passes.
+Browser snapshots timed out, including on a fresh tab, and the fallback browser host
+is unavailable. TestFlight build 2's current compliance/installability is unverified;
+Rami previously chose to answer France himself. PR #14 is not in build 2. Export
+metadata remains unchanged pending that answer. The remaining diary was sent with
+Rami's prior authorization: receipt `be9ec5d7-b554-4bc1-8762-38bedae7bf5a`.
+
 **Push setup applied (2026-11-07):** after Rami's explicit approval, created a sandbox-only
 APNs key restricted to `com.ramimaalouf.multiplexer`, stored and verified it in Keychain,
 and deployed it through the playbook (0600, matrix:matrix; hash matches Keychain).
@@ -540,6 +587,8 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-04 | Later ready for serialized integration: tested code head `1a38b7c` incorporates main `03fec0f` and UI main `cebda48`. New Space `149843c`; room-member preview resolution and fallback wrapping `dc70b9a`; merged-space compatibility `840eea5`. Ten existing focused core tests and both corrected compatibility tests passed; the latter proves new children survive a later failure and retry completes membership. Final `verify ios`: 7 tests, no findings, 9 largest-text screens. Signed-in Select Chats fallback wraps in both appearances at largest text; account signed out and own simulator shut down. Prior real-account 29-to-zero raw-sender evidence retained; no new real-account drive. Main `316e116` arrived during verification and is deliberately left for coordinator integration, preserving push/shared-store migration. No main merge by this lane. |
 | 2026-11-04 | Integrated the complete Later branch e93aa0e with main 316e116, preserving shared-store migration. Combined verify ios: 7 passed, light/dark clean, 9 largest-text screens without overflow (186.9 s). Combined MatrixCore selection: 25 passed, 0 failed/skipped (224.2 s), covering communities, Requests, preview senders, push and session stores under the shared lock. Labels remains outside this integration pending review fixes. |
 | 2026-11-04 | Integrated full Labels branch 2b55caf after the combined 39-test selection passed on main under the shared lock (no failures/skips, 1062.9 s). Preserved all earlier UI, Spaces, Requests and session-migration work. Contract build clean; app/core code identical to the lane’s final 9-test iOS verification, with light/dark and 11 largest-text screens clean. The archive fix changes only test event sequencing. Feedback remains local per Rami. |
+| 2026-11-07 | R04 changed for chats with no kept copy (branch `fix/demo-bugs`): such a chat now waits for its full first screen under the loading spinner, instead of answering on the timeline's first diff. Why: on a new device that diff holds only the newest message, which showed alone for about 0.35 s and then jumped up (seen in the demo recording). A chat with a kept copy keeps R04's early answer, since the copy covers the older rows. The older-messages row keeps one height in both states. The demo staging seats a third contact in its group: its bot is listed but never joins, so the app's member count (which subtracts listed service members, right for real bridges) read the group as a DM. |
+| 2026-11-07 | DMs or Groups for a bridged chat (branch `fix/members-composer-groups`): `m.direct` decides first; a bridged room not marked direct with at most 2 people besides its bot is what its bridge's `m.bridge` says (`com.beeper.room_type` `dm`, else a group), read once per room from the server and kept; with no bridge state the count decides, as before. Why: the count cannot tell a group with one other person from a DM. A read-only audit of the real account (349 rooms) found every bridged DM in `m.direct` with room type `dm` and no bridged group there, so only a few rooms are asked. Also: the info page counts a service member out only when it has joined (the list's rule), and the chat's composer shows from its first frame. |
 
 ### Appearance preference (2026-11-04)
 

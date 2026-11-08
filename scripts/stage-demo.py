@@ -7,11 +7,17 @@
   uv run scripts/stage-demo.py
   uv run scripts/stage-demo.py --redo maya     # leaves and forgets that chat, then makes it again
 
-each chat is a room between @test-demo and a demo contact (@demo-a, and @demo-b in a group). the
-contact gets a made-up name for that room only. the app reads a chat's network from the bridge
+each chat is a room between @test-demo and a demo contact (@demo-a, and @demo-b and @demo in a
+group). the contact gets a made-up name for that room only. the app reads a chat's network from the bridge
 bot in `io.element.functional_members` (matrix-core/NOTES.md, "a chat's network"), so each room
 names a bot there, for example @whatsappbot:ramimaalouf.com. no bridge is involved: the bot is
 not a member, and nothing reaches a real network.
+
+a real bridge's bot is a member of each room it makes, and the app counts the room's service
+members out of its people (matrix-core RoomFilters.swift, `fillKind`). the bot named here is not a
+member, so a staged room counts one person fewer than a bridged one: a group of two contacts read as
+a dm. a group has three contacts, so it shows under groups. running again seats a contact a group
+lacks (the room keeps its messages).
 
 passwords come from the keychain (service multiplexer-test-account) and are never printed.
 safe to run again: a room already made (found by its tag) is left as it is. every session the
@@ -31,10 +37,10 @@ TAG = "com.ramimaalouf.multiplexer.demo_tag"
 
 # the demo user's id starts with @test, so a drive may send as it (the app's test-user rule,
 # Matrix.swift `sendsReadReceipts`).
-DEMO, FRIEND_A, FRIEND_B = (f"@{u}:{DOMAIN}" for u in ("test-demo", "demo-a", "demo-b"))
+DEMO, FRIEND_A, FRIEND_B, FRIEND_C = (f"@{u}:{DOMAIN}" for u in ("test-demo", "demo-a", "demo-b", "demo"))
 
 # (slug, network bot word, room name for a group or None, [(sender, text)], contact names)
-# sender: "me" is the demo user, "a" is @demo-a, "b" is @demo-b. the first chat here ends up at the
+# sender: "me" is the demo user, "a" is @demo-a, "b" is @demo-b, "c" is @demo. the first chat here ends up at the
 # bottom of the inbox and the last one at the top.
 CHATS = [
     ("chris", "discord", None, ["Chris Walker"], [
@@ -49,7 +55,7 @@ CHATS = [
         ("me", "found the board game you wanted"), ("a", "no way"), ("a", "are we still on for saturday?")]),
     ("sam", "telegram", None, ["Sam Okafor"], [
         ("me", "what time do you land?"), ("a", "flight lands at 6:40"), ("me", "I'll pick you up")]),
-    ("hike", "whatsapp", "Weekend hike", ["Noah Fischer", "Ava Brooks"], [
+    ("hike", "whatsapp", "Weekend hike", ["Noah Fischer", "Ava Brooks", "Liam Carter"], [
         ("a", "trail opens at 8"), ("b", "I'll bring snacks"), ("me", "I'll drive"), ("b", "perfect, see you all there")]),
     ("priya", "signal", None, ["Priya Nair"], [
         ("a", "can you send me the doc before the call?"), ("me", "sending now"), ("a", "got it, thanks!")]),
@@ -74,9 +80,14 @@ def password(user: str) -> str:
 class Session:
     def __init__(self, user: str):
         self.user = user
-        r = requests.post(f"{HOMESERVER}/_matrix/client/v3/login", timeout=30, json={
-            "type": "m.login.password", "identifier": {"type": "m.id.user", "user": user},
-            "password": password(user), "initial_device_display_name": "stage-demo"})
+        for _ in range(5):
+            r = requests.post(f"{HOMESERVER}/_matrix/client/v3/login", timeout=30, json={
+                "type": "m.login.password", "identifier": {"type": "m.id.user", "user": user},
+                "password": password(user), "initial_device_display_name": "stage-demo"})
+            if r.status_code != 429:
+                break
+            # the server limits logins: wait as long as it asks.
+            time.sleep(r.json().get("retry_after_ms", 5000) / 1000 + 1)
         if r.status_code != 200:
             sys.exit(f"login {user}: {r.status_code}")
         self.token = r.json()["access_token"]
@@ -107,21 +118,41 @@ def tagged_rooms(me: Session) -> dict[str, str]:
     return found
 
 
+def join(contact: Session, room: str, name: str) -> None:
+    contact.call("POST", f"/rooms/{room}/join", json={})
+    contact.call("PUT", f"/rooms/{room}/state/m.room.member/{contact.user}",
+                 json={"membership": "join", "displayname": name})
+
+
+def unstage(sessions: list[Session], room: str) -> None:
+    """every staged user leaves the room and forgets it."""
+    for s in sessions:
+        requests.post(f"{HOMESERVER}/_matrix/client/v3/rooms/{room}/leave", timeout=30,
+                      headers={"Authorization": f"Bearer {s.token}"}, json={})
+        requests.post(f"{HOMESERVER}/_matrix/client/v3/rooms/{room}/forget", timeout=30,
+                      headers={"Authorization": f"Bearer {s.token}"}, json={})
+
+
 def stage(redo: list[str]) -> None:
-    me, a, b = Session(DEMO), Session(FRIEND_A), Session(FRIEND_B)
+    sessions: list[Session] = []
     try:
+        # each session is logged out at the end, also when a later login fails.
+        for user in (DEMO, FRIEND_A, FRIEND_B, FRIEND_C):
+            sessions.append(Session(user))
+        me, a, b, c = sessions
         existing = tagged_rooms(me)
         for slug in redo:
             if (room := existing.pop(slug, None)) is not None:
-                for s in (me, a, b):
-                    requests.post(f"{HOMESERVER}/_matrix/client/v3/rooms/{room}/leave", timeout=30,
-                                  headers={"Authorization": f"Bearer {s.token}"}, json={})
-                    requests.post(f"{HOMESERVER}/_matrix/client/v3/rooms/{room}/forget", timeout=30,
-                                  headers={"Authorization": f"Bearer {s.token}"}, json={})
+                unstage(sessions, room)
                 print(f"{slug}: left {room}, making it again")
         direct: dict[str, list[str]] = {}
         for slug, network, group_name, names, lines in CHATS:
-            contacts = [a] if group_name is None else [a, b]
+            contacts = [a] if group_name is None else [a, b, c]
+            if slug in existing:
+                joined = me.call("GET", f"/rooms/{existing[slug]}/joined_members")["joined"]
+                if any(contact.user not in joined for contact in contacts):
+                    unstage(sessions, existing.pop(slug))
+                    print(f"{slug}: a contact is missing, making it again")
             if slug in existing:
                 room = existing[slug]
                 print(f"{slug}: already staged ({room})")
@@ -137,10 +168,8 @@ def stage(redo: list[str]) -> None:
                     body["name"] = group_name
                 room = me.call("POST", "/createRoom", json=body)["room_id"]
                 for contact, name in zip(contacts, names):
-                    contact.call("POST", f"/rooms/{room}/join", json={})
-                    contact.call("PUT", f"/rooms/{room}/state/m.room.member/{contact.user}",
-                                 json={"membership": "join", "displayname": name})
-                senders = {"me": me, "a": a, "b": b}
+                    join(contact, room, name)
+                senders = {"me": me, "a": a, "b": b, "c": c}
                 for sender, text in lines:
                     senders[sender].send(room, text)
                     time.sleep(0.4)
@@ -151,7 +180,7 @@ def stage(redo: list[str]) -> None:
         # the inbox's one-to-one chats: the sdk reads m.direct.
         me.call("PUT", f"/user/{DEMO}/account_data/m.direct", json=direct)
     finally:
-        for s in (me, a, b):
+        for s in sessions:
             s.logout()
 
 
