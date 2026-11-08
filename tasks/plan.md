@@ -4,6 +4,12 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**TestFlight build 4 uploaded (2026-11-08):** archive built with Exact tip
+`ba8256a4a8` (mx-testflight + archive-refusal scope), notification extension packaged,
+and App Store Connect upload succeeded (`Mux.ipa`). Extension Info.plist now carries
+`DTPlatformName`, `DTPlatformVersion` and `UIRequiredDeviceCapabilities` (`arm64`) so
+distribution export accepts it. ASC is processing the build for TestFlight.
+
 **Main merge (2026-11-08):** PR #16 (`fix/release-readiness`) merged to `main`
 (`2f5a35a`). Product fixes from #12 and #13 landed with it; #14 closed as
 superseded. Exact archive-refusal scope is open as ccheever/exact2#1602 (clean;
