@@ -4,6 +4,17 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Expo Exact migration (2026-11-09):** Mux now builds against the shared
+`expo-exact` checkout on branch `local/mux-integration` (was
+`exact2-multiplexer-integration`). App path rewrites landed in this repo; Mux's
+local Exact fixes (scroll return, keyboard toolbar under glass, navigation tint,
+recording levels, archive packaging, Mac toolbar click) are ported into that
+checkout and staged there. `update` still left `package.json` file deps on the
+old path (finding 46). Verification on the new checkout: 38 Bun tests, contract
+`[]`, iOS verify 13/13, Mac authored tests 13/13, framework caps clean, Mac
+toolbar suite 25/25, and the targeted iOS Swift suites green (one XCTSkip for a
+pre-existing window-release assertion that also fails on the old checkout).
+
 **Mac merge preparation (2026-11-09):** integrated main `04905bb` into the Mac
 branch, preserving the CLI and TestFlight updates. The only manual conflict was
 additive plan/status text and the SDK risk entry; both build paths remain documented.

@@ -7,7 +7,7 @@ Signing can prompt Keychain for access to an existing private key.
 
 ## Existing Exact behavior
 
-Inspected in the app's configured `exact2-multiplexer-integration` checkout:
+Inspected in the app's configured `expo-exact` checkout:
 
 - `host/apple/build.mjs`: `mac --bundle --distribution` makes a production-trust
   bundle; ordinary Mac builds carry development trust. Re-signing cannot change

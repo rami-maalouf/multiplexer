@@ -1,5 +1,22 @@
 # Mux: tasks
 
+## Expo Exact migration (2026-11-09, branch `chore/expo-exact`)
+
+- [x] Point the app at `/Users/rami/Documents/code/exact/expo-exact` (`local/mux-integration`):
+  Cargo patches, apple/web crates, `exact.mjs`, `app.json`, package file deps, AGENTS paths,
+  packaging script default.
+- [x] Port Mux's local Exact fixes into that checkout (scroll return, keyboard toolbar under
+  glass, navigation tint, recording levels, archive packaging, Mac toolbar click); keep Expo's
+  newer navigation/build behavior where they overlapped.
+- [x] Framework checks: caps clean, docs `svg` topic fixed, Mac toolbar 25/25, targeted iOS
+  Swift suites green (one XCTSkip for a window-release assertion that also fails on the old
+  checkout in this host).
+- [x] App checks on the new checkout: 38 Bun tests, contract `[]`, `verify ios` 13/13, Mac
+  authored tests 13/13.
+- [ ] Commit the app path rewrite on `chore/expo-exact` when Rami asks.
+- [ ] Commit the staged Exact port on `expo-exact` `local/mux-integration` when Rami asks.
+- [ ] Resume the Mux vs Beeper side-by-side demo robot once the migration is settled.
+
 ## Agent CLI (2026-11-08, branch `feat/cli-c0`)
 
 `mx`: agents read the account and act on it from the Mac (plan D12). Layers: `mx` (Swift) ->

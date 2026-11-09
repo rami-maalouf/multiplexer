@@ -187,6 +187,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 160 | `glassGroup` cannot be conditionally absent; an optional numeric expression is refused. | About 3 min; slot wrapper required | P3 | [glass-group-cannot-be-conditionally-absent](issues/20261108-glass-group-cannot-be-conditionally-absent.md) |
 
 | 161 | Field appearance requires a literal, so one field with platform-specific chrome needs duplicate declarations. | About 3 min | P3 | [field-appearance-cannot-depend-on-the](issues/20261108-field-appearance-cannot-depend-on-the.md) |
+| 162 | `docs svg` opens the theme recipe instead of the symbols recipe (missing topic key). | About 5 min | P3 | [docs-svg-opens-the-theme-recipe](issues/20261109-docs-svg-opens-the-theme-recipe.md) |
 
 ## What worked well
 

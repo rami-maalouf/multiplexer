@@ -104,7 +104,7 @@ Inside the app there are two layers:
   [matrix-rust-sdk](https://github.com/matrix-org/matrix-rust-sdk), the engine behind Element X.
   It signs in, syncs, sends and encrypts. It is the only code that touches the SDK, and its API
   uses plain types (strings, numbers, records), so the screens never depend on Matrix details.
-- **The app** (`apps/multiplexer/`) is built with [Exact](https://github.com/ccheever/exact2): each
+- **The app** (`apps/multiplexer/`) is built with [Exact](https://github.com/expo/exact): each
   screen is a Contract file that native iOS controls draw. One native module connects the
   screens to MatrixCore. The same code is meant to run on the Mac next.
 

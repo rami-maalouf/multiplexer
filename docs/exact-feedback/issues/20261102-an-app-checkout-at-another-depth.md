@@ -70,3 +70,11 @@ or build was run. This is scheduling/documentation evidence for dependency refre
 new reproduction of the earlier path failure. The command card could name the compiler step.
 
 Additional evidence (2026-11-07, exact2 `f53339adc8`): a new app checkout at the usual depth had its Cargo paths and `exact.mjs` on one framework checkout and its `package.json` packages on another. The first build failed at a package's Swift with an empty "did not compile:" message (finding 153). Pointing `package.json` at the same checkout fixed it. One switch for every framework path would have avoided it.
+
+## More evidence (2026-11-09)
+
+Moving an existing app to another framework checkout with `bun exact.mjs update`: Cargo
+paths, `exact.mjs` and the generated AGENTS block pointed at the new checkout, but all
+seven `package.json` `file:` dependencies stayed on the previous one. Found by inspecting
+the generated diff before the first build; corrected by hand and reinstalled. About two
+minutes. Seen at framework `94b8671f7`.

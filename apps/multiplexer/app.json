@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../exact/exact2-multiplexer-integration/scripts/app.schema.json",
+  "$schema": "../../../exact/expo-exact/scripts/app.schema.json",
   "name": "Mux",
   "short_name": "Mux",
   "id": "com.ramimaalouf.multiplexer",

@@ -44,7 +44,7 @@ try {
   }
   if (process.platform !== 'darwin') fail('macOS is required');
   const root = process.env.MUX_PACKAGE_ROOT, project = join(root, 'apps/multiplexer');
-  const framework = resolve(project, options['--exact2'] ?? process.env.EXACT2 ?? '../../../exact/exact2-multiplexer-integration');
+  const framework = resolve(project, options['--exact2'] ?? process.env.EXACT2 ?? '../../../exact/expo-exact');
   const signer = join(framework, 'host/apple/assets.mjs');
   if (!existsSync(signer)) fail(`Exact signing helper missing: ${signer}`);
   const manifest = json(join(project, 'app.json'));

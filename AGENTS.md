@@ -31,7 +31,7 @@ WhatsApp, Signal, ...  <->  mautrix bridges  ->  Synapse (Matrix server)  <->  i
 | `tasks/` | The plan and the task list. |
 | `docs/exact-feedback/` | Every place where Exact was hard, for Rami and the Exact team: one issue file each, and an index. |
 
-The Exact framework is a separate checkout at `/Users/rami/Documents/code/exact/exact2`.
+The Exact framework is a separate checkout at `/Users/rami/Documents/code/exact/expo-exact`.
 The app uses it by path. Do not put this project inside it.
 
 ## Rules
@@ -75,8 +75,8 @@ the shared branch) only through the helper, which waits, removes a lock whose pr
 always releases its own lock, never another's:
 `scripts/mx-lock.sh matrixcore <your-lane> -- ./scripts/test-matrix-core.sh ...`.
 Never `rmdir` a lock by hand.
-The app builds with a shared local Exact checkout (`exact2-multiplexer-integration`, branch
-`local/multiplexer-integration`). Never leave uncommitted edits in it: work on Exact in your own
+The app builds with a shared local Exact checkout (`expo-exact`, branch
+`local/mux-integration`). Never leave uncommitted edits in it: work on Exact in your own
 worktree of it, point your build at that, and commit to the shared branch only compiled, tested
 changes.
 The SDK's start on a new device is CPU-bound: with many Simulators and builds at once, a test's first
@@ -116,7 +116,7 @@ bun exact.mjs contract build app.contract --json --errors-only
   it back (`large`).
 - Each edit to a Swift file in `modules/apple/` compiles the SDK's 2 MB of bindings
   again (about 30 to 40 s).
-- Exact's only required reading: `/Users/rami/Documents/code/exact/exact2/docs/start-here.md`.
+- Exact's only required reading: `/Users/rami/Documents/code/exact/expo-exact/docs/start-here.md`.
   For a chat screen, see its `chat-thread` recipe.
 
 ## Exact feedback: always record it
