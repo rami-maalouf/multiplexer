@@ -79,6 +79,29 @@ def profile_roundtrip(record, describe):
     record("await-ui-element", {"condition": "visible", "selector": {"identifier": "composer"}, "timeoutMs": 10000})
 
 
+def voice_roundtrip(record, describe):
+    record("await-ui-element", {"condition": "visible", "selector": {"identifier": "voice-record"}, "timeoutMs": 10000})
+    try:
+        record("gesture-tap", target(describe(), "voice-record", identifier=True))
+        for identifier in ("voice-stop", "voice-level"):
+            record("await-ui-element", {"condition": "visible", "selector": {"identifier": identifier}, "timeoutMs": 10000})
+        point = target(describe(), "voice-stop", identifier=True)
+        record("gesture-custom", {"events": [
+            {"type": "Down", **point},
+            {"type": "Move", **point, "delayMs": 600},
+            {"type": "Up", "x": max(0, point["x"] - 0.0805), "y": point["y"], "delayMs": 1200}
+        ]})
+    finally:
+        tree = describe()
+        cancel = next((identifier for identifier in ("voice-cancel", "voice-delete") if f'id="{identifier}"' in tree), None)
+        if cancel:
+            record("gesture-tap", target(tree, cancel, identifier=True))
+        elif 'id="voice-record"' not in tree:
+            raise RuntimeError("could not verify recording cancellation; inspect the phone before continuing")
+        record("await-ui-element", {"condition": "hidden", "selector": {"identifier": "voice-stop"}, "timeoutMs": 10000})
+        record("await-ui-element", {"condition": "visible", "selector": {"identifier": "voice-record"}, "timeoutMs": 10000})
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app", choices=["mux", "beeper"])
@@ -88,14 +111,17 @@ def main():
     parser.add_argument("--recorder", required=True)
     parser.add_argument("--current-inbox", action="store_true", help="use the already prepared and registered inbox instead of cold-restarting the app")
     parser.add_argument("--profile", action="store_true", help="open and close the contact profile after conversation scrolling (Mux only)")
+    parser.add_argument("--voice", action="store_true", help="show the profile, then record, hold/drag the red control and cancel without sending (Mux only)")
+    parser.add_argument("--contact", help="approved contact's current inbox label")
     args = parser.parse_args()
+    args.profile = args.profile or args.voice
     if args.profile and args.app != "mux":
-        parser.error("--profile currently supports Mux only; Beeper's profile targets must be verified first")
+        parser.error("--profile and --voice currently support Mux only; Beeper's profile targets must be verified first")
     os.umask(0o077)
     output = Path(args.output).resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     bundle = "com.ramimaalouf.multiplexer" if args.app == "mux" else "com.automattic.beeper"
-    label = "Wafaa" if args.app == "mux" else "Mama"
+    label = args.contact or ("Wafaa" if args.app == "mux" else "Mama")
     inbox_selector = {"identifier": "title-button"} if args.app == "mux" else {"identifier": "InboxTitleMenuButton"}
     if not args.current_inbox:
         invoke("restart-app", {"udid": args.udid, "bundleId": bundle})
@@ -110,7 +136,7 @@ def main():
     name = f"{args.app}-mom-{int(time.time())}"
     root = str(output)
     invoke("flow-start-recording", {"name": name, "project_root": root,
-        "executionPrerequisite": f"{args.app} is already registered with Argent, signed in on the approved account, showing the inbox at the top; only non-writing navigation is authorized"})
+        "executionPrerequisite": f"{args.app} is already registered with Argent, signed in on the approved account, showing the inbox at the top; navigation and, when --voice is set, local recording/cancellation only; never send or react"})
     timeline = {"app": args.app, "flow": name, "source": str(output / "source.mov"), "events": []}
     process = subprocess.Popen([args.recorder, args.screen, str(output / "source.mov"), "180"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     epoch = None
@@ -177,6 +203,10 @@ def main():
             mark("profile-open-start")
             profile_roundtrip(record, lambda: invoke("describe", {"udid": args.udid})["description"])
             mark("profile-closed")
+        if args.voice:
+            mark("voice-start")
+            voice_roundtrip(record, lambda: invoke("describe", {"udid": args.udid})["description"])
+            mark("voice-cancelled")
         time.sleep(1)
         tree = invoke("describe", {"udid": args.udid})["description"]
         point = back_target(tree)
@@ -199,6 +229,9 @@ def main():
             process.send_signal(signal.SIGINT)
         stdout, stderr = process.communicate(timeout=30)
         if process.returncode:
+            timeline["status"] = "rejected-capture"
+            timeline["error"] = stderr.strip()
+            (output / "timeline.json").write_text(json.dumps(timeline, indent=2))
             raise RuntimeError(f"wired capture failed: {stderr}")
         print(stdout.strip(), flush=True)
 

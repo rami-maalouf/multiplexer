@@ -142,6 +142,49 @@ class DemoTests(unittest.TestCase):
         self.assertIn("Beeper's profile targets must be verified first", result.stderr)
         self.assertFalse((self.root / "take").exists())
 
+    def test_voice_demo_drags_only_the_stop_control_and_cancels_without_sending(self):
+        idle = 'AXButton "Record Voice Message" id="voice-record"  (0.85, 0.918, 0.12, 0.055)'
+        active = 'AXButton "Stop Recording" id="voice-stop"  (0.851, 0.918, 0.119, 0.055)'
+        cancel = 'AXButton "Cancel Recording" id="voice-cancel"  (0.03, 0.918, 0.119, 0.055)'
+        for interrupted in (False, True):
+            with self.subTest(interrupted=interrupted):
+                trees = iter([idle, active, cancel])
+                events = []
+                def record(command, args):
+                    events.append((command, args))
+                    if interrupted and command == "gesture-custom":
+                        raise RuntimeError("drag interrupted")
+                if interrupted:
+                    with self.assertRaisesRegex(RuntimeError, "drag interrupted"):
+                        take.voice_roundtrip(record, lambda: next(trees))
+                else:
+                    take.voice_roundtrip(record, lambda: next(trees))
+                taps = [args for command, args in events if command == "gesture-tap"]
+                self.assertEqual(len(taps), 2)
+                self.assertAlmostEqual(taps[-1]["x"], 0.0895)
+                drag = next(args["events"] for command, args in events if command == "gesture-custom")
+                self.assertEqual([event["type"] for event in drag], ["Down", "Move", "Up"])
+                self.assertEqual(drag[0]["x"], drag[1]["x"])
+                self.assertAlmostEqual(drag[-1]["x"], 0.83)
+                self.assertEqual(events[-1][1]["selector"], {"identifier": "voice-record"})
+
+    def test_failed_recorder_marks_the_take_rejected(self):
+        output = self.root / "rejected"
+        tree = 'AXButton "Wafaa"  (0.5, 0.15, 0.2, 0.1)\nAXButton "Back" id="back"  (0.02, 0.08, 0.12, 0.05)'
+        def invoke(tool, args):
+            return {"description": tree} if tool == "describe" else {"success": True, "toolResult": {"success": True}}
+        with patch("sys.argv", ["take-argent.py", "mux", str(output), "--udid", "test", "--screen", "test", "--recorder", "test"]), patch.object(take, "invoke", side_effect=invoke), patch.object(take.subprocess, "Popen") as launch, patch.object(take.selectors, "DefaultSelector"), patch.object(take.time, "sleep"), patch.object(take.os, "umask"), patch("builtins.print"):
+            process = launch.return_value
+            process.stdout.readline.return_value = "RECORDING 1.0 1206x2622\n"
+            process.poll.return_value = 0
+            process.communicate.return_value = ("", "capture: reported drops")
+            process.returncode = 1
+            with self.assertRaisesRegex(RuntimeError, "wired capture failed"):
+                take.main()
+        saved = json.loads((output / "timeline.json").read_text())
+        self.assertEqual(saved["status"], "rejected-capture")
+        self.assertIn("reported drops", saved["error"])
+
     def test_back_target_is_a_unique_visible_top_left_accessible_button(self):
         tree = '  AXButton "Back, 12" id="thread-back"  (0.020, 0.075, 0.150, 0.050)\n  AXButton "Inbox"  (0.271, 0.915, 0.169, 0.050)'
         point = take.back_target(tree)

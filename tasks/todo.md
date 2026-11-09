@@ -1,5 +1,20 @@
 # Mux: tasks
 
+## Profile and voice demo verification (2026-11-09)
+
+- [x] Verify profile open/close, voice recording, native glass hold/drag and cancellation on the
+  physical iPhone; independent recorded-flow replay passes all 17 steps. No messages sent.
+- [x] Inspect captured motion: red stop control expands and forms a glass bridge to the capsule.
+- [x] Add `--voice` (automatically profile first), current-contact override and failure-safe local
+  cancellation. Twenty tooling tests pass. Mark recorder failures `rejected-capture` in metadata.
+- [ ] Obtain a clean full raw take. r1/r2 were rejected for 2/9 reported capture drops, despite
+  retaining every received frame. Raw r1 is diagnostic only, not the accepted master.
+- [ ] Investigate capture drops during the voice segment. Instrumented r4 reports 23 drops
+  between 47.39 and 48.94 s; no standard reason attachment. r3 exposed invalid drop timestamps
+  causing JSON failure; omit invalid timestamps. No writer skips or readiness waits in r4.
+- [ ] Consider native iPhone screen recording with Argent as driver if wired capture cannot
+  deliver reliably. Do not edit, blur or retime to hide capture problems. Beeper stays deferred.
+
 ## User-requested iPhone update (2026-11-09, installed and accepted)
 
 - [x] Verify the normal device build installs over the same bundle without uninstalling.
@@ -12,13 +27,11 @@
 - [x] Add the optional Mux `--profile` choreography to `demo/take-argent.py`: open the chat-header
   profile by exact id, show it briefly, close via fresh bounds, and prove composer return.
   Eighteen tooling tests pass; a similarly named Send control cannot substitute for the profile id.
-- [ ] Unlock the phone and verify the profile roundtrip on hardware. The first live authoring
-  attempt was blocked at launch by Locked / CoreDevice 10002, before any action or recording.
-  Empty take `mux-profile-voice-20261109-r1` is not replayable evidence; use a fresh name next time.
-- [ ] After closing the profile, start voice recording, hold/drag the red stop control, then cancel
-  without sending. Physical Argent supports a hold followed by one straight drag; exact visual
-  parity with the supplied Beeper clip still requires an on-device test. Audio automation and
-  the corresponding Beeper profile step remain unimplemented. No audio test or new capture yet.
+- [x] After Rami's unlock confirmation, verify the profile roundtrip on hardware. The initial
+  locked attempt had zero steps; fresh `mux-profile-voice-20261109-r2` passes 17-step replay.
+- [x] Close the profile, start voice recording, hold/drag the red stop control, then cancel
+  without sending. Native expansion and glass bridging are visible in inspected frames.
+  Audio automation is implemented; matching Beeper behavior and clean raw capture remain pending.
 
 ## Raw Mux complete for review (2026-11-09; Beeper deferred)
 

@@ -25,12 +25,15 @@ final class Recorder: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     var frames = 0
     var writerWaits = 0
     var captureDrops = 0
+    var droppedSamples: [[String: Any]] = []
     var timings: [[Double]] = []
 
     init(url: URL) { self.url = url }
 
     func captureOutput(_ output: AVCaptureOutput, didDrop sample: CMSampleBuffer, from connection: AVCaptureConnection) {
         captureDrops += 1
+        let reason = CMGetAttachment(sample, key: kCMSampleBufferAttachmentKey_DroppedFrameReason, attachmentModeOut: nil) as? String ?? "unknown"
+        droppedSamples.append(["arrivalUptime": ProcessInfo.processInfo.systemUptime, "reason": reason])
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sample: CMSampleBuffer, from connection: AVCaptureConnection) {
@@ -137,6 +140,7 @@ func run() throws {
         "writerSkipped": recorder.timings.count - recorder.frames,
         "writerWaits": recorder.writerWaits,
         "captureDropped": recorder.captureDrops,
+        "droppedSamples": recorder.droppedSamples,
         "recordingEpoch": startedAt.timeIntervalSince1970,
         "columns": ["sourcePTS", "arrivalUptime", "written", "callbackSeconds"],
         "samples": recorder.timings

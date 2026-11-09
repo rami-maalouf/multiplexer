@@ -4,6 +4,26 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Profile and liquid-glass recording interaction verified (2026-11-09):** physical iPhone
+walkthrough and independent 17-step replay passed: open the same pinned mom conversation
+(now locally named Mama; its profile still identifies the shared name Wafaa), open/close
+profile, start recording, hold 600 ms and drag left over 1200 ms, then cancel and prove idle.
+Inspected raw frames show the stop button growing and bridging into the waveform capsule.
+No sends, app/framework changes, rebuilds or edits to previous media. `--voice` now includes
+profile first and cancellation in a finally block; `--contact Mama` selects the current label.
+Twenty tooling tests pass, including interrupted-gesture cleanup and rejected-capture status.
+Full diagnostic preview: `research/argent-demo/private/mux-profile-voice-full-r1/source.mov`,
+61.86 s, native 1206 x 2622, silent, untouched. Profile starts near 37 s; audio near 44 s.
+NOT a clean accepted master: full r1 reported 2 capture drops, r2 reported 9; both retained
+all received frames. Pilot reported 7 drops. An instrumented r3 finalized video but its
+JSON failed on an invalid dropped-sample timestamp; omit that invalid timestamp in the
+new diagnostics. Instrumented r4 retained 2230/2230 frames, zero writer skips/waits, but
+reported 23 drops, all during 47.39-48.94 s in the voice segment, without Apple's standard
+reason attachment. Root cause is unresolved; do not attribute it to app rendering or relax
+the zero-drop guard. Need capture-path investigation or a native iPhone recording path.
+Beeper remains deferred pending Mux review. Existing deprecated AVAssetWriter calls compile
+with macOS 27 warnings; API migration is not part of this demo interaction change.
+
 **Profile-before-voice demo requested (2026-11-09, phone locked):** extend the mom-chat
 sequence with tap chat-header profile, show the profile briefly, close it, then start
 voice recording, hold/drag the red stop control, and cancel without sending. The Mux
