@@ -25,7 +25,7 @@ def invoke(tool, args):
     return json.loads(result.stdout)
 
 
-def target(tree, label):
+def target(tree, label, *, identifier=False):
     stack = []
     for line in tree.splitlines():
         depth = len(line) - len(line.lstrip())
@@ -34,7 +34,7 @@ def target(tree, label):
         match = FRAME.search(line)
         if match:
             frame = tuple(map(float, match.groups()))
-            if f'"{label}"' in line:
+            if (f'id="{label}"' if identifier else f'"{label}"') in line:
                 if "AXButton" not in line:
                     buttons = [parent for _, parent in stack if "AXButton" in parent]
                     if buttons:
@@ -69,6 +69,16 @@ def flick_pair(record, first, second):
         time.sleep(2)
 
 
+def profile_roundtrip(record, describe):
+    record("gesture-tap", target(describe(), "chat-title", identifier=True))
+    for identifier in ("info-name", "close-info"):
+        record("await-ui-element", {"condition": "visible", "selector": {"identifier": identifier}, "timeoutMs": 10000})
+    time.sleep(1)
+    record("gesture-tap", target(describe(), "close-info", identifier=True))
+    record("await-ui-element", {"condition": "hidden", "selector": {"identifier": "close-info"}, "timeoutMs": 10000})
+    record("await-ui-element", {"condition": "visible", "selector": {"identifier": "composer"}, "timeoutMs": 10000})
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app", choices=["mux", "beeper"])
@@ -77,7 +87,10 @@ def main():
     parser.add_argument("--screen", required=True)
     parser.add_argument("--recorder", required=True)
     parser.add_argument("--current-inbox", action="store_true", help="use the already prepared and registered inbox instead of cold-restarting the app")
+    parser.add_argument("--profile", action="store_true", help="open and close the contact profile after conversation scrolling (Mux only)")
     args = parser.parse_args()
+    if args.profile and args.app != "mux":
+        parser.error("--profile currently supports Mux only; Beeper's profile targets must be verified first")
     os.umask(0o077)
     output = Path(args.output).resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -160,6 +173,10 @@ def main():
         mark("thread-scroll-start")
         flick_pair(record, 0.40, 0.70)
         mark("thread-scroll-end")
+        if args.profile:
+            mark("profile-open-start")
+            profile_roundtrip(record, lambda: invoke("describe", {"udid": args.udid})["description"])
+            mark("profile-closed")
         time.sleep(1)
         tree = invoke("describe", {"udid": args.udid})["description"]
         point = back_target(tree)

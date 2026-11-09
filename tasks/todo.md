@@ -9,9 +9,16 @@
   app looks good. No independent before/after account-setting audit claimed.
 - [x] Leave account and app data alone, release only this phone's automation resources, and
   record `tasks/evidence/iphone-update-20261109.json`. No app/framework source changes.
-- [ ] Extend the demo with start voice recording, hold/drag the red stop control, then cancel
+- [x] Add the optional Mux `--profile` choreography to `demo/take-argent.py`: open the chat-header
+  profile by exact id, show it briefly, close via fresh bounds, and prove composer return.
+  Eighteen tooling tests pass; a similarly named Send control cannot substitute for the profile id.
+- [ ] Unlock the phone and verify the profile roundtrip on hardware. The first live authoring
+  attempt was blocked at launch by Locked / CoreDevice 10002, before any action or recording.
+  Empty take `mux-profile-voice-20261109-r1` is not replayable evidence; use a fresh name next time.
+- [ ] After closing the profile, start voice recording, hold/drag the red stop control, then cancel
   without sending. Physical Argent supports a hold followed by one straight drag; exact visual
-  parity with the supplied Beeper clip still requires an on-device test. No audio test run yet.
+  parity with the supplied Beeper clip still requires an on-device test. Audio automation and
+  the corresponding Beeper profile step remain unimplemented. No audio test or new capture yet.
 
 ## Raw Mux complete for review (2026-11-09; Beeper deferred)
 

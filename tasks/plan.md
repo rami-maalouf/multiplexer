@@ -4,6 +4,21 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Profile-before-voice demo requested (2026-11-09, phone locked):** extend the mom-chat
+sequence with tap chat-header profile, show the profile briefly, close it, then start
+voice recording, hold/drag the red stop control, and cancel without sending. The Mux
+raw driver now accepts `--profile`: after chat scrolling it targets `chat-title` by exact
+accessibility id, verifies `info-name` and `close-info`, taps the fresh Close control,
+and verifies the profile is hidden and composer visible. Eighteen demo tests pass,
+including rejection of a misleading label on a Send control and unverified Beeper
+profile targets. No app/framework source or existing media changed. Live authoring
+started before launch, but CoreDevice refused restart because the iPhone is locked
+(10002 / FBSOpenApplicationErrorDomain 7); zero steps, no video or audio recorded.
+Blocked take `mux-profile-voice-20261109-r1` was finished empty and is not a usable flow.
+Only this phone's automation resources were released. Need Rami to unlock and leave
+Mux open on USB, then verify/capture the profile and voice interaction. Audio automation
+and the Beeper extension are not yet implemented or verified; do not claim a new raw take.
+
 **iPhone updated in place (2026-11-09):** Rami requested the latest local build and then
 confirmed, "Yep. It looks good to me." Built and installed development Mux with
 `bun apps/multiplexer/exact.mjs ios --device --phone <phone-udid>`. Installer returned

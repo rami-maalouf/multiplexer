@@ -105,6 +105,43 @@ class DemoTests(unittest.TestCase):
             ("wait", 2)
         ])
 
+    def test_profile_is_opened_and_closed_before_returning_to_the_composer(self):
+        trees = iter([
+            '  AXButton "Wafaa, Chat Info" id="chat-title"  (0.3, 0.08, 0.4, 0.10)',
+            '  AXButton "Close" id="close-info"  (0.02, 0.08, 0.12, 0.05)'
+        ])
+        events = []
+        with patch.object(take.time, "sleep", side_effect=lambda seconds: events.append(("wait", seconds))):
+            take.profile_roundtrip(lambda command, args: events.append((command, args)), lambda: next(trees))
+        self.assertEqual([command for command, _ in events], [
+            "gesture-tap", "await-ui-element", "await-ui-element", "wait", "gesture-tap", "await-ui-element", "await-ui-element"
+        ])
+        self.assertAlmostEqual(events[0][1]["x"], 0.5)
+        self.assertAlmostEqual(events[0][1]["y"], 0.13)
+        self.assertEqual(events[1][1]["selector"], {"identifier": "info-name"})
+        self.assertEqual(events[2][1]["selector"], {"identifier": "close-info"})
+        self.assertEqual(events[3], ("wait", 1))
+        self.assertAlmostEqual(events[4][1]["x"], 0.08)
+        self.assertAlmostEqual(events[4][1]["y"], 0.105)
+        self.assertEqual(events[5][1]["condition"], "hidden")
+        self.assertEqual(events[5][1]["selector"], {"identifier": "close-info"})
+        self.assertEqual(events[6][1]["selector"], {"identifier": "composer"})
+
+    def test_profile_roundtrip_does_not_guess_a_missing_header_target(self):
+        events = []
+        with self.assertRaises(RuntimeError):
+            take.profile_roundtrip(lambda command, args: events.append(command), lambda: 'AXButton "chat-title" id="voice-send"  (0.8, 0.9, 0.1, 0.05)')
+        self.assertEqual(events, [])
+
+    def test_profile_option_rejects_unverified_beeper_targets_before_any_device_actions(self):
+        result = subprocess.run([
+            "uv", "run", "python", str(Path(__file__).with_name("take-argent.py")), "beeper", str(self.root / "take"),
+            "--udid", "unused", "--screen", "unused", "--recorder", "unused", "--profile"
+        ], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Beeper's profile targets must be verified first", result.stderr)
+        self.assertFalse((self.root / "take").exists())
+
     def test_back_target_is_a_unique_visible_top_left_accessible_button(self):
         tree = '  AXButton "Back, 12" id="thread-back"  (0.020, 0.075, 0.150, 0.050)\n  AXButton "Inbox"  (0.271, 0.915, 0.169, 0.050)'
         point = take.back_target(tree)
