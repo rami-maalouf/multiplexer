@@ -1,5 +1,18 @@
 # Mux: tasks
 
+## Final paired production demo (2026-11-09, user approved Mux direction)
+
+- [ ] Recover Beeper phone control after user leaves it unlocked and approves any prompt.
+  Launch succeeds, but XCTest enabling-automation mode times out; scoped restart retry
+  did not produce a listening port within 120 s. No Beeper capture or gestures executed.
+- [ ] Capture matching Beeper natural scroll, mom chat, profile open/close, recording hold/drag,
+  cancel without sending and top-left back. Record fresh semantic targets before enabling
+  Beeper profile/voice options in the driver; no guessed send/cancel controls.
+- [ ] Pair with the approved Mux full-r1 footage, trim only idle time, preserve native action
+  speeds and align action starts. Keep unblurred/local; no fake equivalence or interpolation.
+- [ ] Export the final approximately 20-second comparison at 60 fps with the existing frame,
+  inspect transitions and glass motion, disclose source capture limits and release the phone.
+
 ## Profile and voice demo verification (2026-11-09)
 
 - [x] Verify profile open/close, voice recording, native glass hold/drag and cancellation on the

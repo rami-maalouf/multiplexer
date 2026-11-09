@@ -4,6 +4,21 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Final paired production demo requested (2026-11-09, Beeper runner blocked):** Rami
+approves continuing from the Mux preview he likes, wants the matching Beeper version,
+then the final side-by-side comparison, not a Mux-only replacement. Preserve the approved
+Mux full-r1 source and its disclosed two capture drops; keep the final unblurred and local.
+Capture matching natural scroll, mom chat, profile open/close, voice hold/drag/cancel and
+visible top-left back in Beeper before assembling the final. Do not substitute old Beeper
+footage that lacks the new interactions. Aim for the original roughly 20-second pacing,
+trim idle pauses only, preserve real gesture speeds and use the existing verified 60 fps
+compositor. Beeper launches, but its accessibility runner failed with xcodebuild 65 /
+Timed out while enabling automation mode. A single scoped cleanup/relaunch retry also
+failed to log a runner port within 120 s. No Beeper gestures, audio or new video recorded.
+Authoring attempt `beeper-profile-voice-20261109-r1` retains its unreadable wait, not a
+failed UI assertion. Need iPhone awake/unlocked on Beeper and any automation prompt
+approved before retrying; user has been asked. Final edit/export remains pending.
+
 **Profile and liquid-glass recording interaction verified (2026-11-09):** physical iPhone
 walkthrough and independent 17-step replay passed: open the same pinned mom conversation
 (now locally named Mama; its profile still identifies the shared name Wafaa), open/close
