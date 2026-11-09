@@ -1,0 +1,93 @@
+{
+  "status": "edited-local-unblurred-deliverables-verified",
+  "date": "2026-11-09",
+  "approval": "Continue the approved Mux preview, capture matching Beeper, then deliver the side-by-side comparison. Keep unblurred and local.",
+  "edit": "research/argent-demo/edit-production-r1.json",
+  "sourceCaptures": {
+    "mux": {
+      "path": "research/argent-demo/private/mux-profile-voice-full-r1/source.mov",
+      "duration": 61.86,
+      "received": 2338,
+      "written": 2338,
+      "writerSkipped": 0,
+      "captureDropped": 2,
+      "maximumKeptSourceFrameGapMs": 166.67
+    },
+    "beeper": {
+      "path": "research/argent-demo/private/beeper-profile-voice-r2.mov",
+      "duration": 214.12,
+      "received": 11513,
+      "written": 11513,
+      "writerSkipped": 0,
+      "captureDropped": 24,
+      "maximumKeptSourceFrameGapMs": 150.0,
+      "timingNotes": "research/argent-demo/private/beeper-profile-voice-r2.timeline.json"
+    }
+  },
+  "deliverables": {
+    "comparison": {
+      "path": "research/argent-demo/mux-vs-beeper-production-unblurred-r1.mp4",
+      "dimensions": [1600, 1440],
+      "duration": 25.9,
+      "fps": 60,
+      "frames": 1554,
+      "audioStreams": 0,
+      "bytes": 9255007,
+      "sha256": "c2562db8a65decff57cb03b9d61c9a5a4390a59c5da7fb940def212c3f90e176"
+    },
+    "beeperOnly": {
+      "path": "research/argent-demo/beeper-demo-production-unblurred-r1.mp4",
+      "dimensions": [1206, 2622],
+      "duration": 25.9,
+      "fps": 60,
+      "frames": 1554,
+      "audioStreams": 0,
+      "bytes": 9242873,
+      "sha256": "9b3d14ea61ceec8b5dbe8b9bf2262172575a7bcf0c8026bf4612631e306115b2",
+      "rebuild": "Use each scene.beeper range from the same edit manifest at native resolution. Normalize PTS, pad only idle scene ends to scene.duration, resample at 60 fps, trim to round(duration*60) frames, concatenate chronologically, encode libx264 CRF 18 with faststart and no audio or input metadata. No scaling."
+    }
+  },
+  "editing": {
+    "gestureSpeedChanged": false,
+    "frameInterpolation": false,
+    "blurOrMasks": false,
+    "privacy": "Private, unblurred, real inbox and contact details visible. No publication authorized; exported files mode 0600 and raw media parent mode 0700.",
+    "idlePausesTrimmed": true,
+    "idleEndHoldsForAlignment": true,
+    "extraBeeperReturnToTopFlickPreserved": true,
+    "timecodeNote": "Beeper has a longer recorded wait before the glass gesture; its elapsed timer jumps when that idle wait is removed. Do not fake timer equality or claim a simultaneous performance benchmark.",
+    "sourceAcceptance": "Neither source satisfies strict zero-capture-drop acceptance. The edited deliverables do not repair source timing gaps. Source investigation remains open; no guard was relaxed."
+  },
+  "verification": {
+    "toolingTests": {"passed": 21, "failed": 0},
+    "testFirstProof": "New profile/voice scene privacy regression initially failed for both states; adding only the states made it pass. Default redaction remains conservative and unredacted output requires explicit opt-in.",
+    "beeperFlow": {
+      "path": ".devin/flows/beeper-profile-voice.yaml",
+      "ok": true,
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "errored": 0,
+      "echoSteps": 5,
+      "durationMs": 47282,
+      "warnings": 0,
+      "exception": "Approved account-specific avatar identifier and portrait-specific raw hold/drag point. Not a generic cross-device QA test."
+    },
+    "visualInspection": {
+      "profileAtOutputSeconds": 15.0,
+      "expandedGlassAtOutputSeconds": 20.1,
+      "finalInboxAtOutputSeconds": 25.4,
+      "bothProfilesVisible": true,
+      "bothGlassControlsExpanded": true,
+      "bothReturnToInbox": true,
+      "beeperCancellation": "Physical screenshot shows the idle composer. Hardware AX retains stale Stop/Close nodes after cancellation, so the source Stop-hidden wait was unmet. Preserve original recorder artifact; the corrected flow targets Close rather than underlying add and checks the restored Reply on WhatsApp placeholder. Full uninterrupted replay passed."
+    },
+    "phoneSessionReleased": true,
+    "messagesSent": false,
+    "reactionsAdded": false,
+    "appOrFrameworkCodeChanged": false,
+    "accountResetOrSignOut": false,
+    "originalMediaOverwritten": false,
+    "publishedOrPushed": false
+  }
+}

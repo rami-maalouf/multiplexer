@@ -1,0 +1,43 @@
+steps:
+  - echo: Approved signed-in Mama fixture, English UI and portrait iPhone layout. Record locally and cancel; never tap the send arrow. Re-record the avatar selector if the contact photo changes.
+  - launch: com.automattic.beeper
+  - await: { visible: { id: InboxTitleMenuButton } }
+  - await: { idle: true }
+  - echo: Demonstrate natural inbox flicks with the verified physical-device speed and momentum. The final downward flick restores the pinned contacts.
+  - tool: gesture-swipe
+    args: { fromX: 0.5, fromY: 0.75, toX: 0.5, toY: 0.4, durationMs: 300, momentum: true }
+  - tool: gesture-swipe
+    args: { fromX: 0.5, fromY: 0.4, toX: 0.5, toY: 0.75, durationMs: 300, momentum: true }
+  - tool: gesture-swipe
+    args: { fromX: 0.5, fromY: 0.4, toX: 0.5, toY: 0.8, durationMs: 300, momentum: true }
+  - tap: { id: 'original: attachmentUrl: mxc://local.beeper.com/ramimaalouf_vPsaGsC36k94U7HaiV4zNrpAAQ2yqxvFOmaxv2V1GDF82hFpQW4dsCDIto84OoNX' }
+  - await: { visible: { id: BeeperChatView.RootChatView } }
+  - await: { idle: true }
+  - echo: Demonstrate the same natural conversation flicks without interacting with messages.
+  - tool: gesture-swipe
+    args: { fromX: 0.5, fromY: 0.4, toX: 0.5, toY: 0.7, durationMs: 300, momentum: true }
+  - tool: gesture-swipe
+    args: { fromX: 0.5, fromY: 0.7, toX: 0.5, toY: 0.4, durationMs: 300, momentum: true }
+  - tap: { id: 'original: attachmentUrl: mxc://local.beeper.com/ramimaalouf_vPsaGsC36k94U7HaiV4zNrpAAQ2yqxvFOmaxv2V1GDF82hFpQW4dsCDIto84OoNX' }
+  - await: { visible: { id: xmark } }
+  - await: { idle: true }
+  - tap: { id: xmark }
+  - await: { hidden: { id: xmark } }
+  - await: { visible: { id: BeeperChatView.RootChatView } }
+  - await: { idle: true }
+  - tap: { text: Mid-amplitude waveform }
+  - await: { visible: { text: Stop } }
+  - echo: Hold and drag the observed Stop control in one gesture. The tested normalized point is portrait-layout-specific; release may stop into a draft. Never tap the resulting send arrow.
+  - tool: gesture-custom
+    args:
+      events:
+        - { type: Down, x: 0.9005, y: 0.9375 }
+        - { type: Move, x: 0.9005, y: 0.9375, delayMs: 600 }
+        - { type: Up, x: 0.82, y: 0.9375, delayMs: 1200 }
+  - await: { visible: { text: Close } }
+  - tap: { text: Close }
+  - echo: The native hardware tree retains stale Stop and Close nodes after cancellation. Require the restored idle placeholder, which disappeared during recording; first walkthrough also verified the actual composer screenshot.
+  - await: { visible: { text: Reply on WhatsApp } }
+  - tap: { id: BackButton }
+  - await: { visible: { id: InboxTitleMenuButton } }
+  - await: { idle: true }

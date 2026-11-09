@@ -45,6 +45,15 @@ class DemoTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     compose.validate(value)
 
+    def test_profile_and_recording_states_remain_private_without_opt_in(self):
+        for state in ("profile", "voice-recording"):
+            with self.subTest(state=state):
+                value = copy.deepcopy(self.manifest)
+                value["scenes"].append({"state": state, "duration": 1, "mux": [1, 2], "beeper": [1, 2]})
+                self.assertEqual(len(compose.validate(value)), 2)
+                self.assertIn("a0s1mask", compose.filters(value))
+                self.assertNotIn("gblur", compose.filters(value, unredacted=True))
+
     def test_rejects_invalid_ranges_and_acceleration(self):
         for span in ([-1, 0], [1, 1], [0, 31], [0, 2], [0, float("nan")]):
             with self.subTest(span=span):

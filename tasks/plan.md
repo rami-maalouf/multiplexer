@@ -4,6 +4,32 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Paired demo edit verified (2026-11-09):** final comparison is
+`research/argent-demo/mux-vs-beeper-production-unblurred-r1.mp4`; matching native-resolution
+Beeper-only cut is `research/argent-demo/beeper-demo-production-unblurred-r1.mp4`.
+Both are 25.9 s, 60 fps, 1554 frames, silent and unblurred. Comparison: 1600 x 1440;
+Beeper-only: 1206 x 2622. Whole natural flicks, profile open/close, recording, native glass
+hold/drag, cancel and top-left back are retained. Long idle waits are cut; no acceleration,
+interpolation, UI replacement or blur. Beeper's extra return-to-top flick is preserved;
+short idle end holds align the panels. Elapsed recording timers differ because Beeper's
+longer automation wait was cut, not because its UI was fabricated.
+Edit source: `research/argent-demo/edit-production-r1.json`; existing compositor/frame
+remain canonical. Profile and voice scene types stay private unless explicitly unredacted.
+Twenty-one tooling tests pass. Corrected `.devin/flows/beeper-profile-voice.yaml` passes
+one uninterrupted hardware replay: 27 actions/checks plus 5 echoes, zero failures/warnings.
+Its fixture avatar id and portrait stop point are documented exceptions, not generic QA.
+Original recorder file remains unchanged; it misidentified the cancel tap as underlying add
+and has an unmet Stop-hidden wait because Beeper's AX tree retains stale recording nodes.
+The correct Close target, restored idle placeholder and screenshot prove cancellation.
+Inspected output profiles at 15 s, both glass expansions at 20.1 s and inboxes at 25.4 s.
+Source capture limits remain OPEN: approved Mux full-r1 reported 2 drops; new Beeper full-r2
+reported 24, both with zero writer skips. Neither is a zero-drop master; exports preserve
+source gaps. Strict acceptance was not weakened. Evidence and hashes:
+`tasks/evidence/2026-11-09-paired-profile-voice-production.json`.
+Files contain real chats and contact details: local only, mode 0600, no publishing or push.
+Raw media stays under mode-0700 private directory. Phone runner released; no sends, account
+resets, sign-outs, app/framework changes, rebuilds or overwritten originals.
+
 **Final paired production demo requested (2026-11-09, Beeper runner blocked):** Rami
 approves continuing from the Mux preview he likes, wants the matching Beeper version,
 then the final side-by-side comparison, not a Mux-only replacement. Preserve the approved

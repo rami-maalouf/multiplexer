@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 
-STATES = {"inbox", "transition", "approved-thread"}
+STATES = {"inbox", "transition", "approved-thread", "profile", "voice-recording"}
 FPS = 60
 
 

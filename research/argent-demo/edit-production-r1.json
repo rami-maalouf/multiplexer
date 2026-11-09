@@ -1,0 +1,20 @@
+{
+  "mux": "/Users/rami/Documents/code/multiplexer-mac/research/argent-demo/private/mux-profile-voice-full-r1/source.mov",
+  "beeper": "/Users/rami/Documents/code/multiplexer-mac/research/argent-demo/private/beeper-profile-voice-r2.mov",
+  "scenes": [
+    {"state": "inbox", "duration": 2.8, "mux": [5.5, 8.3], "beeper": [0.9, 3.7]},
+    {"state": "inbox", "duration": 3.6, "mux": [13.0, 16.6], "beeper": [6.6, 9.5]},
+    {"state": "inbox", "duration": 1.4, "mux": [16.6, 17.1], "beeper": [31.7, 33.1]},
+    {"state": "transition", "duration": 1.0, "mux": [23.5, 24.5], "beeper": [47.5, 48.5]},
+    {"state": "approved-thread", "duration": 2.8, "mux": [27.4, 30.2], "beeper": [49.0, 51.8]},
+    {"state": "approved-thread", "duration": 2.4, "mux": [33.1, 35.5], "beeper": [54.3, 56.7]},
+    {"state": "profile", "duration": 1.4, "mux": [38.3, 39.7], "beeper": [68.1, 69.5]},
+    {"state": "profile", "duration": 0.6, "mux": [39.7, 40.3], "beeper": [69.5, 70.1]},
+    {"state": "transition", "duration": 1.0, "mux": [42.0, 43.0], "beeper": [86.1, 87.1]},
+    {"state": "voice-recording", "duration": 1.6, "mux": [45.5, 47.1], "beeper": [95.4, 97.0]},
+    {"state": "voice-recording", "duration": 3.0, "mux": [48.2, 51.2], "beeper": [115.8, 118.8]},
+    {"state": "voice-recording", "duration": 1.5, "mux": [52.2, 53.7], "beeper": [131.8, 133.3]},
+    {"state": "transition", "duration": 2.0, "mux": [56.9, 58.9], "beeper": [210.8, 212.8]},
+    {"state": "inbox", "duration": 0.8, "mux": [58.9, 59.7], "beeper": [212.8, 213.6]}
+  ]
+}

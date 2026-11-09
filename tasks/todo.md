@@ -2,16 +2,24 @@
 
 ## Final paired production demo (2026-11-09, user approved Mux direction)
 
-- [ ] Recover Beeper phone control after user leaves it unlocked and approves any prompt.
-  Launch succeeds, but XCTest enabling-automation mode times out; scoped restart retry
-  did not produce a listening port within 120 s. No Beeper capture or gestures executed.
-- [ ] Capture matching Beeper natural scroll, mom chat, profile open/close, recording hold/drag,
-  cancel without sending and top-left back. Record fresh semantic targets before enabling
-  Beeper profile/voice options in the driver; no guessed send/cancel controls.
-- [ ] Pair with the approved Mux full-r1 footage, trim only idle time, preserve native action
-  speeds and align action starts. Keep unblurred/local; no fake equivalence or interpolation.
-- [ ] Export the final approximately 20-second comparison at 60 fps with the existing frame,
-  inspect transitions and glass motion, disclose source capture limits and release the phone.
+- [x] Recover phone control after Rami's ready confirmation and capture the matching Beeper
+  flow on the same physical iPhone. Profile, hold/drag, cancel and top-left back verified;
+  no messages sent. Source full-r2: 11513/11513 frames written, zero skips, 24 capture drops.
+- [x] Correct and replay `.devin/flows/beeper-profile-voice.yaml`: 27 actions/checks passed,
+  zero failures/warnings. Close is the actual cancel target, not the overlapping add AX node.
+  Idle placeholder and screenshot prove cancellation despite stale Stop controls in the tree.
+- [x] Pair with approved Mux full-r1 footage, preserve whole natural gestures and Beeper's
+  extra return-to-top flick. Cut idle waits; no acceleration, interpolation or UI replacement.
+- [x] Deliver comparison `research/argent-demo/mux-vs-beeper-production-unblurred-r1.mp4`,
+  25.9 s, 1600 x 1440, 60 fps, 1554 frames, silent. Native-resolution Beeper-only cut:
+  `research/argent-demo/beeper-demo-production-unblurred-r1.mp4`, same duration/frames,
+  1206 x 2622. Additional interactions fit 26 seconds without speeding up the apps.
+- [x] Inspect paired profiles, expanded glass and final inbox frames; run 21 tooling tests.
+  Sources, edit and hashes: `tasks/evidence/2026-11-09-paired-profile-voice-production.json`.
+  Unblurred files remain local, mode 0600. Phone automation released; originals unchanged.
+- [ ] Strict zero-drop raw acceptance is still unresolved: Mux source reported 2 drops,
+  Beeper 24. Edited outputs inherit source timing gaps and are not zero-drop masters.
+  Do not weaken the guard or interpret the edited comparison as a simultaneous benchmark.
 
 ## Profile and voice demo verification (2026-11-09)
 
@@ -26,7 +34,8 @@
   between 47.39 and 48.94 s; no standard reason attachment. r3 exposed invalid drop timestamps
   causing JSON failure; omit invalid timestamps. No writer skips or readiness waits in r4.
 - [ ] Consider native iPhone screen recording with Argent as driver if wired capture cannot
-  deliver reliably. Do not edit, blur or retime to hide capture problems. Beeper stays deferred.
+  deliver reliably. Do not edit, blur or retime to hide capture problems. Paired editing is now
+  complete; strict zero-drop raw capture remains separate work.
 
 ## User-requested iPhone update (2026-11-09, installed and accepted)
 
