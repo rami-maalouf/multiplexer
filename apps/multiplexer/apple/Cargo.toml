@@ -10,10 +10,10 @@ build = "build.rs"
 crate-type = ["rlib"]
 
 [dependencies]
-exact-logic = { path = "../../../../exact/exact2-multiplexer-integration/logic" }
-exact-apple = { path = "../../../../exact/exact2-multiplexer-integration/host/apple" }
-exact-apple-update = { path = "../../../../exact/exact2-multiplexer-integration/host/apple-update" }
-exact-js = { path = "../../../../exact/exact2-multiplexer-integration/js" }
+exact-logic = { path = "../../../../exact/expo-exact/logic" }
+exact-apple = { path = "../../../../exact/expo-exact/host/apple" }
+exact-apple-update = { path = "../../../../exact/expo-exact/host/apple-update" }
+exact-js = { path = "../../../../exact/expo-exact/js" }
 
 [build-dependencies]
-exact-js-bake = { path = "../../../../exact/exact2-multiplexer-integration/js/bake" }
+exact-js-bake = { path = "../../../../exact/expo-exact/js/bake" }

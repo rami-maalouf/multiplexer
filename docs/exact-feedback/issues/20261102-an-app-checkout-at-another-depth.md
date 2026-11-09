@@ -68,3 +68,7 @@ path-refresh command before execution. `app-cli.mjs` maps `update` to `new --upd
 compiler preparation in a fresh checkout. About three minutes of source lookup; no update
 or build was run. This is scheduling/documentation evidence for dependency refresh, not a
 new reproduction of the earlier path failure. The command card could name the compiler step.
+
+## Upstream checkout migration (2026-11-09)
+
+Reproduced at `expo/exact` `94b8671f70fe2e25b307a40e7fce66dc27c9f802`: `exact new <app> --update` refreshed the launcher, manifest schema and Rust dependency paths, but seven `package.json` file dependencies still named the previous checkout. Updating those paths and running `bun install` refreshed the lockfile. Contract compilation passed. The updater could refresh or report these package references too.
