@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-08",
+  "command": "./scripts/test-cli.sh",
+  "exitCode": 0,
+  "releaseBinarySHA256": "ede51003014138f503ac6ed37982470200c95eb018bfbaf66d50417e51f074ad",
+  "deterministicTests": { "entries": 58, "substantiveCases": 57, "subprocessHelper": 1, "failed": 0 },
+  "featureScenarios": { "passed": 18, "blocked": 0, "failed": 0 },
+  "legacySmoke": { "checks": 51, "note": "includes a variable number of scheduling polling assertions" },
+  "releaseBuild": "passed with previously documented upstream missing-debug-object warning",
+  "regressions": [
+    "fractional-second ISO timestamp rejected by release CLI; added unit assertion failed, parser fixed, assertion and live scheduled delivery passed",
+    "postaccept output failure lacked an explicit do-not-resend instruction; regression observed before fix and real output-file failure test now passes"
+  ],
+  "faultProof": {
+    "real": ["file writes and permissions", "partial audit tail refusal", "output-file write error", "independent process lock contention", "SIGKILL lock release"],
+    "injected": ["short/failed append", "fsync failure", "server failure or unknown write result", "postaccept durability failure"]
+  },
+  "liveEvidence": "tasks/evidence/cli-feature-coverage-20261108.json",
+  "coverageMap": "docs/cli-test-coverage.md",
+  "cleanup": "CLI signed out; CLI and fixture device absence independently observed; observer logout succeeded; prior policy restored",
+  "reviewedFinalRun": {
+    "command": "./scripts/test-cli.sh",
+    "exitCode": 0,
+    "releaseBinarySHA256": "769c9f7cfe9f1ab641661220e9a863ad0b3ec333a6a5ad9b886e5764f7408493",
+    "swiftEntriesPassed": 58,
+    "policyBackupTestsPassed": 5,
+    "liveScenariosPassed": 19,
+    "liveBlocked": 0,
+    "smokeChecks": 51,
+    "closedPipe": "actual readerless OS pipe and default SIGPIPE before exec; server acceptance observed, exit 1 and exact output-failure warning required",
+    "regressionRed": "the real-CLI readerless-pipe case failed before explicit SIGPIPE ignore; snapshot-sync failure test failed before failed-snapshot cleanup",
+    "review": "two independent bounded manual Sonnet reads, supplemented by host source inspection; full multi-agent skill pipeline was unavailable",
+    "reviewReceipt": "docs/reviews/2026-11-08-cli-coverage.md"
+  },
+  "limits": [
+    "cold ordering and bounded watch delivery remain documented limitations, not fixed by these tests",
+    "physical network partition, full-server outage and power-loss durability were not exercised",
+    "no real-account access; Matrix test rooms do not certify bridge behavior for real conversations",
+    "attachment/reply metadata remains absent from the current output schema"
+  ]
+}

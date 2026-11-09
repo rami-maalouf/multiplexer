@@ -111,6 +111,9 @@ cat > "$appex/Info.plist" <<EOF
   <key>CFBundleVersion</key><string>$(info CFBundleVersion)</string>
   <key>MinimumOSVersion</key><string>$(info MinimumOSVersion)</string>
   <key>CFBundleSupportedPlatforms</key><array><string>$platform</string></array>
+  <key>DTPlatformName</key><string>$( [ "$mode" = "--sim" ] && echo iphonesimulator || echo iphoneos )</string>
+  <key>DTPlatformVersion</key><string>$(info DTPlatformVersion 2>/dev/null || echo 17.0)</string>
+  <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
   <key>MultiplexerAppGroup</key><string>$group</string>
   <key>MultiplexerKeychainGroup</key><string>$keychain_group</string>
   <key>MultiplexerSessionService</key><string>$session_service</string>

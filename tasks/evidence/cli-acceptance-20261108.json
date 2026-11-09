@@ -1,0 +1,83 @@
+{
+  "date": "2026-11-08",
+  "platform": "macOS arm64",
+  "commands": {
+    "build": "swift build --package-path cli -c release",
+    "unit": "swift test --package-path cli --filter ArgumentsTests",
+    "live": "scripts/mx-lock.sh matrixcore cli-final -- bun scripts/test-cli.ts"
+  },
+  "results": {
+    "releaseBuild": "passed",
+    "unitTests": {
+      "passed": 3,
+      "failed": 0
+    },
+    "liveAcceptance": {
+      "checks": 35,
+      "exitCode": 0
+    },
+    "verified": [
+      "JSON chat output and warm newest synthetic message first",
+      "JSONL reads by id and exact name with message/reaction fields",
+      "search finds synthetic message and reports local index scope",
+      "confirmed text and add-only reaction return server event ids",
+      "reaction remains visible in a separate read after sender process exits",
+      "scheduled synthetic message arrives",
+      "other room and unknown flag refused before mutation",
+      "dry-run does not send; local audit has denied/dry-run/accepted outcomes without message bodies",
+      "foreground watch emits ready then synthetic incoming message exactly once",
+      "another CLI process fails clearly while watch owns store",
+      "wrong recovery key is refused",
+      "owned CLI session logged out and temporary policy restored"
+    ]
+  },
+  "finalReviewFixAcceptance": {
+    "command": "scripts/mx-lock.sh matrixcore cli-review -- bun scripts/test-cli.ts",
+    "checks": 50,
+    "exitCode": 0,
+    "unitTestsPassed": 3,
+    "releaseBuild": "passed; original upstream debug-map warning retained",
+    "verified": "current-run audit records, incomplete audit tail refuses send without appending, scheduled delivery with bounded polling, existing read/write/watch acceptance",
+    "cleanup": "CLI signed out, temporary policy restored, injected audit fragment removed while preserving original records",
+    "review": "20261108-mx-c1c2: six confirmed findings; five mechanical fixes applied; attachment/reply schema addition deferred",
+    "proofLimits": "postaccept disk-failure reporting and merged-name resolution reviewed in source, not independently fault-injected or exercised in merged-room fixture"
+  },
+  "mainIntegrationAcceptance": {
+    "base": "f6169a86a3a8680c22ab66374b33f915d367261e",
+    "conflicts": "additive plan/task entries only; retained both sides",
+    "releaseBuild": "passed",
+    "unitTestsPassed": 3,
+    "liveCommand": "scripts/mx-lock.sh matrixcore cli-integrated -- bun scripts/test-cli.ts",
+    "liveChecks": 51,
+    "exitCode": 0,
+    "note": "check count varies with scheduled-delivery polling iterations; core acceptance assertions unchanged"
+  },
+  "accounts": "test1/test2 only; no real-account session accessed",
+  "limitations": [
+    "cold first-list order changes during asynchronous SDK latest-event hydration; remains unfixed",
+    "rank-coverage and before/after consistency barriers failed to prove cold readiness and were removed",
+    "valid-key encrypted recovery not exercised: no private recovery key available",
+    "real-account read-only and dry-run policy proof not exercised: credential absent from documented Keychain service",
+    "watch is best effort, bounded by snapshot window and has no durable reconnect cursor",
+    "no independent server read-receipt observation; absence of implicit receipts checked by source routing",
+    "merged read/search and unscoped watch supported in source but not separately exercised live",
+    "release linker warns about one missing external Rust debug object; executable builds and runs"
+  ],
+  "followupTestHarnessChange": "after the passing run, cleared pending timeout timers and ensured policy restoration also runs when logout fails; bundled with bun after edit",
+  "ui": "not applicable: no app UI or Exact source changes",
+  "archiveWarningInvestigation": {
+    "diagnosis": "SDK xtask localize_private_symbols uses ld -r then deletes temporary Rust objects, leaving external debug-map references",
+    "attempt": "strip -S on the copied macOS static archive",
+    "result": "rejected: global symbol addresses changed and linker rejected third-party assembly addresses outside any section",
+    "restoration": "copied pristine archive back from untouched SDK generated directory; release build passed with original warning",
+    "disposition": "no setup/source change shipped; no further archive mutation"
+  },
+  "postReviewAuditAcceptance": {
+    "command": "scripts/mx-lock.sh matrixcore cli-audit-proof -- bun scripts/test-cli.ts",
+    "checks": 42,
+    "exitCode": 0,
+    "auditProof": "records only after starting byte offset, original bytes unchanged, current account/room denial and dry-run, matching operation started/accepted for all four write actions",
+    "binary": "simplified main.swift with intact original SDK archive",
+    "cleanup": "CLI signed out and temporary policy restored"
+  }
+}

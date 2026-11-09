@@ -4,6 +4,12 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Mac merge preparation (2026-11-09):** integrated main `04905bb` into the Mac
+branch, preserving the CLI and TestFlight updates. The only manual conflict was
+additive plan/status text and the SDK risk entry; both build paths remain documented.
+Combined verification: 42 core tests passed, one credential-dependent test skipped,
+43 Bun tests passed, and the Contract/TypeScript gate returned `[]`.
+
 **New conversation (2026-11-09):** Cmd+N now opens a dedicated contact picker;
 Cmd+K retains existing chat search. The Mac sidebar stays visible, account filtering
 includes Matrix and discovered bridge logins, and explicit selection opens a new or
@@ -102,6 +108,39 @@ chats, opened a chat, sent 5 messages and signed out. The inbox and the chat sho
 side with no layout work (Exact's list-detail split). Blocker: every send ends with a
 SIGTRAP in AppKit's glass layout (Exact finding 157). Mac push: local notifications only,
 while the app runs (Rami, 2026-11-08). Full Mac work waits for Phase 2 and Phase 4.
+
+**Agent CLI, read and guarded write commands implemented (2026-11-08, `feat/cli-c0`):**
+Swift `mx` shares MatrixCore and the macOS SDK. Added JSONL read/search, foreground watch,
+stdin recovery, confirmed text/reaction sends, explicit read receipts and Send Later.
+All writes require an external exact account/room policy; dry-run and durable local audit
+are built in. Reactions add only. One process owns the SDK store; stop watch before another
+command. No daemon or MCP is needed for the scripted acceptance. Cold first-list order still
+changes during SDK hydration; attempted readiness barriers did not prove completion and were
+removed. Recovery lacked credentials in the first run; the expanded test fixture now verifies
+it without resetting an existing backup. Real-account checks remain unverified. Results are in
+`tasks/todo.md` and `tasks/evidence/cli-acceptance-20261108.json`. No real account was accessed.
+Final review corrections passed 50 live checks and three unit tests. Audit records block
+writes after an incomplete tail; postaccept audit errors cannot report a refused send.
+Name resolution uses visible rows; search reports its bounded index scan. Rich attachment
+and reply metadata remain a documented output limitation for follow-up.
+Integrated current main `f6169a8`: additive plan/task conflicts retained both sides;
+combined release build, three unit tests and 51 live acceptance checks passed.
+The requested coverage expansion now passes 58 XCTest entries (57 substantive plus one
+subprocess helper) and 18 named live scenarios, zero blocked. Valid recovery, encrypted
+confirmed sends, merged reads/search, independent receipt observation and unscoped watch
+are now verified on the test accounts. Fractional-second scheduling and postaccept output
+failure reporting have regression fixes. `docs/cli-test-coverage.md` maps each command to
+proof and retains the cold-order/watch-delivery/real-account limits.
+Final reviewed suite: 58 XCTest entries, five Bun policy-backup tests, 19 live scenarios
+(zero blocked) and the legacy smoke suite all pass through `scripts/test-cli.sh`. A real
+closed-pipe regression exposed SIGPIPE termination after acceptance; explicit signal handling
+now produces the output-failure warning. Test policy has a private on-disk recovery snapshot.
+
+**TestFlight build 4 uploaded (2026-11-08):** archive built with Exact tip
+`ba8256a4a8` (mx-testflight + archive-refusal scope), notification extension packaged,
+and App Store Connect upload succeeded (`Mux.ipa`). Extension Info.plist now carries
+`DTPlatformName`, `DTPlatformVersion` and `UIRequiredDeviceCapabilities` (`arm64`) so
+distribution export accepts it. ASC is processing the build for TestFlight.
 
 **Main merge (2026-11-08):** PR #16 (`fix/release-readiness`) merged to `main`
 (`2f5a35a`). Product fixes from #12 and #13 landed with it; #14 closed as
@@ -270,7 +309,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Blocked on Rami | M3 is met (locked-phone WhatsApp sender/text confirmed). P3.6 still needs his mute-copy and badge-count decisions; P3.7 needs Exact's remote activation/presentation hatch. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
-| Last updated | 2026-11-07 |
+| Last updated | 2026-11-08 |
 
 Update this table at the end of every work session.
 
@@ -509,6 +548,7 @@ Use these to check that we work on the right thing.
 | D9 | Beeper's features, Messages' feel. Take every feature from Beeper (the whole inbox, its chat top bar, "Reply on WhatsApp", the full message menu, chat info, voice notes, photos, GIFs, Send Later). Keep what Messages already gives through Exact's recipe (bubble tails, sender runs, the long-press overlay, the "Replying to" bar, reaction pills). Follow the iPhone's light or dark setting; design and check dark first. | Rami, 2026-11-02: "Take the best from Beeper and Messages. I care more about the features of Beeper. But the user experience of Messages is pretty good, and if it's already there from the recipe, let's keep that." "I'll predominantly be using dark mode." |
 | D10 | GIFs come from KLIPY. The phone calls KLIPY directly, the one exception to invariant 1. Rami makes the account; the key stays out of git. | Rami, 2026-11-02. Beeper uses KLIPY; Google shut down Tenor's API on 2026-06-30; KLIPY's test key is free (100 calls an hour), its production key is asked for with a form and has no published price, its ads can be turned off; KLIPY requires calls from the user's app, not through a server. GIPHY's production key has a fee. |
 | D11 | Send Later: hold the Send button, as in Slack, and pick a time. The message waits on our server (Synapse's delayed events, MSC4140), so it goes with the phone off. Turning them on is a server change: Rami's OK first. | Rami, 2026-11-02. iOS does not promise to wake an app at an exact time; the SDK's bindings cannot send a delayed event, so MatrixCore calls the Matrix API itself (to check). |
+| D12 | Agents reach the account through `mx`, a Swift command line on the Mac that links MatrixCore. Not a desktop app first, not Rust or TypeScript, not on the server. | Rami, 2026-11-08 ("go ahead"). Exact has no production door for agents (`exact agent` is development only; its MCP plan, LLP 1111, is parked). One copy of the chat logic: the app's own state (archive, merges, labels, ...) is account data that only MatrixCore reads and writes. The macOS SDK build also serves M5. On the server it would need the access token there (invariant 7). Fallback after 3 failed tries: Rust with matrix-sdk. |
 
 ## Facts we rely on
 
@@ -575,7 +615,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Unexpected Oracle charges for 4 CPUs and 23 GiB. | Medium | Rami checks billing. | Q5 |
 | A network blocks logins from cloud IP addresses (not verified). | Medium | Test each network before we depend on it. | Phase 4 |
 | The notification extension runs out of memory or fails to decrypt. | High for M3 | Test early in Phase 3. | Phase 3 |
-| matrix-rust-components-swift is iOS only. | Low (was High for M5) | Retired 2026-11-08: `scripts/build-matrix-sdk-macos.sh` builds the macOS slice from the pinned SDK commit (about 5 min); its Swift bindings and headers match the release byte for byte. | Phase 5 |
+| matrix-rust-components-swift is iOS only. | Low (was High for M5) | Retired 2026-11-08: `scripts/build-matrix-sdk-macos.sh` builds the app macOS slice from the pinned commit with matching Swift bindings and headers. The CLI uses `scripts/setup-cli-sdk.sh`. | Phase 5 |
 | SDK API changes often. | Medium | Pin the version. Only MatrixCore touches the SDK. | Always |
 | The bridges see message text, so a server breach exposes chats. | High | SSH keys only, few services, updates. End-to-bridge encryption is optional. | Phase 2 |
 
@@ -692,6 +732,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-04 | Later ready for serialized integration: tested code head `1a38b7c` incorporates main `03fec0f` and UI main `cebda48`. New Space `149843c`; room-member preview resolution and fallback wrapping `dc70b9a`; merged-space compatibility `840eea5`. Ten existing focused core tests and both corrected compatibility tests passed; the latter proves new children survive a later failure and retry completes membership. Final `verify ios`: 7 tests, no findings, 9 largest-text screens. Signed-in Select Chats fallback wraps in both appearances at largest text; account signed out and own simulator shut down. Prior real-account 29-to-zero raw-sender evidence retained; no new real-account drive. Main `316e116` arrived during verification and is deliberately left for coordinator integration, preserving push/shared-store migration. No main merge by this lane. |
 | 2026-11-04 | Integrated the complete Later branch e93aa0e with main 316e116, preserving shared-store migration. Combined verify ios: 7 passed, light/dark clean, 9 largest-text screens without overflow (186.9 s). Combined MatrixCore selection: 25 passed, 0 failed/skipped (224.2 s), covering communities, Requests, preview senders, push and session stores under the shared lock. Labels remains outside this integration pending review fixes. |
 | 2026-11-04 | Integrated full Labels branch 2b55caf after the combined 39-test selection passed on main under the shared lock (no failures/skips, 1062.9 s). Preserved all earlier UI, Spaces, Requests and session-migration work. Contract build clean; app/core code identical to the lane’s final 9-test iOS verification, with light/dark and 11 largest-text screens clean. The archive fix changes only test event sequencing. Feedback remains local per Rami. |
+| 2026-11-08 | D12: an agent CLI, `mx` (Swift, MatrixCore, macOS SDK built by us). C0 passed as `@test1`: sign in, chats (fresh, 0.3 to 0.5 s warm), parallel calls, sign out removed the device. A cold first run lists chats before the server's order arrives (not by recency); warm runs are in order. |
 | 2026-11-07 | R04 changed for chats with no kept copy (branch `fix/demo-bugs`): such a chat now waits for its full first screen under the loading spinner, instead of answering on the timeline's first diff. Why: on a new device that diff holds only the newest message, which showed alone for about 0.35 s and then jumped up (seen in the demo recording). A chat with a kept copy keeps R04's early answer, since the copy covers the older rows. The older-messages row keeps one height in both states. The demo staging seats a third contact in its group: its bot is listed but never joins, so the app's member count (which subtracts listed service members, right for real bridges) read the group as a DM. |
 | 2026-11-07 | DMs or Groups for a bridged chat (branch `fix/members-composer-groups`): `m.direct` decides first; a bridged room not marked direct with at most 2 people besides its bot is what its bridge's `m.bridge` says (`com.beeper.room_type` `dm`, else a group), read once per room from the server and kept; with no bridge state the count decides, as before. Why: the count cannot tell a group with one other person from a DM. A read-only audit of the real account (349 rooms) found every bridged DM in `m.direct` with room type `dm` and no bridged group there, so only a few rooms are asked. Also: the info page counts a service member out only when it has joined (the list's rule), and the chat's composer shows from its first frame. |
 | 2026-11-08 | Rami said yes to a Mac spike now, and to local notifications only on the Mac (no APNs there). Spike result: the SDK builds for macOS from the pinned commit; the app builds for the Mac with `#if os(macOS)` branches in four module files; sign-in, the chat list, a chat and sending work. Exact findings 156 to 158. The risk "matrix-rust-components-swift is iOS only" is retired. |
