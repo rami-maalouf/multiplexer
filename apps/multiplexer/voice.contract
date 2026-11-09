@@ -78,8 +78,9 @@ component VoicePlayMark
         progress aria-label="Loading"
       else
         // it grows with the reader's text a little, to what its disc holds.
-        image (playing ? "symbol:pause-fill" : "symbol:play-fill") font-size=(size > 30 ? "min(-exact-subheadline, 14px)" : "min(-exact-footnote, 12px)")
-          color=fill margin-left=(playing ? 0 : 2) aria-hidden=true
+        image (playing ? "symbol:pause-fill" : "symbol:play-fill")
+          font-size=(size > 30 ? "min(-exact-subheadline, 14px)" : (size > 24 ? "min(-exact-footnote, 12px)" : "min(-exact-caption2, 10px)"))
+          color=fill margin-left=(playing ? 0 : (size > 24 ? 2 : 1)) aria-hidden=true
 
 // a voice message: play, its waveform, its length (the time left once it has played some) and the
 // speed chip, which changes the speed of every voice message. Yours in the accent, others' grey, with
@@ -115,8 +116,8 @@ component VoiceBubble
       row align-items="center" gap=8 min-width=0
         // the length in its name, so VoiceOver tells one voice message's button from another's.
         button appearance="none" press=play aria-label=`${playing ? "Pause" : "Play"}, ${lengthText(seconds)}` testId=`${identifier}-play`
-          min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
-          VoicePlayMark(playing=playing, loading=loading, ink=ink, fill=fill, size=32)
+          min-width=44 min-height=44 margin="0 -8px 0 -3px" display="flex" align-items="center" justify-content="center" flex-shrink=0
+          VoicePlayMark(playing=playing, loading=loading, ink=ink, fill=fill, size=22)
         VoiceBars(bars=bars, played=played, ink=ink)
         if not stacked
           text lengthText(shown) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" flex-shrink=0
@@ -146,8 +147,8 @@ component VoiceStill
       width="16.5rem" max-width="100%" box-sizing="border-box" padding=(stacked ? "6px 12px 6px 4px" : "1px 6px 1px 4px")
       border-radius=20 background-color=fill opacity=(dimmed and not outgoing ? 0.6 : 1)
       row align-items="center" gap=8 min-width=0
-        view min-width=44 min-height=44 display="flex" align-items="center" justify-content="center" flex-shrink=0
-          VoicePlayMark(playing=false, loading=false, ink=ink, fill=fill, size=32)
+        view min-width=44 min-height=44 margin="0 -8px 0 -3px" display="flex" align-items="center" justify-content="center" flex-shrink=0
+          VoicePlayMark(playing=false, loading=false, ink=ink, fill=fill, size=22)
         VoiceBars(bars=bars, played=-1, ink=ink)
         if not stacked
           text lengthText(seconds) font="-exact-footnote" color=ink font-variant-numeric="tabular-nums" flex-shrink=0
