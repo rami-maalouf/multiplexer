@@ -1,0 +1,112 @@
+use Face from "./bubble.contract"
+use networkName from "./network.contract"
+
+shape ConversationAccount
+  id: string
+  name: string
+  network: string
+
+shape ConversationContact
+  id: string
+  accountId: string
+  name: string
+  identifier: string
+  network: string
+  avatar: string
+
+shape ConversationAccounts
+  owner: string
+  accounts: ConversationAccount[]
+  problem: string
+
+shape ConversationContacts
+  owner: string
+  account: string
+  query: string
+  contacts: ConversationContact[]
+  problem: string
+
+shape ConversationStarted
+  owner: string
+  visit: string
+  account: string
+  identifier: string
+  room: string
+  problem: string
+
+component NewConversation
+  props
+    route: string
+    signedIn: bool
+    query: string
+    account: string
+    accounts: ConversationAccount[]
+    contacts: ConversationContact[]
+    loading: bool
+    problem: string
+    starting: bool
+    startProblem: string
+    matrixId: bool
+    typeQuery: action
+    chooseAccount: action
+    chooseContact: action
+    startMatrix: action
+    retry: action
+    close: action
+  view
+    column navigationKey=route navigationScroll="conversation-contacts" position="absolute" inset=0
+      display="flex" flex-direction="column" testId="new-conversation"
+      row padding="16px 20px" gap=12 align-items="center" flex-shrink=0 border-bottom="1px solid -exact-separator"
+        text "New Conversation" role="heading" aria-level=1 font="-exact-headline" flex=1
+        button press=close testId="new-conversation-cancel"
+          text "Cancel"
+      column gap=12 padding=16
+        row gap=12 align-items="center"
+          input id="contact-search" type="search" value=query input=typeQuery placeholder="Search contacts"
+            flex=1 min-width=0 min-height=28 aria-label="Search contacts" autofocus=true autocapitalize="none" disabled=starting testId="contact-search"
+          select value=account change=chooseAccount disabled=starting aria-label="Account" testId="conversation-account" max-width="45%"
+            option "All accounts" value=""
+            for a in accounts key=a.id
+              option (a.id == "matrix" ? "Matrix" : a.name) value=a.id
+        if starting
+          row gap=8 align-items="center" testId="conversation-starting"
+            progress aria-label="Opening conversation"
+            text "Opening conversation…" color="-exact-secondary-label"
+        if startProblem != "" and not starting
+          text startProblem color="-exact-system-red" role="alert" testId="conversation-start-error"
+      list id="conversation-contacts" appearance="auto" flex=1 min-height=0
+        if not signedIn
+          section
+            text "Sign in to choose a contact." color="-exact-secondary-label" testId="contacts-signed-out"
+        else
+          if matrixId
+            section
+              button press=startMatrix disabled=starting testId="contact-start-matrix"
+                column gap=4
+                  text `Start with ${query.trim()}`
+                  text "Matrix" font="-exact-footnote" color="-exact-secondary-label"
+          if loading
+            section
+              row gap=8 align-items="center" testId="contacts-loading"
+                progress aria-label="Loading contacts"
+                text "Loading contacts…" color="-exact-secondary-label"
+          if problem != "" and not loading
+            section
+              text problem color="-exact-system-red" role="alert" testId="contacts-error"
+              button press=retry testId="contacts-retry"
+                text "Try Again"
+          if not loading and problem == "" and contacts.length == 0 and not matrixId
+            section
+              text (query.trim() == "" ? "Search by name, phone number, username or Matrix ID." : "No matching contacts. Try another name or address.")
+                color="-exact-secondary-label" testId="contacts-empty"
+          if not loading and contacts.length > 0
+            section
+              header
+                text "Contacts"
+              for c in contacts key=c.id
+                button press=chooseContact(c.accountId, c.identifier) disabled=starting testId=`contact-${c.id}`
+                  display="flex" flex-direction="row" align-items="center" gap=12
+                  Face(picture=c.avatar, initials=c.name.slice(0, 1).toUpperCase(), size=36)
+                  column flex=1 min-width=0 gap=3
+                    text c.name
+                    text `${networkName(c.network)} · ${c.identifier}` font="-exact-footnote" color="-exact-secondary-label"

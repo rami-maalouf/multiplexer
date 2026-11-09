@@ -4,6 +4,111 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Mac merge preparation (2026-11-09):** integrated main `04905bb` into the Mac
+branch, preserving the CLI and TestFlight updates. The only manual conflict was
+additive plan/status text and the SDK risk entry; both build paths remain documented.
+Combined verification: 42 core tests passed, one credential-dependent test skipped,
+43 Bun tests passed, and the Contract/TypeScript gate returned `[]`.
+
+**New conversation (2026-11-09):** Cmd+N now opens a dedicated contact picker;
+Cmd+K retains existing chat search. The Mac sidebar stays visible, account filtering
+includes Matrix and discovered bridge logins, and explicit selection opens a new or
+existing direct room with the normal composer. Group, Blast and Join are outside
+this direct-chat slice. MatrixCore owns discovery, contact search, identifier
+resolution and room creation; native/UI replies remain bound to account and visit.
+Bearer requests accept only the homeserver HTTPS origin and refuse redirects.
+
+The completed review receipt `mux-new-conversation-20261108-quality` retained three
+availability defects. All are corrected: discovery failure preserves Matrix,
+individual bridge failure preserves other contacts with a warning, and identifier
+404 becomes an empty search. Fifteen conversation fixtures and the full native core
+suite pass (42 passed, one credential-dependent test skipped). The separate real
+integration test passed self/peer DM creation-or-reuse, immediate reuse and m.direct
+preservation. It does not force a fresh creation branch. All 38 Bun tests and 13
+Mac authored tests pass. A test-account drive opened the picker, selected a full
+Matrix ID, opened the composer, sent a server-confirmed message, verified Cmd+N,
+Cmd+K, Cancel and Escape, and signed out. Light 900x700 and dark 700x600 captures
+were inspected. No connected real-account bridge contacts or bridge DM creation
+were exercised; those remain a runtime verification limit. Shared iOS runtime was
+not rerun. Evidence: `tasks/evidence/mac-new-conversation.json`.
+
+**Remaining Mac features (2026-11-08):** desktop Enter/Shift+Enter, Cmd+K
+conversation search (Cmd+N superseded by the picker above), hover, context menus and staged file drops are implemented.
+The header and bottom controls use Mac spacing without the phone's negative
+insets; the header retains merged-network switching. The native module supplies
+unfiltered live summaries for local notifications and the global unread Dock
+badge, and the manifest enables `keepRunning`. Snapshot policy suppresses history,
+outgoing messages, focused chats and muted children of merges. Pending delivery
+survives ordinary refreshes and cancels on account/permission changes. Notification
+clicks validate against the current Keychain account before opening a room.
+
+Native auth-free MatrixCore tests pass 27/27 on Mac (commit `5cd0b8c`); iOS keeps
+its default package selection. All 38 TypeScript tests and all 12 Mac authored
+tests pass. A real test-account file drop and send succeeded. Light/dark and
+700x600 screenshots were inspected. A hidden-window test received a new message,
+reported one delivered local notification and a Dock badge of 12. Agent delivery
+is intercepted; no actual macOS system banner has been verified. Final chooser
+and merged-network screenshots were inspected in light/dark; the selector changed
+the open test room from WhatsApp to Instagram. A notification click opened the
+right room while signed in, and the same saved entry left a signed-out launch on
+sign-in. The test account signed out and the badge cleared. App commit `fdce07a`. Latest normal bundle rebuilt and reopened; native window
+inspected read-only at the inbox, with no real-account room opened.
+
+Independent `ce-code-review` receipt: `mac-20261108-remaining`, completed in
+`/tmp/compound-engineering-501/ce-code-review/mac-20261108-remaining`.
+All three actionable findings have local fixes and regression evidence.
+Distribution preparation is committed as `af9ddca`: a supplied production-bundle
+wrapper and operator guide. This Mac has no valid Developer ID Application
+identity; the existing app has development trust. Signing, real DMG generation,
+notarization, clean-Mac installation and updates remain unverified. No upload,
+notarization or update feed was configured. The underlying Exact glass fault
+remains open; the app uses its verified ungrouped-composer workaround. Shared iOS
+runtime and native IME composition were not rechecked in this Mac session.
+
+
+**Mac send-crash workaround (2026-11-08):** after a normal-app Send closed Mux,
+the crash report confirmed main-thread SIGTRAP in AppKit layout. Removing only the
+composer glass group survived three test-account sends. The final implementation
+asks the native module whether composer glass can be grouped: false on macOS,
+true on iOS. A slot wrapper shares all composer controls and selects a grouped or
+ungrouped row. Contract/TypeScript checks and all Mac authored tests pass; all 13
+TypeScript tests pass. Five consecutive sends on the final Mac build appeared in
+the test chat, then the account signed out. Light/dark captures inspected at
+`.exact/mac/send-fixed-{light,dark}.png`; existing Mac chrome overlaps remain.
+The framework's underlying glass fault (157) stays open; this is an app workaround.
+The iOS branch keeps spacing 8 but has no new native runtime verification this turn.
+
+
+**Mac sign-in click (2026-11-08):** reproduced an enabled toolbar button ignoring
+clicks in the normal Mac app. Return from the password field signed in; the running
+user session is left open. Root cause: AppKit forwards item.action changes to the
+custom NSButton, replacing its specialized handler on toolbar sync. Exact local
+commit `9a78f32cd9` restores the button target/action each refresh, integrated as
+`afac7b1370`. The native regression failed before the fix; all 24 HeaderMacTests
+pass afterward, and caps passes. Corrected app build completed; no upstream PR or
+feedback send for this new finding (159).
+
+
+**Mac follow-up (2026-11-08):** Rami approved sending the three diaries and opening
+Exact fixes. Sent 3 diaries/19 command records, receipt
+`d4e3cf84-6906-40a6-8113-9d12066c2420`. Public Exact PRs #1603 (Mac command docs)
+and #1604 (reserve stdio replies before native modules start) are open. Carrier
+regression failed before the change; driver tests pass 49 with 1 browser test
+skipped, the full Mac host builds and a live state drive passes. Caps passes.
+The full app still traps after Send as the test account; signed out afterward.
+An account-free composer probe crashed with SIGTRAP in one of two consecutive
+authored-test runs; manual drives passed. `tools/mac-glass-probe/` preserves the
+intermittent reduction. Its stack and shared root cause are still unproved; no
+glass fix is claimed. Finding 157 and daily-Mac readiness stay open.
+
+
+**Mac spike (2026-11-08, branch `feat/mac-spike`, Phase 5 step 0, Rami's yes):** the
+iPhone app runs on the Mac with Exact's AppKit host. Signed in as `@test1`, it listed 74
+chats, opened a chat, sent 5 messages and signed out. The inbox and the chat show side by
+side with no layout work (Exact's list-detail split). Blocker: every send ends with a
+SIGTRAP in AppKit's glass layout (Exact finding 157). Mac push: local notifications only,
+while the app runs (Rami, 2026-11-08). Full Mac work waits for Phase 2 and Phase 4.
+
 **Agent CLI, read and guarded write commands implemented (2026-11-08, `feat/cli-c0`):**
 Swift `mx` shares MatrixCore and the macOS SDK. Added JSONL read/search, foreground watch,
 stdin recovery, confirmed text/reaction sends, explicit read receipts and Send Later.
@@ -510,7 +615,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Unexpected Oracle charges for 4 CPUs and 23 GiB. | Medium | Rami checks billing. | Q5 |
 | A network blocks logins from cloud IP addresses (not verified). | Medium | Test each network before we depend on it. | Phase 4 |
 | The notification extension runs out of memory or fails to decrypt. | High for M3 | Test early in Phase 3. | Phase 3 |
-| matrix-rust-components-swift is iOS only. | High for M5 | Build the SDK's Swift bindings for macOS ourselves. Done for the CLI (2026-11-08): `scripts/setup-cli-sdk.sh`. | Phase 5 |
+| matrix-rust-components-swift is iOS only. | Low (was High for M5) | Retired 2026-11-08: `scripts/build-matrix-sdk-macos.sh` builds the app macOS slice from the pinned commit with matching Swift bindings and headers. The CLI uses `scripts/setup-cli-sdk.sh`. | Phase 5 |
 | SDK API changes often. | Medium | Pin the version. Only MatrixCore touches the SDK. | Always |
 | The bridges see message text, so a server breach exposes chats. | High | SSH keys only, few services, updates. End-to-bridge encryption is optional. | Phase 2 |
 
@@ -630,6 +735,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-08 | D12: an agent CLI, `mx` (Swift, MatrixCore, macOS SDK built by us). C0 passed as `@test1`: sign in, chats (fresh, 0.3 to 0.5 s warm), parallel calls, sign out removed the device. A cold first run lists chats before the server's order arrives (not by recency); warm runs are in order. |
 | 2026-11-07 | R04 changed for chats with no kept copy (branch `fix/demo-bugs`): such a chat now waits for its full first screen under the loading spinner, instead of answering on the timeline's first diff. Why: on a new device that diff holds only the newest message, which showed alone for about 0.35 s and then jumped up (seen in the demo recording). A chat with a kept copy keeps R04's early answer, since the copy covers the older rows. The older-messages row keeps one height in both states. The demo staging seats a third contact in its group: its bot is listed but never joins, so the app's member count (which subtracts listed service members, right for real bridges) read the group as a DM. |
 | 2026-11-07 | DMs or Groups for a bridged chat (branch `fix/members-composer-groups`): `m.direct` decides first; a bridged room not marked direct with at most 2 people besides its bot is what its bridge's `m.bridge` says (`com.beeper.room_type` `dm`, else a group), read once per room from the server and kept; with no bridge state the count decides, as before. Why: the count cannot tell a group with one other person from a DM. A read-only audit of the real account (349 rooms) found every bridged DM in `m.direct` with room type `dm` and no bridged group there, so only a few rooms are asked. Also: the info page counts a service member out only when it has joined (the list's rule), and the chat's composer shows from its first frame. |
+| 2026-11-08 | Rami said yes to a Mac spike now, and to local notifications only on the Mac (no APNs there). Spike result: the SDK builds for macOS from the pinned commit; the app builds for the Mac with `#if os(macOS)` branches in four module files; sign-in, the chat list, a chat and sending work. Exact findings 156 to 158. The risk "matrix-rust-components-swift is iOS only" is retired. |
 
 ### Appearance preference (2026-11-04)
 
@@ -837,3 +943,5 @@ Host result: the one compile and all 31 exact selectors passed on `57fac7b5`, bi
 `3020ad05`, with no retry or ignored test. All owned groups ended and target-openers check
 passed. The proposed managed-owner/foreign-transfer plan remains unaccepted; a custom string
 packet versus bounded typed record needs an explicit design decision before implementation.
+
+Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).

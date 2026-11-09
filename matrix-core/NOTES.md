@@ -29,6 +29,37 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   calls the SDK" is a convention here. `Matrix.swift` (the native module) calls only
   `MatrixCore`.
 
+## Native macOS package tests
+
+The released SDK package has only iOS slices. Native Mac tests explicitly select
+the local combined SDK instead; evaluating the manifest on a Mac alone does not
+change the default iOS dependency or its test target.
+
+After the existing SDK setup and macOS build scripts have produced
+`vendor/matrix-sdk/26.10.27/combined/MatrixSDKFFI.xcframework`, run from the repo root:
+
+```sh
+scripts/mx-lock.sh matrixcore mac-core -- scripts/test-matrix-core-macos.sh
+```
+
+The runner stages `MacTestSupport/Package.swift`, the released generated Swift
+bindings, and the combined XCFramework under `.build/macos-sdk` using local copies.
+It sets `MATRIX_CORE_MACOS=1` to select that package, keeps Mac build products under
+`.build/macos`, preserves `Package.resolved`, and limits compilation to two jobs.
+It does not update the app's native-module copies. No production source changed,
+so this test setup does not require rerunning the app copy script.
+
+All production MatrixCore sources compile for macOS 14 or newer on Apple silicon.
+`MatrixCoreMacTests` calls the linked SDK to check its pinned commit and reuses the
+existing session-store, room-kind, and formatted-text XCTest files through relative
+symlinks. These 27 tests need no credentials, homeserver, or Simulator. Additional
+Swift test arguments such as `--filter SDKLinkTests` pass through the runner.
+
+This is an auth-free Mac test target, not the network/media suite: the existing
+`MatrixCoreTests` target and `scripts/test-matrix-core.sh` retain the pinned remote
+SDK and iOS path. The UIKit media fixtures and authenticated network tests have not
+been ported or run on Mac by this setup.
+
 ## Where the session lives
 
 - **The Keychain** holds the session (`SessionKeychain`, one generic-password item:
@@ -479,8 +510,9 @@ custom room account data, so they are one global account data event,
   (about 40 s). If this slows T1.3 and later, build the bindings and MatrixCore into one
   prebuilt xcframework, so the app module compiles only `Matrix.swift`.
 - **Device build.** Not tried yet. It needs signing (Q4). The `ios-arm64` slice exists.
-- **Mac.** The release has no macOS slice. The Mac app (M5) needs our own build of the
-  bindings.
+- **Mac.** The release has no macOS slice. `scripts/build-matrix-sdk-macos.sh`
+  builds the pinned native slice; setup combines it with the released iOS slices.
+  Native package tests use that combined framework as described above.
 - **Swift package.** For T1.3's tests and the Expo fallback, MatrixCore also builds as a
   Swift package that depends on `MatrixRustSDK`. Its files import it behind
   `#if canImport(MatrixRustSDK)`, so the same files compile in both places.

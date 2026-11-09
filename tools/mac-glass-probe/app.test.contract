@@ -1,0 +1,8 @@
+test "replace the animated glass send control"
+  clock 300
+  type "composer" "hello"
+  clock 400
+  tap "send"
+  clock 740
+  expect state draft == ""
+  expect tree has "voice"

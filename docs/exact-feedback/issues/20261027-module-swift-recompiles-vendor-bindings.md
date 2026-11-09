@@ -67,3 +67,12 @@ including unchanged third-party bindings. The successful simulator build reporte
 95.8 s for arms, versus 12.3 s for Swift host work and 9.9 s for packaging. Broad
 silent intervals made progress hard to assess; per-file reporting and a separate
 cache for vendor bindings would help.
+
+
+## Further evidence: desktop lifecycle, 2026-11-08
+
+At Exact `afac7b1370`, a small lifecycle-observer edit again recompiles all native
+module sources, including a third-party generated binding file. The parent build
+finishes its host packages quickly, then spends minutes in `swift-frontend` on
+those bindings. Keeping the vendor binding compilation separate would remove
+this iteration cost. No new timing claim is made from this busy machine.

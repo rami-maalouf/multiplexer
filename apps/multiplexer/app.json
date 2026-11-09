@@ -22,7 +22,10 @@
       "minimumOS": "14.0",
       "window": {
         "width": 900,
-        "height": 700
+        "height": 700,
+        "keepRunning": true,
+        "minWidth": 640,
+        "minHeight": 480
       }
     },
     "web": {}

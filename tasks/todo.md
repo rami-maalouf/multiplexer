@@ -2915,8 +2915,69 @@ notifications reach no app code (no `willPresent` / `didReceive` hatch).
 
 ## Phase 5: Mac app (M5), rough
 
-- Build matrix-rust-sdk's Swift bindings for macOS. The components package is iOS only.
-- Run the Exact app on macOS.
+Spike (step 0) done 2026-11-08 on `feat/mac-spike`. Screens in `apps/multiplexer/.exact/mac/`
+(gitignored, on the worktree that ran it).
+
+- [x] Build matrix-rust-sdk's Swift bindings for macOS: `./scripts/build-matrix-sdk-macos.sh`
+  (once per SDK version, about 5 min), then `./scripts/setup-matrix-sdk.sh` adds the slice.
+- [x] Run the Exact app on macOS: `bun exact.mjs mac`, then `bun exact.mjs agent macos
+  --size 900x700 --chrome platform ...`. Sign-in, the chat list, a chat, sending and Sign Out
+  work as `@test1`. `bun exact.mjs test macos` passes, as `test ios` does.
+- [x] Send approved diaries: receipt `d4e3cf84-6906-40a6-8113-9d12066c2420`.
+- [x] Open Exact fixes: [#1603](https://github.com/ccheever/exact2/pull/1603)
+  documents the Mac commands and verify limitation; [#1604](https://github.com/ccheever/exact2/pull/1604)
+  separates module logs from drive replies. Neither is merged or integrated here.
+- [x] Fix the enabled Mac Sign In toolbar button ignoring clicks: Exact local
+  `9a78f32cd9`, integration `afac7b1370`, 24 HeaderMacTests pass after a red regression.
+  Return from the password field worked around it in the running app. Corrected
+  build completed; current process remains on its original binary until relaunch.
+- [x] Work around the Mac send SIGTRAP: omit the composer's glass group on macOS,
+  keep iOS grouped. Three removal-control sends and five final-build sends survived;
+  final messages inspected in light/dark captures. All Mac authored and 13 TypeScript
+  tests pass. Test account signed out. Underlying Exact finding 157 remains open.
+- [ ] Fix the underlying AppKit glass-layout SIGTRAP in Exact (finding 157).
+  Reproduced again with the test account on 2026-11-08, signed out afterward.
+  Isolated animated/tinted glass swaps pass in manual drives. The saved authored
+  test crashed with SIGTRAP in 1 of 2 consecutive runs. Intermittent reduction:
+  `tools/mac-glass-probe/`. Next capture its debugger stack and compare with the
+  full app before claiming a shared mechanism.
+- [x] Visual faults seen at 900x700: the chat's header shows a Back button ("< 11") inside the
+  split and lies over the messages; the composer covers the newest message and is cut at the
+  window's bottom; the sidebar's bottom bar overlaps the list, with a stray sidebar button.
+  Desktop in-flow header/composer/bottom bar and separate phone offsets verified in light/dark
+  at 900x700 and narrow at 700x600. Sidebar controls no longer cover the final list rows.
+- [x] MatrixCore tests on macOS (no Simulator): opt-in local adapter and combined
+  XCFramework; 27 auth-free XCTest cases pass, including SDK link smoke. Default iOS
+  dependency/test selection preserved. Commit `5cd0b8c`; `/tmp/mx-mac-core-green.log`.
+  Authenticated Mac core coverage remains outside this runner.
+- [x] Desktop input: Enter sends, Shift+Enter adds a line, Cmd+K opens existing
+  conversation search; Escape closes it. Hover and right-click controls verified.
+  A real text-file drop staged an attachment and Send delivered the file/caption as `@test1`.
+  Native IME behavior remains unverified.
+- [x] Cmd+N starts a new direct conversation: dedicated contact picker, account filter,
+  Matrix full-ID selection, discovered bridge contacts/search and explicit room reuse/create.
+  Sidebar retained; normal composer opens. Review availability findings fixed with regressions.
+  Core 42 passed/one credential skip, separate authenticated DM test passed, Bun 38/38,
+  Mac authored 13/13. Test-account message confirmed sent; Cmd+N/Cmd+K, Cancel/Escape,
+  light/dark and narrow screenshots inspected; test account signed out. Connected bridge
+  contact/DM runtime and shared iOS runtime remain unverified. No Group/Blast/Join controls.
+  Evidence: `tasks/evidence/mac-new-conversation.json`.
+  Main `04905bb` integrated before merge: core 42 passed/one skip, Bun 43 passed,
+  Contract/TypeScript `[]`; only additive planning text required manual resolution.
+- [x] Local notifications from live sync, global unread Dock badge and `keepRunning`.
+  A hidden-window drive received a test message, recorded one delivered notification and
+  badge 12. Notification-click routing passed signed in; a saved click after signout
+  opened no room. Test account signed out and the badge cleared. Agent intercepts OS delivery; actual system banner/permission presentation
+  remains a manual check. Policy and delivery tests cover mute, merge, focus, startup,
+  account resets and overlapping refreshes. Timestamp collisions/backdated messages
+  remain silent because summaries do not expose an event identity.
+- [ ] Ship: Developer ID, notarization, `.dmg`, auto-update.
+  Preparation only is complete (`af9ddca`): `scripts/package-macos.sh` and
+  `docs/mac-distribution.md`, refusal/dry-run checks passed. Blocked by no valid Developer
+  ID Application identity and a development-trust bundle. Real signing/DMG generation,
+  notarization, clean-Mac install and update delivery are unverified; updates stay disabled.
+- Keychain on the Mac: the session went to the login keychain without a prompt in drives.
+  Check again in a signed build.
 
 ## Phase 6: others can install it (M6), rough
 
@@ -2931,3 +2992,5 @@ The diagnostic observer now narrows the blue DISPLAY failure to below correct wi
 tint propagation. Native prominent fill/foreground acceptance remains open; a public-API
 item styling/invalidation correction needs source review and rendered verification.
 `exact2-navigation` stays clean at `7529006ab9` for Inbox.
+
+Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).

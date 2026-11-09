@@ -1,0 +1,30 @@
+keyframes sendIn
+  from opacity=0 scale=0.5
+keyframes sendOut
+  to opacity=0
+
+keyframes voiceIn
+  from opacity=0 scale=0.6
+
+component ExactMacGlassRepro
+  state draft = ""
+  action edit(value: string)
+    draft = value
+  action send
+    draft = ""
+  view
+    column width="100%" height="100%" padding=24 box-sizing="border-box"
+      view flex=1 background-color="#bbbbbb"
+      text "Glass composer replacement"
+      row gap=8 align-items="end" glassGroup=8
+        button appearance="none" backgroundMaterial="glass" width=48 height=48 border-radius=24
+          text "+"
+        column flex=1 backgroundMaterial="glass" border-radius=24 position="relative"
+          textarea value=draft input=edit testId="composer" padding=16
+          if draft != ""
+            view animation="sendIn 280ms 60ms cubic-bezier(.32,.72,0,1) both" -exact-exit-animation="sendOut 160ms ease-in both" position="absolute" right=8 bottom=8
+              button appearance="none" press=send backgroundMaterial="glass" -exact-tint-color="#007aff" width=32 height=32 border-radius=16 testId="send"
+                text "Go"
+        if draft == ""
+          button animation="voiceIn 260ms cubic-bezier(.32,.72,0,1) both" appearance="none" backgroundMaterial="glass" width=48 height=48 border-radius=24 testId="voice" -exact-exit-animation="sendOut 180ms ease-in both"
+            text "Mic"

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # downloads the pinned matrix-rust-sdk swift bindings, checks the binary against
 # the checksum in the release's Package.swift, and copies the sdk and matrix-core
-# into the exact app's native module folder.
+# into the exact app's native module folder. when scripts/build-matrix-sdk-macos.sh
+# has built the macos slice, the xcframework gets it beside the released ios slices.
 set -euo pipefail
 
 version="26.10.27"
@@ -22,12 +23,26 @@ if [ ! -d "$vendor/src" ]; then
   git clone -q --depth 1 --branch "$version" "$repo.git" "$vendor/src"
 fi
 
+# the released xcframework has only ios slices; exact's mac build needs a macos one.
+framework="$vendor/unpacked/MatrixSDKFFI.xcframework"
+if [ -f "$vendor/macos-arm64/libmatrix_sdk_ffi.a" ]; then
+  framework="$vendor/combined/MatrixSDKFFI.xcframework"
+  if [ ! -d "$framework" ] || [ "$vendor/macos-arm64/libmatrix_sdk_ffi.a" -nt "$framework" ]; then
+    rm -rf "$vendor/combined"
+    args=()
+    for slice in "$vendor/unpacked/MatrixSDKFFI.xcframework"/ios-* "$vendor/macos-arm64"; do
+      args+=(-library "$slice/libmatrix_sdk_ffi.a" -headers "$slice/Headers")
+    done
+    xcodebuild -create-xcframework "${args[@]}" -output "$framework" >/dev/null
+  fi
+fi
+
 # exact compiles every top-level .swift file in modules/apple into one module
 # and links every .xcframework there. it refuses symlinks in the app, so these
 # are copies: apfs clones (cp -c), which cost no disk space.
 mkdir -p "$modules"
 rm -rf "$modules"/sdk-*.swift "$modules"/core-*.swift "$modules/MatrixSDKFFI.xcframework"
-cp -cR "$vendor/unpacked/MatrixSDKFFI.xcframework" "$modules/MatrixSDKFFI.xcframework"
+cp -cR "$framework" "$modules/MatrixSDKFFI.xcframework"
 for f in "$vendor"/src/Sources/MatrixRustSDK/*.swift; do
   cp -c "$f" "$modules/sdk-$(basename "$f")"
 done
@@ -35,4 +50,5 @@ done
 for f in "$root"/matrix-core/Sources/MatrixCore/*.swift; do
   cp -c "$f" "$modules/core-$(basename "$f")"
 done
-echo "matrix-rust-sdk $version and matrix-core copied into apps/multiplexer/modules/apple"
+slices="$(cd "$modules/MatrixSDKFFI.xcframework" && ls -d */ | tr -d / | tr '\n' ' ')"
+echo "matrix-rust-sdk $version ($slices) and matrix-core copied into apps/multiplexer/modules/apple"

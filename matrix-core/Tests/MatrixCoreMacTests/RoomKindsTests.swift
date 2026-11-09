@@ -1,0 +1,1 @@
+../MatrixCoreTests/RoomKindsTests.swift

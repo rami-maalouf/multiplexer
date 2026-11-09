@@ -178,6 +178,15 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 153 | A package's Swift that did not compile shows an empty error: "did not compile:" and nothing after it. | About 3 min and a 2-min build | P3 | [a-package-s-swift-that-did](issues/20261107-a-package-s-swift-that-did.md) |
 | 154 | A drive cannot show a component in a given state (props or app state), so `layout` of a short-lived state needs a contract edit for each measurement. | About 8 min, four drives | P3 | [a-drive-cannot-show-a-component](issues/20261107-a-drive-cannot-show-a-component.md) |
 | 155 | An entry `animation` on a node mounted with a navigation push holds its first keyframe until a later commit, so a button laid out on time appears late. | About 15 min, two probe recordings | P3 | [an-entry-animation-waits-for-a-later-commit](issues/20261107-an-entry-animation-waits-for-a-later-commit.md) |
+| 156 | Fix proposed: Exact [#1604](https://github.com/ccheever/exact2/pull/1604). On macOS a native module's `print` goes to the stream that answers a drive, so the drive reads a log line as its reply ("unreadable reply"). | About 15 min, and a log helper in each module file | P2 | [on-macos-a-native-module-s](issues/20261108-on-macos-a-native-module-s.md) |
+| 157 | On macOS 27 the app traps (SIGTRAP) in AppKit's `NSGlassEffectContainerView.layout()` right after a send from a glass composer bar; no crash report, no Exact frame on the stack. | App workaround: omit composer glass group on Mac; underlying fault open | P1 | [on-macos-the-app-traps-in](issues/20261108-on-macos-the-app-traps-in.md) |
+| 158 | Docs proposed: Exact [#1603](https://github.com/ccheever/exact2/pull/1603). The Mac commands are missing from start-here, the build verb is `mac` but drives take `macos`, and `verify macos` is refused. Further detail-route/sidebar documentation evidence on 2026-11-08. | About 10 min | P3 | [the-macos-commands-are-missing-from](issues/20261108-the-macos-commands-are-missing-from.md) |
+
+| 159 | A styled macOS toolbar button loses its click handler after refresh; clicks do nothing while keyboard submission works. | About 10 min tracing; Return workaround | P1 | [macos-styled-toolbar-click-loses-handler](issues/20261108-macos-styled-toolbar-click-loses-handler.md) |
+
+| 160 | `glassGroup` cannot be conditionally absent; an optional numeric expression is refused. | About 3 min; slot wrapper required | P3 | [glass-group-cannot-be-conditionally-absent](issues/20261108-glass-group-cannot-be-conditionally-absent.md) |
+
+| 161 | Field appearance requires a literal, so one field with platform-specific chrome needs duplicate declarations. | About 3 min | P3 | [field-appearance-cannot-depend-on-the](issues/20261108-field-appearance-cannot-depend-on-the.md) |
 
 ## What worked well
 
