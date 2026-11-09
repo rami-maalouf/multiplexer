@@ -13,8 +13,8 @@
   checkout in this host).
 - [x] App checks on the new checkout: 38 Bun tests, contract `[]`, `verify ios` 13/13, Mac
   authored tests 13/13.
-- [ ] Commit the app path rewrite on `chore/expo-exact` when Rami asks.
-- [ ] Commit the staged Exact port on `expo-exact` `local/mux-integration` when Rami asks.
+- [x] Commit the app path rewrite on `chore/expo-exact` / `main` (`e23147c`).
+- [x] Commit the Exact port on `expo-exact` `local/mux-integration` (`8536d208c`).
 - [ ] Resume the Mux vs Beeper side-by-side demo robot once the migration is settled.
 
 ## Agent CLI (2026-11-08, branch `feat/cli-c0`)
