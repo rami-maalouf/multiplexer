@@ -1,5 +1,18 @@
 # Mux: tasks
 
+## User-requested iPhone update (2026-11-09, installed and accepted)
+
+- [x] Verify the normal device build installs over the same bundle without uninstalling.
+- [x] Build current local sources, including the existing PushRegistration.swift working-tree
+  change as-is. Install successfully; verify team 3V2UU7RRK9 and deep/strict code signature.
+- [x] Ask for unlock when Apple's runner reports the phone locked. Rami confirms the installed
+  app looks good. No independent before/after account-setting audit claimed.
+- [x] Leave account and app data alone, release only this phone's automation resources, and
+  record `tasks/evidence/iphone-update-20261109.json`. No app/framework source changes.
+- [ ] Extend the demo with start voice recording, hold/drag the red stop control, then cancel
+  without sending. Physical Argent supports a hold followed by one straight drag; exact visual
+  parity with the supplied Beeper clip still requires an on-device test. No audio test run yet.
+
 ## Raw Mux complete for review (2026-11-09; Beeper deferred)
 
 - [x] Recover runner after unlock, record a native-resolution single-flick pilot, and get Rami's

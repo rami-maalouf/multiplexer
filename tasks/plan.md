@@ -4,6 +4,18 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**iPhone updated in place (2026-11-09):** Rami requested the latest local build and then
+confirmed, "Yep. It looks good to me." Built and installed development Mux with
+`bun apps/multiplexer/exact.mjs ios --device --phone <phone-udid>`. Installer returned
+success; the bundle remains `com.ramimaalouf.multiplexer`, team `3V2UU7RRK9`, and its
+signature passed deep/strict verification. No uninstall, reset, sign-out or app-identity
+change. Build included the existing uncommitted PushRegistration.swift change as-is;
+no app/framework source was edited or committed for delivery. Automated pre-update
+retention checks were blocked by the locked phone; record the user's acceptance, not
+an independent audit of every pin or low-priority room. Scoped runner cleanup completed.
+Audio-control hold/drag/cancel and Beeper capture remain future demo work; no recording
+or sending was performed during this update. Receipt: `tasks/evidence/iphone-update-20261109.json`.
+
 **Raw Mux take ready for review (2026-11-09):** Rami confirms normal finger scrolling
 is smooth, accepted the natural-flick pilot as better, and requested the whole Mux flow first.
 New raw master: `research/argent-demo/private/mux-raw-natural-r3/source.mov`, untouched

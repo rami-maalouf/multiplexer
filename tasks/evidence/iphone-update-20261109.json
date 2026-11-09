@@ -1,0 +1,36 @@
+{
+  "status": "installed_in_place_and_user_accepted",
+  "request": "Update the existing iPhone installation with latest local changes without losing its account/configuration.",
+  "build": {
+    "command": "bun apps/multiplexer/exact.mjs ios --device --phone <phone-udid>",
+    "exit_code": 0,
+    "app_head_at_build": "117d784104e1dbe698cb175b5948215907de0504",
+    "framework_head": "8536d208c40f97be3f132ea266d5029e2e3c10ba",
+    "trust": "development",
+    "included_existing_uncommitted_source": ["apps/multiplexer/modules/apple/PushRegistration.swift"],
+    "app_or_framework_sources_changed_for_delivery": false,
+    "signed_bundle": "apps/multiplexer/target/clients/0f5bd589da7b23b92fadebfd/com.ramimaalouf.multiplexer/ios/aarch64-apple-ios/embedded/development/standalone/Mux.app",
+    "executable_sha256": "35552e498dc40e01e5fb2f51537dd8cb12e9a074fb708dbffaba5bba52687fa0",
+    "signature_deep_strict_valid": true,
+    "team": "3V2UU7RRK9",
+    "bundle_id": "com.ramimaalouf.multiplexer"
+  },
+  "installation": {
+    "result": "Installer reported App installed with the expected bundle ID and an installation URL for Mux.app.",
+    "method": "Normal Exact physical-device build uses devicectl device install app; verified installer code has no phone-uninstall step.",
+    "uninstall_reset_sign_out_or_identity_change": false,
+    "background_output_limit": "The initial background shell ended without retrievable final output. Repeated the cached build/install in the foreground and captured an explicit successful exit and installation receipt."
+  },
+  "acceptance": {
+    "user_confirmation": "Yep. It looks good to me",
+    "automated_retention_audit": "Not completed. Pre-update accessibility inspection was blocked by Apple's Unlock iPhone to Continue error. User visually accepted the installed app; do not claim an independent comparison of every saved setting.",
+    "phone_left_alone_after_confirmation": true,
+    "scoped_runner_cleanup": "stop-all-simulator-servers for only the phone used by this session; no active runner remained."
+  },
+  "scope": {
+    "messages_reactions_deletions_or_audio_recordings": "none",
+    "existing_media": "unchanged",
+    "new_audio_control_demo": "not yet tested or captured",
+    "beeper_demo": "pending Mux review and next capture authorization"
+  }
+}
