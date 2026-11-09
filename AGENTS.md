@@ -215,5 +215,13 @@ chat read in WhatsApp or Instagram (double puppeting).
 - The recorder writes `<source.mov>.capture.json`: per-sample source PTS, arrival uptime,
   written flag and callback cost, plus writer skips and reported capture drops. Zero drops
   does not prove the phone rendered smoothly or the upstream screen stream delivered 60 Hz.
+- Raw capture uses short `durationMs: 300`, `momentum: true` flicks with settling time and
+  a fresh accessible top-left back-button tap. Physical iOS durationMs controls drag speed,
+  not elapsed time; momentum:false adds an unnatural 300-ms endpoint hold.
+- Never skip a received sample just because the writer is temporarily unready. The recorder
+  uses a bounded readiness wait, records writerWaits, and rejects reported loss after saving
+  diagnostic statistics. Zero writer loss still does not prove smooth upstream delivery.
+- `take-argent.py --current-inbox` uses an already registered, verified inbox and approved
+  contact, avoiding unnecessary cold restarts. Native raw masters need no compositor.
 - The privacy verifier accepts legacy 30-fps and new 60-fps exports using rational minimum
   frame duration; AVFoundation's nominal-frame-rate float can report 30.000002 for exact 30.

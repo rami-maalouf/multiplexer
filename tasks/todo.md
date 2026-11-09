@@ -1,5 +1,34 @@
 # Mux: tasks
 
+## Raw Mux complete for review (2026-11-09; Beeper deferred)
+
+- [x] Recover runner after unlock, record a native-resolution single-flick pilot, and get Rami's
+  feedback: better; do the full Mux flow now. No editing or app changes.
+- [x] Replace forced-stop drags with momentum-enabled flicks and two-second settling windows.
+  Tap a unique semantic top-left back button from fresh accessibility bounds, never edge-swipe.
+- [x] Reject the first full take's 668 writer skips; add bounded writer-readiness waiting and
+  strict no-reported-loss capture acceptance. Verify 15 tests and the complete Mux workflow.
+- [x] Capture `research/argent-demo/private/mux-raw-natural-r3/source.mov`: 1206 x 2622,
+  45.373 s, 2114/2114 received frames written, zero skips/drops, seven readiness waits, silent.
+  Inspect native-size conversation and returned-inbox frames; release only this phone's runner.
+- [ ] Have Rami review the complete raw take. Source timing remains variable, with motion-frame
+  gaps up to 100 ms; no claim of perfect smoothness or of a Mux rendering bug.
+- [ ] Capture Beeper with the approved raw choreography after Mux review. Do not resume editing yet.
+  Existing media and app code untouched. Evidence: `tasks/evidence/2026-11-09-natural-raw-mux.json`.
+
+## Raw natural-scroll preparation (2026-11-09, historical blocker resolved)
+
+- [x] Confirm normal manual scrolling is smooth from Rami's report. Pause editing and app changes.
+- [x] Verify current Argent physical-device gesture contract: momentum defaults true; false adds
+  a 300-ms end hold. durationMs controls physical drag speed, not elapsed gesture time.
+- [ ] Recover the runner: inbox preflight failed before any scroll or recording; XCTest timed out
+  enabling automation mode (code 1000, xcodebuild 65). Asked Rami to unlock and leave Mux open.
+- [ ] Record one natural flick at full native resolution, without UI queries during deceleration;
+  inspect the raw file and frame cadence before calling it smooth or doing complete takes.
+- [ ] Use fresh accessibility frames to tap each app's actual top-left back button. No edge-back.
+- [ ] Capture both complete raw workflows once the one-flick proof passes. Do not blur, resize,
+  composite, retime or re-encode these masters. Preserve existing edited artifacts unchanged.
+
 ## Scroll-cadence follow-up (2026-11-09, upstream diagnosis open)
 
 - [x] Reproduce the reported stutter from the original captures; distinguish it from export losses.
@@ -9,7 +38,7 @@
   60 fixture frames and 59 transitions in both masked and explicitly unredacted modes.
 - [x] Export `research/argent-demo/mux-vs-beeper-unblurred-60fps.mp4` from the same original
   sources and edit. Verify 20 s, 1200 frames, no audio; pass 12 tests and default-privacy checks.
-- [ ] Obtain Rami's normal finger-scroll baseline without automation/capture (question asked).
+- [x] Obtain Rami's normal finger-scroll baseline without automation/capture: he reports it is smooth.
 - [ ] Isolate automation versus incoming-screen transport if manual scrolling is smooth; profile
   Mux's scroll/render path before changing app code if it also stutters normally.
 - [ ] Verify end-user scrolling quality after the upstream cause is established and addressed.

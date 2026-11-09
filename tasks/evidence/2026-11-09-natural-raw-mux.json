@@ -1,0 +1,41 @@
+{
+  "status": "mux_raw_ready_for_user_review_beeper_deferred",
+  "user_direction": "Natural-flick pilot was better; record the whole Mux flow first. No editing.",
+  "raw_master": {
+    "path": "research/argent-demo/private/mux-raw-natural-r3/source.mov",
+    "duration_seconds": 45.373333,
+    "dimensions": [1206, 2622],
+    "frames": 2114,
+    "audio_streams": 0,
+    "size_bytes": 33752237,
+    "post_capture_processing": "none; no added blur, resize, compositing, retiming or re-encoding",
+    "workflow": "Inbox flick down and back up, approved family chat, conversation flicks, top-left back-button tap, verified inbox return.",
+    "gesture_parameters": {"durationMs": 300, "momentum": true, "settling_seconds": 2},
+    "back_target": "Unique semantic top-left accessible button, fresh bounds, recorded tap id back. No edge swipe.",
+    "visual_checks": "Native-size conversation and returned-inbox frames inspected. Original iOS glass effects remain; no privacy masks or replacement header.",
+    "source_cadence_limit": "Moving intervals still contain incoming frame gaps up to 100 ms. Retaining every received sample is not proof of perfect screen motion. Full raw take awaits user review."
+  },
+  "recorder": {
+    "rejected_take": "research/argent-demo/private/mux-raw-natural-r1/source.mov",
+    "rejected_received": 2153,
+    "rejected_written": 1485,
+    "rejected_writer_skipped": 668,
+    "fix": "Wait for encoder readiness instead of silently discarding an incoming sample. Bound waiting to two seconds. Save diagnostics and reject reported frame loss rather than report a successful capture.",
+    "final_received": 2114,
+    "final_written": 2114,
+    "final_writer_skipped": 0,
+    "final_writer_waits": 7,
+    "final_reported_capture_drops": 0
+  },
+  "verification": {
+    "tests_passed": 15,
+    "test_command": "uv run python -m unittest discover -s demo -p 'test_*.py' -v",
+    "red_green": "Added failing natural-flick, unique-back-button and native readiness tests before implementation. Native harness verifies delayed readiness, immediate readiness and timeout.",
+    "hardware": "Full navigation succeeded twice; first capture rejected for writer loss, final capture passed the strict loss gate.",
+    "launch_recovery": "A transient CoreDevice 10004 cold-restart failure recovered with normal Argent launch. --current-inbox validates an already prepared registered inbox without unnecessary restart.",
+    "warnings": "Known macOS 27 AVFoundation deprecation warnings remain; native compilation and runtime checks passed.",
+    "flow_note": "New private take has a recorded flow; canonical legacy YAML was not changed and still describes earlier choreography. No new YAML-replay pass claimed."
+  },
+  "safety": "No app or framework code changed; no messages, reactions or deletions. Existing media unchanged, no uploads. Only this phone's Argent runner was released.",
+  "next": "User reviews full Mux raw take before Beeper or editing. Further capture-cadence work may be needed."
+}

@@ -4,6 +4,26 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Raw Mux take ready for review (2026-11-09):** Rami confirms normal finger scrolling
+is smooth, accepted the natural-flick pilot as better, and requested the whole Mux flow first.
+New raw master: `research/argent-demo/private/mux-raw-natural-r3/source.mov`, untouched
+1206 x 2622, 45.373 s, 2114 frames, silent. No added blur, resize, compositing, retiming or
+post-capture encoding. Inbox and conversation use 300-parameter momentum-enabled flicks
+with settling time; back is a tap on the fresh accessible top-left `back` button. Inbox return
+was verified. App/framework code and existing edited exports are unchanged. Phone runner released.
+
+The first full natural take was rejected: its writer skipped 668 of 2153 received frames.
+Recorder now waits briefly for encoder readiness instead of discarding a sample, times out
+rather than hanging, and rejects recordings with reported frame loss. The final take wrote
+2114/2114 samples with zero skips/drops and seven readiness waits. Fifteen tests pass, including
+native readiness/timeout, flick timing and unique top-left-button tests. A transient cold-launch
+error was recovered by normal launch; `--current-inbox` verifies the prepared state without a
+cold restart. Source cadence still has gaps up to 100 ms during motion; do not claim perfect
+60-Hz motion or blame app rendering. Rami must review the full raw take before Beeper or edits.
+Legacy canonical YAML flows still describe the earlier choreography; the updated raw driver
+and this take's private recorded flow use natural flicks and the button. Evidence:
+`tasks/evidence/2026-11-09-natural-raw-mux.json`.
+
 **Scroll-cadence follow-up (2026-11-09, export fix verified; upstream diagnosis open):**
 Rami requested an unblurred preview and reported worse stutter in Mux. Earlier verification
 covered privacy and format, not adequate motion-cadence acceptance. The 30-fps compositor
@@ -18,8 +38,8 @@ The 60-fps masked regression passed 1620 OCR checks; the legacy 30-fps export st
 The source still contains Mux pauses up to 183 ms. Instrumented repeat takes wrote every
 received frame (Beeper 1023/1023; Mux 1583/1583), with zero writer skips or reported capture
 drops. Incoming gaps vary across runs, so these recordings do not establish app-frame FPS
-or prove a Mux rendering bug. The phone runner is released. Asked Rami whether normal finger
-scrolling stutters without automation/capture; answer pending. No app/framework code changed,
+or prove a Mux rendering bug. The phone runner is released. Rami confirms normal finger
+scrolling is smooth; next prove the raw natural-flick capture. No app/framework code changed,
 no messages sent, and no public media upload. Evidence: `tasks/evidence/2026-11-09-scroll-cadence.json`.
 
 **Paired Argent demo (2026-11-09, initial masked export):** both installed apps were driven by

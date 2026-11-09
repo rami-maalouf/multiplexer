@@ -46,6 +46,29 @@ def target(tree, label):
     raise RuntimeError(f"no visible accessible target for {label}")
 
 
+def back_target(tree):
+    points = []
+    for line in tree.splitlines():
+        if not line.lstrip().startswith("AXButton ") or not re.search(r'\b(back|inbox)\b|id="[^"]*back', line, re.IGNORECASE):
+            continue
+        match = FRAME.search(line)
+        if not match:
+            continue
+        x, y, width, height = map(float, match.groups())
+        cx, cy = x + width / 2, y + height / 2
+        if width > 0 and height > 0 and 0 < cx < 0.25 and 0.02 < cy < 0.16:
+            points.append({"x": cx, "y": cy})
+    if len(points) != 1:
+        raise RuntimeError("expected one visible accessible top-left back button")
+    return points[0]
+
+
+def flick_pair(record, first, second):
+    for origin, destination in ((first, second), (second, first)):
+        record("gesture-swipe", {"fromX": 0.5, "fromY": origin, "toX": 0.5, "toY": destination, "durationMs": 300, "momentum": True})
+        time.sleep(2)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app", choices=["mux", "beeper"])
@@ -53,6 +76,7 @@ def main():
     parser.add_argument("--udid", required=True)
     parser.add_argument("--screen", required=True)
     parser.add_argument("--recorder", required=True)
+    parser.add_argument("--current-inbox", action="store_true", help="use the already prepared and registered inbox instead of cold-restarting the app")
     args = parser.parse_args()
     os.umask(0o077)
     output = Path(args.output).resolve()
@@ -60,7 +84,8 @@ def main():
     bundle = "com.ramimaalouf.multiplexer" if args.app == "mux" else "com.automattic.beeper"
     label = "Wafaa" if args.app == "mux" else "Mama"
     inbox_selector = {"identifier": "title-button"} if args.app == "mux" else {"identifier": "InboxTitleMenuButton"}
-    invoke("restart-app", {"udid": args.udid, "bundleId": bundle})
+    if not args.current_inbox:
+        invoke("restart-app", {"udid": args.udid, "bundleId": bundle})
     for selector in (inbox_selector, {"text": label}):
         ready = invoke("await-ui-element", {"udid": args.udid, "condition": "visible", "selector": selector, "timeoutMs": 30000})
         if not ready.get("success"):
@@ -110,17 +135,11 @@ def main():
         def check(selector):
             record("await-ui-element", {"condition": "visible", "selector": selector, "timeoutMs": 10000})
 
-        def swipe_sequence(first, second):
-            record("run-sequence", {"steps": [
-                {"tool": "gesture-swipe", "args": {"fromX": 0.5, "fromY": first, "toX": 0.5, "toY": second, "durationMs": 700, "momentum": False}},
-                {"tool": "gesture-swipe", "args": {"fromX": 0.5, "fromY": second, "toX": 0.5, "toY": first, "durationMs": 700, "momentum": False}}
-            ]})
-
         check(inbox_selector)
         mark("inbox-ready")
         time.sleep(1)
         mark("inbox-scroll-start")
-        swipe_sequence(0.75, 0.40)
+        flick_pair(record, 0.75, 0.40)
         mark("inbox-scroll-end")
         check(inbox_selector)
         tree = invoke("describe", {"udid": args.udid})["description"]
@@ -139,11 +158,13 @@ def main():
         mark("thread-ready")
         time.sleep(1)
         mark("thread-scroll-start")
-        swipe_sequence(0.40, 0.70)
+        flick_pair(record, 0.40, 0.70)
         mark("thread-scroll-end")
         time.sleep(1)
+        tree = invoke("describe", {"udid": args.udid})["description"]
+        point = back_target(tree)
         mark("back-start")
-        record("gesture-swipe", {"fromX": 0, "fromY": 0.50, "toX": 0.8, "toY": 0.50, "durationMs": 700})
+        record("gesture-tap", point)
         check(inbox_selector)
         mark("back-end")
         time.sleep(2)

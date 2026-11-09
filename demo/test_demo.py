@@ -94,6 +94,26 @@ class DemoTests(unittest.TestCase):
         self.assertNotIn("a0s1mask", graph)
         self.assertNotIn("a1s1mask", graph)
 
+    def test_flick_pair_releases_with_momentum_and_leaves_time_to_settle(self):
+        events = []
+        with patch.object(take.time, "sleep", side_effect=lambda seconds: events.append(("wait", seconds))):
+            take.flick_pair(lambda command, args: events.append((command, args)), 0.75, 0.40)
+        self.assertEqual(events, [
+            ("gesture-swipe", {"fromX": 0.5, "fromY": 0.75, "toX": 0.5, "toY": 0.40, "durationMs": 300, "momentum": True}),
+            ("wait", 2),
+            ("gesture-swipe", {"fromX": 0.5, "fromY": 0.40, "toX": 0.5, "toY": 0.75, "durationMs": 300, "momentum": True}),
+            ("wait", 2)
+        ])
+
+    def test_back_target_is_a_unique_visible_top_left_accessible_button(self):
+        tree = '  AXButton "Back, 12" id="thread-back"  (0.020, 0.075, 0.150, 0.050)\n  AXButton "Inbox"  (0.271, 0.915, 0.169, 0.050)'
+        point = take.back_target(tree)
+        self.assertAlmostEqual(point["x"], 0.095)
+        self.assertAlmostEqual(point["y"], 0.100)
+        for invalid in ('  AXButton "Inbox"  (0.271, 0.915, 0.169, 0.050)', tree + '\n  AXButton "Back"  (0.030, 0.075, 0.100, 0.050)'):
+            with self.assertRaises(RuntimeError):
+                take.back_target(invalid)
+
     def test_target_uses_fresh_parent_button_frame(self):
         tree = '  AXButton  (0.521, 0.151, 0.269, 0.121)\n    AXStaticText "Mama"  (0.556, 0.253, 0.199, 0.018)'
         point = take.target(tree, "Mama")
@@ -101,6 +121,29 @@ class DemoTests(unittest.TestCase):
         self.assertAlmostEqual(point["y"], 0.2115)
         with self.assertRaises(RuntimeError):
             take.target(tree, "Other chat")
+
+
+class CaptureTests(unittest.TestCase):
+    def test_writer_readiness_waits_instead_of_dropping_and_has_a_timeout(self):
+        source = Path(__file__).with_name("capture-phone.swift").read_text().split("\nfinal class Recorder:")[0]
+        harness = '''
+var polls = 0
+let delayed = try waitForMediaReadiness({ polls += 1; return polls == 4 })
+precondition(delayed && polls == 4)
+let immediate = try waitForMediaReadiness({ true })
+precondition(!immediate)
+do {
+    _ = try waitForMediaReadiness({ false }, timeout: 0)
+    fatalError("an unready writer must time out")
+} catch let error as NSError {
+    precondition(error.domain == "capture" && error.code == 6)
+}
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "readiness.swift"
+            path.write_text(source + harness)
+            result = subprocess.run(["swift", str(path)], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
 
 
 class RenderTests(unittest.TestCase):

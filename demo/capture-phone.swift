@@ -2,6 +2,19 @@ import AVFoundation
 import CoreMediaIO
 import Foundation
 
+func waitForMediaReadiness(_ ready: () -> Bool, timeout: TimeInterval = 2) throws -> Bool {
+    let deadline = ProcessInfo.processInfo.systemUptime + timeout
+    var waited = false
+    while !ready() {
+        guard ProcessInfo.processInfo.systemUptime < deadline else {
+            throw NSError(domain: "capture", code: 6, userInfo: [NSLocalizedDescriptionKey: "video writer did not become ready before the backpressure deadline"])
+        }
+        waited = true
+        Thread.sleep(forTimeInterval: 0.001)
+    }
+    return waited
+}
+
 final class Recorder: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let url: URL
     let queue = DispatchQueue(label: "mux.screen.capture")
@@ -10,6 +23,7 @@ final class Recorder: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     var startedAt: Date?
     var failure: Error?
     var frames = 0
+    var writerWaits = 0
     var captureDrops = 0
     var timings: [[Double]] = []
 
@@ -47,7 +61,8 @@ final class Recorder: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 print("RECORDING \(startedAt!.timeIntervalSince1970) \(size.width)x\(size.height)")
                 fflush(stdout)
             }
-            if let track, track.isReadyForMoreMediaData {
+            if let track {
+                if try waitForMediaReadiness({ track.isReadyForMoreMediaData }) { writerWaits += 1 }
                 guard track.append(sample) else { throw writer!.error! }
                 frames += 1
                 written = true
@@ -120,13 +135,17 @@ func run() throws {
         "received": recorder.timings.count,
         "written": recorder.frames,
         "writerSkipped": recorder.timings.count - recorder.frames,
+        "writerWaits": recorder.writerWaits,
         "captureDropped": recorder.captureDrops,
         "recordingEpoch": startedAt.timeIntervalSince1970,
         "columns": ["sourcePTS", "arrivalUptime", "written", "callbackSeconds"],
         "samples": recorder.timings
     ]
     try JSONSerialization.data(withJSONObject: statistics, options: [.sortedKeys]).write(to: url.appendingPathExtension("capture.json"), options: .withoutOverwriting)
-    print("SAVED \(url.path) frames=\(recorder.frames) received=\(recorder.timings.count) writerSkipped=\(recorder.timings.count - recorder.frames) captureDropped=\(recorder.captureDrops)")
+    guard recorder.frames == recorder.timings.count, recorder.captureDrops == 0 else {
+        throw NSError(domain: "capture", code: 7, userInfo: [NSLocalizedDescriptionKey: "recording rejected: writer skipped \(recorder.timings.count - recorder.frames) frames; capture reported \(recorder.captureDrops) drops"])
+    }
+    print("SAVED \(url.path) frames=\(recorder.frames) received=\(recorder.timings.count) writerSkipped=\(recorder.timings.count - recorder.frames) writerWaits=\(recorder.writerWaits) captureDropped=\(recorder.captureDrops)")
 }
 
 var interrupted = false
