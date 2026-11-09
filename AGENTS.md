@@ -183,3 +183,27 @@ chat read in WhatsApp or Instagram (double puppeting).
   `TestDevices.swift`); it signs out when the run ends. Use `signInTestDevice` (a fresh device, marked
   `FRESH DEVICE`) only when a new device is the point of the test.
 - Do not test with `@rami-m:matrix.org` or `@ramimaalouf:beeper.com`: they are Rami's real accounts.
+
+## Paired device demo tooling
+
+- Test the standalone demo tools with `uv run python -m unittest discover -s demo -p 'test_*.py' -v`.
+- Argent 0.25.2 controls physical iPhones but cannot record them. Keep the USB-connected
+  phone unlocked with Auto-Lock disabled during capture. Compile the wired screen recorder
+  with `swiftc demo/capture-phone.swift -o /tmp/mux-capture-phone`; it records video only,
+  preserves source timestamps, and stops cleanly on SIGINT or its bounded duration.
+- `uv run demo/take-argent.py --help` describes paired capture. It records live Argent
+  flows and private timing manifests in a new output directory. Never run on a real account
+  without explicit approval of the destination and possible read receipt. Refresh the runner
+  if capture teardown leaves a stale USB socket; scope cleanup to the selected device.
+- The saved `.devin/flows/*-demo.yaml` flows assume the approved account and inbox state.
+  Beeper's fixture uses its recorded family-avatar id because its pinned button has no
+  accessible name. Re-record after an avatar change; do not substitute blind tap points.
+- Generate the labeled frame with `swift demo/demo-frame.swift <new-frame.png>`, then use
+  `uv run demo/compose-private.py <reviewed-edit.json> <frame.png> <new-output.mp4>`.
+  Review source frame zero: it must have an inbox header with no private content showing
+  through it. The compositor freezes that header during masked scenes, covers the whole
+  lower screen including glass toolbars, strips audio/metadata, and preserves gesture speed.
+- Run `swift demo/check-redaction.swift <export.mp4> <edit.json> <new-report.json>` after
+  visual review. It OCR-checks every masked frame in English and Arabic and fails on findings.
+  OCR is supplementary evidence, not a privacy guarantee; inspect transitions and avatars too.
+  Keep sources, edit manifests, draft exports and reports in the gitignored `research/` folder.

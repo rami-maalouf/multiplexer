@@ -1,0 +1,76 @@
+{
+  "task": "paired physical-device demo",
+  "date": "2026-11-09",
+  "status": "verified",
+  "device": {
+    "model": "iPhone 16 Pro",
+    "os": "iOS 27.0.1",
+    "transport": "USB",
+    "same_device_for_both_takes": true
+  },
+  "automation": {
+    "tool": "Argent 0.25.2",
+    "bundles": ["com.ramimaalouf.multiplexer", "com.automattic.beeper"],
+    "workflow": ["inbox scroll down and back", "open approved family conversation", "conversation scroll up and back", "edge-back to inbox"],
+    "gesture_duration_parameter_ms": 700,
+    "coordinates": "Fresh accessibility frames for contact targets; matched normalized drags inside verified accessible collection/timeline bounds; exact zero edge origin for back.",
+    "replays": {
+      "mux": {"flow": ".devin/flows/mux-demo.yaml", "ok": true, "passed": 11, "warnings": ["The conversation settled with a small changing region. Its destination composer was separately verified before scrolling; no completely-static-screen claim is made."]},
+      "beeper": {"flow": ".devin/flows/beeper-demo.yaml", "ok": true, "passed": 12, "warnings": []}
+    },
+    "fixture_exception": "Beeper's unlabeled pinned button requires its recorded family-avatar identifier. Re-record if the avatar changes. The capture helper instead resolves a fresh accessible parent-button frame.",
+    "cleanup": "Stopped only the selected phone's Argent runner after successful replays. Existing user sign-ins were preserved."
+  },
+  "capture": {
+    "argent_recording_limitation": "screen-recording-start is not supported on ios device (kind 'device' not supported)",
+    "fallback": "Wired AVFoundation iPhone screen source, never a camera or Mac-window screenshot loop",
+    "resolution": [1206, 2622],
+    "timing": "Original sample presentation timestamps retained. Source streams report nominal 60 Hz; constant 60 captured frames per second is not claimed.",
+    "source_durations_seconds": {"mux": 32.221667, "beeper": 21.938333},
+    "source_video_only": true,
+    "local_source_directory": "research/argent-demo/private/",
+    "lock_recovery": "No frames arrived while the phone locked; capture passed after unlocking and disabling Auto-Lock."
+  },
+  "export": {
+    "file": "research/argent-demo/mux-vs-beeper.mp4",
+    "edit_manifest_local_only": "research/argent-demo/edit.json",
+    "codec": "H.264",
+    "width": 1600,
+    "height": 1440,
+    "fps": 30,
+    "frames": 600,
+    "duration_seconds": 20,
+    "size_bytes": 1992579,
+    "audio_streams": 0,
+    "metadata_stripped": true,
+    "editing": "Trim idle intervals, align measured motion boundaries, pad only idle holds. No speed changes or reverse/repeated app motion."
+  },
+  "privacy": {
+    "mask": "16 x 64 downsampling, upscaling, Gaussian blur sigma 18 and dark backing over the whole inbox body including translucent bottom toolbars; active through both transitions.",
+    "glass_header_fix": "Actual inbox rows showed through the translucent header in an early draft. Final masked scenes hold the visually reviewed safe initial native header; the status area is opaque black.",
+    "boundary_fix": "Enforce whole-frame scene budgets and reset concatenated timestamps to avoid one-frame redaction-state drift.",
+    "approved_conversation": "Readable, as explicitly permitted by the user.",
+    "visual_review": ["source contact sheets", "safe initial native headers", "full-resolution inbox and conversation export samples", "final contact sheet covering all 20 seconds at two samples per second", "transition boundaries"],
+    "ocr": {"tool": "Apple Vision, local", "languages": ["en-US", "ar-SA"], "video_frames": 600, "masked_frames": 405, "regions_per_frame": 2, "checks": 810, "text_findings": 0, "report_local_only": "research/argent-demo/privacy-report.json"},
+    "limits": "OCR is supplementary evidence, not an anonymity guarantee. Source files, probes and earlier drafts remain local and are not approved for sharing. Only the final linked export passed all checks."
+  },
+  "verification": {
+    "command": "uv run python -m unittest discover -s demo -p 'test_*.py' -v",
+    "tests_passed": 10,
+    "coverage": ["privacy states", "invalid and out-of-range timestamps", "no motion acceleration or backward edits", "matching source dimensions", "frame-aligned budgets", "body and glass-header masking", "explicit approved-thread unmasking", "fresh accessible parent-button targeting", "real FFmpeg render dimensions, fps, silence, opaque status interior and overwrite refusal"],
+    "native_helpers": "Wired recorder and AppKit frame generator compiled and ran. Preserved Vision checker ran successfully on the final artifact.",
+    "warnings": "Native helpers compile with macOS 27 AVFoundation deprecation warnings; they remain functional. No app/framework code changed, so full app builds and tests were not rerun.",
+    "exact_feedback": "Status checked. No Exact framework costs or diary were created for this capture task, and no pre-existing feedback was sent."
+  },
+  "safety": {
+    "sent_messages": false,
+    "reactions": false,
+    "deletions": false,
+    "deliberate_read_state_actions": false,
+    "read_receipt_caveat": "Opening the approved conversation can send a read receipt, as disclosed before the drive.",
+    "media_committed": false,
+    "media_uploaded": false,
+    "unrelated_app_changes_included": false
+  },
+  "comparison_limits": ["Installed apps were recorded, not rebuilt or modified.", "Display names, link-preview layouts and voice controls differ and were not concealed.", "This is a matched workflow demonstration, not a pixel-identical parity claim."]
+}

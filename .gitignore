@@ -21,3 +21,4 @@
 /cli/.sdk/
 /cli/.build/
 /cli/.swiftpm/
+/demo/__pycache__/

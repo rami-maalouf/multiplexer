@@ -4,6 +4,31 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Paired Argent demo (2026-11-09, complete):** both installed apps were driven by
+Argent 0.25.2 on the same USB-connected iPhone 16 Pro. Argent cannot record physical
+iOS video, so `demo/capture-phone.swift` captured the wired AVFoundation screen source
+at 1206 x 2622 with original frame timestamps. Keeping the phone unlocked resolved the
+no-frame capture failure. The approved workflow is inbox scroll, family conversation,
+conversation scroll, back; no sends, reactions, deletions or deliberate read-state actions.
+Both saved flows in `.devin/flows/` passed full replays. Beeper's pinned button has no
+accessible name, so its saved flow uses the recorded family-avatar id and needs refreshing
+if that picture changes; the capture script derives a fresh parent-button frame instead.
+
+The final local artifact is `research/argent-demo/mux-vs-beeper.mp4`: 20 seconds,
+1600 x 1440, 30 fps, 600 frames, no audio. Pauses are edited, not gesture speed.
+Inbox content and transitions have coarse downsampling, strong blur and dark backing.
+A safe initial native header is held over masked scenes because real scrolling rows
+show through the glass header. Status chrome is hidden; the approved conversation
+remains readable. Initial source headers were visually reviewed. The final contact sheet,
+transition frames and full-resolution samples were inspected; English/Arabic OCR checked
+all 405 masked frames on both sides (810 checks), with zero text findings. Ten Python
+unit/integration tests passed. Evidence: `tasks/evidence/2026-11-09-argent-demo.json`.
+
+Unredacted source copies are under `research/argent-demo/private/` (gitignored, local
+only); probes and failed drafts also remain local and must not be shared. Only the final
+linked export has passed the complete privacy check. Actual UI differences remain,
+including Wafaa/Mama, link-preview layout and voice controls. No pixel-parity claim is made.
+
 **Expo Exact migration (2026-11-09):** Mux now builds against the shared
 `expo-exact` checkout on branch `local/mux-integration` (was
 `exact2-multiplexer-integration`). App path rewrites landed in this repo; Mux's

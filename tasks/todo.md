@@ -1,18 +1,22 @@
 # Mux: tasks
 
-## Paired Argent demo (2026-11-09, in progress)
+## Paired Argent demo (2026-11-09, complete)
 
 - [x] Verify Argent physical-device launch and accessibility inspection for Beeper and Mux.
 - [x] Verify that Argent video recording rejects physical iPhones; retain Argent as the driver.
-- [ ] Prove continuous wired video capture. Prototype: `demo/capture-phone.swift`.
-  One brief H.264 sample is 1206 x 2622, but later attempts receive no frames.
-  The latest Argent screenshot is entirely black. Waiting for Rami to unlock the
-  USB-connected phone and keep it awake; lock state is suspected, not proved.
-- [ ] Record and replay matching non-writing Argent workflows on both installed apps.
-- [ ] Capture both takes, mask inbox identities/previews/pins through every transition,
+- [x] Prove continuous wired AVFoundation screen capture with the iPhone unlocked.
+- [x] Record and replay matching non-writing workflows on both installed apps.
+  `.devin/flows/mux-demo.yaml` and `beeper-demo.yaml` passed. Beeper's recorded
+  avatar selector is an account-fixture exception; refresh it when that picture changes.
+- [x] Capture both takes, mask inbox identities/previews/pins through transitions,
   leave the approved family conversation readable, and export the side-by-side clip.
-- [ ] Inspect exported motion and redaction, preserve verification evidence, and commit.
-  Unredacted probes stay local in `/tmp/mux-argent-demo/`; no footage is publishable yet.
+  Final: `research/argent-demo/mux-vs-beeper.mp4` (20 s, 1600 x 1440, 30 fps, silent).
+- [x] Inspect final frames, run English/Arabic OCR on all 405 masked frames on both sides
+  (810 checks, zero findings), pass 10 unit/integration tests, and preserve evidence in
+  `tasks/evidence/2026-11-09-argent-demo.json`.
+- [x] Release only this phone's Argent runner. Existing app sign-ins were not changed.
+  Unredacted sources remain local under `research/argent-demo/private/`; never publish
+  the source files or earlier draft exports. Implementation is committed separately from media.
 
 ## Expo Exact migration (2026-11-09, branch `chore/expo-exact`)
 
@@ -29,7 +33,7 @@
   authored tests 13/13.
 - [x] Commit the app path rewrite on `chore/expo-exact` / `main` (`e23147c`).
 - [x] Commit the Exact port on `expo-exact` `local/mux-integration` (`8536d208c`).
-- [ ] Resume the Mux vs Beeper side-by-side demo robot once the migration is settled.
+- [x] Resume the Mux vs Beeper side-by-side demo after migration: paired Argent capture and the inspected 20-second privacy-masked export are complete (see above).
 
 ## Agent CLI (2026-11-08, branch `feat/cli-c0`)
 

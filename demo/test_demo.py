@@ -1,0 +1,124 @@
+import copy
+import importlib.util
+import json
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+
+def load(name, filename):
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+compose = load("compose", "compose-private.py")
+take = load("take", "take-argent.py")
+
+
+class DemoTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        for name in ("mux.mov", "beeper.mov"):
+            (self.root / name).touch()
+        self.manifest = {
+            "mux": str(self.root / "mux.mov"), "beeper": str(self.root / "beeper.mov"),
+            "scenes": [{"state": "inbox", "duration": 1, "mux": [0, 1], "beeper": [0, 1]}]
+        }
+        self.probe = patch.object(compose, "probe", return_value=(30, 1206, 2622))
+        self.probe.start()
+        self.addCleanup(self.probe.stop)
+
+    def test_valid_reviewed_scene(self):
+        self.assertEqual(len(compose.validate(self.manifest)), 2)
+
+    def test_rejects_missing_or_unknown_privacy_state(self):
+        for state in (None, "chat", "approved-thead"):
+            with self.subTest(state=state):
+                value = copy.deepcopy(self.manifest)
+                value["scenes"].append({"state": state, "duration": 1, "mux": [1, 2], "beeper": [1, 2]})
+                with self.assertRaises(ValueError):
+                    compose.validate(value)
+
+    def test_rejects_invalid_ranges_and_acceleration(self):
+        for span in ([-1, 0], [1, 1], [0, 31], [0, 2], [0, float("nan")]):
+            with self.subTest(span=span):
+                value = copy.deepcopy(self.manifest)
+                value["scenes"][0]["mux"] = span
+                with self.assertRaises(ValueError):
+                    compose.validate(value)
+
+    def test_rejects_backwards_or_repeated_motion(self):
+        self.manifest["scenes"].append({"state": "approved-thread", "duration": 1, "mux": [0.5, 1.5], "beeper": [1, 2]})
+        with self.assertRaises(ValueError):
+            compose.validate(self.manifest)
+
+    def test_rejects_non_frame_aligned_budget(self):
+        self.manifest["scenes"][0]["duration"] = 1.01
+        with self.assertRaises(ValueError):
+            compose.validate(self.manifest)
+
+    def test_rejects_mismatched_dimensions(self):
+        compose.probe.side_effect = [(30, 1206, 2622), (30, 1080, 1920)]
+        with self.assertRaises(ValueError):
+            compose.validate(self.manifest)
+
+    def test_inbox_and_transition_cover_content_and_freeze_safe_header(self):
+        for state in ("inbox", "transition"):
+            self.manifest["scenes"][0]["state"] = state
+            graph = compose.filters(self.manifest)
+            self.assertEqual(graph.count("scale=16:64:flags=area"), 2)
+            self.assertEqual(graph.count("crop=588:154:0:0"), 2)
+            self.assertEqual(graph.count("crop=588:1126:0:154"), 2)
+            self.assertEqual(graph.count("loop=loop=-1:size=1:start=0"), 2)
+            self.assertEqual(graph.count("trim=end_frame=30"), 2)
+            self.assertEqual(graph.count("concat=n=1:v=1:a=0,fps=30,settb=1/30,setpts=N"), 2)
+
+    def test_only_explicit_approved_thread_is_unmasked(self):
+        self.manifest["scenes"].append({"state": "approved-thread", "duration": 1, "mux": [1, 2], "beeper": [1, 2]})
+        graph = compose.filters(self.manifest)
+        self.assertEqual(graph.count("scale=16:64:flags=area"), 2)
+        self.assertNotIn("a0s1mask", graph)
+        self.assertNotIn("a1s1mask", graph)
+
+    def test_target_uses_fresh_parent_button_frame(self):
+        tree = '  AXButton  (0.521, 0.151, 0.269, 0.121)\n    AXStaticText "Mama"  (0.556, 0.253, 0.199, 0.018)'
+        point = take.target(tree, "Mama")
+        self.assertAlmostEqual(point["x"], 0.6555)
+        self.assertAlmostEqual(point["y"], 0.2115)
+        with self.assertRaises(RuntimeError):
+            take.target(tree, "Other chat")
+
+
+class RenderTests(unittest.TestCase):
+    def test_real_ffmpeg_export_is_silent_aligned_and_non_destructive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.mp4"
+            frame = root / "frame.png"
+            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=300x652:rate=30", "-t", "1", "-c:v", "libx264", str(source)], check=True)
+            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=0x0c1118:size=1600x1440", "-frames:v", "1", str(frame)], check=True)
+            manifest = {"mux": str(source), "beeper": str(source), "scenes": [{"state": "inbox", "duration": 1, "mux": [0, 1], "beeper": [0, 1]}]}
+            path = root / "edit.json"
+            path.write_text(json.dumps(manifest))
+            output = root / "out.mp4"
+            duration, width, height = compose.render(path, frame, output)
+            self.assertAlmostEqual(duration, 1, places=2)
+            self.assertEqual((width, height), (1600, 1440))
+            streams = json.loads(subprocess.check_output(["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(output)]))["streams"]
+            self.assertEqual(len(streams), 1)
+            self.assertEqual(streams[0]["codec_type"], "video")
+            self.assertEqual(streams[0]["r_frame_rate"], "30/1")
+            with self.assertRaises(ValueError):
+                compose.render(path, frame, output)
+            pixels = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(output), "-vf", "crop=572:74:172:120,format=gray", "-frames:v", "1", "-f", "rawvideo", "-"])
+            self.assertLess(max(pixels), 5)
+
+
+if __name__ == "__main__":
+    unittest.main()

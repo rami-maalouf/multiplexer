@@ -1,0 +1,29 @@
+executionPrerequisite: Mux is registered with Argent, signed in on the approved account, showing the inbox at the top. The phone stays unlocked. Non-writing navigation to the approved family conversation is authorized; opening it may send a read receipt.
+steps:
+  - await: { visible: { id: title-button } }
+  - await: { idle: true }
+  - echo: Inbox verified. Scroll its accessible full-screen collection down and back using matched normalized gestures.
+  - tool: run-sequence
+    args:
+      steps:
+        - tool: gesture-swipe
+          args: { fromX: 0.5, fromY: 0.75, toX: 0.5, toY: 0.4, durationMs: 700, momentum: false }
+        - tool: gesture-swipe
+          args: { fromX: 0.5, fromY: 0.4, toX: 0.5, toY: 0.75, durationMs: 700, momentum: false }
+  - await: { visible: { id: title-button } }
+  - tap: { text: Wafaa, role: AXButton }
+  - await: { visible: { id: composer } }
+  - await: { idle: true }
+  - echo: Approved conversation verified. Scroll its accessible timeline up and back without touching message controls.
+  - tool: run-sequence
+    args:
+      steps:
+        - tool: gesture-swipe
+          args: { fromX: 0.5, fromY: 0.4, toX: 0.5, toY: 0.7, durationMs: 700, momentum: false }
+        - tool: gesture-swipe
+          args: { fromX: 0.5, fromY: 0.7, toX: 0.5, toY: 0.4, durationMs: 700, momentum: false }
+  - echo: Return with the physical iPhone edge-back gesture; an edge origin cannot be represented by an element selector.
+  - tool: gesture-swipe
+    args: { fromX: 0, fromY: 0.5, toX: 0.8, toY: 0.5, durationMs: 700 }
+  - await: { visible: { id: title-button } }
+  - await: { idle: true }
