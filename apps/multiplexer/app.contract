@@ -18,7 +18,7 @@ use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, VoiceCancel, VoiceStop, Reco
 use NewConversation from "./new-conversation.contract"
 use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
-use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
+use InfoPage, MemberPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
 use ScheduledBar, ScheduledScreen, LaterSheet, laterProblem, weekdayOf from "./send-later.contract"
 use BookmarksScreen, BookmarkMenu from "./bookmarks.contract"
 use MergeSheet from "./merge.contract"
@@ -133,6 +133,8 @@ shape Message
   id: string
   // its event once the server has it ("" before): a bookmark keeps it.
   event: string
+  // the sender's Matrix id (@user:server), for their member page.
+  sender: string
   senderName: string
   senderInitials: string
   senderPicture: string
@@ -277,6 +279,7 @@ routes nav
         customName "/room/:id/info/name"
         addMember "/room/:id/info/add"
         chatBookmarks "/room/:id/info/bookmarks"
+      member "/room/:id/member/:user"
     newConversation "/conversations/new"
     inboxes "/inboxes"
     labelEdit "/labels/edit"
@@ -1454,7 +1457,7 @@ component Multiplexer
             customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,
             searching=chatSearching, returned=chatSearchClosed, search=openChatSearch, closeSearch=closeChatSearch,
             bookmarkCount=chatBookmarks.length, bookmarks=openChatBookmarks, expiry=chatExpiry, chooseExpiry=chooseExpiry,
-            largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion)
+            largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion, member=openMember)
             // the search in this chat, in the page's place (chat-search-members.contract); its
             // Bookmarks kind's rows have the list's long-press menu.
             BookmarkMenu(aimedText=aimedBookmarkText, copy=copyBookmark, remove=removeAimedBookmark)
@@ -1474,6 +1477,12 @@ component Multiplexer
         if e.name == "addMember"
           AddMemberSheet(appearance=appearance, route=`${e.id}`, draft=inviteDraft, saving=infoSaving, refused=inviteRefused, type=typeInvite, close=back,
             save=invite)
+        // a member's own page, as the chat's info page: their picture, name and network, and a
+        // direct chat away (info-members.contract).
+        if e.name == "member"
+          MemberPage(appearance=appearance, route=`${e.id}`, member=memberShown, loaded=(chatMembers.room == openRoom),
+            network=openNetwork, messageable=memberMessageable, messaging=memberMessaging, close=back, message=messageMember,
+            largeText=viewport.accessibilityTextSize)
         if e.name == "room"
           // the chat draws its own bar (chat.contract), so a held message's blur covers it.
           // A zero-height box above the transcript makes the host pad the route under the status
@@ -1521,7 +1530,11 @@ component Multiplexer
                             padding-bottom=(m.endsRun and m.balloon ? 6.65 : 0)
                             if thread.group and not m.isOwn and m.endsRun
                               view position="absolute" left=0 bottom=(m.balloon ? 6.65 : 0)
-                                Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
+                                // a tap on the sender's picture opens their page, as the members' list's does.
+                                button appearance="none" press=openMember(m.sender) id=`member-${m.sender}` border-radius=18
+                                  display="flex" align-items="center" justify-content="center" min-width=36 min-height=36
+                                  aria-label=`${m.senderName}, Profile` testId=`member-face-${m.id}`
+                                  Face(picture=m.senderPicture, initials=m.senderInitials, size=28)
                             column align-items=(m.isOwn ? "flex-end" : "flex-start") gap=2 min-width=0
                               // a photo keeps its shape while it downloads; a tap opens it, zooming out of its box. A swipe
                               // right answers a photo, a video, a sticker or a file, as a text's bubble (SwipeReply).

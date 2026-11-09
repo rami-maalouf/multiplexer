@@ -148,6 +148,8 @@ component InfoPage
     seeMembers: action
     seeMedia: action
     open: action
+    // a member's page: face, name and network, a direct chat away.
+    member: action
     // the search in this chat is open; it was closed on this visit (the page fades back in).
     searching: bool
     returned: bool
@@ -326,11 +328,12 @@ component InfoPage
                   image "symbol:follow"
                   text "Add Member"
               for m in members key=m.id
-                row gap=12 align-items="center" testId=`info-member-${m.id}`
+                button press=member(m.id) id=`member-${m.id}` testId=`info-member-${m.id}` aria-label=`${m.name}, Profile`
                   Face(picture=m.picture, initials=m.initials, size=32)
                   text m.name flex=1 min-width=0
                   if m.isOwn
                     text "You" color="-exact-secondary-label"
+                  image "symbol:forward-chevron" aria-hidden=true
               if total > members.length
                 button press=seeMembers testId="info-see-members"
                   text "See All"
@@ -343,6 +346,50 @@ component InfoPage
           text "Delete"
         button commandfor="info-delete" command="close" testId="info-delete-cancel"
           text "Cancel"
+
+// a member's page as Beeper draws a contact's: the info page's own layout (picture, name, what
+// the person is on the network) and a direct chat away. Opens from the members' list and from a
+// group message's sender picture. memberFallbackName shows the id's local part until the
+// members' resource loads them.
+fn memberFallbackName(id: string): string = match (id.startsWith("@") ? id.slice(1) : id).split(":").at(0) { case some(n) => (n != "" ? n : id), case none => id }
+
+component MemberPage
+  props
+    appearance: Appearance
+    route: string
+    member: ChatMember
+    // the room's members loaded; before that, the id is all the page knows.
+    loaded: bool
+    // the open chat's network: a bridged member's raw id stays off screen.
+    network: string
+    // a Matrix member that is not you can be reached in a direct chat.
+    messageable: bool
+    messaging: bool
+    close: action
+    message: action
+    largeText: bool
+  view
+    column navigationKey=route navigationPresentation="fullscreen" navigationSource=`member-${member.id}`
+      position="absolute" inset=0 display="flex" flex-direction="column" testId="member-page"
+      header display="flex" align-items="center"
+        button id="back" press=close aria-label="Close" testId="close-member"
+          image "symbol:close"
+        text "" role="heading" aria-level=2
+      list id="member" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="member-list"
+        section background-color="transparent"
+          column align-items="center" gap=4 width="100%" padding-bottom=4
+            Face(picture=member.picture, initials=member.initials, size=(largeText ? 120 : 96))
+            text member.name role="heading" aria-level=1 font="-exact-title2" font-weight=700 text-align="center" margin-top=8
+              testId="member-name"
+            text (network == "matrix" ? member.id : networkName(network)) font="-exact-subheadline" color="-exact-secondary-label"
+              text-align="center" testId="member-subtitle"
+            if member.isOwn
+              text "You" font="-exact-footnote" color="-exact-tertiary-label" testId="member-own"
+        if messageable
+          section background-color="transparent"
+            row gap=8 width="100%" flex-wrap=(largeText ? "wrap" : "nowrap")
+              InfoButton(label="Message", symbol="symbol:messages", press=message, disabled=messaging,
+                identifier="member-message", largeText=largeText)
 
 // a sheet with one field, over the info page: Edit Group Info (the name, and the picture when the
 // chat lets you change it), Customize for Me (a name only you see) and Add Member.

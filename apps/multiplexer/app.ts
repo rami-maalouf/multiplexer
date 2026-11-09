@@ -379,7 +379,7 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
       const bigEmoji = !media && !m.waitingForKey && isBigEmoji(m.body);
       const status = i === answer.messages.length - 1 ? statusOf(m, group) : { status: '', statusTime: 0 };
       return {
-        id: m.id, event: m.event, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
+        id: m.id, event: m.event, sender: m.sender, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
         isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),

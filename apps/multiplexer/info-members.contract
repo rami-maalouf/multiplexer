@@ -1,6 +1,6 @@
 // a chat's info page's state and actions (info.contract): it opens from the chat bar's picture and
 // name, and its buttons are the chat list's actions (B7, B8) on the open chat.
-use ChatInfo, ChatMembers, ChatMedia, Viewed, InfoReply, ChatExpiry from "./info.contract"
+use ChatInfo, ChatMember, ChatMembers, ChatMedia, Viewed, InfoReply, ChatExpiry, memberFallbackName from "./info.contract"
 
 members Multiplexer
   // the page shows every member, and more than a row of media, once asked.
@@ -23,6 +23,16 @@ members Multiplexer
   mutation pictured as shape InfoReply refreshes chatInfo, roomList then infoSaved
   mutation customNamed as shape InfoReply refreshes chatInfo, roomList then infoSaved
   mutation invited as shape InfoReply refreshes chatMembers, chatInfo then infoSaved
+  // the member page open over the chat or the info page: who it is, from the members' resource
+  // once it covers them, else their id's local part until then.
+  derive memberId = top(nav).name == "member" ? top(nav).params.user : ""
+  derive memberShown = match first(chatMembers.members.filter(x => x.id == memberId)) {
+    case some(m) => m,
+    case none => ChatMember(id=memberId, name=memberFallbackName(memberId), picture="",
+      initials=memberFallbackName(memberId).slice(0, 1).toUpperCase(), isOwn=(memberId == session.userId)) }
+  // a Matrix member that is not you can be reached in a direct chat.
+  derive memberMessageable = openNetwork == "matrix" and memberId != "" and memberId != session.userId
+  derive memberMessaging = pending(conversationStarted)
   // the page shows the open chat's info only, and until it has loaded, what the chat list knows.
   derive infoLoaded = chatInfo.id == openRoom and chatInfo.id != ""
   derive infoShown = infoLoaded ? chatInfo : ChatInfo(id=openRoom, name=openName, roomName=openName, customName="", topic="",
@@ -62,6 +72,16 @@ members Multiplexer
     nav = push(nav, path("info", openRoom))
   action closeInfo
     nav = back(nav)
+  // a member's page over the chat, zoomed out of their picture or their row in the members' list.
+  action openMember(userId: string)
+    if userId != ""
+      held = ""
+      panel = false
+      nav = push(nav, path("member", openRoom, userId))
+  // their direct chat: the conversation machinery's start (a Matrix member only).
+  action messageMember
+    if memberMessageable and not pending(conversationStarted)
+      chooseConversationContact("matrix", memberId)
   // a message expiry for everyone in the chat: the bridge sets the same on the network.
   action chooseExpiry(timer: number)
     send expirySet = setExpiry(openRoom, timer)

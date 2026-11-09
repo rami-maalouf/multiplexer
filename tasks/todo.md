@@ -1,5 +1,19 @@
 # Mux: tasks
 
+## Paired Argent demo (2026-11-09, in progress)
+
+- [x] Verify Argent physical-device launch and accessibility inspection for Beeper and Mux.
+- [x] Verify that Argent video recording rejects physical iPhones; retain Argent as the driver.
+- [ ] Prove continuous wired video capture. Prototype: `demo/capture-phone.swift`.
+  One brief H.264 sample is 1206 x 2622, but later attempts receive no frames.
+  The latest Argent screenshot is entirely black. Waiting for Rami to unlock the
+  USB-connected phone and keep it awake; lock state is suspected, not proved.
+- [ ] Record and replay matching non-writing Argent workflows on both installed apps.
+- [ ] Capture both takes, mask inbox identities/previews/pins through every transition,
+  leave the approved family conversation readable, and export the side-by-side clip.
+- [ ] Inspect exported motion and redaction, preserve verification evidence, and commit.
+  Unredacted probes stay local in `/tmp/mux-argent-demo/`; no footage is publishable yet.
+
 ## Expo Exact migration (2026-11-09, branch `chore/expo-exact`)
 
 - [x] Point the app at `/Users/rami/Documents/code/exact/expo-exact` (`local/mux-integration`):
@@ -2128,6 +2142,15 @@ you can see in here". Opened from the top bar's picture and name (B9) with the z
 - [x] Bookmarks: a row under the four buttons with this chat's count; it opens the chat's own list
   (B14's), where a tap closes both pages and opens the chat at the message. (2026-11-03,
   `info.contract`.)
+- [x] A member's own page (2026-11-09, `MemberPage` in `info.contract`, route `member`): a tap on
+  a member's row in the info page, or on a sender's picture beside their group message, opens a
+  full-screen page in the info page's own layout — picture, name, their network (a Matrix member's
+  id; a bridged one shows the network name instead) — with a "Message" button that opens the
+  direct chat (Matrix members that are not you only; it reuses the conversation machinery's
+  `startConversation`, and the page becomes the room itself so no second room stacks: `openRoom`
+  reads the first room entry). Verified end to end on the iPhone simulator as @test1: sender face
+  and members' row in "CLI coverage A" open "@test2"'s page, "Message" lands in the existing DM
+  "Multiplexer inbox test DM". Exact findings 163 to 165.
 - [x] Message expiry: last of all (Rami: keep it, "not urgent"); see "Later". (2026-11-03: the info page's
   "Disappearing Messages" section shows the chat's timer and a menu of the timers its network takes (WhatsApp:
   24 hours, 7 days, 90 days), read from the bridge's `com.beeper.room_features` and set as

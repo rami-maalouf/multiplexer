@@ -38,7 +38,21 @@ members Multiplexer
   action didStartConversation
     match conversationStarted
       case some(r)
-        if r.owner == session.userId and r.visit == conversationVisit and r.visit == `${top(nav).id}` and top(nav).name == "newConversation" and r.room != ""
-          follow(path("room", r.room))
+        if r.owner == session.userId and r.visit == conversationVisit and r.visit == `${top(nav).id}` and r.room != ""
+          if top(nav).name == "member"
+            // a member's page asked for their direct chat: the page goes and the chat entry it
+            // covered becomes their chat (a stacked second room would show the first room's data,
+            // openRoom reads the first one). It sits at depth 3 over the chat, 4 over the info page.
+            keepDraftNow()
+            held = ""
+            panel = false
+            if depth(nav) == 4
+              nav = replace(back(back(nav)), path("room", r.room))
+            else if depth(nav) == 3
+              nav = replace(back(nav), path("room", r.room))
+            else
+              nav = back(nav)
+          else
+            follow(path("room", r.room))
       case none
         conversationVisit = ""

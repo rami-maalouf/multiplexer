@@ -188,6 +188,9 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 
 | 161 | Field appearance requires a literal, so one field with platform-specific chrome needs duplicate declarations. | About 3 min | P3 | [field-appearance-cannot-depend-on-the](issues/20261108-field-appearance-cannot-depend-on-the.md) |
 | 162 | `docs svg` opens the theme recipe instead of the symbols recipe (missing topic key). | About 5 min | P3 | [docs-svg-opens-the-theme-recipe](issues/20261109-docs-svg-opens-the-theme-recipe.md) |
+| 163 | `go()` pushes a second entry of the same route instead of collapsing it; a stacked second `room` renders the first room's resources. | About 15 min, two drives, hand-collapsed nav | P3 | [go-pushes-a-second-entry](issues/20261109-go-pushes-a-second-entry.md) |
+| 164 | An `if` condition cannot continue on the next line (a leading `and`/`or` gives syntax-expected-name + bad-dedent). | Two failed builds | P3 | [an-if-condition-cannot-continue](issues/20261109-an-if-condition-cannot-continue.md) |
+| 165 | `clock until state` takes only `==`; `!=` is refused. | Two refused ops | P3 | [clock-until-state-takes-only](issues/20261109-clock-until-state-takes-only.md) |
 
 ## What worked well
 
