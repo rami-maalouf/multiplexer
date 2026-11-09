@@ -1,6 +1,22 @@
 # Mux: tasks
 
-## Paired Argent demo (2026-11-09, complete)
+## Scroll-cadence follow-up (2026-11-09, upstream diagnosis open)
+
+- [x] Reproduce the reported stutter from the original captures; distinguish it from export losses.
+- [x] Add sample-arrival, writer-readiness-skip and reported-drop telemetry; repeat both approved
+  non-writing paths on the same iPhone. Every received frame was written. Release its runner.
+- [x] Reproduce the 30-fps export loss with a failing alternating-60-Hz test, then preserve all
+  60 fixture frames and 59 transitions in both masked and explicitly unredacted modes.
+- [x] Export `research/argent-demo/mux-vs-beeper-unblurred-60fps.mp4` from the same original
+  sources and edit. Verify 20 s, 1200 frames, no audio; pass 12 tests and default-privacy checks.
+- [ ] Obtain Rami's normal finger-scroll baseline without automation/capture (question asked).
+- [ ] Isolate automation versus incoming-screen transport if manual scrolling is smooth; profile
+  Mux's scroll/render path before changing app code if it also stutters normally.
+- [ ] Verify end-user scrolling quality after the upstream cause is established and addressed.
+  A 60-fps file does not fix the source's 183-ms pauses. No interpolation or parity claim.
+  Evidence: `tasks/evidence/2026-11-09-scroll-cadence.json`. Media remains local and gitignored.
+
+## Paired Argent demo (2026-11-09, initial masked export)
 
 - [x] Verify Argent physical-device launch and accessibility inspection for Beeper and Mux.
 - [x] Verify that Argent video recording rejects physical iPhones; retain Argent as the driver.

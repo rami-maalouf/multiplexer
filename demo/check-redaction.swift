@@ -19,7 +19,9 @@ let asset = AVURLAsset(url: URL(fileURLWithPath: args[1]))
 let track = try await asset.loadTracks(withMediaType: .video).first!
 let size = try await track.load(.naturalSize)
 let transform = try await track.load(.preferredTransform)
-guard size == CGSize(width: 1600, height: 1440), transform.isIdentity else { fatalError("redaction regions require an upright 1600 x 1440 export") }
+let frameDuration = try await track.load(.minFrameDuration)
+let fps = Double(frameDuration.timescale) / Double(frameDuration.value)
+guard size == CGSize(width: 1600, height: 1440), transform.isIdentity, [30.0, 60.0].contains(fps) else { fatalError("redaction regions require an upright 1600 x 1440 export at 30 or 60 fps") }
 let reader = try AVAssetReader(asset: asset)
 let output = AVAssetReaderTrackOutput(track: track, outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
 reader.add(output)
@@ -49,8 +51,8 @@ while let sample = output.copyNextSampleBuffer() {
     }
 }
 if let error = reader.error { throw error }
-guard frames > 0, totalFrames == Int((cursor * 30).rounded()) else { fatalError("unexpected frame count or no masked frames were checked") }
-let report: [String: Any] = ["videoFrames": totalFrames, "maskedFrames": frames, "ocrChecks": checks, "findings": findings]
+guard frames > 0, totalFrames == Int((cursor * fps).rounded()) else { fatalError("unexpected frame count or no masked frames were checked") }
+let report: [String: Any] = ["fps": fps, "videoFrames": totalFrames, "maskedFrames": frames, "ocrChecks": checks, "findings": findings]
 try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]).write(to: reportURL, options: .withoutOverwriting)
 print("videoFrames=\(totalFrames) maskedFrames=\(frames) ocrChecks=\(checks) findings=\(findings.count)")
 if !findings.isEmpty { exit(1) }

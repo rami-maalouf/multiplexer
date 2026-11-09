@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 STATES = {"inbox", "transition", "approved-thread"}
+FPS = 60
 
 
 def probe(source):
@@ -35,8 +36,8 @@ def validate(manifest):
         duration = scene["duration"]
         if type(duration) not in (int, float) or not math.isfinite(duration) or duration <= 0:
             raise ValueError("scene duration must be positive and finite")
-        if abs(duration * 30 - round(duration * 30)) > 0.000001:
-            raise ValueError("scene budgets must align to whole output frames at 30 fps")
+        if abs(duration * FPS - round(duration * FPS)) > 0.000001:
+            raise ValueError(f"scene budgets must align to whole output frames at {FPS} fps")
         for app, source_duration in zip(("mux", "beeper"), durations):
             span = scene[app]
             if not isinstance(span, list) or len(span) != 2 or not all(isinstance(t, (int, float)) and math.isfinite(t) for t in span):
@@ -52,16 +53,17 @@ def validate(manifest):
     return sources
 
 
-def filters(manifest):
+def filters(manifest, unredacted=False):
     graph = []
+    status_mask = "" if unredacted else ",drawbox=x=0:y=0:w=iw:h=90:color=black:t=fill"
     for index, app in enumerate(("mux", "beeper")):
         clips = []
         for number, scene in enumerate(manifest["scenes"]):
             label = f"a{index}s{number}"
             start, end = scene[app]
             duration = scene["duration"]
-            graph.append(f"[{index}:v]trim=start={start}:end={end},setpts=PTS-STARTPTS,scale=588:1280,setsar=1,drawbox=x=0:y=0:w=iw:h=90:color=black:t=fill[{label}base]")
-            if scene["state"] == "approved-thread":
+            graph.append(f"[{index}:v]trim=start={start}:end={end},setpts=PTS-STARTPTS,scale=588:1280,setsar=1{status_mask}[{label}base]")
+            if unredacted or scene["state"] == "approved-thread":
                 current = f"{label}base"
             else:
                 top, height = 154, 1126
@@ -71,17 +73,17 @@ def filters(manifest):
                 graph.append(f"[{index}:v]trim=start=0:end=0.05,setpts=PTS-STARTPTS,scale=588:1280,crop=588:154:0:0,loop=loop=-1:size=1:start=0,drawbox=x=0:y=0:w=iw:h=90:color=black:t=fill[{label}chrome]")
                 graph.append(f"[{label}hidden][{label}chrome]overlay=x=0:y=0:shortest=1[{label}safe]")
                 current = f"{label}safe"
-            frames = round(duration * 30)
-            graph.append(f"[{current}]tpad=stop_mode=clone:stop_duration={duration},fps=30,trim=end_frame={frames},settb=1/30,setpts=N,format=yuv420p[{label}]")
+            frames = round(duration * FPS)
+            graph.append(f"[{current}]tpad=stop_mode=clone:stop_duration={duration},fps={FPS},trim=end_frame={frames},settb=1/{FPS},setpts=N,format=yuv420p[{label}]")
             clips.append(f"[{label}]")
-        graph.append(f"{''.join(clips)}concat=n={len(clips)}:v=1:a=0,fps=30,settb=1/30,setpts=N[{app}]")
+        graph.append(f"{''.join(clips)}concat=n={len(clips)}:v=1:a=0,fps={FPS},settb=1/{FPS},setpts=N[{app}]")
     graph.append("[2:v]scale=1600:1440,setsar=1[frame]")
     graph.append("[frame][mux]overlay=x=164:y=112:shortest=1[left]")
     graph.append("[left][beeper]overlay=x=848:y=112:shortest=1,format=yuv420p[final]")
     return ";".join(graph)
 
 
-def render(manifest_path, frame, output):
+def render(manifest_path, frame, output, unredacted=False):
     manifest = json.loads(Path(manifest_path).read_text())
     sources = validate(manifest)
     output = Path(output)
@@ -92,8 +94,8 @@ def render(manifest_path, frame, output):
     command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-n"]
     for source in sources:
         command += ["-i", str(source)]
-    command += ["-loop", "1", "-framerate", "30", "-i", str(frame), "-filter_complex", filters(manifest),
-                "-map", "[final]", "-an", "-map_metadata", "-1", "-r", "30", "-fps_mode", "cfr", "-c:v", "libx264",
+    command += ["-loop", "1", "-framerate", str(FPS), "-i", str(frame), "-filter_complex", filters(manifest, unredacted),
+                "-map", "[final]", "-an", "-map_metadata", "-1", "-r", str(FPS), "-fps_mode", "cfr", "-c:v", "libx264",
                 "-preset", "fast", "-crf", "18", "-movflags", "+faststart", "-t",
                 str(sum(scene["duration"] for scene in manifest["scenes"])), str(output)]
     subprocess.run(command, check=True)
@@ -105,5 +107,6 @@ if __name__ == "__main__":
     parser.add_argument("manifest")
     parser.add_argument("frame")
     parser.add_argument("output")
+    parser.add_argument("--unredacted", action="store_true", help="explicit local preview with all inbox content and status chrome visible")
     args = parser.parse_args()
-    print(json.dumps({"duration_and_size": render(args.manifest, args.frame, args.output)}))
+    print(json.dumps({"duration_and_size": render(args.manifest, args.frame, args.output, args.unredacted)}))

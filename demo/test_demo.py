@@ -76,8 +76,16 @@ class DemoTests(unittest.TestCase):
             self.assertEqual(graph.count("crop=588:154:0:0"), 2)
             self.assertEqual(graph.count("crop=588:1126:0:154"), 2)
             self.assertEqual(graph.count("loop=loop=-1:size=1:start=0"), 2)
-            self.assertEqual(graph.count("trim=end_frame=30"), 2)
-            self.assertEqual(graph.count("concat=n=1:v=1:a=0,fps=30,settb=1/30,setpts=N"), 2)
+            self.assertEqual(graph.count("trim=end_frame=60"), 2)
+            self.assertEqual(graph.count("concat=n=1:v=1:a=0,fps=60,settb=1/60,setpts=N"), 2)
+
+    def test_unredacted_requires_explicit_opt_in_and_removes_all_masks(self):
+        private = compose.filters(self.manifest)
+        self.assertIn("gblur", private)
+        self.assertIn("drawbox", private)
+        unredacted = compose.filters(self.manifest, unredacted=True)
+        for mask in ("gblur", "drawbox", "crop=588:154", "scale=16:64", "loop=loop=-1"):
+            self.assertNotIn(mask, unredacted)
 
     def test_only_explicit_approved_thread_is_unmasked(self):
         self.manifest["scenes"].append({"state": "approved-thread", "duration": 1, "mux": [1, 2], "beeper": [1, 2]})
@@ -96,6 +104,27 @@ class DemoTests(unittest.TestCase):
 
 
 class RenderTests(unittest.TestCase):
+    def test_default_export_preserves_each_captured_60hz_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, frame = root / "source.mp4", root / "frame.png"
+            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "nullsrc=s=300x652:r=60,geq=lum='if(mod(N,2),235,16)':cb=128:cr=128", "-t", "1", "-c:v", "libx264", str(source)], check=True)
+            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=0x0c1118:size=1600x1440", "-frames:v", "1", str(frame)], check=True)
+            path = root / "edit.json"
+            path.write_text(json.dumps({"mux": str(source), "beeper": str(source), "scenes": [{"state": "inbox", "duration": 1, "mux": [0, 1], "beeper": [0, 1]}]}))
+            output = root / "native.mp4"
+            compose.render(path, frame, output)
+            raw = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(output), "-vf", "crop=32:32:400:600,format=gray", "-fps_mode", "passthrough", "-f", "rawvideo", "-"])
+            means = [sum(raw[i:i+1024])/1024 for i in range(0, len(raw), 1024)]
+            self.assertEqual(len(means), 60)
+            self.assertEqual(sum(abs(b-a) > 64 for a,b in zip(means, means[1:])), 59)
+            unredacted = root / "unredacted.mp4"
+            compose.render(path, frame, unredacted, unredacted=True)
+            raw = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(unredacted), "-vf", "crop=32:32:400:120,format=gray", "-fps_mode", "passthrough", "-f", "rawvideo", "-"])
+            means = [sum(raw[i:i+1024])/1024 for i in range(0, len(raw), 1024)]
+            self.assertEqual(len(means), 60)
+            self.assertEqual(sum(abs(b-a) > 64 for a,b in zip(means, means[1:])), 59)
+
     def test_real_ffmpeg_export_is_silent_aligned_and_non_destructive(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -113,7 +142,7 @@ class RenderTests(unittest.TestCase):
             streams = json.loads(subprocess.check_output(["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(output)]))["streams"]
             self.assertEqual(len(streams), 1)
             self.assertEqual(streams[0]["codec_type"], "video")
-            self.assertEqual(streams[0]["r_frame_rate"], "30/1")
+            self.assertEqual(streams[0]["r_frame_rate"], "60/1")
             with self.assertRaises(ValueError):
                 compose.render(path, frame, output)
             pixels = subprocess.check_output(["ffmpeg", "-v", "error", "-i", str(output), "-vf", "crop=572:74:172:120,format=gray", "-frames:v", "1", "-f", "rawvideo", "-"])

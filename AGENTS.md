@@ -207,3 +207,13 @@ chat read in WhatsApp or Instagram (double puppeting).
   visual review. It OCR-checks every masked frame in English and Arabic and fails on findings.
   OCR is supplementary evidence, not a privacy guarantee; inspect transitions and avatars too.
   Keep sources, edit manifests, draft exports and reports in the gitignored `research/` folder.
+- Export at the compositor's native-capture target of 60 fps. A 30-fps intermediate discards
+  real scroll updates even if the last encoder is told to emit 60 fps. The regression test
+  alternates 60 distinct source frames and checks all 59 transitions survive the full graph.
+- Approved local unredacted previews require `--unredacted` on both `demo-frame.swift` and
+  `compose-private.py`. Otherwise masks and the privacy caption remain the default.
+- The recorder writes `<source.mov>.capture.json`: per-sample source PTS, arrival uptime,
+  written flag and callback cost, plus writer skips and reported capture drops. Zero drops
+  does not prove the phone rendered smoothly or the upstream screen stream delivered 60 Hz.
+- The privacy verifier accepts legacy 30-fps and new 60-fps exports using rational minimum
+  frame duration; AVFoundation's nominal-frame-rate float can report 30.000002 for exact 30.

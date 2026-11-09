@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-09",
+  "status": "export_frame_loss_fixed_upstream_stalls_still_under_investigation",
+  "user_feedback": "Unblurred comparison reveals stuttering, worse in Mux than Beeper.",
+  "original_source_observations": {
+    "mux_thread_max_frame_gap_ms": 183.3,
+    "beeper_comparable_thread_max_frame_gap_ms": 66.7,
+    "interpretation": "The stutter is not solely an editing artifact. These are recording measurements, not proof of app-rendering frame times."
+  },
+  "export_cause": {
+    "problem": "All filter stages and the output were forced to 30 fps, discarding real motion updates from nominal-60-Hz captures.",
+    "measured_motion_updates": {
+      "mux": {"source": [21, 19, 10, 10], "old_30fps": [18, 18, 7, 8], "new_60fps": [21, 19, 10, 9]},
+      "beeper": {"source": [31, 19, 17, 21], "old_30fps": [20, 19, 17, 21], "new_60fps": [31, 19, 17, 21]}
+    },
+    "measurement_method": "Compare consecutive 80 x 174 grayscale frames in matching gesture windows; count mean absolute luma differences greater than 0.8. Counts depend on that threshold and window boundaries, and are not app-display FPS measurements.",
+    "fix": "One 60-fps constant drives scene budgets, resampling, concatenation, frame-background input and output encoding. Source ranges, layout and action speed remain unchanged.",
+    "limits": "No interpolation or optical flow. Seven of eight sampled gesture windows retained all counted source updates; one Mux window counted 9 rather than 10. The original 183.3-ms source pause still appears at 183.3 ms in the new export. Smooth scrolling is not claimed."
+  },
+  "capture_instrumentation": {
+    "commit": "eea57fa",
+    "signals": ["incoming sample presentation timestamp", "callback arrival uptime", "written flag", "callback cost", "writer readiness skips", "reported capture drops"],
+    "sidecar": "<source.mov>.capture.json",
+    "private_local_take_directories": ["research/argent-demo/private/cadence-beeper-r1", "research/argent-demo/private/cadence-mux-r1"],
+    "matched_live_workflow": "Inbox scroll, approved family conversation, thread scroll, edge-back to inbox. Recorded live as Argent fragments.",
+    "beeper": {"received": 1023, "written": 1023, "writer_skipped": 0, "reported_capture_drops": 0, "thread_phase_max_incoming_gap_ms": 216.7, "thread_phase_max_callback_ms": 0.188},
+    "mux": {"received": 1583, "written": 1583, "writer_skipped": 0, "reported_capture_drops": 0, "thread_phase_max_incoming_gap_ms": 100.0, "thread_phase_max_callback_ms": 0.158},
+    "interpretation": "Both diagnostic takes wrote every received frame. Gaps exist before the recorder callback; the Mac writer is not shown to be their cause. Entire command intervals include idle time, so those maxima must not be presented as matched gesture or app-frame benchmarks. Run-to-run differences prevent assigning blame to Mux from these recordings alone.",
+    "cleanup": "Stopped only the physical iPhone's Argent runner; no sends, reactions or deletions. Existing app sign-ins and unrelated app edits were left intact."
+  },
+  "new_local_preview": {
+    "path": "research/argent-demo/mux-vs-beeper-unblurred-60fps.mp4",
+    "original_sources_reused": true,
+    "duration_seconds": 20,
+    "dimensions": [1600, 1440],
+    "fps": 60,
+    "frames": 1200,
+    "size_bytes": 4388578,
+    "audio_streams": 0,
+    "unredacted": true,
+    "uploaded_or_committed": false,
+    "visual_check": "Full-resolution inbox frame inspected; native status chrome and inbox content remain visible, with no replacement header or misleading privacy caption."
+  },
+  "verification": {
+    "command": "uv run python -m unittest discover -s demo -p 'test_*.py' -v",
+    "tests_passed": 12,
+    "red_before_fix": "A real FFmpeg fixture alternating black and white at 60 Hz produced only 30 output frames instead of 60.",
+    "green_after_fix": "Masked and explicitly unredacted exports each preserve all 60 fixture frames and all 59 alternating transitions.",
+    "privacy_default": "Masks remain enabled by default. --unredacted is explicit, and the frame generator has a matching explicit option.",
+    "privacy_regression_60fps": {"video_frames": 1200, "masked_frames": 810, "ocr_checks": 1620, "text_findings": 0},
+    "legacy_privacy_30fps": {"video_frames": 600, "masked_frames": 405, "ocr_checks": 810, "text_findings": 0},
+    "avfoundation_metadata_correction": "nominalFrameRate returned 30.000002 for the exact 30-fps legacy export. The verifier now derives FPS from the rational minimum frame duration, retaining strict 30/60-fps validation and exact expected frame counts.",
+    "warnings": "Standalone Swift helpers still emit known macOS 27 AVFoundation deprecation warnings; builds and runtime checks pass. No app or framework build was needed."
+  },
+  "still_open": [
+    "Does normal finger scrolling on the phone stutter without automation or capture? Asked the user; answer pending.",
+    "If manual scrolling is smooth, isolate automation versus wired-screen transport with a manual baseline.",
+    "If Mux itself stutters without capture, profile its scroll/render path before modifying app or framework code.",
+    "Do not treat a 60-fps stream label, zero reported writer drops, or a contact sheet as proof of smooth motion."
+  ]
+}

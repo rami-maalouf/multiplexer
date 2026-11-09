@@ -4,7 +4,25 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
-**Paired Argent demo (2026-11-09, complete):** both installed apps were driven by
+**Scroll-cadence follow-up (2026-11-09, export fix verified; upstream diagnosis open):**
+Rami requested an unblurred preview and reported worse stutter in Mux. Earlier verification
+covered privacy and format, not adequate motion-cadence acceptance. The 30-fps compositor
+was discarding captured motion updates: one Beeper drag went from 31 visible updates to 20,
+and one Mux drag from 10 to 7. Default export is now 60 fps with no interpolation; the same
+original takes produce `research/argent-demo/mux-vs-beeper-unblurred-60fps.mp4` (20 s,
+1600 x 1440, 1200 frames, silent). Those two windows now retain 31 and 10 updates.
+Twelve tests pass, including a real alternating-60-Hz fixture that failed before the fix.
+Masks remain the default, with explicit `--unredacted` options for the renderer and frame.
+The 60-fps masked regression passed 1620 OCR checks; the legacy 30-fps export still passes.
+
+The source still contains Mux pauses up to 183 ms. Instrumented repeat takes wrote every
+received frame (Beeper 1023/1023; Mux 1583/1583), with zero writer skips or reported capture
+drops. Incoming gaps vary across runs, so these recordings do not establish app-frame FPS
+or prove a Mux rendering bug. The phone runner is released. Asked Rami whether normal finger
+scrolling stutters without automation/capture; answer pending. No app/framework code changed,
+no messages sent, and no public media upload. Evidence: `tasks/evidence/2026-11-09-scroll-cadence.json`.
+
+**Paired Argent demo (2026-11-09, initial masked export):** both installed apps were driven by
 Argent 0.25.2 on the same USB-connected iPhone 16 Pro. Argent cannot record physical
 iOS video, so `demo/capture-phone.swift` captured the wired AVFoundation screen source
 at 1206 x 2622 with original frame timestamps. Keeping the phone unlocked resolved the
