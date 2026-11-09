@@ -4,8 +4,30 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
-**Remaining Mac features (2026-11-08):** desktop Enter/Shift+Enter, Cmd+K/Cmd+N
-conversation search, hover, context menus and staged file drops are implemented.
+**New conversation (2026-11-09):** Cmd+N now opens a dedicated contact picker;
+Cmd+K retains existing chat search. The Mac sidebar stays visible, account filtering
+includes Matrix and discovered bridge logins, and explicit selection opens a new or
+existing direct room with the normal composer. Group, Blast and Join are outside
+this direct-chat slice. MatrixCore owns discovery, contact search, identifier
+resolution and room creation; native/UI replies remain bound to account and visit.
+Bearer requests accept only the homeserver HTTPS origin and refuse redirects.
+
+The completed review receipt `mux-new-conversation-20261108-quality` retained three
+availability defects. All are corrected: discovery failure preserves Matrix,
+individual bridge failure preserves other contacts with a warning, and identifier
+404 becomes an empty search. Fifteen conversation fixtures and the full native core
+suite pass (42 passed, one credential-dependent test skipped). The separate real
+integration test passed self/peer DM creation-or-reuse, immediate reuse and m.direct
+preservation. It does not force a fresh creation branch. All 38 Bun tests and 13
+Mac authored tests pass. A test-account drive opened the picker, selected a full
+Matrix ID, opened the composer, sent a server-confirmed message, verified Cmd+N,
+Cmd+K, Cancel and Escape, and signed out. Light 900x700 and dark 700x600 captures
+were inspected. No connected real-account bridge contacts or bridge DM creation
+were exercised; those remain a runtime verification limit. Shared iOS runtime was
+not rerun. Evidence: `tasks/evidence/mac-new-conversation.json`.
+
+**Remaining Mac features (2026-11-08):** desktop Enter/Shift+Enter, Cmd+K
+conversation search (Cmd+N superseded by the picker above), hover, context menus and staged file drops are implemented.
 The header and bottom controls use Mac spacing without the phone's negative
 insets; the header retains merged-network switching. The native module supplies
 unfiltered live summaries for local notifications and the global unread Dock

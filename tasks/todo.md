@@ -2858,10 +2858,18 @@ Spike (step 0) done 2026-11-08 on `feat/mac-spike`. Screens in `apps/multiplexer
   XCFramework; 27 auth-free XCTest cases pass, including SDK link smoke. Default iOS
   dependency/test selection preserved. Commit `5cd0b8c`; `/tmp/mx-mac-core-green.log`.
   Authenticated Mac core coverage remains outside this runner.
-- [x] Desktop input: Enter sends, Shift+Enter adds a line, Cmd+K and Cmd+N open the
-  existing conversation chooser; Escape closes it. Hover and right-click controls verified.
+- [x] Desktop input: Enter sends, Shift+Enter adds a line, Cmd+K opens existing
+  conversation search; Escape closes it. Hover and right-click controls verified.
   A real text-file drop staged an attachment and Send delivered the file/caption as `@test1`.
-  New conversation creation is not bound to Cmd+N. Native IME behavior remains unverified.
+  Native IME behavior remains unverified.
+- [x] Cmd+N starts a new direct conversation: dedicated contact picker, account filter,
+  Matrix full-ID selection, discovered bridge contacts/search and explicit room reuse/create.
+  Sidebar retained; normal composer opens. Review availability findings fixed with regressions.
+  Core 42 passed/one credential skip, separate authenticated DM test passed, Bun 38/38,
+  Mac authored 13/13. Test-account message confirmed sent; Cmd+N/Cmd+K, Cancel/Escape,
+  light/dark and narrow screenshots inspected; test account signed out. Connected bridge
+  contact/DM runtime and shared iOS runtime remain unverified. No Group/Blast/Join controls.
+  Evidence: `tasks/evidence/mac-new-conversation.json`.
 - [x] Local notifications from live sync, global unread Dock badge and `keepRunning`.
   A hidden-window drive received a test message, recorded one delivered notification and
   badge 12. Notification-click routing passed signed in; a saved click after signout

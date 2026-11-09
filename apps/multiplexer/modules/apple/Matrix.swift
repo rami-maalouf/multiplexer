@@ -34,6 +34,7 @@ final class Matrix: ExactModule {
     }
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
     private var account: Task<MatrixAccount, Error>?
+    private var conversationRevision = 0
     /// The chat list's receipt watch reads only while the list is on screen and the app in front.
     private var listShown = true, inFront = true
     private var lifecycle: [NSObjectProtocol] = []
@@ -105,6 +106,7 @@ final class Matrix: ExactModule {
             do {
                 switch request["op"] as? String {
                 case "signIn":
+                    conversationRevision += 1
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
                 case "desktopRooms":
@@ -245,6 +247,8 @@ final class Matrix: ExactModule {
                 case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":
                     // Send Later (MatrixCore's ScheduledMessages.swift): messages that wait on the server.
                     reply.send(try await sendLater(request["op"] as? String ?? "", request))
+                case "conversationAccounts", "conversationContacts", "startConversation":
+                    reply.send(await conversation(request))
                 case "search":
                     // what the search screen shows (MatrixCore's Search.swift): a kind's messages, the
                     // recent chats before any word, or chats by name, messages and links.
@@ -418,6 +422,65 @@ final class Matrix: ExactModule {
                 reply.fail(String(describing: error))
             }
         }
+    }
+
+    // bind every reply to its signed-in owner and request; a session change invalidates it.
+    @MainActor private func conversation(_ request: [String: Any]) async -> [String: Any] {
+        let op = request["op"] as? String ?? ""
+        let owner = request["owner"] as? String ?? ""
+        let source = request["account"] as? String ?? ""
+        let query = request["query"] as? String ?? ""
+        let revision = conversationRevision
+        var result: [String: Any] = ["owner": owner, "problem": ""]
+        if op == "conversationAccounts" {
+            result["accounts"] = [[String: String]]()
+        } else if op == "conversationContacts" {
+            result["account"] = source
+            result["query"] = query
+            result["contacts"] = [[String: String]]()
+        } else {
+            result["visit"] = request["visit"] as? String ?? ""
+            result["account"] = source
+            result["identifier"] = request["identifier"] as? String ?? ""
+            result["room"] = ""
+        }
+        do {
+            let account = try await signedIn()
+            guard revision == conversationRevision, !owner.isEmpty, try account.userId == owner else {
+                throw ExactNativeRefusal("the signed-in account changed; reopen new conversation")
+            }
+            switch op {
+            case "conversationAccounts":
+                let listing = try await account.conversationAccounts()
+                result["problem"] = listing.problem
+                result["accounts"] = listing.items.map {
+                    ["id": $0.id, "name": $0.name, "network": $0.network]
+                }
+            case "conversationContacts":
+                let listing = try await account.conversationContacts(accountId: source, query: query)
+                result["problem"] = listing.problem
+                result["contacts"] = listing.items.map { contact in
+                    let picture = contact.avatar.isEmpty ? "" : cached(avatarFileName(contact.avatar), topic: "conversationContacts") {
+                        _ = try await account.pictureFile(url: contact.avatar, directory: self.media)
+                    }
+                    return ["id": contact.id, "accountId": contact.accountId, "name": contact.name,
+                            "identifier": contact.identifier, "network": contact.network, "avatar": picture]
+                }
+            default:
+                guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive starts conversations only as a test user") }
+                result["room"] = try await account.startConversation(accountId: source, identifier: request["identifier"] as? String ?? "")
+                context.changed("rooms")
+            }
+        } catch {
+            result["problem"] = (error as? ExactNativeRefusal)?.description
+                ?? (error as? LocalizedError)?.errorDescription
+                ?? (op == "startConversation" ? "Could not open this conversation. Check the address and try again." : "Could not load contacts. Choose another account or try again.")
+        }
+        if revision != conversationRevision {
+            result["owner"] = ""
+            if op == "startConversation" { result["room"] = "" }
+        }
+        return result
     }
 
     /// The chats' kept last answers (R04: a chat opened again shows them in its first frame): message
@@ -837,6 +900,7 @@ final class Matrix: ExactModule {
     /// Asks the server to forget this device, then forgets the session here. If the server
     /// could not be reached, the session waits to be signed out there later.
     @MainActor private func signOut() async throws {
+        conversationRevision += 1
         // resolving first refuses sign-out when the actual store cannot be reached.
         // read the metadata after migration, so deletion always names its actual directory.
         let resolved = try stored()

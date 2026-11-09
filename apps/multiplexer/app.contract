@@ -15,6 +15,7 @@ use MessageActions, ForwardSheet, ForwardChat, deleteMessageText from "./menu.co
 use EmojiSheet, EmojiRow, emojiGroupOf from "./emoji.contract"
 use Run, DayHeader, NewLine, StatusLine, JumpButton, BigEmoji, RichBalloon, LinkBalloon, LinkPreview, Sticker, VideoPoster, VideoPlayer, SwipeReply, seenText, videoLabel, OlderLine from "./details.contract"
 use VoiceBar, VoiceBubble, VoiceStill, VoiceButton, VoiceCancel, VoiceStop, RecordingBar, DraftBar from "./voice.contract"
+use NewConversation from "./new-conversation.contract"
 use SearchBar, SearchResults, ChatSearchResults, JumpNote from "./search.contract"
 use SettingsScreen, Profile from "./settings.contract"
 use InfoPage, EditGroupSheet, CustomNameSheet, AddMemberSheet from "./info.contract"
@@ -276,6 +277,7 @@ routes nav
         customName "/room/:id/info/name"
         addMember "/room/:id/info/add"
         chatBookmarks "/room/:id/info/bookmarks"
+    newConversation "/conversations/new"
     inboxes "/inboxes"
     labelEdit "/labels/edit"
     labelPick "/labels/pick"
@@ -550,6 +552,7 @@ component Multiplexer
     after(1, keepDraftNow)
   members "./appearance-members.contract"
   members "./desktop-members.contract"
+  members "./new-conversation-members.contract"
   members "./details-members.contract"
   members "./voice-members.contract"
   members "./search-members.contract"
@@ -1116,6 +1119,11 @@ component Multiplexer
             // while searching, the search's results take the list's place, and the bar hides.
             column navigationKey=`${e.id}` navigationScroll=(searching ? "search-results" : "rooms") navigationBar="none"
               position="absolute" inset=0 display="flex" flex-direction="column"
+              if composerSurface.desktop
+                row padding="8px 16px" justify-content="flex-end"
+                  button press=openNewConversation aria-label="New conversation" testId="new-conversation-open"
+                    image "symbol:compose"
+                    text "New Conversation"
               // the title names the network the filter sheet chose, and opens Beeper's menu. With chats shown it is
               // the list's first row (InboxHeader, R05); with none, it stands above the empty state.
               if not searching and not (roomsShown and (listedRooms.length > 0 or gridShown))
@@ -1315,6 +1323,13 @@ component Multiplexer
                 button press=askDelete destructive=true popovertarget="chat-menu" popovertargetaction="hide" testId="menu-delete"
                   image "symbol:delete"
                   text "Delete"
+        if e.name == "newConversation"
+          NewConversation(route=`${e.id}`, signedIn=(session.userId != ""), query=contactQuery, account=conversationAccount,
+            accounts=(contactAccountsShown ? conversationAccounts.accounts : []), contacts=(contactsShown ? conversationContacts.contacts.filter(c => not (fullMatrixContact and c.accountId == "matrix" and c.identifier == contactQuery.trim())) : []),
+            loading=(pending(conversationAccounts) or pending(conversationContacts)), problem=contactProblem,
+            starting=pending(conversationStarted), startProblem=contactStartProblem, matrixId=fullMatrixContact,
+            typeQuery=typeContactQuery, chooseAccount=chooseConversationAccount, chooseContact=chooseConversationContact,
+            startMatrix=startMatrixConversation, retry=retryContacts, close=closeNewConversation)
         if e.name == "labelEdit"
           LabelEditor(appearance=appearance, route=`${e.id}`, editing=(labelEditing != ""), draft=labelDraft, problem=labelEditError,
             saving=pending(labelEdited), typeName=typeLabelName, save=saveLabel, close=closeLabelEditor)

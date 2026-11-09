@@ -25,12 +25,18 @@ members Multiplexer
       post()
   action desktopShortcut(key: string, event: KeyboardEvent)
     if composerSurface.desktop and session.userId != "" and not event.isComposing
-      if event.metaKey and not event.altKey and not event.ctrlKey and (key == "k" or key == "K" or key == "n" or key == "N")
+      if event.metaKey and not event.altKey and not event.ctrlKey and (key == "n" or key == "N")
+        preventDefault()
+        openNewConversation()
+      else if event.metaKey and not event.altKey and not event.ctrlKey and (key == "k" or key == "K")
         preventDefault()
         keepDraftNow()
         nav = go(nav, path("home"))
         openSearch()
         focus("search-field")
+      else if key == "Escape" and top(nav).name == "newConversation"
+        preventDefault()
+        closeNewConversation()
       else if key == "Escape" and searching
         preventDefault()
         closeSearch()

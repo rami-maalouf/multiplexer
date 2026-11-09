@@ -34,3 +34,12 @@ Seen on 2026-11-08 at exact2 `86559f737a`.
 ## Follow-up
 
 Public documentation fix: https://github.com/ccheever/exact2/pull/1603. Documents the shipped commands and the verify limitation; does not add verify support or change aliases.
+
+
+## Further evidence: a new detail route, 2026-11-08
+
+Determining whether a non-chat detail route remains beside the sidebar required
+reading `SplitMac.swift`. The responsive-columns guide points to the list-detail
+pattern, but the inspected docs path has no corresponding recipe file. A short
+statement of the route/split invariant would avoid source inspection. Time not
+measured; seen on the local integration checkout at `afac7b1370`.

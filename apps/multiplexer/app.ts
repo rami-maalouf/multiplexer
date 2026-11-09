@@ -526,6 +526,23 @@ const sources: Sources = {
   // the search screen's results (search.ts): a kind's messages, the chats opened last (recent,
   // newest first) before any word, or chats by name, messages and links. Nothing while it is closed.
   // With room, the search in that chat (its info page's): its messages and links, or a kind's.
+  loadConversationAccounts: async ([owner, active], _store, _storage, native): Promise<Result<'loadConversationAccounts'>> => {
+    if (!owner || !active) return { owner, accounts: [], problem: '' };
+    if (!native?.available) return { owner, accounts: [], problem: 'This build has no Matrix SDK.' };
+    native.watch('rooms');
+    return await native.later({ op: 'conversationAccounts', owner }) as Result<'loadConversationAccounts'>;
+  },
+  loadConversationContacts: async ([owner, active, account, query], _store, _storage, native): Promise<Result<'loadConversationContacts'>> => {
+    if (!owner || !active) return { owner, account, query, contacts: [], problem: '' };
+    if (!native?.available) return { owner, account, query, contacts: [], problem: 'This build has no Matrix SDK.' };
+    native.watch('rooms');
+    native.watch('conversationContacts');
+    return await native.later({ op: 'conversationContacts', owner, account, query }) as Result<'loadConversationContacts'>;
+  },
+  startConversation: async ([owner, visit, account, identifier], _store, _storage, native): Promise<Result<'startConversation'>> => {
+    if (!owner || !native?.available) return { owner, visit, account, identifier, room: '', problem: 'Sign in to start a conversation.' };
+    return await native.later({ op: 'startConversation', owner, visit, account, identifier }) as Result<'startConversation'>;
+  },
   loadSearch: async ([userId, searching, query, kind, recent, room], _store, _storage, native): Promise<Result<'loadSearch'>> => {
     const none = { owner: userId, room, query, kind, chats: [], messages: [], links: [] };
     // a chat's Bookmarks kind shows its saved messages (loadBookmarks), which no search finds.
