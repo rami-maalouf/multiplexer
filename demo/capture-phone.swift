@@ -10,11 +10,22 @@ final class Recorder: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     var startedAt: Date?
     var failure: Error?
     var frames = 0
+    var captureDrops = 0
+    var timings: [[Double]] = []
 
     init(url: URL) { self.url = url }
 
+    func captureOutput(_ output: AVCaptureOutput, didDrop sample: CMSampleBuffer, from connection: AVCaptureConnection) {
+        captureDrops += 1
+    }
+
     func captureOutput(_ output: AVCaptureOutput, didOutput sample: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard failure == nil else { return }
+        let arrived = ProcessInfo.processInfo.systemUptime
+        var written = false
+        defer {
+            timings.append([sample.presentationTimeStamp.seconds, arrived, written ? 1 : 0, ProcessInfo.processInfo.systemUptime - arrived])
+        }
         do {
             if writer == nil {
                 guard let format = sample.formatDescription else { return }
@@ -39,6 +50,7 @@ final class Recorder: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             if let track, track.isReadyForMoreMediaData {
                 guard track.append(sample) else { throw writer!.error! }
                 frames += 1
+                written = true
             }
         } catch { failure = error }
     }
@@ -104,7 +116,17 @@ func run() throws {
     } while !done && Date() < finishDeadline
     if let error = failure ?? recorder.writer?.error { throw error }
     guard done, recorder.frames > 1 else { throw NSError(domain: "capture", code: 5, userInfo: [NSLocalizedDescriptionKey: "video finalization failed"] ) }
-    print("SAVED \(url.path) frames=\(recorder.frames)")
+    let statistics: [String: Any] = [
+        "received": recorder.timings.count,
+        "written": recorder.frames,
+        "writerSkipped": recorder.timings.count - recorder.frames,
+        "captureDropped": recorder.captureDrops,
+        "recordingEpoch": startedAt.timeIntervalSince1970,
+        "columns": ["sourcePTS", "arrivalUptime", "written", "callbackSeconds"],
+        "samples": recorder.timings
+    ]
+    try JSONSerialization.data(withJSONObject: statistics, options: [.sortedKeys]).write(to: url.appendingPathExtension("capture.json"), options: .withoutOverwriting)
+    print("SAVED \(url.path) frames=\(recorder.frames) received=\(recorder.timings.count) writerSkipped=\(recorder.timings.count - recorder.frames) captureDropped=\(recorder.captureDrops)")
 }
 
 var interrupted = false
