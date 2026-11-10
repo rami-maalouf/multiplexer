@@ -8,7 +8,7 @@ resolver = "2"
 [workspace.package]
 edition = "2021"
 version = "0.1.0"
-license = "MIT"
+license = "GPL-3.0-only"
 
 [patch.crates-io]
 accesskit_windows = { path = "../../../exact/expo-exact/vendor/accesskit-windows" }

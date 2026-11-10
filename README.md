@@ -164,3 +164,16 @@ installs, data and tests keep working.
 Want to change Mux, not just run it? [`AGENTS.md`](AGENTS.md) shows how the app is built and
 tested, on a Mac with Xcode and [Bun](https://bun.sh). Build it, change it, ship it to your own
 phone: it is your inbox.
+
+## License
+
+Copyright (C) 2026 Rami Maalouf.
+
+Multiplexer's original code is licensed under the GNU General Public License,
+version 3 only (`GPL-3.0-only`). You may redistribute and modify it under those
+terms. It is provided without any warranty, including the implied warranties of
+merchantability or fitness for a particular purpose. See [LICENSE](LICENSE) for
+the full terms.
+
+Third-party code, dependencies and assets retain their own licenses and notices.
+For network icon attribution, see [the asset sources](apps/multiplexer/assets/networks/SOURCES.md).

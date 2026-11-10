@@ -1,5 +1,9 @@
 # Mux: tasks
 
+- [x] Declare GPL-3.0-only for the project's original code (2026-11-10, Rami's
+  request): add the official license and root notice, align package/Cargo metadata,
+  preserve third-party licenses, and verify the license text and metadata.
+
 ## Expo Exact migration (2026-11-09, branch `chore/expo-exact`)
 
 - [x] Point the app at `/Users/rami/Documents/code/exact/expo-exact` (`local/mux-integration`):
