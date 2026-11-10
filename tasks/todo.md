@@ -1,5 +1,9 @@
 # Multiplexer: tasks
 
+- [x] Declare GPL-3.0-only for the project's original code (2026-11-10, Rami's
+  request): add the official license and root notice, align package/Cargo metadata,
+  preserve third-party licenses, and verify the license text and metadata.
+
 - [x] Enforce the user's 2026-11-05 stop: wind down at 07:44:48 UTC, halt all related
   lanes and delegated tasks by 07:49:48 UTC, verify cleanup, disable the one-time alarms
   and remain stopped until fresh user authorization. Deadline overrides remaining tasks.

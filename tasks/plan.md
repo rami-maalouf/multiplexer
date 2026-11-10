@@ -4,6 +4,12 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
+**License (2026-11-10):** at Rami's request, the project's original code is now
+GPL-3.0-only. The root LICENSE contains the official GNU GPL v3 text; README.md
+declares the scope and copyright, and app package/Cargo metadata agrees. There
+was no root license before; Cargo metadata alone declared MIT. Third-party
+licenses and asset attribution remain in force. No runtime behavior changed.
+
 **Push resumed (2026-11-07):** Rami requested implementation of iPhone push notifications.
 Read-only preflight confirmed both `multiplexer-apns` Keychain items are missing,
 the installed Multiplexer provisioning profile has neither push nor App Groups and is
@@ -79,7 +85,8 @@ after the one-time stop. This deadline overrides the work queue below.
 | Blocked on Rami | Phase 3's Apple setup (P3.0 in `tasks/todo.md`): an App Group, two App IDs, an APNs key in the Keychain, two development profiles, and the DNS name `sygnal.ramimaalouf.com`. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
-| Last updated | 2026-11-07 |
+| License | GPL-3.0-only for original project code; third-party licenses retained. |
+| Last updated | 2026-11-10 |
 
 Update this table at the end of every work session.
 
