@@ -1,4 +1,10 @@
-# Server
+# Server: maintainer operations
+
+This is the runbook for Rami's existing deployment, not a portable installer.
+For a new server, start with [the self-hosting guide](../docs/self-hosting.md).
+The scripts contain live domains, an SSH alias, Keychain services and backup paths;
+adapt a separate inventory before running them. The live config also includes
+unrelated reverse-proxy routes and Apple push credentials by reference.
 
 The Matrix server (Synapse) and the bridges run on the Oracle machine (`ssh oracle`).
 [matrix-docker-ansible-deploy](https://github.com/spantaleev/matrix-docker-ansible-deploy)
@@ -15,7 +21,7 @@ goes through the playbook or a playbook in this folder; manual commands there on
 | `remove-unused-sessions.py` | Signs out a user's sessions that have no name and were never used (`uv run`). |
 | `inventory/hosts` | The server: `matrix.ramimaalouf.com`, reached through `Host oracle` in `~/.ssh/config`. |
 | `inventory/host_vars/matrix.ramimaalouf.com/config.yml` | All settings. In git, no secrets. |
-| `inventory/host_vars/matrix.ramimaalouf.com/vars.yml` | The two secrets. Gitignored; `setup.sh` writes it. Its shape: `vars.example.yml`. |
+| `inventory/host_vars/matrix.ramimaalouf.com/vars.yml` | Server secrets, including configured APNs key material. Gitignored; `setup.sh` writes it. Its shape: `vars.example.yml`. |
 | `vendor/` | The playbook checkout. Gitignored. |
 | `notes/` | What we found on the server (`inventory.md`, T0.1). |
 
@@ -30,7 +36,8 @@ ansible -i server/inventory/hosts all -m ping   # answers "pong"
   the two secrets in the Keychain. Without the flag, a missing secret stops the script, so
   a server that runs never gets new secrets by mistake.
 - Ansible 2.21 cannot ask about an unknown SSH host key. If Ansible says
-  `Host key verification failed`, run `ssh oracle` once and accept the key.
+  `Host key verification failed`, run `ssh oracle` once and verify its fingerprint
+  through the provider console before accepting the key.
 
 ## Run the playbook
 
@@ -102,6 +109,10 @@ To paste a password on the iPhone (Universal Clipboard):
   `setup.sh`, then install.
 
 ## Network
+
+The infrastructure and firewall observations below describe the maintainer's
+deployment and past inspections. They are not a current audit of every service
+on that host. Restrict SSH to administration addresses in a new deployment.
 
 - **Names.** User IDs are `@name:ramimaalouf.com`. Synapse runs at `matrix.ramimaalouf.com`.
   This can never change after the first install.

@@ -11,24 +11,27 @@
   <a href="#get-started">Get started</a> ·
   <a href="#why-we-built-it">Why</a> ·
   <a href="#how-it-works">How it works</a> ·
-  <a href="#how-we-built-it">How we built it</a>
+  <a href="#how-we-built-it">How we built it</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a>
 </p>
 
 Mux is an iPhone app that puts WhatsApp, Instagram, LinkedIn and your other chat networks in
-one beautiful inbox. Every message goes through a [Matrix](https://matrix.org) server that you
-run, not through a company's cloud. The name is short for multiplexer: several streams combined
-into one.
+one inbox. Chats sync through a [Matrix](https://matrix.org) server that you run,
+with bridges on that server connecting to each original messaging service. The
+name is short for multiplexer: several streams combined into one.
 
 ## Get started
 
 1. **Run your server.** [`docs/self-hosting.md`](docs/self-hosting.md) takes you from an empty
    Linux box and a domain to a Matrix server with WhatsApp, Instagram and LinkedIn bridges, and
    it tells you which login traps to skip.
-2. **Install Mux on your iPhone** from [appdrop.app/d/nb2nfrv68c](https://appdrop.app/d/nb2nfrv68c).
-   Pair once with your own Apple ID, and every new build arrives at the same link.
+2. **Choose a client.** [Installation and platform status](docs/install.md) covers the
+   iPhone preview, experimental Mac app, CLI and other Matrix clients.
 3. **Sign in** with your server's domain, your user name and your password. Your chats are there.
 
-Push notifications run on development builds today, and they come to the shared builds next.
+Mux is early software. The iPhone app has development-build push evidence; public
+beta availability and push support on re-signed previews are not guaranteed. The
+Mac app runs locally but does not yet have a verified notarized public release.
 
 Prefer the browser or Android? Any Matrix client, such as Element Web at
 [app.element.io](https://app.element.io) or Element X, opens the same chats from the same server.
@@ -42,8 +45,8 @@ for every network without renting it.
 
 - **Your server, your messages.** The bridges and the Matrix server run on a machine you
   control. You can back it up, move it to another host, or turn it off.
-- **No plan, no paywall.** No feature waits behind a subscription, and no company can take one
-  away. If Mux lacks something, you can build it.
+- **No Mux subscription.** The source is GPL-3.0-only. You pay for your own hosting
+  and any services you choose to use; messaging providers still control their APIs.
 - **An open protocol.** Mux speaks Matrix, an open standard for chat. Any Matrix app, such as
   Element X, can open the same chats from the same server.
 
@@ -58,14 +61,17 @@ Mux has the features an all-in-one inbox needs every day, with the feel of Apple
   mark it read. Select many chats at once.
 - **Merge chats:** one person on WhatsApp and Instagram becomes one chat, with a tab for each
   network.
-- **Send Later:** hold Send and pick a time. The server sends it, even when the phone is off.
+- **Send Later:** hold Send and pick a time. In unencrypted rooms on a server with
+  delayed events enabled, the server sends it even when the phone is off.
 - **Remind me:** a reminder to answer a chat, which ends by itself when you reply.
 - **Media:** voice notes (record, play at your speed, transcribe), photos, videos, files, and
   GIFs.
 - **Search:** every chat at once, or inside one chat. Bookmarks for messages to find again.
-- **Read receipts:** Sent and Seen in the inbox, the moment the other person reads.
+- **Read receipts:** Sent and Seen where receipt evidence is available. Network
+  support and sync timing affect what the app can show.
 - **Notifications:** a new WhatsApp message lights up a locked iPhone with its sender and its
-  text, and a switch in Settings turns them off for this phone.
+  text on the tested development build. Packaging, permissions and gateway setup
+  determine whether a particular install supports this.
 - **The feel of Messages:** bubbles, swipe to reply, reactions with every emoji, liquid glass,
   and dark mode first.
 
@@ -94,9 +100,15 @@ Mux has the features an all-in-one inbox needs every day, with the feel of Apple
    [matrix-docker-ansible-deploy](https://github.com/spantaleev/matrix-docker-ansible-deploy),
    installs everything. Every change goes through it, so the whole server can be rebuilt on a
    new machine. The databases are backed up every day, on the server and on a Mac.
-4. **Mux on your iPhone** talks only to your server, with Matrix. It never talks to a chat
-   network. (One exception: GIF search asks [KLIPY](https://klipy.com) directly. KLIPY sees
-   the search words and the phone's address, never a chat.)
+4. **Mux** reads and sends chats through your Matrix server. GIF search calls
+   [KLIPY](https://klipy.com) directly with search terms and your IP address. iPhone
+   notifications use Apple and a push gateway currently fixed to the maintainer's
+   server; see [notification requirements](docs/install.md#notifications).
+
+Bridges handle message plaintext, and the sample bridged rooms are unencrypted.
+Self-hosting gives you control of that infrastructure; it does not remove the
+original networks or their policies. Read [who can access your messages](docs/self-hosting.md#1-what-youre-actually-building-and-who-can-read-your-messages)
+before linking accounts.
 
 Inside the app there are two layers:
 
@@ -106,7 +118,7 @@ Inside the app there are two layers:
   uses plain types (strings, numbers, records), so the screens never depend on Matrix details.
 - **The app** (`apps/multiplexer/`) is built with [Exact](https://github.com/expo/exact): each
   screen is a Contract file that native iOS controls draw. One native module connects the
-  screens to MatrixCore. The same code is meant to run on the Mac next.
+  screens to MatrixCore. The same app now also runs through Exact's native Mac host.
 
 ## How we built it
 
@@ -118,8 +130,8 @@ at once, each in its own git worktree, guided by one shared plan
 A few rules held it together:
 
 - **Prove each step before the next.** A task ended with a passing test or a screenshot of the
-  real app, never with "it should work". MatrixCore has 139 tests, most of them against a real
-  Matrix server.
+  real app, never with "it should work". MatrixCore has both deterministic tests and
+  live-server integration tests. Dated records state which checks actually passed.
 - **Biggest unknown first.** First the server and one bridge, then one screen, then daily
   reading and sending on a real iPhone, then the inbox's features one by one.
 - **Use what exists.** The playbook, the mautrix bridges, Element X and matrix-rust-sdk came
@@ -137,7 +149,7 @@ The milestones:
 | Week 2 | The inbox's features: filters, pins, archive, GIFs, voice notes, Send Later, search, merged chats, labels. |
 | Day 12 | The Mux name and icon, a self-host guide for anyone with a server, an install link, and push notifications on a locked iPhone, through our own push gateway. |
 | Next | Connect a network from inside the app, instead of a chat with a bridge's bot. |
-| Next | The Mac app. |
+| November 8-9 | Native Mac app and agent CLI implemented and tested in development; Mac distribution gates remain open. |
 
 Mux is also a field test of Exact, a new framework for native apps. Each place where Exact
 slowed the work became a written finding for its team, in
@@ -147,7 +159,8 @@ slowed the work became a written finding for its team, in
 
 | Folder | What it is |
 |---|---|
-| [`apps/multiplexer/`](apps/multiplexer/) | The iOS app, built with Exact. `app.contract` is the view, `app.ts` the data, `modules/apple/` the native module. |
+| [`apps/multiplexer/`](apps/multiplexer/) | The iOS and Mac app, built with Exact. `app.contract` is the view, `app.ts` the data, `modules/apple/` the native module. |
+| [`cli/`](cli/) | `mx`, the Mac command-line client with JSONL reads and policy-controlled writes. |
 | [`matrix-core/`](matrix-core/) | The Swift package that wraps matrix-rust-sdk, with its own tests. `NOTES.md` explains how it links. |
 | [`server/`](server/) | The server's playbook inventory, setup and backup scripts. No secrets: they come from the Keychain. |
 | [`scripts/`](scripts/) | Setup, test and helper scripts for the Mac. |
@@ -161,15 +174,17 @@ installs, data and tests keep working.
 
 ## Build it yourself
 
-Want to change Mux, not just run it? [`AGENTS.md`](AGENTS.md) shows how the app is built and
-tested, on a Mac with Xcode and [Bun](https://bun.sh). Build it, change it, ship it to your own
-phone: it is your inbox.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites, the Exact integration
+requirement, build steps and test accounts. The currently validated native build
+uses local Exact patches that are not yet reproducible from a plain public
+upstream clone. The [CLI](cli/README.md) and [website](website/README.md) have their
+own build paths. [All documentation](docs/README.md) is indexed by audience.
 
 ## License
 
 Copyright (C) 2026 Rami Maalouf.
 
-Multiplexer's original code is licensed under the GNU General Public License,
+Mux's original code is licensed under the GNU General Public License,
 version 3 only (`GPL-3.0-only`). You may redistribute and modify it under those
 terms. It is provided without any warranty, including the implied warranties of
 merchantability or fitness for a particular purpose. See [LICENSE](LICENSE) for

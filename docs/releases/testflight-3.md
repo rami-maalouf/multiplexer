@@ -1,5 +1,10 @@
 # TestFlight 0.1.0 (3)
 
+Historical implementation/upload receipt. Statements below describe this work
+window, not current public availability or upstream PR state. See
+[installation status](../install.md) and the latest entries in
+[the plan](../../tasks/plan.md) for subsequent packaging and gateway work.
+
 - uploaded 2026-11-07 at 18:20 UTC with `scripts/testflight.sh 3`.
 - source: `f995eeebb654935d503aa2116620c9a2f0d6524f` on `release/testflight-3`.
 - integrates app PR13 and PR14 through `7a74799`, plus PR12 `8d8f6bc`.

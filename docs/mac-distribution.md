@@ -1,5 +1,9 @@
 # Local Mac distribution preparation
 
+For current download availability, see [installation status](install.md#mac).
+This is a build-operator guide. Eligibility and verification observations below
+are dated snapshots, not a claim that a public notarized release exists.
+
 Run from this checkout. `scripts/package-macos.sh` consumes an existing Mux `.app`;
 it never builds, launches, submits to Apple, installs, or publishes. It uses Bun
 and Apple's command-line tools. It does not read private keys or passwords.
@@ -37,7 +41,7 @@ found one Apple Development identity and **zero valid Developer ID Application
 identities**. No private key or password was exported. Notary profiles were not
 read or authenticated. No notarization eligibility is claimed.
 
-The existing local Mac bundle also has `build.compat.embedded.trust` set to
+The local Mac bundle inspected on that date had `build.compat.embedded.trust` set to
 `development`. It is unsuitable for distribution. A new production build is
 required, coordinated with the app owner; this unit did not start one.
 

@@ -1,5 +1,24 @@
 # Mux: tasks
 
+## Public documentation (2026-11-10)
+
+- [x] Audit README, install/self-hosting/contributor guides, CLI/SDK/operator docs,
+  website copy and relative documentation links against current main source.
+- [x] Correct credential-handling examples, state push/GIF/bridge privacy boundaries,
+  separate live operator scripts from portable setup, and preserve dated evidence.
+- [x] Validate local links/anchors, shell-block syntax, external guide URLs and
+  the website production build. DOM layout checks passed; screenshots could not
+  be captured (preview timeouts, fallback browser unavailable). Evidence:
+  `tasks/evidence/public-docs-20261110.json`. No native/server/production deploy run.
+- [x] Add font license notices to the website's published assets.
+- [ ] Publish or upstream the validated Exact integration patches and prove a clean
+  public native build. Local integration 8536d208c is not available at its public
+  upstream commit URL; CONTRIBUTING.md states this rather than claiming reproducibility.
+- [ ] Reconfirm the AppDrop preview's availability and separately prove public beta
+  access and TestFlight push delivery. The existing URL responded after an initial
+  timeout, but pairing/install were not exercised; upload receipts alone are not
+  public installation proof.
+
 - [x] Declare GPL-3.0-only for the project's original code (2026-11-10, Rami's
   request): add the official license and root notice, align package/Cargo metadata,
   preserve third-party licenses, and verify the license text and metadata.

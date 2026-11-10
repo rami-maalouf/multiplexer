@@ -4,6 +4,15 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Public documentation audit (2026-11-10):** source-checked the public entry points,
+added docs/install.md, docs/README.md and CONTRIBUTING.md, and corrected stale Mac,
+push and server-bootstrap claims. Documented the fixed maintainer push gateway,
+plaintext bridge boundary, domain-specific operator scripts and the unpublished
+Exact integration dependency. Removed public image links to intentionally private
+captures, retaining timestamps and filenames. Updated website copy and bundled
+font notices. This was a documentation audit, not a new native build or server
+inspection; dated verification below keeps its original scope.
+
 **License (2026-11-10):** at Rami's request, the project's original code is now
 GPL-3.0-only. The root LICENSE contains the official GNU GPL v3 text; README.md
 declares the scope and copyright, and app package/Cargo metadata agrees. There
@@ -14,9 +23,10 @@ licenses and asset attribution remain in force. No runtime behavior changed.
 `expo-exact` checkout on branch `local/mux-integration` (was
 `exact2-multiplexer-integration`). App path rewrites landed in this repo; Mux's
 local Exact fixes (scroll return, keyboard toolbar under glass, navigation tint,
-recording levels, archive packaging, Mac toolbar click) are ported into that
-checkout and staged there. `update` still left `package.json` file deps on the
-old path (finding 46). Verification on the new checkout: 38 Bun tests, contract
+recording levels, archive packaging, Mac toolbar click) are committed there as
+`8536d208c`. The final app dependency paths use `expo-exact`; the initial
+`update` omission of package file dependencies remains recorded as finding 46.
+Verification on the new checkout: 38 Bun tests, contract
 `[]`, iOS verify 13/13, Mac authored tests 13/13, framework caps clean, Mac
 toolbar suite 25/25, and the targeted iOS Swift suites green (one XCTSkip for a
 pre-existing window-release assertion that also fails on the old checkout).
@@ -320,12 +330,12 @@ after the one-time stop. This deadline overrides the work queue below.
 
 | | |
 |---|---|
-| Current phase | Phase 0 done: M0 passed on 2026-10-28 (Synapse and WhatsApp on our server). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Current phase | Phase 0 and initial iOS work complete; iOS preview, native Mac development and agent CLI implemented. See docs/install.md for public availability and limitations. |
 | Beeper parity | Tasks B1 to B22 in `tasks/todo.md` ("Beeper parity"), from Rami's walkthrough (`research/beeper-walkthrough/report/index.html`, local only). Every question of the report is answered (decision log, 2026-11-02). Order: B1, then photos and files (B10, B11 with T2.12), then the rest of the inbox (B3 to B8), then push (Phase 3), then the chat details. Rules: D9 (Beeper's features, Messages' feel; dark mode first), D10 (GIFs from KLIPY), D11 (Send Later on our server). |
-| Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; P3.0 is complete and sandbox push is installed (2026-11-07); M3 is met (locked-phone WhatsApp sender/text confirmed). Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is deployed with the approved sandbox-only key and DNS record (2026-11-07); production is disabled. |
-| Blocked on Rami | M3 is met (locked-phone WhatsApp sender/text confirmed). P3.6 still needs his mute-copy and badge-count decisions; P3.7 needs Exact's remote activation/presentation hatch. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
+| Next task | Public native-build reproducibility still needs the validated Exact integration patches published or upstreamed. Mac signing/notarization and clean-install checks, TestFlight delivery proof, and open phone defects remain separately scoped work. |
+| Blocked on Rami | Public preview access, Mac release credentials and remaining mute/badge decisions need maintainer input. Oracle billing is still unconfirmed. No server or credential changes are part of this docs audit. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
-| Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
+| Exact | expo/exact local/mux-integration at 8536d208c40f97be3f132ea266d5029e2e3c10ba atop 94b8671f70fe2e25b307a40e7fce66dc27c9f802. The validated integration commit was not available from public upstream at the audit; see CONTRIBUTING.md. |
 | License | GPL-3.0-only for original project code; third-party licenses retained. |
 | Last updated | 2026-11-10 |
 
@@ -522,16 +532,16 @@ Each milestone is a thing Rami can see work. Each one is small and can fail.
 
 | Part | Folder | Knows | Does not know |
 |---|---|---|---|
-| Server config | `server/` | The matrix-docker-ansible-deploy inventory: Synapse, PostgreSQL, Traefik, bridges, later Sygnal. | Anything about our client. |
+| Server config | `server/` | The matrix-docker-ansible-deploy inventory: Synapse, PostgreSQL, Traefik, bridges, Sygnal. | Anything about our client. |
 | MatrixCore | `matrix-core/` | Matrix, through matrix-rust-sdk: sign in, sync, rooms, messages, send, encryption. | UI, Exact, Expo. |
 | App | `apps/multiplexer/` | Screens (Contract), data (`app.ts`), one Swift native module that calls MatrixCore. | Matrix protocol details. It sees only MatrixCore's API. |
-| Notification extension | later | Uses MatrixCore to fetch and decrypt one event. | UI. |
+| Notification extension | `apps/multiplexer/extensions/notifications/` | Uses MatrixCore to fetch and decrypt one event. | UI. |
 
 ### Invariants
 
 These must always be true. A change that breaks one needs a decision log entry.
 
-1. The client talks only to our homeserver, with Matrix. It never talks to WhatsApp or another network. One exception (D10): GIF search calls KLIPY directly; KLIPY sees the search words and the phone's address, never a chat.
+1. Chat synchronization uses our homeserver through Matrix, without direct messaging-network API calls from the app. GIF search calls KLIPY directly with search terms and the client IP (D10). iPhone push registration selects the fixed maintainer Sygnal gateway; the event-id-only push path also uses APNs. See docs/install.md for the infrastructure boundary.
 2. Only MatrixCore calls matrix-rust-sdk. The app and the extension call MatrixCore. This keeps the UI framework choice reversible (Expo is the fallback).
 3. MatrixCore's public API uses plain types (strings, numbers, records). No SDK type leaks out.
 4. No secret goes into git: passwords, access tokens, the APNs key, `vars.yml`.
@@ -570,9 +580,11 @@ Use these to check that we work on the right thing.
 
 ## Facts we rely on
 
-Checked on 2026-10-27. Recheck a fact before a task depends on it.
+The infrastructure observations below began on 2026-10-27. Current source paths
+were reviewed on 2026-11-10; old disk sizes, utilization and service observations
+are historical, not a live host audit. Recheck before operating the server.
 
-**Server (`ssh oracle`):** Ubuntu 24.04.5, aarch64, 4 CPUs, 23 GiB memory, 96 GB disk with 30 GB used (62 GB on 2026-11-03), Docker installed but disabled (since T0.5 the playbook runs it, on at boot). Ports 80, 443 and 8448 are free. Details: `server/notes/inventory.md` (T0.1). No host firewall is active (`iptables-persistent` was removed on 2025-08-11, so `/etc/iptables/rules.v4` is not loaded); Oracle's security list is the only firewall. No public IPv6. Time sync: `systemd-timesyncd`.
+**Server (`ssh oracle`):** Ubuntu 24.04.5, aarch64, 4 CPUs, 23 GiB memory, 96 GB disk with 30 GB used (62 GB on 2026-11-03), Docker was initially disabled; since T0.5 the playbook runs it, enabled at boot. Ports 80, 443 and 8448 now serve the configured deployment; the inventory's free-port result was pre-install. Details: `server/notes/inventory.md` (T0.1). No host firewall is active (`iptables-persistent` was removed on 2025-08-11, so `/etc/iptables/rules.v4` is not loaded); Oracle's security list is the only firewall. No public IPv6. Time sync: `systemd-timesyncd`.
 
 **Mac:** arm64, Xcode, Docker, uv, Homebrew, gh. Ansible 14.5.0 (ansible-core 2.21.5) through `uv tool`, installed by `server/setup.sh`. `just` is not needed.
 
@@ -602,10 +614,10 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 **matrix-rust-components-swift** ([repo](https://github.com/element-hq/matrix-rust-components-swift)):
 - Swift 5.9, iOS 16 minimum, Apache-2.0, iOS and the iOS Simulator only.
-- Product `MatrixRustSDK` (a dynamic library). The binary target `MatrixSDKFFI` is an XCFramework downloaded from GitHub. Version 26.10.27.
+- Product `MatrixRustSDK` (Swift bindings over the binary SDK). The binary target `MatrixSDKFFI` is an XCFramework downloaded from GitHub. Version 26.10.27.
 - New releases are frequent, so pin the version.
 
-**Exact** (`/Users/rami/Documents/code/exact/exact2`):
+**Exact** (`/Users/rami/Documents/code/exact/expo-exact`, `local/mux-integration`):
 - New app: `bun scripts/exact.mjs new <path> --name <Name> --bundle-id <id>`. Set the name and the id before the first build.
 - Only `docs/start-here.md` is required reading.
 - A native module is `modules/apple/*.swift` or `*.xcframework`.
@@ -629,7 +641,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Something on the server already uses Docker or ports 80/443. | High | Inventory first. Rami decides what stays. | T0.1 |
 | A component has no arm64 image and cannot self-build. | High | Note each image. Change the component, or move to an amd64 VPS. | T0.5, T0.6 |
 | Exact cannot link matrix-rust-sdk. | High | A spike before any UI. Stop after 3 rounds. Fallback: Expo with the same MatrixCore. | T1.2 |
-| Oracle reclaims an idle instance. | Medium | The server rebuilds from `server/`. Back up PostgreSQL. Check usage at the M0 checkpoint. (2026-11-03: the 7-day use meets all three idle conditions; the backups are on the same disk, so an off-server copy waits for Rami. Since 2026-11-03 the Mac pulls the dumps, media and signing key every day: `server/README.md`, Backups.) | M0 checkpoint |
+| Oracle reclaims an idle instance. | Medium | The server rebuilds from `server/`. Back up PostgreSQL. Check usage at the M0 checkpoint. (2026-11-03: the 7-day use meets all three idle conditions; the backups are on the same disk, and the original off-server gap was closed on 2026-11-03. Since 2026-11-03 the Mac pulls the dumps, media and signing key every day: `server/README.md`, Backups.) | M0 checkpoint |
 | Unexpected Oracle charges for 4 CPUs and 23 GiB. | Medium | Rami checks billing. | Q5 |
 | A network blocks logins from cloud IP addresses (not verified). | Medium | Test each network before we depend on it. | Phase 4 |
 | The notification extension runs out of memory or fails to decrypt. | High for M3 | Test early in Phase 3. | Phase 3 |
@@ -652,6 +664,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 | Date | Entry |
 |---|---|
+| 2026-11-10 | Public documentation audited against main source. Current entry points distinguish preview availability, Mac development, bridge plaintext, fixed push infrastructure and unpublished Exact integration. No new native/server validation claimed. |
 | 2026-10-27 | Plan created. D1 to D7 recorded. Rami is the only user for now. |
 | 2026-10-27 | Project moved out of the `exact` folder to `/Users/rami/Documents/code/switchboard` and registered as its own T3 project. The Exact framework is only a dependency, used by path. |
 | 2026-10-27 | Pulled the latest Exact. Its `main` history was rewritten on the remote, so local `main` now matches `origin/main` (`65577096ed`). The old local `main` is kept in exact2 as `backup/main-before-2026-10-27-rewrite`. The facts above still hold. |

@@ -1,6 +1,6 @@
 # Exact feedback
 
-This folder records each place where building Multiplexer with Exact was hard. Its
+This folder records each place where building Mux (formerly Multiplexer) with Exact was hard. Its
 purpose: Rami and the Exact team can improve the framework. Read this page first.
 
 | What | Where |
@@ -14,6 +14,11 @@ The findings use no app name, server name or account name, so they can go to the
 Exact team as they are.
 
 ## Findings
+
+This is a dated development archive, not an upstream issue-status dashboard.
+"Open" and "fixed" reflect the inspection named in each entry; the framework has
+since moved to expo/exact. Preserve the original observations and follow the
+current build guide in [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26; 73 to 76 on 2026-11-03, with new evidence for 2 and 60; 83 to 85 on 2026-11-03 (77 to 82 are B18 search's, with new evidence for 13 and 26), with new evidence for 61 and the zoom filming finding; 86 on 2026-11-03, with new evidence for the long-press scroll finding. 87 to 89 on 2026-11-03 at `ed43ad09a0`, with new evidence for 13 and 37. 97 to 101 on 2026-11-03 at `574720f370`, while fixing findings in pull requests, with new evidence for 42. 106 and 107 on 2026-11-03 at `ed43ad09a0`, from the transcript's loading line, with new evidence for 29. 108 to 110 on 2026-11-03 at `ed43ad09a0`, from Remind Me. 119 on 2026-11-03 at `ed43ad09a0`, from Merge Chats, with new evidence for 55. 120 on 2026-11-04 at `ed43ad09a0`, from the UI faults, with new evidence for 55 (its cause, and a local fix), 76 and 106. 90 and 91 on 2026-11-03, with new evidence for 26. 93 to 95 on 2026-11-03 (Send Later; 92 is the GIF task's), with new evidence for 26 and 61. 92 on 2026-11-03, with new evidence for 61. On 2026-11-03 (a jump count task), new evidence for 13 and 19. 102 to 105 on 2026-11-03 at `ed43ad09a0` (a camera), with new evidence for 37 and 46. 117 and 118 on 2026-11-03 at `ed43ad09a0` (push on the Simulator), with new evidence for 46.
 
