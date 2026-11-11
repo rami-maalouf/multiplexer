@@ -102,7 +102,7 @@ bun exact.mjs contract build app.contract --json --errors-only
   the sign-in ends: it shows the `password` state. On matrix.org, sign out at the end of the
   drive, so it does not collect old devices. As `@test1`/`@test2` on our own server, stay signed
   in across drives on your own Simulator (the agent keeps its session), and sign out only when
-  your task ends: our server can delete leftover devices. On `@rami`, always sign out at the end.
+  your task ends: our server can delete leftover devices. On any real account, always sign out at the end.
 - Each drive is a new launch. The agent keeps its own session (Keychain service
   `com.ramimaalouf.multiplexer.session.agent`) and data, so a drive after a sign-in opens
   signed in. Each authored test starts signed out.
@@ -147,13 +147,18 @@ you down is feedback, and recording it is part of each task, not optional. Start
 
 ## Test accounts
 
-**Safety rule.** `@rami:ramimaalouf.com` is Rami's real account: it holds his real
-WhatsApp and Instagram, so a message sent in one of its rooms reaches a real person. Tests and drives
-send, react, delete and mark as read only as `@test1:ramimaalouf.com` or
-`@test2:ramimaalouf.com` (Keychain service `multiplexer-test-account`). On `@rami`: read-only
-drives, and only with Rami's OK; sign out at the end. A read receipt there also marks the
-chat read in WhatsApp or Instagram (double puppeting).
+**Safety rule.** Only the explicitly listed test accounts may be used for automated
+tests or actions that modify data: `@test1:ramimaalouf.com`,
+`@test2:ramimaalouf.com` (Keychain service `multiplexer-test-account`), and the
+practice account below in its test room. Treat every other account as a real account:
+read-only access requires Rami's explicit approval, and sign out afterward. Sending,
+reacting, deleting or marking a chat read can affect real people on connected networks.
 
+Read `.local/accounts.md` if it exists for private account identities and Keychain
+lookup details. This file is local only and ignored by git. Do not copy its contents
+into tracked files, feedback, issues, pull requests or chat. If it is absent, keep the
+same test-account-only rule; request private account details only when needed for an
+explicitly authorized real-account drive.
 
 - Practice: `@rami-m-test:matrix.org`. Its password is in the Keychain. Its room "Multiplexer test" is for tests.
   It holds more than 20 messages, so the chat shows only its last 20. To add numbered
@@ -162,7 +167,7 @@ chat read in WhatsApp or Instagram (double puppeting).
   `--epoch now --time-zone America/New_York` to `agent ios` to see real times.
 - `./scripts/send-test-message.sh "<text>"` sends a message from a short-lived device of a
   test user (default `SENDER=@test2:ramimaalouf.com`, `ROOM="Multiplexer two-person test"`);
-  `--image <photo.jpg> ["<caption>"]` sends a photo. It refuses `@rami`.
+  `--image <photo.jpg> ["<caption>"]` sends a photo. Run it only with the listed test users.
 - In a drive, the app sends read receipts only for `@test` users (`Matrix.swift`,
   `sendsReadReceipts`). To see it arrive in a drive, start it in the background with
   a delay, then wait with `"clock until state thread.messages.20.body == \"<text>\" within 45000"`
@@ -173,8 +178,8 @@ chat read in WhatsApp or Instagram (double puppeting).
   leftover device must be removed in Element or at account.matrix.org.
 - `./scripts/clean-test-devices.sh [--older-than <hours>] [--delete]` lists `@test1`'s and `@test2`'s
   devices on our server not seen for that long (default 24 h); a dry run unless `--delete`. It never
-  touches `@rami`. Ask Rami before the first `--delete` (deleting on the server).
+  touches real accounts. Ask Rami before the first `--delete` (deleting on the server).
 - MatrixCore tests share one signed-in device per test user for a whole run (`testAccount` in
   `TestDevices.swift`); it signs out when the run ends. Use `signInTestDevice` (a fresh device, marked
   `FRESH DEVICE`) only when a new device is the point of the test.
-- Do not test with `@rami-m:matrix.org` or `@ramimaalouf:beeper.com`: they are Rami's real accounts.
+- Do not test with any account outside the explicit test-account list above.

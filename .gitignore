@@ -16,3 +16,6 @@
 
 # the beeper walkthrough: a screen recording of real chats, kept out of git
 /research/
+
+# private account notes and other machine-local context
+/.local/

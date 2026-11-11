@@ -37,7 +37,7 @@ ansible -i server/inventory/hosts all -m ping   # answers "pong"
 ```sh
 ./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start   # install or update
 ./server/playbook.sh --tags=self-check                                      # all green when it works
-./server/register-user.sh rami multiplexer-matrix admin                     # a user, password in the Keychain
+./server/register-user.sh <admin-user> multiplexer-matrix admin                     # a user, password in the Keychain
 ```
 
 To update the playbook: change `playbook_commit` in `setup.sh`, read the playbook's
@@ -52,11 +52,11 @@ All in the Mac's login Keychain. Never in git, chat or logs.
 |---|---|---|
 | `multiplexer-server` | `matrix_homeserver_generic_secret_key` | The playbook makes most other secrets from it. |
 | `multiplexer-server` | `postgres_connection_password` | PostgreSQL's main user. Changing it later needs manual work. |
-| `multiplexer-matrix` | `@rami:ramimaalouf.com` | Rami's Matrix password. |
+| `multiplexer-matrix` | See local `.local/accounts.md`. | Real Matrix account password. |
 | `multiplexer-test-account` | `@test1:ramimaalouf.com`, `@test2:ramimaalouf.com` | Test users for the app. |
 
-To paste a password on the iPhone (Universal Clipboard):
-`security find-generic-password -s multiplexer-matrix -a @rami:ramimaalouf.com -w | pbcopy`.
+The real account ID and Universal Clipboard password lookup command are in
+`.local/accounts.md` at the repository root (local only, ignored by git).
 
 ## Backups
 

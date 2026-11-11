@@ -1,5 +1,10 @@
 # Multiplexer: tasks
 
+- [x] Keep real-account identifiers and lookup details local (2026-11-10):
+  generalize tracked references, preserve the safety rule and original context in
+  `.local/accounts.md`, ignore `.local/`, and verify the private file is untracked.
+  Documentation only; existing git history is unchanged.
+
 - [x] Declare GPL-3.0-only for the project's original code (2026-11-10, Rami's
   request): add the official license and root notice, align package/Cargo metadata,
   preserve third-party licenses, and verify the license text and metadata.
@@ -49,7 +54,7 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   checkout (`cc75ef11d0`, `SwipeActionsIOS.swift` `restore()` redraws the list's row lines). Screenshots:
   `.exact/r02i/` (rest dark, light, largest text; a row closed after a swipe, light and dark). `verify ios` clean.
 - [x] R01 the whole inbox list moved sideways (2026-11-05, branch `fix/inbox-video`, Simulator only).
-  Reproduced on the build Rami's phone had (before R02), with `@rami`'s real chats (read only, agent mode,
+  Reproduced on the build Rami's phone had (before R02), with the real account's chats (read only, agent mode,
   real touches): horizontal pans shifted the whole list about 75 points left, under the fixed title and bar,
   and it stayed shifted. `@test1`'s chats did not reproduce it. Cause: with those chats the list's content
   was 446.875 points wide on a 402-point screen (no node's frame passed the edge: text wider than its
@@ -98,7 +103,7 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
   Select Chats. `verify ios` clean (12 tests). Screenshots: `apps/multiplexer/.exact/r12/`.
   Left as it is: in Select Chats the row lines start at the picture, not at the name (the list host places
   them; it was so before R12). Fixed later in the real-data pass: the lines now start at the name.
-- [x] Real-data pass of the inbox (2026-11-06, branch `fix/real-data-pass`, `@rami` read-only, signed out
+- [x] Real-data pass of the inbox (2026-11-06, branch `fix/real-data-pass`, the real account read-only, signed out
   after; screenshots only in /tmp/mx-real-pass/, never in git). Checked the inbox, filters, Archive, search
   and five chats in dark. Fixed: long chat names wrapped to four lines (now one, two at the accessibility
   sizes, the muted bell kept after the ellipsis); row lines started at the initials for chats without a
@@ -109,15 +114,15 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 - [x] Chats with no preview and no time in the list (2026-11-06, branch `fix/instagram-previews`). Cause:
   the sdk's latest event comes from the events the device has, and the room list syncs only each room's
   newest event; when that is no message (a reaction, a member's new picture, a redaction) the room has no
-  latest event until it is opened. On a new device: 132 of 187 chats on `@rami`. Fix: `NewestMessages`
+  latest event until it is opened. On a new device: 132 of 187 chats on the real account. Fix: `NewestMessages`
   asks the server once per launch for such a chat's newest message (`/messages`, filtered, no edits or
   deleted ones), reads it through the sdk (which decrypts it), fills the row's preview and time, and keeps
-  it in the store folder. On `@rami` (read-only): 5 of 327 chats left without a time, all without messages
+  it in the store folder. On the real account (read-only): 5 of 327 chats left without a time, all without messages
   this account can read. The unread counts agreed: search shows the list's own record; the 0 was read
   seconds after a sign-in, and the same chat shows 66 in both once synced. A sign-out stops the asks first.
   Test: `NewestMessagesTests` checks the fallback itself (`@test2`'s message under its newer reaction is
   found, then shown). It does not reproduce the fault: in one small test room the sdk has the latest
-  event (it passed with the fallback off), so the proof of the fault and the fix is the `@rami` count.
+  event (it passed with the fallback off), so the proof of the fault and the fix is the the real account count.
 - [x] Instagram raw markdown after ed95f6e (same branch). Cause: the messages are photos and videos with
   a caption (`m.image` with `formatted_body`), and captions never went through `FormattedText`; search,
   bookmarks, the info page and the list's text preview also read the plain body. The real html is
@@ -272,7 +277,7 @@ had nothing to show at once.
 - [x] After a relaunch (copies on disk): 0 frames; full content in the first recorded frame.
 - [x] New device (never opened): newest message after 1 frame (67 ms); first screen fills in 1 to
   2.6 s under the small older-messages spinner.
-- [x] `@rami`, read only, a new device with 324 chats: a large WhatsApp group shows messages in its
+- [x] the real account, read only, a new device with 324 chats: a large WhatsApp group shows messages in its
   first chat frame and moves to its "New" line; a small group shows its newest message at about
   130 ms. Signed out after.
 - [x] "New" line placed on the first of three unread messages; a draft kept across A-B-A.
@@ -290,7 +295,7 @@ had nothing to show at once.
   only an opening shows the copy (`showingLive`, per screen). After: messages stay, the new ones
   arrive with no spinner and no step back; A-B-A still shows the chat in its push. Proof:
   `apps/multiplexer/.exact/r04-return/`.
-- [x] The room list's text wider than its box (2026-11-06, `@rami` read only, signed out after).
+- [x] The room list's text wider than its box (2026-11-06, the real account read only, signed out after).
   Found with the drive's `check` on every screen (the list's own range is hidden by
   `overflow-x="hidden"` and the swipe rows): two link previews whose long run of characters fell in
   their two visible lines spilled 17 pt and 60 pt past their 310 pt box (76 + 310 + 60.875 = the
@@ -549,7 +554,7 @@ Docker and ports 80, 443 and 8448, so we must know what is there first.
 
 ### T0.2 Choose the Matrix domain (Rami)
 
-**Description:** Choose the base domain. User IDs become `@rami:<base domain>`.
+**Description:** Choose the base domain. User IDs become `@<user>:<base domain>`.
 The server lives at `matrix.<base domain>`. This cannot change after install.
 
 **Acceptance criteria:**
@@ -612,7 +617,7 @@ on aarch64 and that Element X can use it.
 
 **Acceptance criteria:**
 - [x] `--tags=self-check` is all green. (2026-10-27: `ok=36 failed=0`: the client API, the federation API on 8448, and the well-known files on both names. matrix.org's federation tester: `FederationOK: True`, found through the website's 301.)
-- [x] User `rami` exists (`--tags=register-user`). Element X on my iPhone signs in and sends a message to a test room. (2026-10-27: `@rami:ramimaalouf.com` exists, admin. Also `@test1` and `@test2` for the app. Rami signed in with Element Web and exchanged encrypted messages with `@rami-m:matrix.org` in a new room, both ways, over federation (the server's database shows both `m.room.encrypted` events, 22:17 UTC). Element X on the iPhone signed in, was verified, and sent an encrypted message at 22:31:54 UTC from its session `URUJZPGGRL` (in the server's database).)
+- [x] The administrator exists (`--tags=register-user`). Element X on my iPhone signs in and sends a message to a test room. (2026-10-27: the real account exists, admin. Also `@test1` and `@test2` for the app. Rami signed in with Element Web and exchanged encrypted messages with the real federation account in a new room, both ways, over federation (the server's database shows both `m.room.encrypted` events, 22:17 UTC). Element X on the iPhone signed in, was verified, and sent an encrypted message at 22:31:54 UTC from its session `URUJZPGGRL` (in the server's database).)
 - [x] We note which images were pulled for arm64 and which were built on the server. (All 7 pulled for arm64, none built: `server/notes/install.md`.)
 
 **Verification:**
@@ -621,7 +626,7 @@ on aarch64 and that Element X can use it.
 
 **Found on the way:**
 - 2026-10-27: Rami signed in with Element Web (app.element.io, Firefox) by entering `www.ramimaalouf.com`. With `ramimaalouf.com` it said "Homeserver URL does not appear to be a valid Matrix homeserver": the 301 to `www` has no CORS header (checked with curl). Element X and our app are not affected.
-- Registration leaves one unused session per user (`@rami` `LCCCMXGHUT`, `@test1` `GSZAMCIGYJ`, `@test2` `LZOEOUBRAB`), each with a live token that nobody holds. With Rami's yes, `server/remove-unused-sessions.py` signed out the two test ones; `register-user.sh` now runs it after each registration. Rami signs out his own in Element Web.
+- Registration leaves one unused session per user (the real account `LCCCMXGHUT`, `@test1` `GSZAMCIGYJ`, `@test2` `LZOEOUBRAB`), each with a live token that nobody holds. With Rami's yes, `server/remove-unused-sessions.py` signed out the two test ones; `register-user.sh` now runs it after each registration. Rami signs out his own in Element Web.
 
 **First run:** 2026-10-27, `ok=195 changed=58 failed=0`. Synapse answers at `https://matrix.ramimaalouf.com` with a Let's Encrypt certificate, and password sign-in works.
 
@@ -641,7 +646,7 @@ WhatsApp account. Messages must flow in both directions.
 **Acceptance criteria:**
 - [x] `matrix_bridge_mautrix_whatsapp_enabled: true` and Appservice Double Puppet are on. Self-check is green. (2026-10-27: install `ok=218 changed=15 failed=0`; mautrix-whatsapp `v0.2610.0`, arm64 image pulled, nothing built; Synapse loads both registrations; `@whatsappbot:ramimaalouf.com` exists; self-check `ok=36 failed=0`. Bridged rooms are not end-to-end encrypted: the playbook's default.)
 - [x] `login qr` to `@whatsappbot:<base domain>` links my WhatsApp. (2026-10-27: linked; the bridge holds 1 login and made rooms for Rami's chats, with history. Details: `server/notes/install.md`.)
-- [x] A WhatsApp message sent to me shows in Element X. My reply from Element X arrives in WhatsApp. (2026-10-27: Rami confirmed both directions and double puppeting. The server shows 2 messages from `@rami` in bridged rooms in that hour; 265 of 267 chats have rooms; load back to 0.06 after the history sync.)
+- [x] A WhatsApp message sent to me shows in Element X. My reply from Element X arrives in WhatsApp. (2026-10-27: Rami confirmed both directions and double puppeting. The server shows 2 messages from the real account in bridged rooms in that hour; 265 of 267 chats have rooms; load back to 0.06 after the history sync.)
 
 **Verification:**
 - [x] A manual test with a second person or a second phone. Screenshots of both sides. (Rami's own test; no screenshots kept here.)
@@ -761,7 +766,7 @@ call it. No network and no UI design. Try A first, then B.
 **Acceptance criteria:**
 - [x] An XCTest in the iOS Simulator signs in to the practice account on matrix.org (D8) and lists its rooms. (2026-10-27: `scripts/test-matrix-core.sh`, 1 passed in 8.7 s. One device sends; a second device with an empty store sees the room and reads the message from the server. Both devices sign out.)
 - [x] After T0.6: the same test against our server lists the WhatsApp chat. (2026-11-03: `scripts/test-matrix-core.sh` runs
-  against our server as `@test1`/`@test2` by default; a read-only drive as `@rami` listed his 185 rooms, WhatsApp ones
+  against our server as `@test1`/`@test2` by default; a read-only drive as the real account listed his 185 rooms, WhatsApp ones
   with the network `whatsapp`, and a GIF reached WhatsApp through the bridge.)
 - [x] It returns the last 20 messages of a room, in order, with sender, text and time. (The test checks the newest message and that it is our own.)
 - [x] No matrix-rust-sdk type is in MatrixCore's public API. (Public types: `MatrixAccount`, `SavedSession`, `RoomSummary`, `Message`, `MatrixCoreError`. The same files compile in the Exact app.)
@@ -944,7 +949,7 @@ marks it read on the server, so Element and my other devices agree.
 **Acceptance criteria:**
 - [x] A message from another person (`@test2` to `@test1`) shows a count on its room, and the room title is bold. (2026-10-27: a "1" badge, a bold name and an accent-coloured time; the count is the sdk's `numUnreadMessages`.)
 - [x] Opening the chat clears the count here, and the read receipt reaches the server (another client of `@test1` shows the room read). (The MatrixCore test signs in a second `@test1` device, which sees 0.)
-- [x] Never sent from a test on `@rami`: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp. (In a drive, the module sends receipts only for a user whose id starts with `@test`.)
+- [x] Never sent from a test on the real account: with double puppeting, a read receipt in a bridged room also marks the chat read in WhatsApp. (In a drive, the module sends receipts only for a user whose id starts with `@test`.)
 
 **Verification:**
 - [x] A MatrixCore test with `@test1` and `@test2` on our server. (`testUnreadMessagesCountUntilRead`,
@@ -1079,7 +1084,7 @@ initials.
 ### T2.10 Your real account, read only
 
 **Description:** From the server conversation's review (2026-10-27): the app was built
-against 2 to 5 rooms; Rami's account `@rami:ramimaalouf.com` has 269 (265 WhatsApp chats,
+against 2 to 5 rooms; Rami's real account has 269 (265 WhatsApp chats,
 the bridge bot, a "WhatsApp" space, an encrypted DM). Sign in on the Simulator, read only
 (Rami's OK, 2026-10-27), and fix what the real size shows. Spaces are not chats: hide them.
 
@@ -1102,7 +1107,7 @@ the bridge bot, a "WhatsApp" space, an encrypted DM). Sign in on the Simulator, 
 **Description:** Today a chat shows text, photos and "Waiting for this message". Voice
 notes, videos and files show only their body text; stickers, polls and deleted messages
 are hidden. Reactions, reply quotes and "Edited" are done in T2.13. Look at what the bridge
-sends (read only, on `@rami`), then build them in this order: voice notes (play), replies
+sends (read only, on the real account), then build them in this order: voice notes (play), replies
 (the quote above the bubble), reactions (under the bubble), videos (a poster, then play),
 files (name and size, open), stickers (as a picture), "Edited" and "Message deleted".
 
@@ -1211,7 +1216,7 @@ Rules for every task here:
 - Every question of the report is answered. **Ask Rami** marks a choice that only shows when the
   task starts (for example a server change); do not guess.
 - Drives send, react and mark read only as `@test1` or `@test2`. A bridged chat exists only on
-  `@rami`: there, drives are read only and need Rami's OK.
+  the real account: there, drives are read only and need Rami's OK.
 - Push notifications (Phase 3) come after the inbox tasks (Rami, `push-order`).
 
 ### B1 Each chat's network, and its logo on the picture
@@ -1246,7 +1251,7 @@ types), so prove that first.
   mautrix bridge sets in "Multiplexer network test"; a new device reads `whatsapp`, the plain test
   rooms read `matrix`, and a change to `telegram` and back shows live. The whole suite passes
   (16, 1 skipped); `verify ios` clean.
-- [x] A read-only drive on `@rami` (Rami's OK, 2026-11-02): 292 chats: 259 WhatsApp, 30 Instagram,
+- [x] A read-only drive on the real account (Rami's OK, 2026-11-02): 292 chats: 259 WhatsApp, 30 Instagram,
   3 Matrix, each with the right logo; `check` clean in dark, light and the largest text size; no
   chat opened; signed out at the end.
 
@@ -1263,7 +1268,7 @@ from the bridge's display name template on the server.
   "do whatever you think is best"; all three suffixes, so no network repeats its logo.)
 - [x] The template changes through the playbook (invariant 6), and names update in the app.
   (2026-11-03: applied through the playbook, all three; `!wa sync contacts` sent. Read-only
-  drive on `@rami`, new device, signed out after: of 189 chats loaded, 0 names show " (WA)";
+  drive on the real account, new device, signed out after: of 189 chats loaded, 0 names show " (WA)";
   2 direct chats and 1 group show their names in the bar without a suffix. Instagram senders
   still show " (IG)" (7 in previews; 705 of 708 Instagram ghosts on the server) until each
   contact's next update.)
@@ -1299,7 +1304,7 @@ template changes no name at once. A contact's Matrix name changes when the bridg
 that contact, and each DM room's name follows (`private_chat_portal_meta: true`). Group names
 have no suffix.
 - WhatsApp: `!wa sync contacts` in the WhatsApp bot chat renames every contact the bridge has
-  stored, at once (a message from `@rami` to the bot only; it reaches no contact). Others change
+  stored, at once (a message from the real account to the bot only; it reaches no contact). Others change
   when they change their WhatsApp name, or when they send a message and their info is more than
   7 days old (the bridge's queue runs every 4 hours).
 - Instagram (mautrix-meta `4a7ebd9`): when Meta's sync sends that contact's info again.
@@ -1309,7 +1314,7 @@ have no suffix.
 
 **To apply, after Rami's OK:** merge `server/b2-names` into `main`;
 `./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start` (the three bridges
-restart, about 10 s); `!wa sync contacts` in the WhatsApp bot chat; a read-only drive on `@rami`.
+restart, about 10 s); `!wa sync contacts` in the WhatsApp bot chat; a read-only drive on the real account.
 
 **Applied 2026-11-03** (`server/notes/install.md`). The bot does not answer `!wa sync contacts`,
 but it renamed in the background (about 900 a minute): 14,529 names with " (WA)" became 2,250 by
@@ -1410,7 +1415,7 @@ messages shows a dot on its picture (Rami: a dot, as in Messages).
   from the server once per pinned chat.
 - [x] The grid is the list's first row and scrolls away with it.
 - [x] An unread pinned chat shows a dot, which clears when the chat is read.
-- [x] Rami (2026-11-03): a pin stays in our app, never in WhatsApp. Check the bridge does not pass it before any pin on `@rami`: the bridge may pass a pin to WhatsApp (which allows
+- [x] Rami (2026-11-03): a pin stays in our app, never in WhatsApp. Check the bridge does not pass it before any pin on the real account: the bridge may pass a pin to WhatsApp (which allows
   3). His real account has no pinned chats today. (2026-11-03, read only, at the server's
   versions: **a pin in our app cannot reach WhatsApp.** The app pins with the room tag
   `m.favourite` (`Pinned.swift`, `setIsFavourite`), which is room account data. mautrix-whatsapp
@@ -1421,7 +1426,7 @@ messages shows a dot on its picture (Rami: a dot, as in Messages).
   (`synapse/handlers/appservice.py`, `notify_interested_services_ephemeral`), never account data.
   The same holds for any other room account data the app writes, such as `m.marked_unread`. The
   other direction is off too: the bridge's `pinned_tag` and `archive_tag` are not set, so a
-  WhatsApp pin does not tag the Matrix room. `@rami` has no room tags today. Recheck after a
+  WhatsApp pin does not tag the Matrix room. The real account has no room tags today. Recheck after a
   Synapse update: this depends on what Synapse sends to appservices, not on our app.)
 
 **Dependencies:** none (B7 adds the rest of the menu). **Scope:** M
@@ -1597,7 +1602,7 @@ it the one exception to invariant 1.
 - [x] 2026-11-06: GIFs, photos and videos no longer send on pick: they join the tray until Send
   (photos already did; GIFs staged via `stageGif`; Photos picker also accepts video types).
   Simulator: `.exact/media-draft/` (`gif-in-tray`, `gif-with-caption`, `two-gifs`, `gif-sent`).
-  2026-11-03: sent from `@rami` (Rami's OK: his chat with himself, Mama, Dana, Osama and Ali G
+  2026-11-03: sent from the real account (Rami's OK: his chat with himself, Mama, Dana, Osama and Ali G
   are test chats) to his WhatsApp chat with himself: "Sent", and no failure notice from the bridge
   after several minutes (the bridge logs warnings only). Rami saw it arrive in WhatsApp on his phone.
 
@@ -1633,7 +1638,7 @@ MatrixCore calls the Matrix API itself (to check).
   old one already went, the new one is cancelled and the list says so. The list reads again
   each minute.)
 - [x] A scheduled message reaches WhatsApp at its time with the phone off (checked with the test
-  users, then on `@rami` with his OK). Test users (2026-11-03): a message scheduled for 3 minutes
+  users, then on the real account with his OK). Test users (2026-11-03): a message scheduled for 3 minutes
   later arrived at exactly that minute while the app was not running; MatrixCore's
   `ScheduledMessagesTests`. WhatsApp (Rami's OK, 2026-11-03, to his contact "Osama"): scheduled
   in the app for 13:14, then the app signed out at 13:11:42; the message went at 13:14:00 and the
@@ -2250,7 +2255,7 @@ built; ask Rami if wanted).
 ### L2 Communities as filters
 
 **Description:** Beeper's filter sheet lists WhatsApp communities as rows under the networks
-(report, topics 03 and 07). On our server (read only, 2026-11-03) `@rami` has joined 17 spaces:
+(report, topics 03 and 07). On our server (read only, 2026-11-03) the real account has joined 17 spaces:
 each bridge's own space (WhatsApp, Instagram, LinkedIn: every chat of that network, with only
 Rami and the bot as members and no `io.element.functional_members`), and 14 WhatsApp
 communities (spaces the bridge serves as rooms, each holding 1 to 5 groups; 12 of them sit inside
@@ -2266,7 +2271,7 @@ network or a list clears it).
   counts; a bridge's own space is not listed; a space with none of the account's chats is not.
 - [x] Choosing one shows only its chats (and its pinned chats); the title is its name; the
   capsule shows its picture (or the people symbol).
-- [x] A new device lists a space once its first sync has brought it (on `@rami`, 300 chats:
+- [x] A new device lists a space once its first sync has brought it (on the real account, 300 chats:
   about a minute; before that 12 of the 14 showed).
 - [x] At the accessibility text sizes a row's count goes under its name, so a long word
   ("WhatsApp") no longer spills (it did since B4). A list preview with one long word (a sender
@@ -2275,13 +2280,13 @@ network or a list clears it).
 **Verification (2026-11-03):**
 - [ ] MatrixCore: `CommunitiesTests` (the bridge-space rule, the order, the filter and counts, the
   space graph, and a space of `@test1`'s on a new device), and the whole suite.
-- [x] A read-only drive on `@rami` (no chat opened, signed out at the end): 14 communities, the 3
+- [x] A read-only drive on the real account (no chat opened, signed out at the end): 14 communities, the 3
   bridge spaces left out; Jiu Jitsu Canada lists its 2 groups; `check` clean in dark, light and
   the largest text size.
 - [ ] `verify ios`.
 
 Seen on the way (not this task): a WhatsApp group's last sender without a name shows as its id
-(`@whatsapp_lid-…:ramimaalouf.com`) in the list's preview, on `@rami`.
+(`@whatsapp_lid-…:ramimaalouf.com`) in the list's preview, on the real account.
 
 **Dependencies:** B4. **Scope:** S
 
@@ -2292,7 +2297,7 @@ Archive, Create Label, Reminders, Send Later, **Requests** ("message requests"),
 the networks and the communities; under them a gear, **"+ New Space"** and Edit. The video opens
 neither, so what they do inside Beeper is not seen.
 
-**What our server has (read only, 2026-11-03):** `@rami` has no invites (331 rooms joined, 4
+**What our server has (read only, 2026-11-03):** the real account has no invites (331 rooms joined, 4
 left). The three bridges keep a `message_request` flag on each portal (WhatsApp 279 portals,
 Instagram 34, LinkedIn 21): none is set today. Each portal's `com.beeper.room_features` says a
 message request is accepted "with a button" (`accept_with_button`).
@@ -2595,7 +2600,7 @@ token from P3.1.
   it with no gateway running.)
 - [x] A new token replaces the old one; Sign Out calls `deletePusher` first. (The pusher is kept in
   the Keychain item; after Sign Out, `list-pushers.sh` showed 0. `testAPusherIsSetReplacedAndDeleted`.)
-- [x] A drive sets a pusher only for `@test` users, never on `@rami`. (`registerPush` checks
+- [x] A drive sets a pusher only for `@test` users, never on the real account. (`registerPush` checks
   `sendsReadReceipts` first; `list-pushers.sh` refuses any account but a test user.)
 
 **Verification:** `scripts/list-pushers.sh` (like `list-test-devices.sh`) shows one pusher with
@@ -2608,8 +2613,8 @@ the right values, and none after Sign Out.
 **Acceptance criteria:**
 - [ ] `@test1` on the iPhone, `@test2` sends: chat, sender and text within 5 s with the app swiped
   away, in the background, and after a reboot and one unlock; also in an encrypted room.
-- [ ] M3: on Rami's iPhone, signed in as `@rami` for his own use, a WhatsApp message from another
-  person shows its sender and text. Rami confirms. Agents send nothing as `@rami`.
+- [ ] M3: on Rami's iPhone, signed in as the real account for his own use, a WhatsApp message from another
+  person shows its sender and text. Rami confirms. Agents send nothing as the real account.
 - [ ] The delay from send to banner over 10 tries goes into `tasks/plan.md`.
 
 **Dependencies:** P3.2, P3.3, P3.4. **Scope:** S
