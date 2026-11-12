@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-12",
+  "scope": "owner iPhone install and portable self-hosted Apple builds",
+  "base": "e162c1f796989e63949c6ceb9320ba796431c6db",
+  "configuration": {
+    "fields": [
+      "teamId",
+      "bundleId",
+      "pushGateway"
+    ],
+    "defaults": "ios.config.json",
+    "override": "ios.config.local.json, gitignored",
+    "command": "bun scripts/configure-ios.ts"
+  },
+  "public_exact_setup": {
+    "command": "bun scripts/setup-exact.ts <new-directory>",
+    "upstream_revision": "94b8671f70fe2e25b307a40e7fce66dc27c9f802",
+    "verified_tree": "bc7d0c19b7e492d6a198c3b7d0b044b5dff9a05d",
+    "public_fetch_and_patch": "passed",
+    "existing_checkout_guard": "passed",
+    "full_fresh_machine_provisioning": "not run"
+  },
+  "phone": {
+    "installed_database_sequence": 6088,
+    "app_launched": false,
+    "strict_signatures": true,
+    "runtime_metadata": {
+      "MultiplexerAppGroup": "group.com.ramimaalouf.multiplexer",
+      "MultiplexerKeychainGroup": "3V2UU7RRK9.com.ramimaalouf.multiplexer",
+      "MultiplexerSessionService": "com.ramimaalouf.multiplexer.session",
+      "MultiplexerPushGateway": "https://sygnal.ramimaalouf.com/_matrix/push/v1/notify"
+    },
+    "development_push": true,
+    "communication": true
+  },
+  "native_authored_tests": {
+    "passed": 13,
+    "failed": 0,
+    "simulator_shutdown": true
+  },
+  "combined_bun_tests": {
+    "passed": 74,
+    "skipped": 0,
+    "failed": 0,
+    "log": "/tmp/mx-selfhost-final-tests.log"
+  },
+  "production": {
+    "archive": "/tmp/mx-testflight-IengS8/Mux.xcarchive",
+    "signed_export": "/tmp/mx-testflight-IengS8/out/Mux.ipa",
+    "archive_and_export_assertions": "passed",
+    "uploaded": false
+  },
+  "custom_identity_evidence": [
+    "derived identifiers and manifest synchronization",
+    "HTTPS/nonsecret gateway validation",
+    "profile identity/team/shared access/APNs/device/expiry mismatches",
+    "Foundation-only Swift custom bundle runtime",
+    "installer mismatch rejected before build"
+  ],
+  "limits": [
+    "no second Apple team or self-hosted gateway was provisioned",
+    "no fresh-Mac full toolchain build",
+    "physical locked-phone acceptance still requires user message",
+    "no real-account drive or AppDrop API key authorization"
+  ],
+  "worker_red_evidence": [
+    "baseline mismatched profile reached harmless fake build",
+    "custom preview missing gateway metadata rejected after correction"
+  ],
+  "reviews": {
+    "implementation": {
+      "receipt": "/tmp/compound-engineering-501/ce-code-review/20261112-095246-a0b30524/review.json",
+      "initial_verdict": "ready with fixes"
+    },
+    "test_isolation_followup": {
+      "receipt": "/tmp/compound-engineering-501/ce-code-review/20261112-followup-ios-tests-UG08ov/review.json",
+      "verdict": "ready to merge",
+      "actionable_findings": 0,
+      "resolved_findings": [
+        "operator configuration writes isolated and environment restored",
+        "defaults read explicitly and installer manifest isolated"
+      ]
+    }
+  },
+  "configuration_isolation_regression": {
+    "before": "operator configuration overwritten by fixture values",
+    "after": "operator file preserved byte-for-byte and actual suite passed",
+    "red_log": "/tmp/mx-ios-isolation-red.log",
+    "included_in_final_run": true
+  }
+}

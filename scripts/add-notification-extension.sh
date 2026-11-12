@@ -21,16 +21,19 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 app_dir="$root/apps/multiplexer"
 modules="$app_dir/modules/apple"
-app_id="com.ramimaalouf.multiplexer"
-extension_id="$app_id.notifications"
-group="group.$app_id"
-team="3V2UU7RRK9"
-session_service="$app_id.session"
+config="$(bun "$root/scripts/ios-config.ts" --shell)"
+{ read -r team; read -r app_id; read -r extension_id; read -r group; read -r session_service; read -r push_gateway; } <<< "$config"
 name="MultiplexerNotifications"
+
 
 mode="${1:-}"; target="${2:-}"; app="${3:-}"
 case "$mode" in --sim|--device|--store) ;; *) echo "usage: $0 --sim <udid> <app> | --device <phone udid> <app> | --store <dSYMs directory> <app>" >&2; exit 2 ;; esac
 [ -n "$target" ] && [ -d "$app" ] || { echo "usage: $0 $mode <udid> <path to Mux.app>" >&2; exit 2; }
+actual_id="$(plutil -extract CFBundleIdentifier raw -o - "$app/Info.plist")"
+[ "$actual_id" = "$app_id" ] || { echo "built app identity differs from configured bundleId" >&2; exit 1; }
+if [ "$mode" = "--device" ]; then
+  bun "$root/scripts/ios-config.ts" --preflight "$target" "$app"
+fi
 ls "$modules"/core-*.swift >/dev/null 2>&1 || { echo "no matrix-core copies in $modules: run scripts/setup-matrix-sdk.sh" >&2; exit 1; }
 
 if [ "$mode" = "--sim" ]; then
@@ -93,6 +96,23 @@ fi
 
 # the extension's bundle, beside the app's own versions.
 info() { plutil -extract "$1" raw -o - "$app/Info.plist"; }
+# preserve any other activity types supplied by the app.
+if ! /usr/libexec/PlistBuddy -c 'Print :NSUserActivityTypes' "$app/Info.plist" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c 'Add :NSUserActivityTypes array' "$app/Info.plist"
+fi
+if ! /usr/libexec/PlistBuddy -c 'Print :NSUserActivityTypes' "$app/Info.plist" | grep -q INSendMessageIntent; then
+  /usr/libexec/PlistBuddy -c 'Add :NSUserActivityTypes:0 string INSendMessageIntent' "$app/Info.plist"
+fi
+# runtime configuration belongs to the packaged bundle, never compiled credentials.
+for metadata in MultiplexerAppGroup MultiplexerKeychainGroup MultiplexerSessionService MultiplexerPushGateway; do
+  case "$metadata" in
+    MultiplexerAppGroup) value="$group" ;;
+    MultiplexerKeychainGroup) value="$keychain_group" ;;
+    MultiplexerSessionService) value="$session_service" ;;
+    MultiplexerPushGateway) value="$push_gateway" ;;
+  esac
+  plutil -replace "$metadata" -string "$value" "$app/Info.plist"
+done
 appex="$app/PlugIns/$name.appex"
 rm -rf "$appex"
 mkdir -p "$appex"
@@ -117,6 +137,7 @@ cat > "$appex/Info.plist" <<EOF
   <key>MultiplexerAppGroup</key><string>$group</string>
   <key>MultiplexerKeychainGroup</key><string>$keychain_group</string>
   <key>MultiplexerSessionService</key><string>$session_service</string>
+  <key>NSUserActivityTypes</key><array><string>INSendMessageIntent</string></array>
   <key>NSExtension</key><dict>
     <key>NSExtensionPointIdentifier</key><string>com.apple.usernotifications.service</string>
     <key>NSExtensionPrincipalClass</key><string>NotificationService</string>
@@ -128,13 +149,15 @@ if [ "$mode" = "--sim" ]; then
   # the app's simulated entitlements, rewritten in place: exact's section has no room to grow, so
   # this is a compact plist padded with spaces to the section's size. it keeps exact's
   # application-identifier and first keychain group, and adds push and the app group.
+  # omit the simulator-only debugger grant to fit communication notifications; phone signing
+  # keeps its original debug entitlement. native drives use the compiled development host.
   binary_path="$app/$(info CFBundleExecutable)"
   read -r offset hex_size < <(xcrun otool -l "$binary_path" | awk '/sectname __entitlements/ {found=1} found && /^ *size/ {s=$2} found && /^ *offset/ {print $2, s; exit}')
   [ -n "${offset:-}" ] || { echo "no __entitlements section in $binary_path" >&2; exit 1; }
   size=$((16#${hex_size#0x}))
   current="$(dd if="$binary_path" bs=1 skip="$offset" count="$size" 2>/dev/null)"
   case "$current" in *"<string>$prefix.$app_id</string>"*) ;; *) echo "the app's entitlements are not exact's simulator ones: $current" >&2; exit 1 ;; esac
-  xml="<plist version=\"1.0\"><dict><key>application-identifier</key><string>$prefix.$app_id</string><key>keychain-access-groups</key><array><string>$keychain_group</string></array><key>get-task-allow</key><true/><key>aps-environment</key><string>development</string><key>com.apple.security.application-groups</key><array><string>$group</string></array></dict></plist>"
+  xml="<plist><dict><key>application-identifier</key><string>$prefix.$app_id</string><key>keychain-access-groups</key><array><string>$keychain_group</string></array><key>aps-environment</key><string>development</string><key>com.apple.developer.usernotifications.communication</key><true/><key>com.apple.security.application-groups</key><array><string>$group</string></array></dict></plist>"
   [ "${#xml}" -le "$size" ] || { echo "the entitlements ($((${#xml})) bytes) do not fit exact's section ($size bytes)" >&2; exit 1; }
   printf "%-${size}s" "$xml" | dd of="$binary_path" bs=1 seek="$offset" conv=notrunc 2>/dev/null
   codesign -f -s - "$appex"
@@ -153,6 +176,7 @@ elif [ "$mode" = "--store" ]; then
   <key>com.apple.developer.team-identifier</key><string>$team</string>
   <key>get-task-allow</key><false/>
   <key>aps-environment</key><string>production</string>
+  <key>com.apple.developer.usernotifications.communication</key><true/>
   <key>keychain-access-groups</key><array><string>$keychain_group</string></array>
   <key>com.apple.security.application-groups</key><array><string>$group</string></array>
 </dict></plist>
@@ -171,6 +195,7 @@ else
   codesign -d --entitlements :- "$app" > "$app_ent" 2>/dev/null
   # plutil inserts missing keys; literal dots in an entitlement key must be escaped.
   plutil -replace aps-environment -string development "$app_ent"
+  plutil -replace 'com\.apple\.developer\.usernotifications\.communication' -bool true "$app_ent"
   plutil -replace 'com\.apple\.security\.application-groups' -json "[\"$group\"]" "$app_ent"
   plutil -replace keychain-access-groups -json "[\"$keychain_group\"]" "$app_ent"
   codesign -f -s "$identity" --entitlements "$ext_ent" "$appex"

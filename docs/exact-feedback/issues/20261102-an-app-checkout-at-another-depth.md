@@ -82,3 +82,6 @@ paths, `exact.mjs` and the generated AGENTS block pointed at the new checkout, b
 seven `package.json` `file:` dependencies stayed on the previous one. Found by inspecting
 the generated diff before the first build; corrected by hand and reinstalled. About two
 minutes. Seen at framework `94b8671f7`.
+
+
+2026-11-12 follow-up: in an isolated worktree, EXACT2 alone did not repair the generated cargo paths. update repaired those paths but left package file dependencies at the original folder depth; installed package copies were needed locally. no generated path changes are intended to ship.

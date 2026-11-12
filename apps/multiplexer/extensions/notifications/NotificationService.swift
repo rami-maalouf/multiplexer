@@ -37,12 +37,18 @@ final class NotificationService: UNNotificationServiceExtension {
         }
         work = Task {
             do {
-                guard let shown = try await Self.read(roomId: roomId, eventId: eventId) else {
+                guard let fetched = try await Self.read(roomId: roomId, eventId: eventId) else {
                     finish(content, outcome: "nothing to show")
                     return
                 }
+                let shown = fetched.content
                 Self.fill(content, with: shown)
-                finish(content, outcome: "shown")
+                // text is already ready if the optional image or system intent takes too long.
+                lock.withLock { fallback = content.copy() as? UNNotificationContent }
+                let avatar = await MatrixPush.senderAvatar(session: fetched.session, url: shown.senderAvatarUrl)
+                guard !Task.isCancelled else { return }
+                let communication = await CommunicationNotification.content(content, shown: shown, avatar: avatar)
+                finish(communication, outcome: avatar == nil ? "shown, no avatar" : "shown, avatar fetched")
             } catch {
                 finish(content, outcome: "failed: \(Self.describe(error))")
             }
@@ -65,7 +71,7 @@ final class NotificationService: UNNotificationServiceExtension {
     }
 
     /// The session from the app's Keychain item, the store from the App Group, then the message.
-    private static func read(roomId: String, eventId: String) async throws -> PushContent? {
+    private static func read(roomId: String, eventId: String) async throws -> (content: PushContent, session: SavedSession)? {
         let bundle = Bundle.main
         guard let group = bundle.object(forInfoDictionaryKey: "MultiplexerAppGroup") as? String,
               let keychainGroup = bundle.object(forInfoDictionaryKey: "MultiplexerKeychainGroup") as? String,
@@ -88,8 +94,11 @@ final class NotificationService: UNNotificationServiceExtension {
             current.session = session
             try? keychain.write(current)
         })
-        return try await MatrixPush.content(session: stored.session, storeDirectory: store, roomId: roomId, eventId: eventId,
-                                            sessionStorage: storage)
+        guard let content = try await MatrixPush.content(session: stored.session, storeDirectory: store, roomId: roomId, eventId: eventId,
+                                                        sessionStorage: storage),
+              let current = try keychain.read(), current.session.userId == stored.session.userId,
+              current.session.deviceId == stored.session.deviceId else { return nil }
+        return (content, current.session)
     }
 
     /// A chat with one person shows that person as the title; a group shows its name, and the

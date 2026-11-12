@@ -26,7 +26,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
-| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04. | 31 to 42 s for each edit; latest branding rebuild: arms 95.8 s | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
+| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04. | 31 to 42 s for each edit; latest branding rebuild: arms 95.8 s; self-hosted configuration rebuild: modules 79.7 s | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
 | 2 | An authored test cannot read a secret, so `verify` never reaches the screens behind a sign-in. | A text-size bug that `verify` missed | P2 | [authored-tests-cannot-read-a-secret](issues/20261027-authored-tests-cannot-read-a-secret.md) |
 | 3 | A native module can use only real files in `modules/apple`: no links, no local Swift package. | About 20 min, then a copy step after each edit | P3 | [module-swift-only-from-modules-apple](issues/20261027-module-swift-only-from-modules-apple.md) |
 | 4 | A native module cannot keep a secret in Exact's store, so its Keychain items outlive a fresh drive. | A test device left signed in on the server | P3 | [native-module-has-no-secret-store](issues/20261027-native-module-has-no-secret-store.md) |
@@ -143,7 +143,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 115 | A members name collision does not name the file declaring the state. | About 3 min | P3 | [a-members-name-collision-does-not](issues/20261103-a-members-name-collision-does-not.md) |
 | 116 | The local run log retains a password argument that terminal output masks. Seen again on 2026-11-07. | Found in under a minute | P1 | [the-local-run-log-retains-a](issues/20261103-the-local-run-log-retains-a.md) |
 | 117 | An app cannot receive remote push: no token callback or source, no `aps-environment` for an app, and the archive check refuses `registerForRemoteNotifications` (also blocks an install-link archive, 2026-11-07; app modules had no development flag to keep it out; local fix `8e547ca606`, 2026-11-07). | About 30 min, a run-time workaround, and no TestFlight | P2 | [an-app-cannot-receive-remote-push](issues/20261103-an-app-cannot-receive-remote-push.md) |
-| 118 | An app cannot add its own app extension (a notification service extension) or declare an App Group, a Keychain group or `aps-environment`; on the Simulator the entitlements section has no room to grow. | About 90 min, and a script after every build | P2 | [an-app-cannot-add-its-own](issues/20261103-an-app-cannot-add-its-own.md) |
+| 118 | An app cannot add its own app extension (a notification service extension) or declare an App Group, a Keychain group or `aps-environment`; on the Simulator the entitlements section has no room to grow. Reconfirmed 2026-11-12: an ordinary rebuild replaces the separately packaged push-capable app; a build/package/install wrapper is needed; preview share also skips extension packaging. | About 90 min, and a script after every build | P2 | [an-app-cannot-add-its-own](issues/20261103-an-app-cannot-add-its-own.md) |
 | 119 | A `derive` whose expression goes on to a second line is refused ("expected a section, found an indented block") with no word of the one-line rule. | About 2 min | P3 | [a-derive-s-expression-cannot-go](issues/20261104-a-derive-s-expression-cannot-go.md) |
 | 120 | Content placed inside a `glassGroup` row took the glass away from its round glass buttons; no doc says what a glass group does with a child that is not glass. | About 5 min | P3 | [content-placed-inside-a-glass-group](issues/20261104-content-placed-inside-a-glass-group.md) |
 
@@ -325,3 +325,7 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1411](https://github.com/ccheever/exact2/pull/1411): the reference says how a virtualized list shows a row that is not an item | 20 | Open |
 
 Migration evidence (2026-11-09): at upstream `94b8671f70fe2e25b307a40e7fce66dc27c9f802`, the updater still leaves JavaScript package file paths on the former checkout. See [checkout-depth finding](issues/20261102-an-app-checkout-at-another-depth.md#upstream-checkout-migration-2026-11-09). Feedback remains local.
+
+2026-11-12: with explicit approval, sent only the push-reliability diary (one diary,
+zero logged commands, no attachments). Receipt:
+`236a21c9-38ae-4cc3-b8e0-2bb6b11fd3e5`. Other unsent diaries remain local.

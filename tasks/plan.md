@@ -18,6 +18,77 @@ allowlist; private identities and lookup details live in ignored `.local/account
 Tracked account references are generalized. Runtime behavior and existing git history
 are unchanged; the local note is not included in commits.
 
+**Self-hosted iPhone builds (2026-11-12, PR #22):** the owner install and
+self-hosted forks use one Apple team/bundle/gateway configuration. A configure
+command saves the ignored local settings and synchronizes the manifest; runtime,
+session groups, pusher routes and all packagers derive the same identity.
+Both development profiles are checked before building. The default phone build
+was rebuilt and installed, with configured runtime metadata and strict app/service
+signatures verified; no real account was accessed. A fresh production export and
+all 74 Bun checks pass with no skips; 13 native iOS tests pass. Custom settings,
+Swift runtime bundles and profile mismatches have fixture evidence, not a second
+Apple team's live deployment. The public Exact base plus bundled MIT-licensed
+integration patch reproduced the validated source tree exactly; full toolchain
+provisioning on another Mac is not claimed. AppDrop credential sharing is optional
+and was not enabled. Setup: `docs/iphone-self-hosting.md`.
+
+**Push across distribution channels (2026-11-12, PR #22):** the published AppDrop
+revision 2 reports `pushNotifications: false`, no extensions, and its downloaded
+IPA has no notification service or communication activity type. Exact's share
+command bypasses the post-build packager. `scripts/preview-ios.ts` now builds
+through the production archive path and refuses incomplete notification bundles
+before producing an IPA. A fresh release archive and Xcode distribution export
+passed all artifact checks, including production APNs and communication grants
+in the signed app/profile. Final combined Bun run: 64 passed, no skips. Both
+gateway routes are active with the expected team/topic (read-only audit).
+The preview replacement is prepared but not uploaded: AppDrop's owner-team
+People you approve mode requires the owner's App Store Connect authorization
+and creates an AppDrop App Manager API key. Existing preview mode remains
+unchanged. No TestFlight upload or physical production delivery is claimed.
+See `tasks/evidence/notification-distribution-20261112.json`.
+
+**Sender photos in iPhone notifications (2026-11-12, PR #22):** notification
+content now includes the actual sender identity and profile media URL. The service
+extension fetches a static 160 px thumbnail through the authenticated homeserver
+(no redirects, 2 s total deadline, 512 KiB cap), then donates an incoming message
+intent for the native sender-avatar layout. Text is ready as the fallback before
+photo work; missing/corrupt photos use a local initials image. First uncached and
+terminated-app real sandbox banners showed the test sender's photo (497/452 ms,
+18 MB). The final initials fallback was visually inspected.
+Three focused thumbnail tests, two live plain/encrypted push tests, 13 native app
+tests, the native intent fixture and 52 Bun checks pass; five distribution artifact checks skip
+without artifacts. The device installer refuses old profiles before replacing the
+working phone build. Communication Notifications is now enabled on the Apple app
+identifier, and the regenerated development profile grants it. The avatar build
+is installed on the paired iPhone; strict signatures, development APNs, shared
+storage, device coverage and intent activity types pass verification. The initial
+device connection reset; packaging and installation succeeded on retry without
+launching the app. A real profile exposed a preflight JSON conversion bug with
+certificate/date values: only the entitlement dictionary is now converted, with
+a regression fixture. The final Bun run passed 57 tests, with five artifact skips.
+Physical locked-phone avatar delivery still needs a natural incoming message
+after Rami opens Mux once. No real account was accessed. The prior
+approved diary was sent separately (receipt in the feedback index); new avatar
+notes stay local. See `tasks/evidence/notification-avatars-20261112.json`.
+
+**iPhone push reliability (2026-11-12, `fix/reliable-mobile-push`):** a fresh ordinary
+Exact install lacked APNs/App Group entitlements and the notification extension;
+`bun scripts/install-ios.ts` now builds, packages and reinstalls as one operation.
+A native regression against main reproduced deletion of a working pusher before a
+failed replacement. Replacement now sets first, preserves current session tokens,
+guards session identity, and keeps failed disables retryable. Registration is
+serialized, retried every 30 s after failure while visible, and refreshed on return.
+51 automated tests pass (5 distribution-artifact cases skipped), Contract/TypeScript
+returns `[]`, and all 13 native iOS tests pass. Real sandbox pushes showed sender/text
+in the background and after termination; the final terminated banner was visually
+inspected. Extension outcomes were 119-227 ms and 14-18 MB. The complete installer
+built and installed on the paired iPhone; strict signatures, development APNs and
+shared groups pass for app/extension. The phone app was not launched and no real
+account was accessed: physical locked-phone acceptance still needs Rami to open
+Mux once and receive a natural message. Gateway diagnostics were read-only; no
+server configuration changed. Test sign-out returned the pusher count to zero.
+Evidence: `tasks/evidence/push-reliability-20261112.json`.
+
 **Public documentation audit (2026-11-10):** source-checked the public entry points,
 added docs/install.md, docs/README.md and CONTRIBUTING.md, and corrected stale Mac,
 push and server-bootstrap claims. Documented the fixed maintainer push gateway,
@@ -351,7 +422,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | expo/exact local/mux-integration at 8536d208c40f97be3f132ea266d5029e2e3c10ba atop 94b8671f70fe2e25b307a40e7fce66dc27c9f802. The validated integration commit was not available from public upstream at the audit; see CONTRIBUTING.md. |
 | License | GPL-3.0-only for original project code; third-party licenses retained. |
-| Last updated | 2026-11-10 |
+| Last updated | 2026-11-12 |
 
 Update this table at the end of every work session.
 

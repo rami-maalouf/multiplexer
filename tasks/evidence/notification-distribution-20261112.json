@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-12",
+  "scope": "production and preview notification packaging",
+  "source_head": "71f41d1b0dfaa25fc4956dde28a3bda92ee0add7",
+  "published_preview": {
+    "url": "https://appdrop.app/d/nb2nfrv68c",
+    "revision": 2,
+    "capabilities": {
+      "pushNotifications": false,
+      "visionOS": false,
+      "simulator": false,
+      "extensions": []
+    },
+    "downloaded_ipa": "no notification extension or NSUserActivityTypes",
+    "packaging_guard": "rejected missing notification extension"
+  },
+  "production": {
+    "archive": "/tmp/mx-testflight-CuwyiB/Mux.xcarchive",
+    "exported_ipa": "/tmp/mx-testflight-CuwyiB/out/Mux.ipa",
+    "xcode_export": "succeeded without upload",
+    "profiles": [
+      {
+        "bundle": "com.ramimaalouf.multiplexer",
+        "profile": "iOS Team Store Provisioning Profile: com.ramimaalouf.multiplexer",
+        "expires": "2027-09-28T09:50:59Z",
+        "environment": "production",
+        "communication": true,
+        "devices": false
+      },
+      {
+        "bundle": "com.ramimaalouf.multiplexer.notifications",
+        "profile": "iOS Team Store Provisioning Profile: com.ramimaalouf.multiplexer.notifications",
+        "expires": "2027-09-28T09:50:59Z",
+        "environment": null,
+        "communication": false,
+        "devices": false
+      }
+    ],
+    "checks": [
+      "strict app/extension signatures",
+      "production APNs",
+      "communication entitlement in app signature and profile",
+      "shared app/keychain groups",
+      "notification extension metadata",
+      "release registration selector",
+      "matching app/framework/extension dSYM UUIDs"
+    ]
+  },
+  "preview_ipa": "/var/folders/k0/qs1dydf540z0559w7544mhh00000gn/T/mux-preview-lCra7A/Mux.ipa",
+  "tests": {
+    "passed": 64,
+    "skipped": 0,
+    "failed": 0
+  },
+  "gateway": "read-only: active; production and sandbox configured for expected team/topic",
+  "limits": [
+    "AppDrop owner-team sharing not enabled; App Manager API key authorization required",
+    "prepared preview not uploaded",
+    "AppDrop final signing/install/delivery unverified",
+    "physical production delivery unverified",
+    "no TestFlight upload or real-account access"
+  ],
+  "friction": [
+    "initial extension link failed with disk full; removed only own disposable artifacts/caches and retried",
+    "archive assertion fixed to extract ApplicationProperties because CreationDate cannot be converted to JSON"
+  ],
+  "preview_command": "EXACT2=/Users/rami/Documents/code/exact/expo-exact bun scripts/preview-ios.ts 5",
+  "preview_command_result": "completed successfully without upload",
+  "review": "/tmp/compound-engineering-501/ce-code-review/mux-preview-20261112-scoped/review.json"
+}

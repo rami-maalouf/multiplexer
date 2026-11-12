@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-12",
+  "scope": "sender avatars in iPhone message notifications",
+  "core_tests": {
+    "thumbnail": 3,
+    "live_plain_encrypted_push": 2,
+    "result": "passed"
+  },
+  "bun": {
+    "passed": 52,
+    "artifact_skips": 5,
+    "native_intent_fixture": "passed",
+    "final_regression_run": {
+      "passed": 57,
+      "artifact_skips": 5,
+      "command": "bun test scripts/install-ios.test.ts scripts/testflight-push.test.ts scripts/push-registration.test.ts scripts/cli-test-policy.test.ts apps/multiplexer/*.test.ts"
+    }
+  },
+  "contract_typescript": "[]",
+  "sandbox_banners": {
+    "first_uncached_photo": {
+      "ms": 497,
+      "peak_mb": 18,
+      "capture": "apps/multiplexer/.exact/notification-avatars/first-photo.png"
+    },
+    "terminated_photo": {
+      "ms": 452,
+      "peak_mb": 18,
+      "capture": "apps/multiplexer/.exact/notification-avatars/terminated-photo.png"
+    },
+    "no_photo": {
+      "ms": 214,
+      "peak_mb": 14
+    },
+    "final_initials": {
+      "capture": "apps/multiplexer/.exact/notification-avatars/initials-final.png",
+      "visually_verified": true
+    }
+  },
+  "final_helper_native_photo_construction": "passed",
+  "photo_request_limits": {
+    "deadline_seconds": 2,
+    "maximum_bytes": 524288,
+    "thumbnail_side": 160,
+    "authentication": "HTTPS homeserver only; redirects refused"
+  },
+  "signing": {
+    "simulator_communication_entitlement": "packaged and runtime verified",
+    "device_profile_preflight": "valid Apple profile accepted after entitlement-only extraction fix; representative certificate/date regression fixture passes",
+    "phone_avatar_build": "installed; strict app and extension signatures verified",
+    "existing_reliability_phone_build": "replaced by verified avatar build"
+  },
+  "test_fixture_profile": "restored and device logged out",
+  "reviews": [
+    "/tmp/compound-engineering-501/ce-code-review/notification-avatars-7y1yoh3m",
+    "/tmp/compound-engineering-501/ce-code-review/notification-initials-round2-ds0ww8ye",
+    "/tmp/compound-engineering-501/ce-code-review/profile-preflight-20261112"
+  ],
+  "limits": [
+    "physical avatar delivery unverified",
+    "final initials screenshot verifies final helper; earlier photo screenshots precede text-preservation/initials-only helper edits",
+    "delayed requests, redirect callbacks, expiration/donation races not exhaustively injected"
+  ],
+  "native_app_tests": 13,
+  "test_pushers_after_signout": 0,
+  "phone_install": {
+    "apple_capability": "Communication Notifications enabled on existing app identifier",
+    "development_profile_expiry": "2027-11-12T14:02:39Z",
+    "profile_grants": [
+      "development APNs",
+      "Communication Notifications",
+      "shared App Group",
+      "registered iPhone"
+    ],
+    "verification": [
+      "strict app/extension signatures",
+      "shared keychain group",
+      "development debugger grant retained",
+      "INSendMessageIntent activity type on both products"
+    ],
+    "initial_attempt": "build completed; device transport reset during installation",
+    "retry": "packaging/signing and device installation succeeded",
+    "installed_database_sequence": 6072,
+    "app_launched": false,
+    "real_account_accessed": false
+  }
+}

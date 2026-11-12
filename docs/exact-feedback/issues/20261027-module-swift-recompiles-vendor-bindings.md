@@ -76,3 +76,5 @@ module sources, including a third-party generated binding file. The parent build
 finishes its host packages quickly, then spends minutes in `swift-frontend` on
 those bindings. Keeping the vendor binding compilation separate would remove
 this iteration cost. No new timing claim is made from this busy machine.
+
+2026-11-12 self-hosting follow-up: a small native configuration edit rebuilt the complete native module, including vendor bindings; the production module step took 79.7 seconds. a separately cached vendor module would avoid recompiling these unchanged bindings.

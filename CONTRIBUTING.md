@@ -12,13 +12,11 @@ Simulator, Git, Rust through rustup, and Bun 1.4.2. The app targets iOS 17+ and
 macOS 14+. The standalone website needs only Bun. The CLI needs the macOS Swift
 toolchain and its own SDK setup, described in [cli/README.md](cli/README.md).
 
-**A public upstream clone is not yet a verified reproduction of the native app.**
-The last validated Exact integration is local commit
-`8536d208c40f97be3f132ea266d5029e2e3c10ba`, based on upstream
-`94b8671f70fe2e25b307a40e7fce66dc27c9f802`. The integration includes local host
-fixes and was not available at that commit's public GitHub URL during the
-2026-11-10 audit. Ask the maintainer for the integration patches before expecting
-native parity. This repository does not vendor Exact or those patches.
+The validated Exact integration is reproduced by a bundled source patch over
+public upstream commit `94b8671f70fe2e25b307a40e7fce66dc27c9f802`. You do not need
+the maintainer's local framework commit. The setup command below creates a new
+checkout and checks its patched Git tree against the validated integration.
+It refuses existing directories, preserving any framework work already there.
 
 The layout below makes the checked-in relative dependency paths resolve:
 
@@ -29,9 +27,17 @@ workspace/
     expo-exact/      # the Exact checkout, including the integration patches
 ```
 
-Clone [this repository](https://github.com/rami-maalouf/multiplexer) and
-[Exact](https://github.com/expo/exact) into those folders. Keep the two repos
-separate. From the Exact checkout, follow its README and run:
+Clone [this repository](https://github.com/rami-maalouf/multiplexer), then prepare
+Exact from the Mux repository root:
+
+```sh
+bun scripts/setup-exact.ts ../exact/expo-exact
+```
+
+The source tree was reconstructed from the public repository and matched the
+validated tree on 2026-11-12. This is source reconstruction evidence; a full
+toolchain setup and native build on a fresh Mac remain platform prerequisites.
+Keep the repos separate. From the prepared Exact checkout, follow its README and run:
 
 ```sh
 bun scripts/exact.mjs setup
@@ -61,8 +67,34 @@ bun exact.mjs ios --run
 `setup-matrix-sdk.sh` downloads and checks SDK release `26.10.27` and copies
 MatrixCore into the app. Run it again after every edit in `matrix-core/`; otherwise
 the app compiles the old copy. Initial native builds can take several minutes.
-Physical-device signing and notification-extension packaging are separate from
-this Simulator path.
+For push-capable installs, use the complete installer from the repository root:
+
+```sh
+bun scripts/install-ios.ts --sim <simulator-udid>
+# for a phone, set APP_PROFILE and EXTENSION_PROFILE to development profiles first:
+bun scripts/install-ios.ts --device <phone-udid>
+```
+
+The installer builds, adds the notification service and shared entitlements, and
+reinstalls the signed app. It stops on a packaging failure. Ordinary `exact ios`
+and native test/verify commands install a bare bundle, so run the complete installer
+again before testing push. Open the installed app once to register with APNs and
+allow notifications. Device profiles must cover the phone, App Group and Keychain
+group; the app profile must also grant development APNs and Communication
+Notifications. Enable that capability on the app identifier, then regenerate its
+profile. The installer checks the capability before replacing an existing phone build.
+
+For a preview IPA with the same notification packaging as a release:
+
+```sh
+bun scripts/preview-ios.ts <next-build-number>
+```
+
+This prints the IPA path and uploads nothing. Use AppDrop's owner-team **People
+you approve** mode to retain push identity; ordinary `exact share` omits the
+notification packager. For TestFlight/App Store signing without upload, use
+`./scripts/testflight.sh <next-build-number> --export`. See the
+[distribution requirements](docs/install.md#notifications) before publishing.
 
 For the Mac app, run these from the repository root before `bun exact.mjs mac --run`
 in `apps/multiplexer/`:
@@ -85,6 +117,8 @@ search additionally needs your own KLIPY app key in the gitignored
 `multiplexer-klipy` item; do not expect it to work on a fresh Mac.
 
 For iPhone push, see [installation and push requirements](docs/install.md#notifications).
+For a build signed by your own Apple team and using your own gateway, follow
+[the self-hosted iPhone guide](docs/iphone-self-hosting.md).
 Changing signing identifiers also requires matching App Groups, Keychain groups,
 extension settings and gateway configuration. Re-signing an arbitrary bundle
 alone does not establish push support.

@@ -19,7 +19,7 @@ final class Matrix: ExactModule {
     }
 
     // the agent's data is a fresh scratch tree, so it keeps its session apart from the app's.
-    lazy var keychain = SessionKeychain(service: "com.ramimaalouf.multiplexer.session" + (context.agent ? ".agent" : ""))
+    lazy var keychain = SessionKeychain(service: IOSPushConfiguration.sessionService(agent: context.agent))
     /// A session the server must still forget. Until it does, its device stays on the account.
     private lazy var pending = SessionKeychain(service: keychain.service, slot: "sign-out")
     private var signingOutPending = false
@@ -28,7 +28,7 @@ final class Matrix: ExactModule {
         #if os(macOS)
         let group: URL? = nil
         #else
-        let group = context.agent ? nil : FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ramimaalouf.multiplexer")
+        let group = context.agent ? nil : FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: IOSPushConfiguration.appGroup)
         #endif
         return SessionStore(dataDirectory: context.data, groupContainer: group, agent: context.agent)
     }

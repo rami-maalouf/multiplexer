@@ -245,6 +245,7 @@ shape UploadLimit
 // the phone's push token reached the server as a pusher (Matrix.swift's registerPush).
 shape Push
   registered: bool
+  retry: bool
 
 // a file message's file, downloaded to open: name names it in the share sheet.
 shape OpenedFile
@@ -410,7 +411,10 @@ component Multiplexer
   resource desktopState = updateDesktop(session.userId, composerSurface.desktop, notifications.state, messageNotifications, openRoom, page.visibilityState) as shape DesktopState
   // with the permission and the preference, the phone's push token goes to the server as a
   // pusher: at each launch and sign-in, and when either changes.
-  resource push = registerPush(session.userId, notifications.state, messageNotifications) as shape Push else empty()
+  resource push = registerPush(session.userId, notifications.state, messageNotifications, composerSurface.desktop, page.visibilityState) as shape Push else empty()
+  // a failed request must not strand notifications until the next cold launch.
+  task retryPush when session.userId != "" and not composerSurface.desktop and page.visibilityState == "visible" and (push.retry or failed(push))
+    every(30000, repairPush)
   mutation askedNotifications as shape NotificationStatus
   mutation pinned as shape Reply refreshes roomList
   mutation changedChat as shape Reply queue refreshes roomList
@@ -677,6 +681,10 @@ component Multiplexer
     nav = go(nav, path("home"))
     composers = []
     unsaved = ""
+  action repairPush
+    if not pending(push)
+      refresh push
+
   action reloadRooms
     refresh roomList
   action retryDraft

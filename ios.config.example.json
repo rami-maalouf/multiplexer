@@ -1,0 +1,5 @@
+{
+  "teamId": "ABCDE12345",
+  "bundleId": "org.example.mux",
+  "pushGateway": "https://push.example.org/_matrix/push/v1/notify"
+}

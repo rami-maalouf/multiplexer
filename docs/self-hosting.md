@@ -394,9 +394,11 @@ A note on verification: once, verifying Element X from another session hung on t
 3. Type `alice` and your password, then sign in.
 
 Mux finds the server through the well-known file, same as Element X. iPhone push
-needs additional Apple signing, extension and gateway setup. The shipped gateway
-URL is fixed to the maintainer's server; running your own Synapse does not change
-it. See [notification requirements](install.md#notifications).
+needs additional Apple signing, extension and gateway setup. Follow
+[Build your own iPhone app](iphone-self-hosting.md) to configure your identity and
+gateway once, then install or distribute your build. Running Synapse alone does
+not configure Apple delivery; changing the sign-in server does not select a
+different push gateway.
 
 **A browser client** (Element Web) doesn't follow a redirect without a CORS header. If `example.com` redirects (for example to `www.example.com`), type `matrix.example.com` in the browser client instead. Your user ID stays `@alice:example.com`.
 

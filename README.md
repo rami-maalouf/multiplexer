@@ -26,7 +26,8 @@ name is short for multiplexer: several streams combined into one.
    Linux box and a domain to a Matrix server with WhatsApp, Instagram and LinkedIn bridges, and
    it tells you which login traps to skip.
 2. **Choose a client.** [Installation and platform status](docs/install.md) covers the
-   iPhone preview, experimental Mac app, CLI and other Matrix clients.
+   iPhone preview, experimental Mac app, CLI and other Matrix clients. To build
+   an iPhone app for your own server, start with [the iPhone setup guide](docs/iphone-self-hosting.md).
 3. **Sign in** with your server's domain, your user name and your password. Your chats are there.
 
 Mux is early software. The iPhone app has development-build push evidence; public
@@ -102,8 +103,8 @@ Mux has the features an all-in-one inbox needs every day, with the feel of Apple
    new machine. The databases are backed up every day, on the server and on a Mac.
 4. **Mux** reads and sends chats through your Matrix server. GIF search calls
    [KLIPY](https://klipy.com) directly with search terms and your IP address. iPhone
-   notifications use Apple and a push gateway currently fixed to the maintainer's
-   server; see [notification requirements](docs/install.md#notifications).
+   notifications use Apple and the push gateway configured for that app build;
+   [self-hosted iPhone builds](docs/iphone-self-hosting.md) use your own identity and gateway.
 
 Bridges handle message plaintext, and the sample bridged rooms are unencrypted.
 Self-hosting gives you control of that infrastructure; it does not remove the

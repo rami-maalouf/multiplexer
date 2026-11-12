@@ -1,5 +1,97 @@
 # Mux: tasks
 
+## Self-hosted iPhone builds, 2026-11-12
+
+- [x] Shared nonsecret team/bundle/gateway configuration, ignored local override and
+  configure command; derive extension, shared storage, session and pusher identities.
+- [x] Validate both device profiles and manifest before building; pass the chosen profile
+  into Exact, then package runtime settings with the notification service.
+- [x] Public Exact setup command plus licensed integration patch, verified from a public
+  fetch to the validated source tree; refuse existing checkout destinations.
+- [x] Own iPhone installer completed without launch; verify configured metadata, shared
+  access, APNs, communication and strict signatures. Existing identifiers remain stable.
+- [x] Fresh signed production export; 74 combined Bun checks with no skips; 13 native
+  authored iOS tests. Custom runtime/settings/profile fixtures passed. Owned simulator shut down.
+- [x] Self-hosted iPhone guide and discoverable links replace manual source-edit advice.
+- [x] Independent review and follow-up passed; configuration tests preserve an operator's
+  override file byte-for-byte. Both retained isolation findings are resolved.
+- [ ] Verify fresh-Mac toolchain provisioning and another operator's actual Apple signing,
+  gateway and locked-phone delivery. Current custom-identity proof uses fixtures.
+- Notes: no AppDrop API key grant, store upload, server mutation or real-account drive.
+  The user's chosen priority is own installation plus easy self-hosted builds; AppDrop
+  owner-team sharing is an optional distribution choice, not a remaining setup requirement.
+
+## Push across distribution channels, 2026-11-12
+
+- [x] Reproduce the published preview missing push/notification service: AppDrop revision 2
+  capabilities are false/empty; downloaded IPA has no extension or intent activity type.
+- [x] Build a fresh production archive and App Store distribution export. Verify both
+  signatures/profiles, production APNs, Communication Notifications, shared access and symbols.
+- [x] Add `bun scripts/preview-ios.ts <build>` to produce a checked preview IPA using the
+  production packager. It uploads nothing and rejects the old incomplete preview.
+- [x] Run all archive/export cases: final combined Bun suite 64 passed, no skips.
+- [x] Resolve preview direction: user prioritized own install and self-hosted builds.
+  AppDrop People you approve is optional; no App Manager API key access was granted.
+- [ ] Publish the prepared preview IPA, approve a test iPhone, inspect final re-signed
+  entitlements, and prove a natural locked-phone production push and sender photo.
+- Notes: initial store-extension link failed with disk full. Removed only disposable
+  caches/artifacts owned by this worktree/session, then rebuilt/exported successfully.
+  Archive tests also exposed whole-plist JSON conversion of CreationDate; assertions now
+  extract ApplicationProperties. No server mutation, real-account drive, or store upload.
+
+## Sender photos in iPhone notifications, 2026-11-12
+
+- [x] Carry the sender's stable ID, profile media URL and recipient count through MatrixCore.
+- [x] Fetch thumbnails only through the HTTPS homeserver, refuse redirects, bound total
+  request time and received bytes, and retain text before optional photo processing.
+- [x] Add incoming message intents with sender photos and local initials for missing/corrupt
+  images; retain content title/subtitle/body and group context.
+- [x] Package communication entitlement/activity types and reject old device profiles before
+  building/installing. Simulator XML fits the fixed 462-byte section by omitting its
+  version attribute/debugger grant; device debug entitlements remain unchanged.
+- [x] First uncached photo and terminated-app photo banners inspected on real sandbox APNs;
+  final initials banner inspected. Synthetic test sender profile restored; fixture logged out.
+- [x] Three focused thumbnail tests, two plain/encrypted live push tests, native intent fixture,
+  52 Bun tests, 13 native app tests and Contract/TypeScript checks pass. Independent review retained no findings.
+- [x] Enable Communication Notifications for the Apple app identifier, regenerate its
+  development profile and install/verify the avatar build on the phone. Strict signatures,
+  development APNs, shared groups, device coverage and intent activity types pass.
+- [x] Fix profile preflight to extract only Entitlements: whole-profile JSON conversion
+  fails on Apple certificate/date values. A representative regression fixture passes;
+  distribution assertions use the same extraction. Final Bun run: 57 passed, five artifact skips.
+- [ ] Rami opens the updated phone app once and confirms a natural locked-phone sender photo.
+- Installation: Apple's connection reset on the initial install; packaging/re-signing and
+  install succeeded on retry. The phone app was not launched. No new server/account access.
+- Notes: no Contacts access or real-account drive. Tests cover bad URL, status, MIME, size and
+  invalid/missing image paths; full delayed network, expiration and Apple donation-failure
+  races are not injected. New diary remains local until separately approved.
+
+
+## iPhone push reliability, 2026-11-12
+
+- [x] Start a clean worktree from origin/main; preserve unrelated original checkout edits.
+- [x] Read-only live gateway audit: services active, production/sandbox configured, zero
+  pushers before testing, no continuing APNs rejection outage in inspected logs.
+- [x] Reproduce ordinary install missing APNs/shared entitlements and notification extension.
+- [x] Reproduce failed replacement deleting the previous working route using actual native
+  registration methods compiled with controlled IO, then verify corrected behavior.
+- [x] Retry failed registration/disable while visible, register again on foreground return,
+  serialize preference changes and preserve current session across suspension.
+- [x] Add a complete development installer and document the push-capable build command.
+- [x] 51 automated checks passed, 5 archive/export artifact cases skipped; 13 native app tests
+  and the Contract/TypeScript gate passed. Independent review retained no findings.
+- [x] Natural sandbox background alert inspected; foreground re-registration counted;
+  final terminated-app sender/text banner inspected. Extension: 119-227 ms, 14-18 MB.
+- [x] Complete installer installed the paired iPhone build without launching it; strict signing,
+  APNs development and both shared groups verified. No real-account drive or server mutation.
+- [ ] Rami opens the updated phone app once, then confirms a natural locked-phone message.
+- Notes: a native test run overlapped early screenshot capture, so those captures do not prove
+  a terminated app; the final terminated capture was repeated after the suite ended. Ordinary
+  native test/verify builds need packaging again before APNs checks. One earlier baseline
+  test-device session became inaccessible after replacing the old bundle; its pusher is gone,
+  but remote device absence was not established. No server device deletion was attempted.
+
+
 ## Public documentation (2026-11-10)
 
 - [x] Audit README, install/self-hosting/contributor guides, CLI/SDK/operator docs,
@@ -11,9 +103,10 @@
   be captured (preview timeouts, fallback browser unavailable). Evidence:
   `tasks/evidence/public-docs-20261110.json`. No native/server/production deploy run.
 - [x] Add font license notices to the website's published assets.
-- [ ] Publish or upstream the validated Exact integration patches and prove a clean
-  public native build. Local integration 8536d208c is not available at its public
-  upstream commit URL; CONTRIBUTING.md states this rather than claiming reproducibility.
+- [x] Bundle the validated Exact integration patch and verify public source reconstruction
+  (2026-11-12). The local commit need not be available at its public upstream URL.
+- [ ] Prove complete toolchain provisioning and native build on a fresh Mac using the
+  public setup path; source-tree equivalence alone does not establish that environment.
 - [ ] Reconfirm the AppDrop preview's availability and separately prove public beta
   access and TestFlight push delivery. The existing URL responded after an initial
   timeout, but pairing/install were not exercised; upload receipts alone are not
