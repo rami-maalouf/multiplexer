@@ -69,6 +69,10 @@ compiler preparation in a fresh checkout. About three minutes of source lookup; 
 or build was run. This is scheduling/documentation evidence for dependency refresh, not a
 new reproduction of the earlier path failure. The command card could name the compiler step.
 
+## Upstream checkout migration (2026-11-09)
+
+Reproduced at `expo/exact` `94b8671f70fe2e25b307a40e7fce66dc27c9f802`: `exact new <app> --update` refreshed the launcher, manifest schema and Rust dependency paths, but seven `package.json` file dependencies still named the previous checkout. Updating those paths and running `bun install` refreshed the lockfile. Contract compilation passed. The updater could refresh or report these package references too.
+
 Additional evidence (2026-11-07, exact2 `f53339adc8`): a new app checkout at the usual depth had its Cargo paths and `exact.mjs` on one framework checkout and its `package.json` packages on another. The first build failed at a package's Swift with an empty "did not compile:" message (finding 153). Pointing `package.json` at the same checkout fixed it. One switch for every framework path would have avoided it.
 
 ## More evidence (2026-11-09)
@@ -78,3 +82,6 @@ paths, `exact.mjs` and the generated AGENTS block pointed at the new checkout, b
 seven `package.json` `file:` dependencies stayed on the previous one. Found by inspecting
 the generated diff before the first build; corrected by hand and reinstalled. About two
 minutes. Seen at framework `94b8671f7`.
+
+
+2026-11-12 follow-up: in an isolated worktree, EXACT2 alone did not repair the generated cargo paths. update repaired those paths but left package file dependencies at the original folder depth; installed package copies were needed locally. no generated path changes are intended to ship.

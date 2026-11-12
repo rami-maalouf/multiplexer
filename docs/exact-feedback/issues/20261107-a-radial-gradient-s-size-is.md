@@ -26,4 +26,3 @@ A message that names the size: "an explicit radial size is not taken; use an ext
 ## Evidence
 
 Seen on 2026-11-06 at exact2 `31063d7dbb`, building a website's background glow.
-

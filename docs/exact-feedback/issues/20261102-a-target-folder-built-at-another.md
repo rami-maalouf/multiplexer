@@ -74,3 +74,11 @@ Seen on 2026-11-02 at exact2 `ed43ad09a0`.
 ## Pull request (2026-11-03)
 
 https://github.com/ccheever/exact2/pull/1355 fixes it: the build error names the path the `target/` folder was built at, and says to delete it and build again.
+
+## Further evidence: cloned native target, 2026-11-12
+
+Reusing an app target through filesystem clones still rejected compilation with
+`no matching rustc unit dep-info for unicode_ident`. The diagnostic now correctly
+names the old target path and requests a rebuild, acknowledging the earlier fix.
+The copied target was moved aside and the official fresh cache seeding used instead.
+This cost one rejected build plus a fresh native build; no source workaround was needed.

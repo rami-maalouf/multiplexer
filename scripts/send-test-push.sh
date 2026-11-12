@@ -6,8 +6,9 @@
 #   scripts/send-test-push.sh <device token in hex> [--room <room id> --event <event id>] [--unread <n>]
 #   scripts/send-test-push.sh <device token in hex> --dry-run
 #
-# the token: the app logs it in a development build ("matrix: push token ..."); a simulator on
-# apple silicon has one too. the APNs key (P3.0) comes from the mac's keychain: the .p8 in base64
+# supply the token privately from an approved test account's pusher (base64 decoded to hex).
+# normal builds do not log device tokens; never paste one into chat. an apple silicon simulator
+# can receive real sandbox pushes too. the APNs key (P3.0) comes from the mac's keychain: the .p8 in base64
 # (service multiplexer-apns, account key) and its key id (account key-id). it is never printed and
 # never written to disk. --dry-run signs with a throwaway key instead, checks the signature, and
 # prints the request without sending it.

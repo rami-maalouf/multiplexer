@@ -24,6 +24,7 @@ use BookmarksScreen, BookmarkMenu from "./bookmarks.contract"
 use MergeSheet from "./merge.contract"
 use GifSheet from "./gif.contract"
 use CameraScreen from "./camera.contract"
+use LoginHelp from "./login-help.contract"
 use RequestsScreen from "./requests.contract"
 use NewSpaceSheet, AddToSpaceSheet from "./spaces.contract"
 
@@ -246,6 +247,7 @@ shape UploadLimit
 // the phone's push token reached the server as a pusher (Matrix.swift's registerPush).
 shape Push
   registered: bool
+  retry: bool
 
 // a file message's file, downloaded to open: name names it in the share sheet.
 shape OpenedFile
@@ -266,6 +268,7 @@ shape Composer
 
 routes nav
   home "/"
+    loginHelp "/getting-started"
     room "/room/:id"
       photo "/room/:id/photo/:message"
       video "/room/:id/video/:message"
@@ -411,7 +414,10 @@ component Multiplexer
   resource desktopState = updateDesktop(session.userId, composerSurface.desktop, notifications.state, messageNotifications, openRoom, page.visibilityState) as shape DesktopState
   // with the permission and the preference, the phone's push token goes to the server as a
   // pusher: at each launch and sign-in, and when either changes.
-  resource push = registerPush(session.userId, notifications.state, messageNotifications) as shape Push else empty()
+  resource push = registerPush(session.userId, notifications.state, messageNotifications, composerSurface.desktop, page.visibilityState) as shape Push else empty()
+  // a failed request must not strand notifications until the next cold launch.
+  task retryPush when session.userId != "" and not composerSurface.desktop and page.visibilityState == "visible" and (push.retry or failed(push))
+    every(30000, repairPush)
   mutation askedNotifications as shape NotificationStatus
   mutation pinned as shape Reply refreshes roomList
   mutation changedChat as shape Reply queue refreshes roomList
@@ -637,6 +643,8 @@ component Multiplexer
     focus("user")
   action toPassword
     focus("password")
+  action openLoginHelp
+    nav = push(nav, path("loginHelp"))
   action signIn
     if canSignIn
       send signedIn = signIn(server.trim(), user.trim(), password)
@@ -676,6 +684,10 @@ component Multiplexer
     nav = go(nav, path("home"))
     composers = []
     unsaved = ""
+  action repairPush
+    if not pending(push)
+      refresh push
+
   action reloadRooms
     refresh roomList
   action retryDraft
@@ -1095,6 +1107,13 @@ component Multiplexer
                   text "Sign In"
               list id="sign-in-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
                 section
+                  button press=openLoginHelp testId="login-help" display="flex" flex-direction="row" align-items="center" gap=12
+                    image "symbol:info" aria-hidden=true
+                    column flex=1 min-width=0 gap=4
+                      text "New to Mux? Start here" font="-exact-headline"
+                      text "Accounts, servers, and connecting your chats" font="-exact-subheadline" color="-exact-secondary-label"
+                    image "symbol:forward-chevron" color="-exact-tertiary-label" aria-hidden=true
+                section
                   row
                     text "Server" width="6.5rem"
                     input id="server" value=server input=editServer submit=toUser placeholder="matrix.org"
@@ -1385,6 +1404,8 @@ component Multiplexer
             note="This iPhone reminds you at this time, and the chat stays under Reminders until you answer it.",
             picked=laterWhen, saving=pending(reminded), refused=remindRefused, choices=true, monday=laterMonday, choose=remindAt,
             pick=pickLater, close=closeLater, save=saveRemind)
+        if e.name == "loginHelp"
+          LoginHelp(route=`${e.id}`, close=back)
         if e.name == "settings"
           SettingsScreen(chooseAccent=chooseAccent, resetAccent=resetAccent, appearance=appearance, route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
             signOut=askSignOut, recovery=recovery, recoveryDraft=recoveryDraft, unlocking=pending(unlocked), refused=recoveryRefused,

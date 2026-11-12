@@ -1,0 +1,24 @@
+// help is available before signing in and never clears the draft credentials.
+test "getting started explains accounts and keeps the sign-in draft"
+  type "server" "example.org"
+  type "user" "alice"
+  type "password" "draft-only"
+  tap "login-help"
+  clock settle
+  expect tree has "login-help-sheet"
+  expect tree has "login-help-account"
+  expect tree has "login-help-details"
+  expect tree has "login-help-bridges"
+  expect tree has "login-help-setup"
+  tap "login-help-done"
+  clock settle
+  expect tree missing "login-help-sheet"
+  expect text "server" == "example.org"
+  expect text "user" == "alice"
+  expect enabled "sign-in"
+  tap "login-help"
+  clock settle
+  back
+  clock settle
+  expect tree missing "login-help-sheet"
+  expect text "server" == "example.org"

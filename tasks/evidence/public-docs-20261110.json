@@ -1,0 +1,119 @@
+{
+  "date": "2026-11-10",
+  "sourceBase": "e5bd717b2378d66cff2f729f7de1b75229352771",
+  "scope": "public documentation, contributor and operator entry points, website copy and font notices",
+  "validation": {
+    "localDocumentation": {
+      "markdown_files": 291,
+      "links": 245,
+      "shell_blocks": 25,
+      "failures": []
+    },
+    "externalLinks": [
+      {
+        "url": "https://app.element.io",
+        "status": 200
+      },
+      {
+        "url": "https://appdrop.app/d/nb2nfrv68c",
+        "status": 200
+      },
+      {
+        "url": "https://bun.sh",
+        "status": 200
+      },
+      {
+        "url": "https://docs.mau.fi/bridges/",
+        "status": 200
+      },
+      {
+        "url": "https://docs.mau.fi/bridges/go/meta/authentication.html",
+        "status": 200
+      },
+      {
+        "url": "https://docs.mau.fi/bridges/go/signal/authentication.html",
+        "status": 200
+      },
+      {
+        "url": "https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm",
+        "status": 200
+      },
+      {
+        "url": "https://element.io/app",
+        "status": 200
+      },
+      {
+        "url": "https://github.com/element-hq/synapse",
+        "status": 200
+      },
+      {
+        "url": "https://github.com/expo/exact",
+        "status": 200
+      },
+      {
+        "url": "https://github.com/matrix-org/matrix-rust-sdk",
+        "status": 200
+      },
+      {
+        "url": "https://github.com/mautrix",
+        "status": 200
+      },
+      {
+        "url": "https://github.com/rami-maalouf/multiplexer",
+        "status": 200
+      },
+      {
+        "url": "https://github.com/spantaleev/matrix-docker-ansible-deploy",
+        "status": 200
+      },
+      {
+        "url": "https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/e3929968b81c9bc87b56c259930f4c5afbc95a96/docs/prerequisites.md",
+        "status": 200
+      },
+      {
+        "url": "https://klipy.com",
+        "status": 200
+      },
+      {
+        "url": "https://matrix.org",
+        "status": 200
+      },
+      {
+        "url": "https://mux.orbitlabs.studio",
+        "status": 200
+      }
+    ],
+    "websiteBuild": "bun install --frozen-lockfile and bun run build passed; Bun 1.4.3",
+    "credentialPatternScan": {
+      "trackedTextFiles": 574,
+      "matches": 0,
+      "limits": "pattern scan only; no git-history or forensic audit"
+    },
+    "renderedLayout": {
+      "desktopWidth": 1440,
+      "changedTextOverflow": false,
+      "brokenImages": 0,
+      "method": "T3 preview DOM measurements; phone layout in a same-origin iframe",
+      "phoneWidths": [
+        390,
+        320
+      ]
+    },
+    "screenshots": "unavailable: two preview snapshots timed out; fallback browser host unavailable",
+    "fontNotices": "downloaded from google/fonts upstream OFL.txt for sora, geist and geistmono; trailing whitespace normalized; production build includes all three"
+  },
+  "notPerformed": [
+    "native app build or tests",
+    "server access or configuration",
+    "AppDrop pairing or install",
+    "TestFlight availability or push delivery",
+    "Mac signing/notarization",
+    "production website deployment",
+    "publishing Exact patches"
+  ],
+  "openRequirements": [
+    "publish or upstream the validated Exact integration and verify a clean public build",
+    "confirm public preview installation and production push",
+    "inspect website screenshots once browser capture is available"
+  ]
+}

@@ -1,4 +1,10 @@
-# Server
+# Server: maintainer operations
+
+This is the runbook for Rami's existing deployment, not a portable installer.
+For a new server, start with [the self-hosting guide](../docs/self-hosting.md).
+The scripts contain live domains, an SSH alias, Keychain services and backup paths;
+adapt a separate inventory before running them. The live config also includes
+unrelated reverse-proxy routes and Apple push credentials by reference.
 
 The Matrix server (Synapse) and the bridges run on the Oracle machine (`ssh oracle`).
 [matrix-docker-ansible-deploy](https://github.com/spantaleev/matrix-docker-ansible-deploy)
@@ -15,7 +21,7 @@ goes through the playbook or a playbook in this folder; manual commands there on
 | `remove-unused-sessions.py` | Signs out a user's sessions that have no name and were never used (`uv run`). |
 | `inventory/hosts` | The server: `matrix.ramimaalouf.com`, reached through `Host oracle` in `~/.ssh/config`. |
 | `inventory/host_vars/matrix.ramimaalouf.com/config.yml` | All settings. In git, no secrets. |
-| `inventory/host_vars/matrix.ramimaalouf.com/vars.yml` | The two secrets. Gitignored; `setup.sh` writes it. Its shape: `vars.example.yml`. |
+| `inventory/host_vars/matrix.ramimaalouf.com/vars.yml` | Server secrets, including configured APNs key material. Gitignored; `setup.sh` writes it. Its shape: `vars.example.yml`. |
 | `vendor/` | The playbook checkout. Gitignored. |
 | `notes/` | What we found on the server (`inventory.md`, T0.1). |
 
@@ -30,14 +36,15 @@ ansible -i server/inventory/hosts all -m ping   # answers "pong"
   the two secrets in the Keychain. Without the flag, a missing secret stops the script, so
   a server that runs never gets new secrets by mistake.
 - Ansible 2.21 cannot ask about an unknown SSH host key. If Ansible says
-  `Host key verification failed`, run `ssh oracle` once and accept the key.
+  `Host key verification failed`, run `ssh oracle` once and verify its fingerprint
+  through the provider console before accepting the key.
 
 ## Run the playbook
 
 ```sh
 ./server/playbook.sh --tags=install-all,ensure-matrix-users-created,start   # install or update
 ./server/playbook.sh --tags=self-check                                      # all green when it works
-./server/register-user.sh rami multiplexer-matrix admin                     # a user, password in the Keychain
+./server/register-user.sh <admin-user> multiplexer-matrix admin                     # a user, password in the Keychain
 ```
 
 To update the playbook: change `playbook_commit` in `setup.sh`, read the playbook's
@@ -52,13 +59,13 @@ All in the Mac's login Keychain. Never in git, chat or logs.
 |---|---|---|
 | `multiplexer-server` | `matrix_homeserver_generic_secret_key` | The playbook makes most other secrets from it. |
 | `multiplexer-server` | `postgres_connection_password` | PostgreSQL's main user. Changing it later needs manual work. |
-| `multiplexer-matrix` | `@rami:ramimaalouf.com` | Rami's Matrix password. |
+| `multiplexer-matrix` | See local `.local/accounts.md`. | Real Matrix account password. |
 | `multiplexer-test-account` | `@test1:ramimaalouf.com`, `@test2:ramimaalouf.com` | Test users for the app. |
 | `multiplexer-apns` | `key`, `key-id` | The sandbox APNs key (`.p8`, base64) and its Key ID, for Sygnal. |
 | `multiplexer-apns` | `production-key`, `production-key-id` | The separate production APNs key (`.p8`, base64) and its Key ID, for TestFlight and App Store push. |
 
-To paste a password on the iPhone (Universal Clipboard):
-`security find-generic-password -s multiplexer-matrix -a @rami:ramimaalouf.com -w | pbcopy`.
+The real account ID and Universal Clipboard password lookup command are in
+`.local/accounts.md` at the repository root (local only, ignored by git).
 
 ## Backups
 
@@ -102,6 +109,10 @@ To paste a password on the iPhone (Universal Clipboard):
   `setup.sh`, then install.
 
 ## Network
+
+The infrastructure and firewall observations below describe the maintainer's
+deployment and past inspections. They are not a current audit of every service
+on that host. Restrict SSH to administration addresses in a new deployment.
 
 - **Names.** User IDs are `@name:ramimaalouf.com`. Synapse runs at `matrix.ramimaalouf.com`.
   This can never change after the first install.

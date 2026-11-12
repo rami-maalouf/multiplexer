@@ -4,7 +4,12 @@ I built Mux coz I wanted one inbox for all my chats, without handing every messa
 
 So I set up my own server in October and November 2026: a Matrix server with bridges to WhatsApp, Instagram and LinkedIn. This is exactly what I did, including the parts that went wrong, so you can skip them. My raw notes are in `server/` and `tasks/` in this repo if you want the long version.
 
-At the end you get one inbox for your chats. Read it in Element X, or in Mux on your iPhone: https://appdrop.app/d/nb2nfrv68c
+At the end you get one inbox for your chats. Read it in Element X or Mux. See
+[installation and platform status](install.md) for the current preview and build limits.
+
+Reviewed against the checked-in setup scripts on 2026-11-10. The measurements below
+are dated observations of my server, not a capacity guarantee. This guide sets up
+Matrix and bridges; it does not provision Apple push or a production app release.
 
 A few placeholders I use all the way through:
 
@@ -24,13 +29,16 @@ WhatsApp, Instagram, LinkedIn, Signal  <->  bridges  <->  Synapse  <->  Element 
 - **A bridge** (mautrix) logs in to one network as you. It copies each message into a Matrix room, and copies your replies back.
 - **The playbook** ([matrix-docker-ansible-deploy](https://github.com/spantaleev/matrix-docker-ansible-deploy)) installs all of it with Docker. Ansible runs it from your Mac over SSH.
 
-Look, the bridges hold your login session for each network, and they read every message in plain text coz they have to convert it. So whoever controls the server can read your chats. With a hosted service, that's the company. With this setup, it's only you.
+Look, the bridges hold your login session for each network, and they read every message in plain text coz they have to convert it. So whoever controls the server can read your chats. With a hosted service, that's the company. With this setup, you control that access. The original networks still process their
+side of each chat, and anyone who compromises your server can read its data.
 
 That's the whole reason to self-host.
 
 Three things follow from it:
 
-- The bridged rooms are not end-to-end encrypted. That's the playbook's default (`matrix_bridges_encryption_enabled: false`), and the bridge reads every message anyway.
+- This example leaves bridged rooms unencrypted on the Matrix side
+  (`matrix_bridges_encryption_enabled: false`). Even with Matrix room encryption,
+  the bridge must decrypt messages to relay them.
 - The database backups hold your bridge sessions. Treat every backup as a secret.
 - A server breach exposes your chats. Use SSH keys only, run as few services as you can, and install updates.
 
@@ -39,14 +47,20 @@ Three things follow from it:
 1. **A domain** you control, with access to its DNS records.
 2. **A Linux server** that's always on, with a public IPv4 address.
    - I use an Oracle Cloud VM: Ubuntu 24.04, aarch64 (ARM), 4 CPUs, 23 GiB memory, 96 GB disk.
-   - Any amd64 VPS works too. The playbook fully supports only amd64 and "somewhat supports" ARM. On ARM, every image I used came prebuilt for arm64, so nothing was built on my server. A component without an arm64 image has to build on the server, or it can't run.
-   - Use Ubuntu 24.04 like I did. The playbook docs warn that Ubuntu 26.04 ships `sudo-rs`, which doesn't work with Ansible 2.21 and older.
-3. **A Mac** (or any computer) with `uv`, `git` and `ssh`. Ansible runs here, not on the server.
+   - A compatible amd64 VPS can work too; check the playbook's prerequisites. The playbook fully supports only amd64 and "somewhat supports" ARM. On ARM, every image I used came prebuilt for arm64, so nothing was built on my server. A component without an arm64 image has to build on the server, or it can't run.
+   - Ubuntu 24.04 is the version tested here. Check the pinned playbook's
+     [prerequisites](https://github.com/spantaleev/matrix-docker-ansible-deploy/blob/e3929968b81c9bc87b56c259930f4c5afbc95a96/docs/prerequisites.md)
+     before choosing a different OS or CPU architecture.
+3. **A control computer** with `uv`, `git` and `ssh`. The examples were tested on a
+   Mac. Ansible can run on another supported control OS, but the repository's
+   Keychain and launchd helpers are macOS-specific.
 4. **Your phone**, with each network's app, to link it.
 
 **How big a server?** I measured mine over 7 days, one user, three bridges: CPU p95 4%, memory p95 14% of 23 GiB. The Matrix containers used about 1.6 GiB. My notes say 2 CPUs and 12 GB would be enough. The peak is the first history sync of a big WhatsApp account: load 2.35 on 4 CPUs.
 
-**What it costs.** Oracle's Always Free page lists 2 OCPUs and 12 GB of its A1 (ARM) shape as free. Two catches:
+**What it costs.** Check [Oracle's current free-tier limits](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)
+and your own billing console before provisioning. On 2026-11-10 the page lists
+2 OCPUs and 12 GB of A1 (ARM) memory for Always Free tenancies. Two catches:
 
 - Oracle can reclaim an Always Free instance if, over 7 days, its CPU (p95), network and memory use all stay below 20%. A one-user Matrix server is under all three, so a free instance is at risk. My account is Pay As You Go, where this rule shouldn't apply. I haven't confirmed that.
 - I haven't confirmed what a bigger instance costs on Pay As You Go either.
@@ -73,9 +87,9 @@ dig +short matrix.example.com   # prints <server-ip>
 
 ## 4. Ports and firewall
 
-Open these ports to the internet (ingress from `0.0.0.0/0`):
+Allow these inbound ports in your cloud and host firewalls:
 
-- TCP 22: SSH, for Ansible
+- TCP 22: SSH for Ansible, restricted to your administration IP range where possible
 - TCP 80: Let's Encrypt and redirects
 - TCP 443 and UDP 443: the Matrix client API
 - TCP 8448 and UDP 8448: Matrix federation
@@ -83,7 +97,8 @@ Open these ports to the internet (ingress from `0.0.0.0/0`):
 **On Oracle Cloud**, the cloud firewall is the VCN's security list:
 
 1. Open the console: your VCN > Security > Default Security List > Security rules.
-2. Add stateful ingress rules from `0.0.0.0/0` for the ports above.
+2. Add stateful ingress rules from `0.0.0.0/0` for the public Matrix ports above.
+   Limit SSH to your administration IP range.
 
 **The host firewall.** My notes say Oracle's Ubuntu image ships REJECT rules in `/etc/iptables/rules.v4` that block every port except 22. On my server nothing loads that file (its `iptables-persistent` package was removed earlier), so I changed nothing on the host. On a fresh Oracle image those rules may be active, and I didn't write down how to open them. Check before you install.
 
@@ -95,7 +110,8 @@ nc -vz matrix.example.com 443
 nc -vz matrix.example.com 8448
 ```
 
-"Connection refused" is good news: the packet reached the server, and nothing listens yet. A timeout means a firewall drops the packet -> fix the security list or the host firewall.
+"Connection refused" is good news: the packet reached the server, and nothing listens yet. A timeout can mean filtering, routing or DNS trouble; inspect the security list,
+host firewall and resolved address before changing rules.
 
 ## 5. Get your Mac ready
 
@@ -108,7 +124,8 @@ Host matrix-server
   IdentityFile ~/.ssh/<your-key>
 ```
 
-Run `ssh matrix-server` once and accept the host key. Ansible 2.21 can't ask about an unknown host key, it just fails with `Host key verification failed`.
+Run `ssh matrix-server` once and verify its host-key fingerprint through your
+provider console before accepting it. Ansible 2.21 can't ask about an unknown host key, it just fails with `Host key verification failed`.
 
 **A folder for your settings.** Keep your settings in a git repo, and keep secrets out of it. This is my layout (it's `server/` in this repo):
 
@@ -124,7 +141,12 @@ server/
 
 Ansible reads every file in `host_vars/matrix.example.com/`, so settings and secrets can live in two separate files.
 
-Copy `server/setup.sh` and `server/playbook.sh` from this repo if you want. In `setup.sh`, change the folder name in `host_vars` and the Keychain service name.
+The checked-in `server/` scripts operate the maintainer's live server. Do not run
+them unchanged. For your own server, use a separate settings folder and adapt
+`inventory/hosts`, the `host_vars` directory, domains and Keychain service names.
+`register-user.sh` and the backup helpers also contain maintainer-specific domains
+and SSH aliases. Use the minimal settings below; copying the live `config.yml`
+would also copy unrelated routing and Apple push configuration.
 
 **Ansible.** I use Ansible 14.5.0 (ansible-core 2.21.5), installed with `uv`:
 
@@ -143,7 +165,7 @@ git fetch -q --depth 1 origin "$commit" && git checkout -q --detach FETCH_HEAD
 ansible-galaxy install -r requirements.yml -p roles/galaxy/ --force
 ```
 
-A newer commit is fine. Then read the playbook's `CHANGELOG.md` and set `matrix_playbook_migration_validated_version` to match (step 6).
+A newer commit requires its own migration and compatibility review. Then read the playbook's `CHANGELOG.md` and set `matrix_playbook_migration_validated_version` to match (step 6).
 
 You don't need `just`. Every command below calls `ansible-playbook` directly.
 
@@ -244,7 +266,7 @@ matrix_bridge_mautrix_linkedin_network_displayname_template: "{% raw %}{{ with .
 **Bridge versions.** My own file also pins two bridges to a commit of their `main` branch, coz no release had the login fixes I needed:
 
 ```yaml
-# instagram: login fixes mautrix/meta#483 and #484 (2026-10-30). no release had them then.
+# instagram: known-working login fixes on 2026-10-30; recheck upstream releases.
 # matrix_bridge_mautrix_meta_instagram_version: "4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d"
 # linkedin: the password login and its 2fa (2026-11-02). the last release had cookies only.
 # matrix_bridge_mautrix_linkedin_version: "6cc6a8981941b0ac1d50e4c65cfb210668f8fe7e-arm64"
@@ -265,7 +287,9 @@ Make them once, for a new server only. A new secret on a server that already run
 openssl rand -hex 32   # run twice, one value for each name
 ```
 
-Write `server/inventory/host_vars/matrix.example.com/vars.yml` (gitignored):
+Set `umask 077` before creating the file, then write
+`server/inventory/host_vars/matrix.example.com/vars.yml` (gitignored) with a local
+editor, without recording the values in shell history:
 
 ```yaml
 matrix_homeserver_generic_secret_key: "<64 hex characters>"
@@ -274,7 +298,9 @@ postgres_connection_password: "<64 hex characters>"
 
 Add `vars.yml` and `vendor/` to `.gitignore`. Run `git status` and make sure no secret file shows up.
 
-My `server/setup.sh` does all this from the macOS Keychain: `./server/setup.sh --create-secrets` on the first run, `./server/setup.sh` after that.
+After adapting the script to your inventory, `server/setup.sh` can write these
+values from macOS Keychain: `./server/setup.sh --create-secrets` on a new server
+only, then `./server/setup.sh` on later runs. The unmodified script targets my server.
 
 ## 8. Install
 
@@ -316,17 +342,40 @@ If other services already run on your server, check first that nothing uses port
 
 The playbook registers users. Registration is off for everyone else.
 
-Don't type the password on the command line: it stays in your shell history. My `server/register-user.sh` writes it to a private file and hands the file to Ansible:
+Do not type a literal password in a shell command. From the root of your adapted
+settings repo, prompt privately and encode it as JSON so quotes and backslashes
+in the password are handled correctly. Use a regular account for daily chat;
+create an administrator separately only when needed:
 
 ```sh
 umask 077
 vars_file="$(mktemp)"
-printf '{"username": "%s", "password": "%s", "admin": "%s"}\n' alice "<password>" yes > "$vars_file"
-./server/playbook.sh --extra-vars "@$vars_file" --tags=register-user
+trap 'rm -f "$vars_file"' EXIT
+uv run --no-project python - "$vars_file" <<'PYTHON'
+import getpass
+import json
+import pathlib
+import sys
+
+password = getpass.getpass("New Matrix password: ")
+pathlib.Path(sys.argv[1]).write_text(json.dumps({
+    "username": "alice", "password": password, "admin": "no"
+}))
+PYTHON
+if ./server/playbook.sh --extra-vars "@$vars_file" --tags=register-user >/dev/null 2>&1; then
+  printf 'Account registered.\n'
+else
+  printf 'Registration failed; diagnose privately without sharing raw output.\n' >&2
+fi
 rm -f "$vars_file"
+trap - EXIT
 ```
 
-One gotcha: registering signs the new user in once and leaves that session sitting there unused, with a live token. Sign it out after your first real sign-in. I did mine in Element Web (Settings > Sessions). My `server/remove-unused-sessions.py` does it from the Mac.
+Output is suppressed because the pinned registration role can include the password
+in a failed command result. Keep any troubleshooting output private.
+
+One gotcha: registering signs the new user in once and leaves that session sitting there unused, with a live token. Sign it out after your first real sign-in. I did mine in Element Web (Settings > Sessions). The maintainer's cleanup helper is domain-specific; do not run it against a
+new server without adapting and reviewing it.
 
 ## 10. Connect a client
 
@@ -340,11 +389,16 @@ A note on verification: once, verifying Element X from another session hung on t
 
 **Mux** (iPhone).
 
-1. Install Mux from https://appdrop.app/d/nb2nfrv68c.
+1. Choose an install path from [the platform status guide](install.md).
 2. Type `example.com` in the server field.
 3. Type `alice` and your password, then sign in.
 
-Mux finds the server through the well-known file, same as Element X. Push notifications already wake my own iPhone (a development build). They come to the shared builds next.
+Mux finds the server through the well-known file, same as Element X. iPhone push
+needs additional Apple signing, extension and gateway setup. Follow
+[Build your own iPhone app](iphone-self-hosting.md) to configure your identity and
+gateway once, then install or distribute your build. Running Synapse alone does
+not configure Apple delivery; changing the sign-in server does not select a
+different push gateway.
 
 **A browser client** (Element Web) doesn't follow a redirect without a CORS header. If `example.com` redirects (for example to `www.example.com`), type `matrix.example.com` in the browser client instead. Your user ID stays `@alice:example.com`.
 
@@ -370,10 +424,14 @@ Read all of this before you log in. My first try got my main account logged out.
 - **Don't use the cookie login on your main account.** I pasted cookies from a private browser window (`login instagram`). Within 5 minutes, Instagram "detected suspicious activity" and logged the account out. It also ended my session in another Instagram client. My best guess at why: the session jumped from my home browser to a data-center address and to the bridge's own client identity within a minute.
 - **Use `login android`.** It asks for your user name, your password, and maybe a 2FA code or an approval in the Instagram app. I linked my account with it on 2026-10-30, with a bridge build that had the login fixes (step 6, bridge versions).
 - **Turn on 2FA first.** The bridge's docs say 2FA lowers the risk of a block.
-- **The bot redacts** any message that holds a password or cookies, so it doesn't sit in your chat.
+- **The bot is designed to redact credential messages.** Do not treat redaction
+  as guaranteed erasure from server logs, backups or other clients.
 - After failed tries, Instagram sometimes answers with a rate limit ("temporarily limiting login attempts from this network"). Wait before you try again.
 
-The bot: `@instagrambot:example.com`.
+The bot: `@instagrambot:example.com`. The current
+[upstream authentication guide](https://docs.mau.fi/bridges/go/meta/authentication.html)
+also documents these modes. Neither login path guarantees that Instagram will
+avoid account challenges; the cookie-login failure above is my own observation.
 
 ### LinkedIn
 
@@ -417,9 +475,11 @@ The settings in step 6 dump each database every day at 00:00 UTC, into `/matrix/
 - **They're on the same disk as the server.** They save you from a broken database or a mistake, not from losing the server.
 - **They don't hold media** (photos, videos).
 
-For a copy off the server, my Mac pulls the dumps, the media store (`/matrix/synapse/storage/media-store/`) and Synapse's signing key every day over SSH. See `server/pull-backup.sh` and `server/install-backup-pull.sh`. Keep that copy out of git and out of synced folders.
+For a copy off the server, my Mac pulls the dumps, the media store (`/matrix/synapse/storage/media-store/`) and Synapse's signing key every day over SSH. See [the operator backup notes](../server/README.md#backups) and adapt
+`server/pull-backup.sh` and `server/install-backup-pull.sh` to your own SSH alias
+and destination before running them. Keep that copy out of git and out of synced folders.
 
-I haven't tested a restore yet. The steps I wrote down are in `server/README.md`, under Backups.
+I haven't tested a restore yet. The steps I wrote down are in [the backup notes](../server/README.md#backups).
 
 ## 13. Update the playbook
 
@@ -444,6 +504,9 @@ Every one of these happened on my server:
 - **Disk space runs low.** It's Docker images and build cache. The playbook's `run-docker-prune` tag runs `docker system prune -a -f`, which also deletes other projects' stopped containers and images on the same server. I deleted old images by hand instead.
 - **A bridge needs a fix that isn't in a release yet.** Pin its version to a commit of its `main` branch (step 6). Use a tag with a prebuilt image for your CPU, so nothing builds on the server.
 
-The playbook's own docs live in `docs/` of the playbook checkout. Start at `docs/maintenance-and-troubleshooting.md`.
+The playbook's own docs live in `docs/` of the playbook checkout. Start at
+`docs/maintenance-and-troubleshooting.md`. Check current
+[bridge authentication documentation](https://docs.mau.fi/bridges/) when provider
+login flows change; the workarounds here describe the versions and dates tested.
 
 Your chats are yours. Now the server is too :)

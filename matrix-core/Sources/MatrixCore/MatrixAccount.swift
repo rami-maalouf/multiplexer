@@ -196,6 +196,7 @@ public final class MatrixAccount: @unchecked Sendable {
             if let info {
                 if summary.fillKind(info, pins: pins, kinds: roomKinds) { unkinded.append(summary.id) }
                 summary.fillActions(info, chats: chats)
+                summary.avatarName = await roomAvatar(room, info: info, oneToOne: summary.isOneToOne).map(avatarFileName) ?? ""
             }
             switch await room.latestEvent() {
             case .remote(let timestamp, let sender, let isOwn, let profile, let content):
@@ -434,7 +435,7 @@ public final class MatrixAccount: @unchecked Sendable {
     /// A room's picture as a file in `directory`, at most `side` pixels a side; nil when the
     /// room has none. Downloaded once; later calls return the same file.
     public func avatarFile(roomId: String, directory: URL, side: UInt64 = 160) async throws -> URL? {
-        guard let url = try client.getRoom(roomId: roomId)?.avatarUrl() else { return nil }
+        guard let room = try client.getRoom(roomId: roomId), let url = await roomAvatar(room) else { return nil }
         return try await pictureFile(url: url, directory: directory, side: side)
     }
 

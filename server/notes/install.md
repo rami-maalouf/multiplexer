@@ -26,7 +26,7 @@ Nothing was built on the server (no `localhost/` images).
 - `/_matrix/client/v3/login` offers `m.login.password`.
 - `@test1:ramimaalouf.com` signs in with its Keychain password and signs out again.
 
-**Users:** `@rami:ramimaalouf.com` (admin), `@test1:ramimaalouf.com`, `@test2:ramimaalouf.com`,
+**Users:** the real account (admin), `@test1:ramimaalouf.com`, `@test2:ramimaalouf.com`,
 with `./server/register-user.sh`. Passwords: Keychain only (see `server/README.md`).
 
 **Other services still run:** the T3 Code server (127.0.0.1:3773) and Syncthing (22000,
@@ -59,7 +59,7 @@ This is far below Oracle's 20% reclaim line (see the M0 checkpoint): one user, n
 
 - Element Web (app.element.io, Firefox): sign-in with `www.ramimaalouf.com` (not
   `ramimaalouf.com`: the 301 has no CORS header). Exchanged encrypted messages with
-  `@rami-m:matrix.org` over federation, both ways.
+  the real federation account over federation, both ways.
 - Element X (iPhone): sign-in worked (session `Element X iOS`). Verifying it from Element Web
   hung on the iPhone's "Start verification" spinner; Firefox showed no problem. At the two
   times checked, nothing waited in `device_inbox` for either session, so the server had
@@ -161,7 +161,7 @@ public fork (proposal: `docs/connectors/instagram.md` on branch `connectors/inst
 password key with a GET instead of a POST, to the same address, and adds no new destination.
 The build uses upstream's `Dockerfile.ig` (`golang:1-alpine3.24`, then `alpine:3.24`).
 
-**Waited for the dead login:** the bridge held one login of `@rami` from the morning.
+**Waited for the dead login:** the bridge held one login of the real account from the morning.
 The build waited until Rami removed it (`logout`); at 23:14 UTC it held 0 logins, so the
 restart did not try the dead session against Instagram.
 
@@ -189,8 +189,8 @@ cleanup; that is a deletion, so it waits for Rami). The old published image
 
 ## 2026-10-30: Rami's Instagram login on the fork (T4.1)
 
-Rami linked Instagram with `login android` from `@rami`. Read only, after the login: the
-bridge holds 1 login, owned by `@rami:ramimaalouf.com`, and 24 of 24 chats have rooms.
+Rami linked Instagram with `login android` from the real account. Read only, after the login: the
+bridge holds 1 login, owned by the real account, and 24 of 24 chats have rooms.
 During the login it logged 2 `ERR` lines: `GET qe/sync` answered HTTP 405 (expected: the
 password key comes with that answer), and one reconnection state update that it could not
 send. No `ERR` line after the login.
@@ -307,7 +307,7 @@ M0's recheck, B2 and P3.3 (`tasks/todo.md`).
   three bridge configs changed and the three bridges restarted at 22:46:21 UTC; Synapse did
   not. After: Instagram 0 debug lines; WhatsApp no `WRN` or `ERR`, and its connection to
   WhatsApp (a Meta address, port 443) is open.
-- **Names.** `!wa sync contacts` from a short-lived `@rami` session (logged out after) in the
+- **Names.** `!wa sync contacts` from a short-lived session of the real account (logged out after) in the
   WhatsApp bot chat at 22:47:28 UTC. The bot does not answer, but it renames: ghosts in the
   bridge's database with " (WA)" went from 14,529 to 2,250 by 23:03 UTC (about 900 a
   minute), then stopped. The 2,250 left are people the bridge has no contact info for

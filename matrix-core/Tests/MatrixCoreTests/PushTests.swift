@@ -16,7 +16,8 @@ final class PushTests: XCTestCase {
         let app = try await signIn(homeserver, user, password, store: store)
         let sender = try await signIn(homeserver, user2, password2)
         let rooms = try await testRooms(app, sender, user2: user2)
-        let senderName = try await sender.ownProfile().displayName
+        let senderProfile = try await sender.ownProfile()
+        let senderName = senderProfile.displayName
 
         for (name, roomId) in rooms.sorted(by: { $0.key < $1.key }) {
             let text = "Push \(UUID().uuidString)"
@@ -31,6 +32,8 @@ final class PushTests: XCTestCase {
             XCTAssertEqual(shown.body, text, name)
             // the profile's name falls back to the id's local part; a push's to the whole id.
             XCTAssertTrue([senderName, user2].contains(shown.senderName), "\(name): sender \(shown.senderName)")
+            XCTAssertEqual(shown.senderId, user2)
+            XCTAssertEqual(shown.senderAvatarUrl, senderProfile.avatarUrl)
             XCTAssertEqual(shown.chatName, name)
             XCTAssertEqual(shown.roomId, roomId)
             XCTAssertEqual(shown.eventId, eventId)

@@ -48,3 +48,28 @@ installed.
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS 26.5 Simulator: the extension was registered by the
 system ("plugin INSTALLED"), and the app's patched entitlements gave it its push token.
+
+
+2026-11-12 follow-up: a fresh ordinary ios build again contained no remote push or app-group entitlement and no notification extension, replacing a separately packaged build. the app now wraps build plus packaging plus reinstall in one command. a declarative extension and entitlement build would remove this workaround.
+
+
+2026-11-12 avatar follow-up: adding the communication-notification entitlement
+failed with "the entitlements (501 bytes) do not fit exact's section (462 bytes)".
+The simulator workaround now uses a compact XML root and omits its debugger grant
+to preserve the required identity, shared storage and notification entitlements.
+Physical-device debug entitlements are retained. A declarative entitlement list
+or reserved space in the simulator link would avoid this trade-off.
+
+2026-11-12 preview follow-up: the documented share command builds and uploads its
+own unsigned archive without the app's post-build notification packager. A
+published preview consequently had no notification extension or push entitlement.
+The app now prepares its preview IPA through a separate production archive and
+packaging command. A declared extension or supported pre-upload packaging hook
+would let share preserve the same capabilities as other builds.
+
+2026-11-12 self-hosting follow-up: another signing identity must be synchronized
+across the manifest, native session storage and the post-build extension packager.
+The device wrapper also needs to pass EXACT_PROFILE; confirming this required
+reading the framework's signing sources (about two minutes). A documented profile
+option and declarative notification extension/shared entitlements would remove
+these extra integration steps.

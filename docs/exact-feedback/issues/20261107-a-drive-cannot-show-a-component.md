@@ -30,4 +30,3 @@ Cost: about 8 minutes.
 
 Seen on 2026-11-07 at exact2 `f53339adc8`, iOS Simulator. `layout` then gave 40 pt against 36 pt
 before the fix and 36 pt for both after it.
-

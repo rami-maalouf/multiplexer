@@ -11,6 +11,8 @@ import { linkOf, noLink } from './links.ts';
 type Card = { url: string; title: string; image: string; width: number; height: number; state: string };
 const noCard: Card = { url: '', title: '', image: '', width: 0, height: 0, state: '' };
 import { appearance } from './appearance.ts';
+import { PushRegistration } from './push-registration.ts';
+const pushRegistration = new PushRegistration();
 import { DesktopNotifications, DesktopNotificationDelivery } from './desktop-notifications.ts';
 import { stageDroppedFiles } from './desktop-files.ts';
 const desktopNotifications = new DesktopNotifications();
@@ -780,18 +782,8 @@ const sources: Sources = {
   // the module asks for the phone's push token and gives it to the server as a pusher; a drive
   // does that only for a test user. Without the permission, or with Settings' switch off, drop
   // any pusher left from when it was on.
-  registerPush: async ([userId, permission, enabled], _store, _storage, native): Promise<Result<'registerPush'>> => {
-    if (userId === '' || !native?.available) return { registered: false };
-    if (permission !== 'granted' || !enabled) {
-      try {
-        await native.later({ op: 'unregisterPush' });
-      } catch {
-        // no session yet, or the server already dropped the pusher.
-      }
-      return { registered: false };
-    }
-    return (await native.later({ op: 'registerPush' })) as { registered: boolean };
-  },
+  registerPush: async ([userId, permission, enabled, desktop, visibility], _store, _storage, native): Promise<Result<'registerPush'>> =>
+    pushRegistration.update(userId, permission, enabled, desktop, visibility, native),
   loadUploadLimit: async ([userId], _store, _storage, native): Promise<Result<'loadUploadLimit'>> => {
     if (userId === '' || !native?.available) return { bytes: 0 };
     return (await native.later({ op: 'maxUploadSize' })) as { bytes: number };

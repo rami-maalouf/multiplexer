@@ -36,4 +36,3 @@ The woken runtime re-reads `exactViewport` on adoption (as D2 says), or the buil
 
 Seen on 2026-11-06 at exact2 `31063d7dbb` (the app's integration checkout), with Playwright's
 headless Chromium (first paint reported) and `serve dist`.
-

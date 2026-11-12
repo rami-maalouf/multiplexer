@@ -23,4 +23,3 @@ One line in the website recipe's "A setting" section: "With no API, keep `export
 ## Evidence
 
 Seen on 2026-11-06 at exact2 `31063d7dbb`.
-

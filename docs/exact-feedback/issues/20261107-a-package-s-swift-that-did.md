@@ -33,4 +33,3 @@ Cost: about 3 minutes, found by comparing with a sibling checkout, plus a 2-minu
 
 Seen on 2026-11-07 at exact2 `f53339adc8`, iOS Simulator build (`bun exact.mjs ios --sim <udid>`).
 Related: the finding on an app checkout at another folder depth (`EXACT2` does not cover every path).
-

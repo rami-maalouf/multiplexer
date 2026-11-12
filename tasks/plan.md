@@ -4,6 +4,130 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Main integration and preview preparation (2026-11-12):** at Rami's request,
+combined current main, PR #22 (reliable push/distribution), PR #23 (bridged profile
+pictures), the login help and all pending tracked work. Push and avatar production
+sources match their reviewed PR heads; the only app-view delta from #22 is login help.
+Contract/TypeScript passes; 68 Bun checks pass (7 artifact/Simulator-gated skips), and
+the gated communication-intent Simulator fixture separately passes. Combined native
+verification passes all 14 authored tests, light/dark and 16 body-53 screens in 268.4 s.
+All 39 MatrixCore app copies match canonical sources. Main push and AppDrop publication
+are the next steps. No real account or live server was modified.
+
+**Login help (2026-11-12):** the signed-out form now offers "New to Mux? Start here".
+A native, scrollable Getting Started sheet explains Matrix accounts, server/user/password
+fields, and bridges, with links to the repository and server setup guide. Closing it keeps
+the draft credentials. iOS verification passed all 13 authored tests and light/dark plus
+15 largest-text screens; separate open-sheet and bottom-link captures passed light/dark
+checks at body 53. No account or server was modified. Physical iPhone/macOS remain unchecked.
+The task is committed locally without the pre-existing edits; those remain preserved in
+the working tree. Feedback finding 166 was sent with approval (receipt `8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`).
+
+**Account privacy (2026-11-10):** public instructions use an explicit test-account
+allowlist; private identities and lookup details live in ignored `.local/accounts.md`.
+Tracked account references are generalized. Runtime behavior and existing git history
+are unchanged; the local note is not included in commits.
+
+**Self-hosted iPhone builds (2026-11-12, PR #22):** the owner install and
+self-hosted forks use one Apple team/bundle/gateway configuration. A configure
+command saves the ignored local settings and synchronizes the manifest; runtime,
+session groups, pusher routes and all packagers derive the same identity.
+Both development profiles are checked before building. The default phone build
+was rebuilt and installed, with configured runtime metadata and strict app/service
+signatures verified; no real account was accessed. A fresh production export and
+all 74 Bun checks pass with no skips; 13 native iOS tests pass. Custom settings,
+Swift runtime bundles and profile mismatches have fixture evidence, not a second
+Apple team's live deployment. The public Exact base plus bundled MIT-licensed
+integration patch reproduced the validated source tree exactly; full toolchain
+provisioning on another Mac is not claimed. AppDrop credential sharing is optional
+and was not enabled. Setup: `docs/iphone-self-hosting.md`.
+
+**Push across distribution channels (2026-11-12, PR #22):** the published AppDrop
+revision 2 reports `pushNotifications: false`, no extensions, and its downloaded
+IPA has no notification service or communication activity type. Exact's share
+command bypasses the post-build packager. `scripts/preview-ios.ts` now builds
+through the production archive path and refuses incomplete notification bundles
+before producing an IPA. A fresh release archive and Xcode distribution export
+passed all artifact checks, including production APNs and communication grants
+in the signed app/profile. Final combined Bun run: 64 passed, no skips. Both
+gateway routes are active with the expected team/topic (read-only audit).
+The preview replacement is prepared but not uploaded: AppDrop's owner-team
+People you approve mode requires the owner's App Store Connect authorization
+and creates an AppDrop App Manager API key. Existing preview mode remains
+unchanged. No TestFlight upload or physical production delivery is claimed.
+See `tasks/evidence/notification-distribution-20261112.json`.
+
+**Sender photos in iPhone notifications (2026-11-12, PR #22):** notification
+content now includes the actual sender identity and profile media URL. The service
+extension fetches a static 160 px thumbnail through the authenticated homeserver
+(no redirects, 2 s total deadline, 512 KiB cap), then donates an incoming message
+intent for the native sender-avatar layout. Text is ready as the fallback before
+photo work; missing/corrupt photos use a local initials image. First uncached and
+terminated-app real sandbox banners showed the test sender's photo (497/452 ms,
+18 MB). The final initials fallback was visually inspected.
+Three focused thumbnail tests, two live plain/encrypted push tests, 13 native app
+tests, the native intent fixture and 52 Bun checks pass; five distribution artifact checks skip
+without artifacts. The device installer refuses old profiles before replacing the
+working phone build. Communication Notifications is now enabled on the Apple app
+identifier, and the regenerated development profile grants it. The avatar build
+is installed on the paired iPhone; strict signatures, development APNs, shared
+storage, device coverage and intent activity types pass verification. The initial
+device connection reset; packaging and installation succeeded on retry without
+launching the app. A real profile exposed a preflight JSON conversion bug with
+certificate/date values: only the entitlement dictionary is now converted, with
+a regression fixture. The final Bun run passed 57 tests, with five artifact skips.
+Physical locked-phone avatar delivery still needs a natural incoming message
+after Rami opens Mux once. No real account was accessed. The prior
+approved diary was sent separately (receipt in the feedback index); new avatar
+notes stay local. See `tasks/evidence/notification-avatars-20261112.json`.
+
+**iPhone push reliability (2026-11-12, `fix/reliable-mobile-push`):** a fresh ordinary
+Exact install lacked APNs/App Group entitlements and the notification extension;
+`bun scripts/install-ios.ts` now builds, packages and reinstalls as one operation.
+A native regression against main reproduced deletion of a working pusher before a
+failed replacement. Replacement now sets first, preserves current session tokens,
+guards session identity, and keeps failed disables retryable. Registration is
+serialized, retried every 30 s after failure while visible, and refreshed on return.
+51 automated tests pass (5 distribution-artifact cases skipped), Contract/TypeScript
+returns `[]`, and all 13 native iOS tests pass. Real sandbox pushes showed sender/text
+in the background and after termination; the final terminated banner was visually
+inspected. Extension outcomes were 119-227 ms and 14-18 MB. The complete installer
+built and installed on the paired iPhone; strict signatures, development APNs and
+shared groups pass for app/extension. The phone app was not launched and no real
+account was accessed: physical locked-phone acceptance still needs Rami to open
+Mux once and receive a natural message. Gateway diagnostics were read-only; no
+server configuration changed. Test sign-out returned the pusher count to zero.
+Evidence: `tasks/evidence/push-reliability-20261112.json`.
+
+**Bridge profile pictures (2026-11-12, `fix/bridge-profile-pictures`):** fixed the missing
+member-avatar fallback for one-to-one rooms without `m.room.avatar`. Inbox, chat info and
+small/full-size downloads share one resolver; explicit room avatars still win and groups,
+own identity and service members are excluded. The live baseline reproduced empty names
+and nil downloads despite a member image. Fixed coverage includes a fresh client after 24
+outgoing messages, before opening Members, and a direct-to-group transition. Simulator
+inbox and light/dark chat header screenshots were inspected with a synthetic image; the
+test account signed out. With explicit approval, read-only Oracle inspection subsequently confirmed member-avatar
+state, available source files and successful thumbnail responses for both networks, while
+direct-room avatars were absent. No message contents were read or user session created. Notification
+sender-photo work is owned by the separate push conversation / PR #22. Native verify passed all 13 tests, light/dark checks were clean, and 15 largest-text screens
+had no overflow. All 38 TypeScript tests passed; the avatar fix is published in PR #23 (https://github.com/rami-maalouf/multiplexer/pull/23).
+
+
+**Public documentation audit (2026-11-10):** source-checked the public entry points,
+added docs/install.md, docs/README.md and CONTRIBUTING.md, and corrected stale Mac,
+push and server-bootstrap claims. Documented the fixed maintainer push gateway,
+plaintext bridge boundary, domain-specific operator scripts and the unpublished
+Exact integration dependency. Removed public image links to intentionally private
+captures, retaining timestamps and filenames. Updated website copy and bundled
+font notices. This was a documentation audit, not a new native build or server
+inspection; dated verification below keeps its original scope.
+
+**License (2026-11-10):** at Rami's request, the project's original code is now
+GPL-3.0-only. The root LICENSE contains the official GNU GPL v3 text; README.md
+declares the scope and copyright, and app package/Cargo metadata agrees. There
+was no root license before; Cargo metadata alone declared MIT. Third-party
+licenses and asset attribution remain in force. No runtime behavior changed.
+
 **Paired demo edit verified (2026-11-09):** final comparison is
 `research/argent-demo/mux-vs-beeper-production-unblurred-r1.mp4`; matching native-resolution
 Beeper-only cut is `research/argent-demo/beeper-demo-production-unblurred-r1.mp4`.
@@ -159,9 +283,10 @@ including Wafaa/Mama, link-preview layout and voice controls. No pixel-parity cl
 `expo-exact` checkout on branch `local/mux-integration` (was
 `exact2-multiplexer-integration`). App path rewrites landed in this repo; Mux's
 local Exact fixes (scroll return, keyboard toolbar under glass, navigation tint,
-recording levels, archive packaging, Mac toolbar click) are ported into that
-checkout and staged there. `update` still left `package.json` file deps on the
-old path (finding 46). Verification on the new checkout: 38 Bun tests, contract
+recording levels, archive packaging, Mac toolbar click) are committed there as
+`8536d208c`. The final app dependency paths use `expo-exact`; the initial
+`update` omission of package file dependencies remains recorded as finding 46.
+Verification on the new checkout: 38 Bun tests, contract
 `[]`, iOS verify 13/13, Mac authored tests 13/13, framework caps clean, Mac
 toolbar suite 25/25, and the targeted iOS Swift suites green (one XCTSkip for a
 pre-existing window-release assertion that also fails on the old checkout).
@@ -465,13 +590,14 @@ after the one-time stop. This deadline overrides the work queue below.
 
 | | |
 |---|---|
-| Current phase | Phase 0 done: M0 passed on 2026-10-28 (Synapse and WhatsApp on our server). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Current phase | Phase 0 and initial iOS work complete; iOS preview, native Mac development and agent CLI implemented. See docs/install.md for public availability and limitations. |
 | Beeper parity | Tasks B1 to B22 in `tasks/todo.md` ("Beeper parity"), from Rami's walkthrough (`research/beeper-walkthrough/report/index.html`, local only). Every question of the report is answered (decision log, 2026-11-02). Order: B1, then photos and files (B10, B11 with T2.12), then the rest of the inbox (B3 to B8), then push (Phase 3), then the chat details. Rules: D9 (Beeper's features, Messages' feel; dark mode first), D10 (GIFs from KLIPY), D11 (Send Later on our server). |
-| Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; P3.0 is complete and sandbox push is installed (2026-11-07); M3 is met (locked-phone WhatsApp sender/text confirmed). Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is deployed with the approved sandbox-only key and DNS record (2026-11-07); production is disabled. |
-| Blocked on Rami | M3 is met (locked-phone WhatsApp sender/text confirmed). P3.6 still needs his mute-copy and badge-count decisions; P3.7 needs Exact's remote activation/presentation hatch. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
+| Next task | Public native-build reproducibility still needs the validated Exact integration patches published or upstreamed. Mac signing/notarization and clean-install checks, TestFlight delivery proof, and open phone defects remain separately scoped work. |
+| Blocked on Rami | Public preview access, Mac release credentials and remaining mute/badge decisions need maintainer input. Oracle billing is still unconfirmed. No server or credential changes are part of this docs audit. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
-| Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
-| Last updated | 2026-11-08 |
+| Exact | expo/exact local/mux-integration at 8536d208c40f97be3f132ea266d5029e2e3c10ba atop 94b8671f70fe2e25b307a40e7fce66dc27c9f802. The validated integration commit was not available from public upstream at the audit; see CONTRIBUTING.md. |
+| License | GPL-3.0-only for original project code; third-party licenses retained. |
+| Last updated | 2026-11-12 |
 
 Update this table at the end of every work session.
 
@@ -666,16 +792,16 @@ Each milestone is a thing Rami can see work. Each one is small and can fail.
 
 | Part | Folder | Knows | Does not know |
 |---|---|---|---|
-| Server config | `server/` | The matrix-docker-ansible-deploy inventory: Synapse, PostgreSQL, Traefik, bridges, later Sygnal. | Anything about our client. |
+| Server config | `server/` | The matrix-docker-ansible-deploy inventory: Synapse, PostgreSQL, Traefik, bridges, Sygnal. | Anything about our client. |
 | MatrixCore | `matrix-core/` | Matrix, through matrix-rust-sdk: sign in, sync, rooms, messages, send, encryption. | UI, Exact, Expo. |
 | App | `apps/multiplexer/` | Screens (Contract), data (`app.ts`), one Swift native module that calls MatrixCore. | Matrix protocol details. It sees only MatrixCore's API. |
-| Notification extension | later | Uses MatrixCore to fetch and decrypt one event. | UI. |
+| Notification extension | `apps/multiplexer/extensions/notifications/` | Uses MatrixCore to fetch and decrypt one event. | UI. |
 
 ### Invariants
 
 These must always be true. A change that breaks one needs a decision log entry.
 
-1. The client talks only to our homeserver, with Matrix. It never talks to WhatsApp or another network. One exception (D10): GIF search calls KLIPY directly; KLIPY sees the search words and the phone's address, never a chat.
+1. Chat synchronization uses our homeserver through Matrix, without direct messaging-network API calls from the app. GIF search calls KLIPY directly with search terms and the client IP (D10). iPhone push registration selects the fixed maintainer Sygnal gateway; the event-id-only push path also uses APNs. See docs/install.md for the infrastructure boundary.
 2. Only MatrixCore calls matrix-rust-sdk. The app and the extension call MatrixCore. This keeps the UI framework choice reversible (Expo is the fallback).
 3. MatrixCore's public API uses plain types (strings, numbers, records). No SDK type leaks out.
 4. No secret goes into git: passwords, access tokens, the APNs key, `vars.yml`.
@@ -714,9 +840,11 @@ Use these to check that we work on the right thing.
 
 ## Facts we rely on
 
-Checked on 2026-10-27. Recheck a fact before a task depends on it.
+The infrastructure observations below began on 2026-10-27. Current source paths
+were reviewed on 2026-11-10; old disk sizes, utilization and service observations
+are historical, not a live host audit. Recheck before operating the server.
 
-**Server (`ssh oracle`):** Ubuntu 24.04.5, aarch64, 4 CPUs, 23 GiB memory, 96 GB disk with 30 GB used (62 GB on 2026-11-03), Docker installed but disabled (since T0.5 the playbook runs it, on at boot). Ports 80, 443 and 8448 are free. Details: `server/notes/inventory.md` (T0.1). No host firewall is active (`iptables-persistent` was removed on 2025-08-11, so `/etc/iptables/rules.v4` is not loaded); Oracle's security list is the only firewall. No public IPv6. Time sync: `systemd-timesyncd`.
+**Server (`ssh oracle`):** Ubuntu 24.04.5, aarch64, 4 CPUs, 23 GiB memory, 96 GB disk with 30 GB used (62 GB on 2026-11-03), Docker was initially disabled; since T0.5 the playbook runs it, enabled at boot. Ports 80, 443 and 8448 now serve the configured deployment; the inventory's free-port result was pre-install. Details: `server/notes/inventory.md` (T0.1). No host firewall is active (`iptables-persistent` was removed on 2025-08-11, so `/etc/iptables/rules.v4` is not loaded); Oracle's security list is the only firewall. No public IPv6. Time sync: `systemd-timesyncd`.
 
 **Mac:** arm64, Xcode, Docker, uv, Homebrew, gh. Ansible 14.5.0 (ansible-core 2.21.5) through `uv tool`, installed by `server/setup.sh`. `just` is not needed.
 
@@ -746,10 +874,10 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 **matrix-rust-components-swift** ([repo](https://github.com/element-hq/matrix-rust-components-swift)):
 - Swift 5.9, iOS 16 minimum, Apache-2.0, iOS and the iOS Simulator only.
-- Product `MatrixRustSDK` (a dynamic library). The binary target `MatrixSDKFFI` is an XCFramework downloaded from GitHub. Version 26.10.27.
+- Product `MatrixRustSDK` (Swift bindings over the binary SDK). The binary target `MatrixSDKFFI` is an XCFramework downloaded from GitHub. Version 26.10.27.
 - New releases are frequent, so pin the version.
 
-**Exact** (`/Users/rami/Documents/code/exact/exact2`):
+**Exact** (`/Users/rami/Documents/code/exact/expo-exact`, `local/mux-integration`):
 - New app: `bun scripts/exact.mjs new <path> --name <Name> --bundle-id <id>`. Set the name and the id before the first build.
 - Only `docs/start-here.md` is required reading.
 - A native module is `modules/apple/*.swift` or `*.xcframework`.
@@ -773,7 +901,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Something on the server already uses Docker or ports 80/443. | High | Inventory first. Rami decides what stays. | T0.1 |
 | A component has no arm64 image and cannot self-build. | High | Note each image. Change the component, or move to an amd64 VPS. | T0.5, T0.6 |
 | Exact cannot link matrix-rust-sdk. | High | A spike before any UI. Stop after 3 rounds. Fallback: Expo with the same MatrixCore. | T1.2 |
-| Oracle reclaims an idle instance. | Medium | The server rebuilds from `server/`. Back up PostgreSQL. Check usage at the M0 checkpoint. (2026-11-03: the 7-day use meets all three idle conditions; the backups are on the same disk, so an off-server copy waits for Rami. Since 2026-11-03 the Mac pulls the dumps, media and signing key every day: `server/README.md`, Backups.) | M0 checkpoint |
+| Oracle reclaims an idle instance. | Medium | The server rebuilds from `server/`. Back up PostgreSQL. Check usage at the M0 checkpoint. (2026-11-03: the 7-day use meets all three idle conditions; the backups are on the same disk, and the original off-server gap was closed on 2026-11-03. Since 2026-11-03 the Mac pulls the dumps, media and signing key every day: `server/README.md`, Backups.) | M0 checkpoint |
 | Unexpected Oracle charges for 4 CPUs and 23 GiB. | Medium | Rami checks billing. | Q5 |
 | A network blocks logins from cloud IP addresses (not verified). | Medium | Test each network before we depend on it. | Phase 4 |
 | The notification extension runs out of memory or fails to decrypt. | High for M3 | Test early in Phase 3. | Phase 3 |
@@ -785,7 +913,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 | # | Question | Blocks |
 |---|---|---|
-| Q1 | Which domain? User IDs become `@rami:<base domain>`. Does the base domain already host a website? (That decides how we serve `/.well-known/matrix/server`.) Answered 2026-10-27 (Rami): `ramimaalouf.com` (Vercel site; well-known files on the website's branch `matrix-well-known`), Synapse at `matrix.ramimaalouf.com`. | T0.5 |
+| Q1 | Which domain? User IDs become `@<user>:<base domain>`. Does the base domain already host a website? (That decides how we serve `/.well-known/matrix/server`.) Answered 2026-10-27 (Rami): `ramimaalouf.com` (Vercel site; well-known files on the website's branch `matrix-well-known`), Synapse at `matrix.ramimaalouf.com`. | T0.5 |
 | Q2 | ~~App name and bundle id~~ Answered 2026-10-27: Multiplexer, `com.ramimaalouf.multiplexer`. | T1.1 |
 | Q3 | Is WhatsApp the right first network? | T0.6 |
 | Q4 | ~~Which Apple Developer team signs device builds and owns the APNs key?~~ Answered 2026-10-27: `3V2UU7RRK9`. | Phase 2, Phase 3 |
@@ -796,6 +924,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 | Date | Entry |
 |---|---|
+| 2026-11-10 | Public documentation audited against main source. Current entry points distinguish preview availability, Mac development, bridge plaintext, fixed push infrastructure and unpublished Exact integration. No new native/server validation claimed. |
 | 2026-10-27 | Plan created. D1 to D7 recorded. Rami is the only user for now. |
 | 2026-10-27 | Project moved out of the `exact` folder to `/Users/rami/Documents/code/switchboard` and registered as its own T3 project. The Exact framework is only a dependency, used by path. |
 | 2026-10-27 | Pulled the latest Exact. Its `main` history was rewritten on the remote, so local `main` now matches `origin/main` (`65577096ed`). The old local `main` is kept in exact2 as `backup/main-before-2026-10-27-rewrite`. The facts above still hold. |
@@ -812,7 +941,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T0.1 done (read only): ports 80, 443 and 8448 are free; Docker is disabled; old n8n and Postiz images (13 GB) and volumes (294 MB) remain; T3 Code and Syncthing run and do not conflict. Rami decides what stays. |
 | 2026-10-27 | T2.2 passed: MatrixCore watches the room list and keeps one live timeline per opened chat; the module passes changes to `app.ts` as `context.changed` topics. A new message shows in 1 to 2 s, and a reader scrolled up keeps their place. |
 | 2026-10-27 | T2.3 passed, except the offline case (needs a device, T2.7): the composer sends through the room's send queue; a message shows at once, dimmed, then sent; a failed one shows "Not Delivered" with Try Again and Delete. |
-| 2026-10-27 | Rami: keep the old Docker data on the server; set up the server now. Phase 0 runs in a second conversation, in its own worktree on the branch `server/phase-0`, merged into `main` by the app conversation. The domain recommendation is `@rami:ramimaalouf.com`; Rami confirms it before the install. |
+| 2026-10-27 | Rami: keep the old Docker data on the server; set up the server now. Phase 0 runs in a second conversation, in its own worktree on the branch `server/phase-0`, merged into `main` by the app conversation. The proposed account ID is recorded in local `.local/accounts.md`; Rami confirms it before the install. |
 | 2026-10-27 | T2.5 passed: photo messages show at their ratio, download through the sdk into the app's cache, and open in a full-screen viewer. |
 | 2026-10-27 | T2.8 added and passed: scrolling up a chat loads 20 older messages at a time, to the room's first message, and keeps the reader's place. A test sign-in now signs out in a teardown, so a failed test leaves no device on the account. |
 | 2026-10-27 | Rami keeps the two leftover test devices on the practice account (`B7E9i45YI2`, `fzw1iUkJqS`). Do not remove them. |
@@ -822,17 +951,17 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-10-27 | T2.6, first part: encrypted chats show new messages as text, and a message without its key shows "Waiting for this message". The practice account has no recovery set up; the recovery key waits for a test user on our server, so the practice account Rami also uses in Element keeps no new encryption identity. |
 | 2026-10-27 | T2.9 added and passed: pictures (or initials) in the chat list. The list now uses the room list service's order instead of sorting by the last message's time, which was empty for a room whose newest event is no message. |
 | 2026-10-27 | T0.2 done. Rami confirmed the server name `ramimaalouf.com` (user IDs `@name:ramimaalouf.com`, Synapse at `matrix.ramimaalouf.com`; it can never change), and that the playbook may replace `docker.list` with `docker.sources`. Cloudflare has `A matrix -> 192.18.154.172`, DNS only. |
-| 2026-10-27 | T0.5 install done: Synapse 1.164.0, PostgreSQL 18.6 and Traefik run on the Oracle server, all arm64 images. `https://matrix.ramimaalouf.com` has a Let's Encrypt certificate and password sign-in. Users `@rami` (admin), `@test1`, `@test2` exist; passwords only in the Keychain. The self-check waits for port 8448 and the website: with Rami's yes, the website commit `80e243a` went to its `main`, but Vercel's production deploy failed (cause not known yet). |
+| 2026-10-27 | T0.5 install done: Synapse 1.164.0, PostgreSQL 18.6 and Traefik run on the Oracle server, all arm64 images. `https://matrix.ramimaalouf.com` has a Let's Encrypt certificate and password sign-in. The real account (admin) and users `@test1`, `@test2` exist; passwords only in the Keychain. The self-check waits for port 8448 and the website: with Rami's yes, the website commit `80e243a` went to its `main`, but Vercel's production deploy failed (cause not known yet). |
 | 2026-10-27 | The website's Matrix files are live (`ramimaalouf.com/.well-known/matrix/{server,client}`, through the 301 to `www`). Its deploys had failed since Vercel dropped Node 20; with Rami's go-ahead to merge, the website moved to Node 24 with a small post-build script for the Astro 4 adapter's function runtime, checked on a preview deploy first. Upgrading the website to Astro 5 or newer would remove the script. |
 | 2026-10-27 | T0.4 done: Rami added TCP 8448, UDP 443 and UDP 8448 to the Oracle security list (VCN `vcn-20250515-0038`, Default Security List). The playbook's self-check is all green, and matrix.org's federation tester finds `ramimaalouf.com` through the website's 301 (`FederationOK: True`). |
-| 2026-10-27 | First messages: `@rami:ramimaalouf.com` (Element Web, through `www.ramimaalouf.com`) and Rami's own `@rami-m:matrix.org` exchanged encrypted messages in a new room, both ways. Federation works. T0.5 now waits only for Element X on the iPhone. |
-| 2026-10-27 | T0.5 done: Element X on Rami's iPhone signed in to `@rami:ramimaalouf.com`, was verified from Element Web, and sent an encrypted message. One hour after the install the server used 1.8 GiB of 23 GiB, load 0.08. |
+| 2026-10-27 | First messages: the real account (Element Web, through `www.ramimaalouf.com`) and his real federation account exchanged encrypted messages in a new room, both ways. Federation works. T0.5 now waits only for Element X on the iPhone. |
+| 2026-10-27 | T0.5 done: Element X on Rami's iPhone signed in to the real account, was verified from Element Web, and sent an encrypted message. One hour after the install the server used 1.8 GiB of 23 GiB, load 0.08. |
 | 2026-10-27 | T0.6, first part: the WhatsApp bridge (mautrix-whatsapp `v0.2610.0`, arm64 image) and Appservice Double Puppet run; Rami linked WhatsApp, and his chats and their history arrive in Element X. Bridged rooms are not end-to-end encrypted (the playbook's default). During the history sync the server's load rose to 2.35 and memory to 2.4 GiB. |
-| 2026-10-27 | T0.6 done: WhatsApp messages flow both ways through our server, with double puppeting (Rami, in Element X). 265 of 267 WhatsApp chats became rooms with their history. `@rami:ramimaalouf.com` now holds Rami's real WhatsApp chats: a message sent there reaches a real person. |
-| 2026-10-27 | The server conversation's review ("is the app ready for prime time?"): not yet. Turned into T2.10 (the real account, read only), T2.11 (WhatsApp message kinds), T2.12 (send photos) and Phase 3's parts. Rami: a read-only drive on `@rami:ramimaalouf.com` is OK; Q4 is team `3V2UU7RRK9`. Safety rule: tests send only as `@test1` or `@test2`; nothing is ever sent, reacted to, deleted or marked read on `@rami` from a test. |
-| 2026-10-27 | T2.10 passed, read only on `@rami` (signed out after): 254 chats (269 rooms, 15 spaces hidden), a usable list 0.7 s after sign-in, 59 MB footprint. Fixed: spaces showed as chats; senders showed as raw ids until the chat loads its members. The MatrixCore tests now run as `@test1` on our server. M1's last item is done. |
+| 2026-10-27 | T0.6 done: WhatsApp messages flow both ways through our server, with double puppeting (Rami, in Element X). 265 of 267 WhatsApp chats became rooms with their history. The real account now holds Rami's real WhatsApp chats: a message sent there reaches a real person. |
+| 2026-10-27 | The server conversation's review ("is the app ready for prime time?"): not yet. Turned into T2.10 (the real account, read only), T2.11 (WhatsApp message kinds), T2.12 (send photos) and Phase 3's parts. Rami: a read-only drive on the real account is OK; Q4 is team `3V2UU7RRK9`. Safety rule: tests send only as `@test1` or `@test2`; nothing is ever sent, reacted to, deleted or marked read on the real account from a test. |
+| 2026-10-27 | T2.10 passed, read only on the real account (signed out after): 254 chats (269 rooms, 15 spaces hidden), a usable list 0.7 s after sign-in, 59 MB footprint. Fixed: spaces showed as chats; senders showed as raw ids until the chat loads its members. The MatrixCore tests now run as `@test1` on our server. M1's last item is done. |
 | 2026-10-27 | T2.7 passed on Rami's iPhone 16 Pro (team `3V2UU7RRK9`, the wildcard development profile): it installs, signs in, relaunches signed in, shows chats and sends. Exact's agent drives the phone too (`agent ios --device --phone <udid>`). The offline check waits for Rami. |
-| 2026-10-27 | T2.4 passed with `@test1` and `@test2`: unread counts in the chat list; opening a chat sends a read receipt. In a drive, receipts go out only for `@test` users, so a read-only drive on `@rami` cannot mark a chat read. `scripts/send-test-message.sh` now sends as `@test2` by default and refuses `@rami`. |
+| 2026-10-27 | T2.4 passed with `@test1` and `@test2`: unread counts in the chat list; opening a chat sends a read receipt. In a drive, receipts go out only for `@test` users, so a read-only drive on the real account cannot mark a chat read. `scripts/send-test-message.sh` now sends as `@test2` by default and refuses the real account. |
 | 2026-10-28 | M0 passed, without the 48-hour wait (Rami: he uses it daily and sees a disconnect himself). Added a small daily database backup on the server (the playbook's `postgres-backup`: 7 daily and 2 weekly dumps, no monthly, a dump at each container start; first dump 42 MB, intact). It does not cover media or the loss of the server; an off-server copy waits for Rami. |
 | 2026-10-28 | Rami asked for Instagram ideas in a separate chat (branch `connectors/instagram`, docs only). It tests the account and cloud-IP risks before any build; Phase 4 stays after M2 and M3. |
 | 2026-10-31 | Rami: the app must look and work like Beeper's iOS app ("very native and intuitive"), most important first. His walkthrough video is analysed in `research/beeper-walkthrough/report/index.html` (local only; `research/` is gitignored because the video shows real chats): 18 topics with his exact words, clips, stills, what to build, 23 open questions and a proposed order. His top wants, in his words: filter by network ("what I care about the most"), the unread filter, pinned people, photos and GIFs ("the two most important"), then Send Later. Read-only checks: Exact supports 14 of the 21 UI patterns fully and 7 partly (a Swift view covers each gap); the SDK has an API for 19 of 24 features (gaps: writing custom tags for Archive and labels, forward, scheduled sending, search inside one chat, jump to a date). |
@@ -845,7 +974,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-02 | Rami answered every open question of the Beeper report. Preview of a held chat: does not mark it read. Archive: a new message brings a chat back, unless it is muted. Labels: a named group of chats, later ("not a requirement"). Search: chats, then messages, then links. The + panel: photos from the library and files first; a built-in camera later; no polls for now. Voice notes: tap to start, tap to finish, listen, send; no pause. One playback speed for voice notes only, not videos. Transcribe: later. Bookmarks: in each chat's info page and in one list. Message expiry: kept, last. Remind Me and Merge Chats: later. Delete a chat: from our app only, WhatsApp keeps it. Push notifications: after the inbox tasks (B1 to B8). First task: B1, then photos and files. GIFs: KLIPY (D10). Send Later: hold Send, as in Slack, kept on our server (D11); this also answers the unclear quote at 4:35. `tasks/todo.md` updated: the order, each task's answers, and a "Later" list. |
 | 2026-11-02 | B1 passed and merged (agent in worktree `multiplexer-network`): each chat's network comes from the bridge bot named in `io.element.functional_members` (the SDK returns no `m.bridge` state), and its logo shows on the chat's picture. Rami's real account, read only: 292 chats, 259 WhatsApp, 30 Instagram, 3 Matrix. Rami allowed read-only drives on any account ("u can use any acct"); writes stay on the test users. Parallel work: one worktree and one simulator per agent (`multiplexer-<name>` beside the main checkout, so Exact's relative paths hold; simulators "MX <name>", iOS 26.5). A `target/` copied from another checkout fails the build (Exact finding 30): build each worktree fresh. `scripts/test-matrix-core.sh` needs `SIMULATOR="<name>,OS=26.5"` when a name could match several iOS versions. Exact feedback 30 to 32 recorded. |
 | 2026-11-02 | Phase 3 (push) detailed from a read-only research into tasks P3.0 to P3.7. Exact has no remote push and cannot build or sign a notification extension, so a script of ours adds the extension after Exact's device build (P3.1, the biggest unknown); the SDK has the notification client and `setPusher`; the server needs Sygnal under `sygnal.ramimaalouf.com`. TestFlight stays blocked by Exact's archive check; development builds are not. Rami's part (P3.0) can start now. |
-| 2026-11-02 | Merged into `main`: the inbox's floating bar, filter menu (All, Unread, Unanswered, DMs, Groups) and pinned chats (B3, B5, B6), and sending photos and files from a "+" panel (T2.12, B10's "+", B11). Each branch was merged with `main` in its own worktree first and tested there (`verify ios` clean; the network, inbox, photo, file and reply tests pass), then `main` moved forward to it. Rami's real account, read only: the filters and the bar work on 292 chats; no chat is pinned there. Open: the iOS edge effect under the bar (Exact finding 35); a pin on `@rami` may pin in WhatsApp too (ask Rami first). Exact feedback 35 to 41 recorded; the chat-fixes conversation sent the pending diaries (receipt `f63c011a`) with Rami's yes. |
+| 2026-11-02 | Merged into `main`: the inbox's floating bar, filter menu (All, Unread, Unanswered, DMs, Groups) and pinned chats (B3, B5, B6), and sending photos and files from a "+" panel (T2.12, B10's "+", B11). Each branch was merged with `main` in its own worktree first and tested there (`verify ios` clean; the network, inbox, photo, file and reply tests pass), then `main` moved forward to it. Rami's real account, read only: the filters and the bar work on 292 chats; no chat is pinned there. Open: the iOS edge effect under the bar (Exact finding 35); a pin on the real account may pin in WhatsApp too (ask Rami first). Exact feedback 35 to 41 recorded; the chat-fixes conversation sent the pending diaries (receipt `f63c011a`) with Rami's yes. |
 | 2026-11-02 | Fixed the chat bugs found on the way in T2.13 (each reproduced first as `@test1`): a reply's quote stayed empty (MatrixCore asked the sdk with the quoted message's id instead of the reply's); a reply started low on the screen ended under the keyboard; scrolled messages showed through the reply bar and the composer (they now share one bar in the page's colour); drafts were lost when the app quit (now kept per chat in the account's store, with the message a reply answers). This session builds and drives on its own Simulator ("MX fixes", `EXACT_SIM`), because parallel sessions shared the default one (Exact finding 43). Exact findings 43 to 45. |
 | 2026-11-02 | B4 merged: the filter sheet from the bottom bar's up-down button, with Inbox, Matrix and one row per network, each with its unread chats' count; the choice combines with the filter menu and persists. Merged with `main` (drafts, reply arrow) and tested in its worktree first. Exact feedback 48 to 50 recorded. |
 | 2026-11-03 | B7 and B8 merged: a chat's long-press menu (Archive, Move to Low Priority, Pin, Mark as Unread, Mute, Delete), muted rows with a bell and grey counts, and Archive and Low Priority lists in the bar and the sheet. Archive and Delete live in one account data event, because the SDK cannot read a custom tag's current value; Delete never leaves a bridged room (with mautrix's `bridge_matrix_leave` on, it would leave the WhatsApp group). Nothing of this reaches WhatsApp except Mark as Read. Exact feedback 51 and 52. |
@@ -862,7 +991,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-03 | B18 merged: search all chats from the bottom bar (field and close in the app's glass bar; recent chats and searches; Images, Videos, Links, Files; results in the order chats, messages, links; a hit opens its chat at the message). A local, encrypted search index (key in the Keychain). Exact feedback 77 to 82. |
 | 2026-11-03 | B19 built: search in one chat from its info page's Search, which turns the page into it in place (as Beeper's). Words come from the search index, kept to the chat; Images, Videos, Links, Files and Audio come from timelines of the chat filtered by message type, so a photo, file or voice message is found by its type, not its file name. Exact feedback in its diary entry. |
 | 2026-11-03 | B14 and B15's media criteria built: swipe to reply on photos, videos, stickers and files, and Copy for a photo (a PNG, through Exact's `@exact/clipboard`). The failing frequent-emoji test is fixed in its own conversation (branch `fix/frequent-emoji-test`). Exact feedback 87 to 91; the 2026-11-03 send (17 entries) is recorded in the feedback README. |
-| 2026-11-03 | B13 Send Later built (Rami's OK for delayed events, 1-year maximum, on the server through the playbook on `server/phase-0`). Hold Send for set times or a picked one; the message waits on Synapse (MSC4140) and goes with the phone off; a chat bar and a list (filter sheet row) with Send Now, Change Time, Cancel. Not in end-to-end encrypted chats (a delayed event cannot be encrypted). The WhatsApp check on `@rami` passed (13:14, with no device signed in). Exact feedback 93 to 95. |
+| 2026-11-03 | B13 Send Later built (Rami's OK for delayed events, 1-year maximum, on the server through the playbook on `server/phase-0`). Hold Send for set times or a picked one; the message waits on Synapse (MSC4140) and goes with the phone off; a chat bar and a list (filter sheet row) with Send Now, Change Time, Cancel. Not in end-to-end encrypted chats (a delayed event cannot be encrypted). The WhatsApp check on the real account passed (13:14, with no device signed in). Exact feedback 93 to 95. |
 | 2026-11-03 | B12 built: GIFs from KLIPY in the + panel ("Search KLIPY"): trending, then a search after a pause; a tap sends KLIPY's largest GIF under 4 MB as an animated image; animated GIFs play in the chat. The app key comes from the Keychain at build (`scripts/setup-klipy-key.sh`). Still to check: a GIF sent from the app plays in WhatsApp (needs Rami's account and OK). Exact feedback 92. |
 | 2026-11-03 | Fixed the failing MatrixCore test `testFrequentEmojisCountReactionsAndReset`: the frequent-emoji counts were right; the test took reactions back while the sdk was still sending them, and the server's copy showed again for about a second. The test now waits for each reaction to be on the server; MatrixCore counts a reaction from the sdk's answer. Details in `tasks/todo.md` (B19, "Known failing test"). |
 | 2026-11-03 | B15's last criterion built: the jump button counts the unread messages below the view (it falls as you scroll), and the "New" line shows when the first unread message is further back than the first page (the chat pages back to the read receipt). |
@@ -873,7 +1002,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-03 | T2.8 done: a row above the oldest loaded message shows a small spinner while older messages load and "Start of the chat" at the room's first message (one more row of the transcript's list, Exact finding 20). Fixed with it: a chat that opens at its "New" line never loaded older messages (the list asked once, while the line was placed). B9 done: a real edge swipe over the messages goes back with no reply started. |
 | 2026-11-03 | Transcribe built ("Later"): a voice message's long-press Transcribe, on the iPhone with Apple's recognizer; the text shows under it and is kept. Rami checks one real voice note on his iPhone. |
 | 2026-11-03 | Rami on M0's, B2's and P3.3's questions: "do whatever you think is best". Applied: a daily pull of the dumps, media and signing key to the Mac (`server/pull-backup.sh`, launchd; no cost); the Instagram bridge back to warn; B2 with all three suffixes removed (the app shows each network as a logo, B1); the two unused Instagram images and our build's cache deleted by hand, because the playbook's prune tools would also delete other projects' stopped containers on the machine. Sygnal installs when P3.0 is done. Details: `server/notes/install.md`. |
-| 2026-11-03 | B2 done: a read-only drive on `@rami` saw 0 WhatsApp suffixes in 189 chats; Instagram names change on each contact's next update. The drive found two app bugs (todo.md, B2): a group whose newest events are all member events opens empty on a new device, and a preview shows a raw user ID as sender. |
+| 2026-11-03 | B2 done: a read-only drive on the real account saw 0 WhatsApp suffixes in 189 chats; Instagram names change on each contact's next update. The drive found two app bugs (todo.md, B2): a group whose newest events are all member events opens empty on a new device, and a preview shows a raw user ID as sender. |
 | 2026-11-03 | Remind Me built (B7, B20, "Later"): a reminder to answer a chat, from the long-press menu or the info page's More, with Send Later's times (`LaterSheet`). Kept in the account's data (`com.ramimaalouf.multiplexer.reminders`), so other devices see it; this iPhone notifies "Reply to <chat>" at the time (`@exact/notifications`), and a tap opens the chat. The filter sheet's Reminders row lists the chats until you answer or clear. |
 | 2026-11-03 | Bookmarks built (B14's menu row, one list from the filter sheet, the info page's row, B19's kind). Storage decision: one global account data event, `com.ramimaalouf.multiplexer.bookmarks`, as the names only you see. Matrix has no bookmarks, and the SDK cannot write custom room account data. Account data reaches only the account's own devices: Synapse 1.164.0 sends a bridge room events, receipts and typing, to-device messages, key counts and device lists, never account data (checked on our server, read only), so no bookmark reaches WhatsApp. Each bookmark keeps the chat, the event, the sender, the text (500 characters at most) and the kind, so the list shows without opening a chat; an edit or delete later does not change it. Fixed on the way: a crash at launch when several parts started the sync at once. |
 | 2026-11-03 | Merge Chats designed, not built (todo.md "Later", plan Q6): Beeper's feature read from its help page; a merge kept in account data is sound with Matrix; a switchable chat is recommended over Beeper's combined timeline, which would make every message action follow its own network. Waits on Rami. |
@@ -889,7 +1018,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-04 | Integrated work/polish commits 7e05b02 and c56f5a2 into main. App changes match the UI lane’s verified files; retained the health-check history and coordinator assignments. Sender preview wrapping stays pending in Later; no local Exact experiment is included. |
 | 2026-11-04 | Push readiness: duplicate Labels preserved on work/labels-finish at c2c72da and handed to its sole owner. Shared-store preparation committed as 0939ebc: optional session location, recoverable directory move before SDK restore, in-place Keychain updates, agent isolation and per-session deletion. Filesystem tests 11 passed; push/search/sign-out regression selection 15 passed; pre-integration verify ios clean (6 tests). Entitled migration and physical push remain blocked on P3.0. Main cebda48 incorporated in 0fbdf15, preserving Settings notification wrapping; integrated verify ios passed 6 tests, light/dark checks and 8 largest-text screens (75.2 s). Only existing Exact finding 1 received evidence; no new allocation or feedback send. |
 | 2026-11-04 | Integrated push readiness head 86d3a80 into main with no code conflicts; refreshed the app’s MatrixCore copies. Missing legacy data without an available App Group remains conservatively unavailable: session metadata is retained and replacement login is refused until recovery, rather than risking a store moved before metadata persisted. Entitled migration and locked-phone delivery remain unverified. |
-| 2026-11-03 | L2 built: the filter sheet lists the account's spaces after the networks (14 WhatsApp communities on `@rami`, read only), without each bridge's own space; choosing one narrows the list. L3: Requests (Matrix invites, with Accept and Decline) built; a network's message request is not an invite and waits for one to look at; New Space asks Rami (a Matrix space, the same as Labels, or none). Fixed on the way: two sources asked at once at launch each started the sync and crashed the sdk's room list. |
+| 2026-11-03 | L2 built: the filter sheet lists the account's spaces after the networks (14 WhatsApp communities on the real account, read only), without each bridge's own space; choosing one narrows the list. L3: Requests (Matrix invites, with Accept and Decline) built; a network's message request is not an invite and waits for one to look at; New Space asks Rami (a Matrix space, the same as Labels, or none). Fixed on the way: two sources asked at once at launch each started the sync and crashed the sdk's room list. |
 | 2026-11-04 | L3 New Space: coordinator approved a private Matrix space. Built required name and optional picture, empty spaces in filters, and chat membership from the menu or info page. Core community/Requests tests passed 8/8; iOS verification passed 7 tests with no findings. A review found and fixed a late completion navigating away after dismissal; the callback belongs to its initiating route entry. Space-only sync changes refresh the list too. |
 | 2026-11-04 | Later ready for serialized integration: tested code head `1a38b7c` incorporates main `03fec0f` and UI main `cebda48`. New Space `149843c`; room-member preview resolution and fallback wrapping `dc70b9a`; merged-space compatibility `840eea5`. Ten existing focused core tests and both corrected compatibility tests passed; the latter proves new children survive a later failure and retry completes membership. Final `verify ios`: 7 tests, no findings, 9 largest-text screens. Signed-in Select Chats fallback wraps in both appearances at largest text; account signed out and own simulator shut down. Prior real-account 29-to-zero raw-sender evidence retained; no new real-account drive. Main `316e116` arrived during verification and is deliberately left for coordinator integration, preserving push/shared-store migration. No main merge by this lane. |
 | 2026-11-04 | Integrated the complete Later branch e93aa0e with main 316e116, preserving shared-store migration. Combined verify ios: 7 passed, light/dark clean, 9 largest-text screens without overflow (186.9 s). Combined MatrixCore selection: 25 passed, 0 failed/skipped (224.2 s), covering communities, Requests, preview senders, push and session stores under the shared lock. Labels remains outside this integration pending review fixes. |
@@ -1107,3 +1236,5 @@ passed. The proposed managed-owner/foreign-transfer plan remains unaccepted; a c
 packet versus bounded typed record needs an explicit design decision before implementation.
 
 Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).
+
+Avatar diary sent with explicit approval, receipt `594fc919-b6ac-4b88-8a0d-52c99bc57f93`; no other diaries, command logs or attachments were sent.

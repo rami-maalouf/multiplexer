@@ -1,6 +1,6 @@
 # Exact feedback
 
-This folder records each place where building Multiplexer with Exact was hard. Its
+This folder records each place where building Mux (formerly Multiplexer) with Exact was hard. Its
 purpose: Rami and the Exact team can improve the framework. Read this page first.
 
 | What | Where |
@@ -15,13 +15,18 @@ Exact team as they are.
 
 ## Findings
 
+This is a dated development archive, not an upstream issue-status dashboard.
+"Open" and "fixed" reflect the inspection named in each entry; the framework has
+since moved to expo/exact. Preserve the original observations and follow the
+current build guide in [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
 Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26; 73 to 76 on 2026-11-03, with new evidence for 2 and 60; 83 to 85 on 2026-11-03 (77 to 82 are B18 search's, with new evidence for 13 and 26), with new evidence for 61 and the zoom filming finding; 86 on 2026-11-03, with new evidence for the long-press scroll finding. 87 to 89 on 2026-11-03 at `ed43ad09a0`, with new evidence for 13 and 37. 97 to 101 on 2026-11-03 at `574720f370`, while fixing findings in pull requests, with new evidence for 42. 106 and 107 on 2026-11-03 at `ed43ad09a0`, from the transcript's loading line, with new evidence for 29. 108 to 110 on 2026-11-03 at `ed43ad09a0`, from Remind Me. 119 on 2026-11-03 at `ed43ad09a0`, from Merge Chats, with new evidence for 55. 120 on 2026-11-04 at `ed43ad09a0`, from the UI faults, with new evidence for 55 (its cause, and a local fix), 76 and 106. 90 and 91 on 2026-11-03, with new evidence for 26. 93 to 95 on 2026-11-03 (Send Later; 92 is the GIF task's), with new evidence for 26 and 61. 92 on 2026-11-03, with new evidence for 61. On 2026-11-03 (a jump count task), new evidence for 13 and 19. 102 to 105 on 2026-11-03 at `ed43ad09a0` (a camera), with new evidence for 37 and 46. 117 and 118 on 2026-11-03 at `ed43ad09a0` (push on the Simulator), with new evidence for 46.
 
 Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Space, findings 1, 2 and 52; preview checks, finding 40; verification exit status, finding 121.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
-| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04. | 31 to 42 s for each edit; latest branding rebuild: arms 95.8 s | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
+| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04. | 31 to 42 s for each edit; latest branding rebuild: arms 95.8 s; self-hosted configuration rebuild: modules 79.7 s | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
 | 2 | An authored test cannot read a secret, so `verify` never reaches the screens behind a sign-in. | A text-size bug that `verify` missed | P2 | [authored-tests-cannot-read-a-secret](issues/20261027-authored-tests-cannot-read-a-secret.md) |
 | 3 | A native module can use only real files in `modules/apple`: no links, no local Swift package. | About 20 min, then a copy step after each edit | P3 | [module-swift-only-from-modules-apple](issues/20261027-module-swift-only-from-modules-apple.md) |
 | 4 | A native module cannot keep a secret in Exact's store, so its Keychain items outlive a fresh drive. | A test device left signed in on the server | P3 | [native-module-has-no-secret-store](issues/20261027-native-module-has-no-secret-store.md) |
@@ -50,7 +55,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 27 | A long-press menu has no row of reactions, so a chat app draws its message menu by hand. | About 40 lines | P3 | [a-long-press-menu-has-no](issues/20261031-a-long-press-menu-has-no.md) |
 | 28 | Swipe to reply has no recipe: the `transition` gives the spring back (agent-pitfalls says it gives the follow), and `swipeIndicator` and the host's threshold haptic are undocumented. Fixed in PR #1323 (open). | A wrong conclusion in one session, about 40 min in the next | P3 | [swipe-to-reply-has-no-recipe](issues/20261102-swipe-to-reply-has-no-recipe.md) |
 | 29 | Corrected: `--timing platform` gives UIKit's real timing (the iOS driving recipe), but `screenshot over` refuses under it, so filming a UIKit transition still needs a Simulator recording (known in exact2's `QUEUE.md`). Was: a drive cannot film a navigation's zoom. | About 10 min | P3 | [a-drive-cannot-film-a-navigation](issues/20261102-a-drive-cannot-film-a-navigation.md) |
-| 30 | A `target/` folder built at another path (copied from another checkout) fails the build with `no matching rustc unit dep-info`, and the message does not say to delete it. Fixed in PR #1355 (open). | About 10 min, then a full build | P3 | [a-target-folder-built-at-another](issues/20261102-a-target-folder-built-at-another.md) |
+| 30 | A `target/` folder built at another path (copied from another checkout) fails the build with `no matching rustc unit dep-info`, and the message does not say to delete it. Fixed in PR #1355 (open); 2026-11-12 confirms the improved diagnostic, while cloned targets still require rebuilding. | About 10 min, then a full build | P3 | [a-target-folder-built-at-another](issues/20261102-a-target-folder-built-at-another.md) |
 | 31 | A plain list's separator starts at the initials inside a row's round picture, so the lines jump from row to row (known in exact2's `QUEUE.md`; this adds evidence). | About 15 min | P3 | [a-list-row-s-separator-starts](issues/20261102-a-list-row-s-separator-starts.md) |
 | 32 | A labelled image inside a `link` row is left out of the row's VoiceOver label, unlike the web. Fixed in PR #1407 (open). | About 10 min | P3 | [a-labelled-image-inside-a-link](issues/20261102-a-labelled-image-inside-a-link.md) |
 | 33 | `verify` says "tests: did not compile" when it could not pick a simulator. Fixed in PR #1325 (open). | About 3 min | P3 | [verify-says-the-tests-did-not](issues/20261102-verify-says-the-tests-did-not.md) |
@@ -138,7 +143,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 115 | A members name collision does not name the file declaring the state. | About 3 min | P3 | [a-members-name-collision-does-not](issues/20261103-a-members-name-collision-does-not.md) |
 | 116 | The local run log retains a password argument that terminal output masks. Seen again on 2026-11-07. | Found in under a minute | P1 | [the-local-run-log-retains-a](issues/20261103-the-local-run-log-retains-a.md) |
 | 117 | An app cannot receive remote push: no token callback or source, no `aps-environment` for an app, and the archive check refuses `registerForRemoteNotifications` (also blocks an install-link archive, 2026-11-07; app modules had no development flag to keep it out; local fix `8e547ca606`, 2026-11-07). | About 30 min, a run-time workaround, and no TestFlight | P2 | [an-app-cannot-receive-remote-push](issues/20261103-an-app-cannot-receive-remote-push.md) |
-| 118 | An app cannot add its own app extension (a notification service extension) or declare an App Group, a Keychain group or `aps-environment`; on the Simulator the entitlements section has no room to grow. | About 90 min, and a script after every build | P2 | [an-app-cannot-add-its-own](issues/20261103-an-app-cannot-add-its-own.md) |
+| 118 | An app cannot add its own app extension (a notification service extension) or declare an App Group, a Keychain group or `aps-environment`; on the Simulator the entitlements section has no room to grow. Reconfirmed 2026-11-12: an ordinary rebuild replaces the separately packaged push-capable app; a build/package/install wrapper is needed; preview share also skips extension packaging. | About 90 min, and a script after every build | P2 | [an-app-cannot-add-its-own](issues/20261103-an-app-cannot-add-its-own.md) |
 | 119 | A `derive` whose expression goes on to a second line is refused ("expected a section, found an indented block") with no word of the one-line rule. | About 2 min | P3 | [a-derive-s-expression-cannot-go](issues/20261104-a-derive-s-expression-cannot-go.md) |
 | 120 | Content placed inside a `glassGroup` row took the glass away from its round glass buttons; no doc says what a glass group does with a child that is not glass. | About 5 min | P3 | [content-placed-inside-a-glass-group](issues/20261104-content-placed-inside-a-glass-group.md) |
 
@@ -191,6 +196,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 163 | `go()` pushes a second entry of the same route instead of collapsing it; a stacked second `room` renders the first room's resources. | About 15 min, two drives, hand-collapsed nav | P3 | [go-pushes-a-second-entry](issues/20261109-go-pushes-a-second-entry.md) |
 | 164 | An `if` condition cannot continue on the next line (a leading `and`/`or` gives syntax-expected-name + bad-dedent). | Two failed builds | P3 | [an-if-condition-cannot-continue](issues/20261109-an-if-condition-cannot-continue.md) |
 | 165 | `clock until state` takes only `==`; `!=` is refused. | Two refused ops | P3 | [clock-until-state-takes-only](issues/20261109-clock-until-state-takes-only.md) |
+| 166 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
 
 ## What worked well
 
@@ -269,6 +275,10 @@ To take a send back: `bun exact.mjs feedback delete <receipt>`.
 To send a new finding: write it as an issue file here and in the task's diary entry, add
 its row above, then send. Each send needs Rami's yes.
 
+Login-help feedback sent on 2026-11-12 with Rami's explicit approval: receipt
+`8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`; one generic diary and 13 task command-log lines.
+Other unsent diaries and repository documents were excluded.
+
 ## Pull requests to exact2
 
 Rami prefers a pull request to sending feedback (2026-11-02): when a finding is a problem
@@ -316,3 +326,11 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1407](https://github.com/ccheever/exact2/pull/1407): a link's spoken name counts a labelled image inside it, as on the web | 32 | Open |
 | 2026-11-03 | [#1410](https://github.com/ccheever/exact2/pull/1410): a large title opens when a route with no bar turns into one with a large title | 76 | Open |
 | 2026-11-03 | [#1411](https://github.com/ccheever/exact2/pull/1411): the reference says how a virtualized list shows a row that is not an item | 20 | Open |
+
+Migration evidence (2026-11-09): at upstream `94b8671f70fe2e25b307a40e7fce66dc27c9f802`, the updater still leaves JavaScript package file paths on the former checkout. See [checkout-depth finding](issues/20261102-an-app-checkout-at-another-depth.md#upstream-checkout-migration-2026-11-09). Feedback remains local.
+
+2026-11-12: with explicit approval, sent only the push-reliability diary (one diary,
+zero logged commands, no attachments). Receipt:
+`236a21c9-38ae-4cc3-b8e0-2bb6b11fd3e5`. Other unsent diaries remain local.
+
+Avatar task, 2026-11-12: with Rami's explicit approval, sent only `2026-11-12-bridge-avatars.md`, receipt `594fc919-b6ac-4b88-8a0d-52c99bc57f93`. Zero command logs or attachments; other diaries stayed local.

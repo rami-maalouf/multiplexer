@@ -1,5 +1,10 @@
 # TestFlight push packaging
 
+Historical implementation/upload receipt. Statements below describe this work
+window, not current public availability or upstream PR state. See
+[installation status](../install.md) and the latest entries in
+[the plan](../../tasks/plan.md) for subsequent packaging and gateway work.
+
 Source-only implementation, starting at `251a157bef2e8afc30478b71748ecfc999513f7a`.
 No native build, export, upload, simulator or external configuration was performed.
 ShellCheck could not run: its mise shim has no configured version; Bash syntax

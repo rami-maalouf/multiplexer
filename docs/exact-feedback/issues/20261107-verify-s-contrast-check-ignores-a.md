@@ -23,4 +23,3 @@ the text's own box or an ancestor's, as it does for a `background-color`.
 ## Evidence
 
 Seen on 2026-11-06 at exact2 `31063d7dbb`, `verify` on a web landing page.
-

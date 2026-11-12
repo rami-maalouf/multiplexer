@@ -1,8 +1,11 @@
 # Mux: instructions for agents
 
-Mux (formerly Multiplexer) is Rami's own replacement for Beeper: one app (iPhone first, Mac later)
-that shows all of Rami's chats (WhatsApp, Signal, Telegram, Instagram, ...). Messages go
-through a Matrix server that Rami controls. Rami is the only user for now.
+Mux (formerly Multiplexer) is Rami's own replacement for Beeper: one app for iPhone
+and an experimental Mac build that shows his chats across messaging networks.
+Messages go through a Matrix server that Rami controls. The live deployment is
+Rami's; public contributors use their own servers and test accounts.
+[CONTRIBUTING.md](CONTRIBUTING.md) is the public build guide; [docs/install.md](docs/install.md)
+tracks platform and preview limitations.
 
 The approved name, paper-plane logo, and palette are in `docs/brand.md`. Use Mux in
 visible copy. Keep existing bundle IDs, Keychain services, App Group, push topics,
@@ -16,23 +19,24 @@ open questions, decision log). The tasks with acceptance criteria are in
 
 ```
 WhatsApp, Signal, ...  <->  mautrix bridges  ->  Synapse (Matrix server)  <->  iOS app
-                            (on Rami's Oracle server, not set up yet)          Exact UI -> native module -> MatrixCore -> matrix-rust-sdk
+                            (running on Rami's Oracle server)          Exact UI -> native module -> MatrixCore -> matrix-rust-sdk
 ```
 
 | Folder | What it is |
 |---|---|
-| `apps/multiplexer/` | The Exact app (iOS; Mac later). `app.contract` is the view, `app.ts` the data, `modules/apple/Matrix.swift` the native module. Its own `AGENTS.md` is Exact's generated guide. |
+| `apps/multiplexer/` | The Exact app (iOS and macOS). `app.contract` is the view, `app.ts` the data, `modules/apple/Matrix.swift` the native module. Its own `AGENTS.md` is Exact's generated guide. |
 | `matrix-core/` | The only code that calls matrix-rust-sdk. A Swift package with its own tests. Its public API uses plain types only. `NOTES.md` explains how it links. |
 | `scripts/setup-matrix-sdk.sh` | Downloads the pinned SDK (`26.10.27`), checks its checksum, and copies the SDK and `matrix-core` into `apps/multiplexer/modules/apple/`. |
 | `cli/` | `mx`, the command line for agents (Swift). It links the same MatrixCore (`cli/Sources/MatrixCore` is a link) and a macOS build of the SDK. `cli/README.md` explains it. |
 | `scripts/setup-cli-sdk.sh` | Builds the SDK for macOS from the commit of the app's release (about 5 min the first time) and copies it into `cli/.sdk`. |
-| `scripts/test-matrix-core.sh` | Runs MatrixCore's end-to-end test on the iOS Simulator against matrix.org. |
+| `scripts/test-matrix-core.sh` | Runs MatrixCore's live iOS suite; defaults to the designated test users on our server. |
 | `vendor/` | The downloaded SDK. Not in git. |
 | `tasks/` | The plan and the task list. |
 | `docs/exact-feedback/` | Every place where Exact was hard, for Rami and the Exact team: one issue file each, and an index. |
 
 The Exact framework is a separate checkout at `/Users/rami/Documents/code/exact/expo-exact`.
-The app uses it by path. Do not put this project inside it.
+The app uses it by path. Do not put this project inside it. The validated local
+integration and its public-reproduction limit are documented in CONTRIBUTING.md.
 
 ## Rules
 
@@ -42,7 +46,8 @@ The app uses it by path. Do not put this project inside it.
    Keychain (service `multiplexer-test-account`, account `@rami-m-test:matrix.org`).
 3. Prove each step with a test or a screenshot before the next step. Start small.
 4. Work from the Mac. Reach the Oracle server only with `ssh oracle`. Do not run an
-   agent on the server. The server is not set up yet: Phase 0 waits for Rami's domain.
+   agent on the server. Phase 0 is complete; the live inventory is maintainer-specific.
+   Contributors must adapt a separate inventory before running any server command.
 5. Commit after each task: conventional prefix, lowercase, one line, no co-author line.
 6. Ask Rami before deleting anything on the server, and before anything that costs money.
 
@@ -66,7 +71,9 @@ GIFs (B12) need KLIPY's app key at build. Once per checkout, and after the key c
 
 Without it the app builds, and the GIF sheet says it could not load GIFs.
 
-Test MatrixCore (about 10 s after the first build):
+MatrixCore live tests require configured Keychain test credentials and network access.
+The full suite can take many minutes; timings from early focused runs do not
+estimate the full suite. Use the shared lock:
 
 Two MatrixCore runs at once (two conversations, the same test users) time out on "the first
 sync". Hold the shared lock around every run, on your own simulator. Take every shared lock
@@ -85,21 +92,26 @@ sync misses its limit. Keep at most one Simulator booted per conversation, and s
 udid: never `xcrun simctl shutdown all`, which stops other conversations' test runs.
 
 ```sh
-./scripts/test-matrix-core.sh
+scripts/mx-lock.sh matrixcore <your-lane> -- ./scripts/test-matrix-core.sh
 ```
 
 Build, run and drive the app (from `apps/multiplexer/`):
 
 ```sh
+# for ordinary ui work; this does not package remote push:
 bun exact.mjs ios --run
+# for a push-capable install, from the repository root:
+# bun scripts/install-ios.ts --sim <udid>
+# APP_PROFILE=<profile> EXTENSION_PROFILE=<profile> bun scripts/install-ios.ts --device <udid>
 bun exact.mjs agent ios "clock data" "state" "screenshot .exact/shot.png"
 bun exact.mjs test ios
 bun exact.mjs contract build app.contract --json --errors-only
 ```
 
 - `prefer` takes a full key: `"prefer prefers-color-scheme dark"`.
-- **The app's tests run on iOS only** (`test ios`, `verify ios`). The web has no Matrix
-  SDK, so `verify` on the web fails the sign-in tests. Two tests reach matrix.org and DNS
+- **Use native tests:** `test ios` / `verify ios`, and `test mac` for Mac changes.
+  The web has no Matrix SDK, so web verification cannot validate chat or sign-in.
+  Two tests reach matrix.org and DNS
   (no real account): they need the network.
 - **Sign in to the practice account in a drive** without the password in chat or logs:
   `pw="$(security find-generic-password -s multiplexer-test-account -a @rami-m-test:matrix.org -w)"`,
@@ -107,7 +119,7 @@ bun exact.mjs contract build app.contract --json --errors-only
   the sign-in ends: it shows the `password` state. On matrix.org, sign out at the end of the
   drive, so it does not collect old devices. As `@test1`/`@test2` on our own server, stay signed
   in across drives on your own Simulator (the agent keeps its session), and sign out only when
-  your task ends: our server can delete leftover devices. On `@rami`, always sign out at the end.
+  your task ends: our server can delete leftover devices. On any real account, always sign out at the end.
 - Each drive is a new launch. The agent keeps its own session (Keychain service
   `com.ramimaalouf.multiplexer.session.agent`) and data, so a drive after a sign-in opens
   signed in. Each authored test starts signed out.
@@ -152,13 +164,18 @@ you down is feedback, and recording it is part of each task, not optional. Start
 
 ## Test accounts
 
-**Safety rule.** `@rami:ramimaalouf.com` is Rami's real account: it holds his real
-WhatsApp and Instagram, so a message sent in one of its rooms reaches a real person. Tests and drives
-send, react, delete and mark as read only as `@test1:ramimaalouf.com` or
-`@test2:ramimaalouf.com` (Keychain service `multiplexer-test-account`). On `@rami`: read-only
-drives, and only with Rami's OK; sign out at the end. A read receipt there also marks the
-chat read in WhatsApp or Instagram (double puppeting).
+**Safety rule.** Only the explicitly listed test accounts may be used for automated
+tests or actions that modify data: `@test1:ramimaalouf.com`,
+`@test2:ramimaalouf.com` (Keychain service `multiplexer-test-account`), and the
+practice account below in its test room. Treat every other account as a real account:
+read-only access requires Rami's explicit approval, and sign out afterward. Sending,
+reacting, deleting or marking a chat read can affect real people on connected networks.
 
+Read `.local/accounts.md` if it exists for private account identities and Keychain
+lookup details. This file is local only and ignored by git. Do not copy its contents
+into tracked files, feedback, issues, pull requests or chat. If it is absent, keep the
+same test-account-only rule; request private account details only when needed for an
+explicitly authorized real-account drive.
 
 - Practice: `@rami-m-test:matrix.org`. Its password is in the Keychain. Its room "Multiplexer test" is for tests.
   It holds more than 20 messages, so the chat shows only its last 20. To add numbered
@@ -167,7 +184,7 @@ chat read in WhatsApp or Instagram (double puppeting).
   `--epoch now --time-zone America/New_York` to `agent ios` to see real times.
 - `./scripts/send-test-message.sh "<text>"` sends a message from a short-lived device of a
   test user (default `SENDER=@test2:ramimaalouf.com`, `ROOM="Multiplexer two-person test"`);
-  `--image <photo.jpg> ["<caption>"]` sends a photo. It refuses `@rami`.
+  `--image <photo.jpg> ["<caption>"]` sends a photo. Run it only with the listed test users.
 - In a drive, the app sends read receipts only for `@test` users (`Matrix.swift`,
   `sendsReadReceipts`). To see it arrive in a drive, start it in the background with
   a delay, then wait with `"clock until state thread.messages.20.body == \"<text>\" within 45000"`
@@ -178,11 +195,11 @@ chat read in WhatsApp or Instagram (double puppeting).
   leftover device must be removed in Element or at account.matrix.org.
 - `./scripts/clean-test-devices.sh [--older-than <hours>] [--delete]` lists `@test1`'s and `@test2`'s
   devices on our server not seen for that long (default 24 h); a dry run unless `--delete`. It never
-  touches `@rami`. Ask Rami before the first `--delete` (deleting on the server).
+  touches real accounts. Ask Rami before the first `--delete` (deleting on the server).
 - MatrixCore tests share one signed-in device per test user for a whole run (`testAccount` in
   `TestDevices.swift`); it signs out when the run ends. Use `signInTestDevice` (a fresh device, marked
   `FRESH DEVICE`) only when a new device is the point of the test.
-- Do not test with `@rami-m:matrix.org` or `@ramimaalouf:beeper.com`: they are Rami's real accounts.
+- Do not test with any account outside the explicit test-account list above.
 
 ## Paired device demo tooling
 

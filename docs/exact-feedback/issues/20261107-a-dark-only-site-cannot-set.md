@@ -24,4 +24,3 @@ carried to `html`, or a tamber token for `-exact-background`.
 ## Evidence
 
 Seen on 2026-11-06 at exact2 `31063d7dbb`, in `dist/style.css` of a built site.
-

@@ -1,6 +1,7 @@
 {
   "name": "multiplexer",
   "private": true,
+  "license": "GPL-3.0-only",
   "dependencies": {
     "@exact/camera": "file:../../../exact/expo-exact/packages/camera",
     "@exact/clipboard": "file:../../../exact/expo-exact/packages/clipboard",

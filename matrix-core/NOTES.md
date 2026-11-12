@@ -1,6 +1,10 @@
 # MatrixCore: how matrix-rust-sdk links into the app
 
-## The Exact app (iOS)
+Current build entry point: [CONTRIBUTING.md](../CONTRIBUTING.md). SDK pins and
+copy behavior below describe this repository; dated proof sections retain their
+original verification scope.
+
+## The Exact app (iOS and macOS)
 
 `scripts/setup-matrix-sdk.sh` does all of it. Run it after a fresh clone and after
 every edit in `matrix-core/`.
@@ -23,7 +27,9 @@ compiler finds its module map in the slice's `Headers/MatrixSDKFFI/`.
   (`source links are not captured`). The script makes APFS clones (`cp -c`), which use
   no extra disk space.
 - **Not in git.** `.gitignore` lists the copies and `vendor/`.
-- **Deployment target.** `app.json` sets iOS 17.0. The SDK needs iOS 16.
+- **Deployment targets.** `app.json` sets iOS 17.0 and macOS 14.0. The released
+  SDK has iOS slices; `scripts/build-matrix-sdk-macos.sh` builds the Apple silicon
+  Mac slice, then setup must run again to copy the combined framework.
 - **Linker flags.** None were needed.
 - **The boundary.** All files compile into one module, so the rule "only MatrixCore
   calls the SDK" is a convention here. `Matrix.swift` (the native module) calls only
@@ -52,13 +58,15 @@ so this test setup does not require rerunning the app copy script.
 All production MatrixCore sources compile for macOS 14 or newer on Apple silicon.
 `MatrixCoreMacTests` calls the linked SDK to check its pinned commit and reuses the
 existing session-store, room-kind, and formatted-text XCTest files through relative
-symlinks. These 27 tests need no credentials, homeserver, or Simulator. Additional
-Swift test arguments such as `--filter SDKLinkTests` pass through the runner.
+symlinks. The default Mac tests need no credentials, homeserver, or Simulator;
+authenticated fixtures opt in separately. Swift test arguments such as
+`--filter SDKLinkTests` pass through the runner.
 
 This is an auth-free Mac test target, not the network/media suite: the existing
 `MatrixCoreTests` target and `scripts/test-matrix-core.sh` retain the pinned remote
-SDK and iOS path. The UIKit media fixtures and authenticated network tests have not
-been ported or run on Mac by this setup.
+SDK and iOS path. UIKit media fixtures remain iOS-specific. A separate opt-in Mac conversation
+fixture now has the runtime evidence recorded in `tasks/evidence/mac-new-conversation.json`;
+that does not make the full iOS network/media suite portable to Mac.
 
 ## Where the session lives
 
@@ -384,7 +392,8 @@ takes no part: matrix-rust-sdk keeps a message index on the device.
   /_matrix/client/v3/pushers`; the bindings cannot list them). `Pusher.apnsPayload` is the
   default payload: "New message" with `mutable-content`, so the extension wakes, and that text
   shows when it cannot read the message. Our server accepts a pusher without a gateway running
-  (checked 2026-11-03 with `sygnal.ramimaalouf.com`, which has no DNS record yet).
+  (checked 2026-11-03 before gateway deployment). The gateway now has sandbox
+  and production configuration; this historical acceptance check did not prove delivery.
 - **Measured** (`testAPushShowsTheSenderAndTheText`, `@test1` and `@test2` on our server, the
   Simulator): see the decision log in `tasks/plan.md`. Peak memory needs the phone.
 
@@ -414,9 +423,10 @@ takes no part: matrix-rust-sdk keeps a message index on the device.
 
 ### The App Group store move
 
-The implementation is ready, but activation and device proof still require the App Group
-`group.com.ramimaalouf.multiplexer` and profiles that grant it. No Apple setup is performed by
-this change. `SessionStore` resolves the location before the app builds an sdk client:
+The App Group `group.com.ramimaalouf.multiplexer` was configured on the
+maintainer's device on 2026-11-07, with locked-phone development push confirmed.
+New signing identities still need matching groups and profiles. A no-relogin move
+from a pre-group device installation remains unverified. `SessionStore` resolves the location before the app builds an sdk client:
 
 1. Legacy sessions decode with no `storeLocation`, which means `data`. A new session chooses
    `group` only when `containerURL(forSecurityApplicationGroupIdentifier:)` answers; otherwise
@@ -454,7 +464,9 @@ An isolated macOS Keychain fixture kept the same creation date across updates; t
 delete-before-add implementation changed it. The iOS test-user drive restores the same session
 on relaunch and Sign Out removes just its active scratch directory, preserving a sibling fixture
 and another store. This is not proof of an entitled App Group migration, extension delivery,
-locked-phone decryption, or phone memory/time limits; those device gates remain open.
+locked-phone decryption, or phone memory/time limits. Later development push
+proof is recorded in tasks/plan.md; it does not establish all migration and
+physical-device performance gates.
 
 ## Bookmarks
 
@@ -509,7 +521,9 @@ custom room account data, so they are one global account data event,
 - **Rebuild time.** An edit to any module Swift file recompiles the 2 MB of bindings
   (about 40 s). If this slows T1.3 and later, build the bindings and MatrixCore into one
   prebuilt xcframework, so the app module compiles only `Matrix.swift`.
-- **Device build.** Not tried yet. It needs signing (Q4). The `ios-arm64` slice exists.
+- **Device builds.** iPhone development installation and TestFlight uploads are
+  recorded in `tasks/plan.md` and `docs/releases/`. New installs still require
+  compatible signing; upload alone does not establish beta availability.
 - **Mac.** The release has no macOS slice. `scripts/build-matrix-sdk-macos.sh`
   builds the pinned native slice; setup combines it with the released iOS slices.
   Native package tests use that combined framework as described above.

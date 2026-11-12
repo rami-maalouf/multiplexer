@@ -24,4 +24,3 @@ the verify summary that a template id cannot be accepted.
 ## Evidence
 
 Seen on 2026-11-06 at exact2 `31063d7dbb`, `verify` on a web landing page.
-
