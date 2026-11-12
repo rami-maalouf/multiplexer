@@ -3046,7 +3046,7 @@ Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc60837
 - [x] Independent code review: no remaining confirmed findings (receipt `avatar-20261112-r2`).
 - [x] 38 TypeScript tests passed.
 - [x] Final native verify: 13 tests passed, light/dark clean, no overflow across 15 largest-text screens. Separate symbolic delivery skipped 10 unsupported scripts and Lean was unavailable.
-- [ ] Publish avatar fix PR.
+- [x] Publish avatar fix PR #23: https://github.com/rami-maalouf/multiplexer/pull/23
 
 The first history fixture hit HTTP 429; it now respects retry_after_ms with bounded retries.
 An immediate first-frame cold assertion was replaced by a bounded eventual-image check;

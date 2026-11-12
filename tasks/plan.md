@@ -13,7 +13,7 @@ outgoing messages, before opening Members, and a direct-to-group transition. Sim
 inbox and light/dark chat header screenshots were inspected with a synthetic image; the
 test account signed out. Actual Instagram/LinkedIn metadata was not accessed. Notification
 sender-photo work is owned by the separate push conversation / PR #22. Native verify passed all 13 tests, light/dark checks were clean, and 15 largest-text screens
-had no overflow. All 38 TypeScript tests passed; the avatar fix is ready for PR publication.
+had no overflow. All 38 TypeScript tests passed; the avatar fix is published in PR #23 (https://github.com/rami-maalouf/multiplexer/pull/23).
 
 
 **Public documentation audit (2026-11-10):** source-checked the public entry points,
