@@ -15,6 +15,8 @@ push and communication configuration with matching symbols. Access/signing mode 
 changed: owner-team setup and final AppDrop signing, installation and locked-phone push
 remain unverified. No TestFlight upload, real-account access or live server changes.
 Receipt: `tasks/evidence/appdrop-main-20261112.json`.
+Release diary subsequently sent with explicit approval: `dc85afe6-72cc-4298-a4bf-635dc4e3d139`
+(one diary, zero command logs, no attachments).
 
 **Main integration and preview preparation (2026-11-12):** at Rami's request,
 combined current main, PR #22 (reliable push/distribution), PR #23 (bridged profile

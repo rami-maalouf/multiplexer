@@ -279,6 +279,10 @@ Login-help feedback sent on 2026-11-12 with Rami's explicit approval: receipt
 `8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`; one generic diary and 13 task command-log lines.
 Other unsent diaries and repository documents were excluded.
 
+Release diary sent on 2026-11-12 with Rami's explicit approval: receipt
+`dc85afe6-72cc-4298-a4bf-635dc4e3d139`; one generic diary, zero command logs and no
+attachments. Other pending diaries and the command-log cursor were preserved.
+
 ## Pull requests to exact2
 
 Rami prefers a pull request to sending feedback (2026-11-02): when a finding is a problem

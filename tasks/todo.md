@@ -3339,3 +3339,6 @@ the current Exact checkout; new build-cost evidence was added to finding 30. The
   re-signing/install and physical locked-phone notification delivery remain unverified.
 - The preview wrapper emitted four generated Swift module sidecars in the root; moved only
   those own build outputs into the temporary archive folder. Source worktrees remain clean.
+
+- Release diary sent with explicit approval: `dc85afe6-72cc-4298-a4bf-635dc4e3d139`. One diary only;
+  zero command logs, no attachments; all other pending feedback remained local.
