@@ -4,6 +4,21 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Push across distribution channels (2026-11-12, PR #22):** the published AppDrop
+revision 2 reports `pushNotifications: false`, no extensions, and its downloaded
+IPA has no notification service or communication activity type. Exact's share
+command bypasses the post-build packager. `scripts/preview-ios.ts` now builds
+through the production archive path and refuses incomplete notification bundles
+before producing an IPA. A fresh release archive and Xcode distribution export
+passed all artifact checks, including production APNs and communication grants
+in the signed app/profile. Final combined Bun run: 64 passed, no skips. Both
+gateway routes are active with the expected team/topic (read-only audit).
+The preview replacement is prepared but not uploaded: AppDrop's owner-team
+People you approve mode requires the owner's App Store Connect authorization
+and creates an AppDrop App Manager API key. Existing preview mode remains
+unchanged. No TestFlight upload or physical production delivery is claimed.
+See `tasks/evidence/notification-distribution-20261112.json`.
+
 **Sender photos in iPhone notifications (2026-11-12, PR #22):** notification
 content now includes the actual sender identity and profile media URL. The service
 extension fetches a static 160 px thumbnail through the authenticated homeserver

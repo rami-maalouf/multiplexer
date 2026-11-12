@@ -12,6 +12,8 @@ The app targets iOS 17 or newer. The existing
 follow its current pairing and signing instructions. The URL responded during
 this audit, but pairing and installation were not exercised. Preview access and
 signing can change, so a link alone does not establish notification support.
+On 2026-11-12, its published revision 2 had no notification extension or push
+entitlement. It must be updated through the push-capable preview path below.
 
 TestFlight archives have been uploaded, including build 4 on 2026-11-08, but this
 repository does not publish a verified public TestFlight invitation or App Store
@@ -47,9 +49,11 @@ client, such as [Element Web](https://app.element.io) or
 
 The iPhone app uses APNs and a Matrix push gateway. Sender/text notifications on
 a locked iPhone were confirmed on the maintainer's development build. Production
-gateway configuration and extension packaging exist, but TestFlight delivery and
-notification support for a re-signed AppDrop preview are not established by those
-development tests.
+gateway configuration serves both sandbox and production APNs. A fresh production
+archive and App Store distribution export passed all signing, provisioning,
+extension and sender-photo checks on 2026-11-12. This establishes packaging for
+TestFlight and App Store builds; physical production delivery still needs a
+message received on an installed distribution build.
 
 For a development build installed from a Mac, use
 `bun scripts/install-ios.ts --device <phone-udid>` from the repository root, with
@@ -62,6 +66,40 @@ iOS communication-notification layout, with locally rendered initials when the
 profile has no usable photo. Photo fetching has a short deadline and the message
 still arrives if it fails. This does not request Contacts access. Development
 profiles must include the Communication Notifications capability.
+
+### TestFlight and App Store
+
+Both use the same production APNs route and notification extension. Build through
+`./scripts/testflight.sh <next-build-number> --export` to sign without uploading,
+or omit `--export` to upload. Xcode's automatic distribution signing needs an
+authorized Apple account. The exported app profile must grant production APNs,
+Communication Notifications and the shared App Group; the extension needs its
+matching identity and shared access. These checks were run against an actual
+signed export, with no distribution artifact tests skipped.
+
+### AppDrop previews
+
+Build a complete preview from the repository root:
+
+```sh
+bun scripts/preview-ios.ts <next-build-number>
+```
+
+This builds the production archive, checks its notification extension, shared
+identity, production push and sender-photo entitlements, and prints an IPA path.
+It uploads nothing. Ordinary `bun exact.mjs share` skips this packaging step.
+
+For push-capable previews, configure the AppDrop link as **People you approve**
+with the app owner's Apple team, then upload the printed IPA to that link. This
+keeps the signing team and bundle identity that the gateway serves. AppDrop's
+setup creates an App Store Connect key named AppDrop with the App Manager role;
+the owner must authorize that access and approve each iPhone. This mode is not
+yet enabled on the existing preview link. Its recipient-signing mode cannot
+preserve the owner's push identity for arbitrary Apple accounts. Re-signing with
+another team also requires that team's own gateway credentials and shared groups.
+
+The prepared preview IPA has passed artifact checks. AppDrop's final re-signing,
+installation and locked-phone delivery remain separate verification gates.
 
 **The gateway URL is currently fixed in the app**, in
 [`PushRegistration.swift`](../apps/multiplexer/modules/apple/PushRegistration.swift),

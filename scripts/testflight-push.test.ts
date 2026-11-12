@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { packagePreview, previewIOS } from './preview-ios.ts';
 
 const root = resolve(import.meta.dir, "..");
 const bundle = "com.ramimaalouf.multiplexer";
@@ -14,8 +15,9 @@ function run(args: string[]): string {
   return result.stdout.toString();
 }
 
-function plist(path: string): any {
-  return JSON.parse(run(["plutil", "-convert", "json", "-o", "-", path]));
+function plist(path: string, key?: string): any {
+  return JSON.parse(run(key ? ['plutil', '-extract', key, 'json', '-o', '-', path]
+    : ["plutil", "-convert", "json", "-o", "-", path]));
 }
 
 function entitlements(path: string): any {
@@ -34,6 +36,10 @@ function uuids(path: string): string[] {
 
 test("packaging scripts parse without building", () => {
   run(["bash", "-n", "scripts/testflight.sh", "scripts/add-notification-extension.sh"]);
+});
+
+test('invalid preview arguments stop before building', () => {
+  for (const args of [[], ['--update'], ['5', '--upload']]) expect(() => previewIOS(args)).toThrow('usage:');
 });
 
 for (const args of [[], ["not-a-build"], ["4", "--unknown"], ["4", "--export", "extra"]]) {
@@ -69,7 +75,7 @@ describe.skipIf(!archive)("actual store archive", () => {
     expect(ext.MultiplexerAppGroup).toBe(group);
     expect(ext.MultiplexerKeychainGroup).toBe(keychain);
     expect(ext.MultiplexerSessionService).toBe(`${bundle}.session`);
-    const properties = plist(join(archivePath, "Info.plist")).ApplicationProperties;
+    const properties = plist(join(archivePath, "Info.plist"), 'ApplicationProperties');
     expect(properties.CFBundleVersion).toBe(main.CFBundleVersion);
     expect(properties.CFBundleShortVersionString).toBe(main.CFBundleShortVersionString);
   });
@@ -87,6 +93,19 @@ describe.skipIf(!archive)("actual store archive", () => {
     expect(entitlements(app())["com.apple.developer.usernotifications.communication"]).toBe(true);
     expect(plist(join(app(), "Info.plist")).NSUserActivityTypes).toContain("INSendMessageIntent");
     run(["codesign", "--verify", "--deep", "--strict", app()]);
+  });
+
+  test('the preview ipa retains the production notification extension and sender-photo configuration', () => {
+    const ipa = packagePreview(archivePath);
+    try {
+      const entries = run(['unzip', '-Z1', ipa]);
+      const name = app().split('/').pop();
+      expect(entries).toContain(`Payload/${name}/PlugIns/MultiplexerNotifications.appex/MultiplexerNotifications`);
+      const xml = run(['unzip', '-p', ipa, `Payload/${name}/Info.plist`]);
+      const result = Bun.spawnSync(['plutil', '-extract', 'NSUserActivityTypes', 'json', '-o', '-', '-'], { stdin: Buffer.from(xml) });
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout.toString())).toContain('INSendMessageIntent');
+    } finally { rmSync(dirname(ipa), { recursive: true, force: true }); }
   });
 
   test("release native module contains remote notification registration", () => {
@@ -138,6 +157,8 @@ describe.skipIf(!exported)("actual distribution export", () => {
       if (id === bundle) {
         expect(ent["aps-environment"]).toBe("production");
         expect(profileEntitlements["aps-environment"]).toBe("production");
+        expect(ent['com.apple.developer.usernotifications.communication']).toBe(true);
+        expect(profileEntitlements['com.apple.developer.usernotifications.communication']).toBe(true);
       }
     }
     run(["codesign", "--verify", "--deep", "--strict", app]);

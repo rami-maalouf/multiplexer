@@ -78,6 +78,18 @@ group; the app profile must also grant development APNs and Communication
 Notifications. Enable that capability on the app identifier, then regenerate its
 profile. The installer checks the capability before replacing an existing phone build.
 
+For a preview IPA with the same notification packaging as a release:
+
+```sh
+bun scripts/preview-ios.ts <next-build-number>
+```
+
+This prints the IPA path and uploads nothing. Use AppDrop's owner-team **People
+you approve** mode to retain push identity; ordinary `exact share` omits the
+notification packager. For TestFlight/App Store signing without upload, use
+`./scripts/testflight.sh <next-build-number> --export`. See the
+[distribution requirements](docs/install.md#notifications) before publishing.
+
 For the Mac app, run these from the repository root before `bun exact.mjs mac --run`
 in `apps/multiplexer/`:
 

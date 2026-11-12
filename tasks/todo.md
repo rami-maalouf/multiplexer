@@ -1,5 +1,23 @@
 # Mux: tasks
 
+## Push across distribution channels, 2026-11-12
+
+- [x] Reproduce the published preview missing push/notification service: AppDrop revision 2
+  capabilities are false/empty; downloaded IPA has no extension or intent activity type.
+- [x] Build a fresh production archive and App Store distribution export. Verify both
+  signatures/profiles, production APNs, Communication Notifications, shared access and symbols.
+- [x] Add `bun scripts/preview-ios.ts <build>` to produce a checked preview IPA using the
+  production packager. It uploads nothing and rejects the old incomplete preview.
+- [x] Run all archive/export cases: final combined Bun suite 64 passed, no skips.
+- [ ] Owner authorizes AppDrop People you approve with team 3V2UU7RRK9. This creates an
+  AppDrop App Manager API key; no such credential access was granted during this task.
+- [ ] Publish the prepared preview IPA, approve a test iPhone, inspect final re-signed
+  entitlements, and prove a natural locked-phone production push and sender photo.
+- Notes: initial store-extension link failed with disk full. Removed only disposable
+  caches/artifacts owned by this worktree/session, then rebuilt/exported successfully.
+  Archive tests also exposed whole-plist JSON conversion of CreationDate; assertions now
+  extract ApplicationProperties. No server mutation, real-account drive, or store upload.
+
 ## Sender photos in iPhone notifications, 2026-11-12
 
 - [x] Carry the sender's stable ID, profile media URL and recipient count through MatrixCore.

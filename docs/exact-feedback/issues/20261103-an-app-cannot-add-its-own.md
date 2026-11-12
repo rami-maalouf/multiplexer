@@ -59,3 +59,10 @@ The simulator workaround now uses a compact XML root and omits its debugger gran
 to preserve the required identity, shared storage and notification entitlements.
 Physical-device debug entitlements are retained. A declarative entitlement list
 or reserved space in the simulator link would avoid this trade-off.
+
+2026-11-12 preview follow-up: the documented share command builds and uploads its
+own unsigned archive without the app's post-build notification packager. A
+published preview consequently had no notification extension or push entitlement.
+The app now prepares its preview IPA through a separate production archive and
+packaging command. A declared extension or supported pre-upload packaging hook
+would let share preserve the same capabilities as other builds.
