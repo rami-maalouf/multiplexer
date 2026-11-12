@@ -4,6 +4,18 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Bridge profile pictures (2026-11-12, `fix/bridge-profile-pictures`):** fixed the missing
+member-avatar fallback for one-to-one rooms without `m.room.avatar`. Inbox, chat info and
+small/full-size downloads share one resolver; explicit room avatars still win and groups,
+own identity and service members are excluded. The live baseline reproduced empty names
+and nil downloads despite a member image. Fixed coverage includes a fresh client after 24
+outgoing messages, before opening Members, and a direct-to-group transition. Simulator
+inbox and light/dark chat header screenshots were inspected with a synthetic image; the
+test account signed out. Actual Instagram/LinkedIn metadata was not accessed. Notification
+sender-photo work is owned by the separate push conversation / PR #22. Native verify passed all 13 tests, light/dark checks were clean, and 15 largest-text screens
+had no overflow. All 38 TypeScript tests passed; the avatar fix is ready for PR publication.
+
+
 **Public documentation audit (2026-11-10):** source-checked the public entry points,
 added docs/install.md, docs/README.md and CONTRIBUTING.md, and corrected stale Mac,
 push and server-bootstrap claims. Documented the fixed maintainer push gateway,
@@ -337,7 +349,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | expo/exact local/mux-integration at 8536d208c40f97be3f132ea266d5029e2e3c10ba atop 94b8671f70fe2e25b307a40e7fce66dc27c9f802. The validated integration commit was not available from public upstream at the audit; see CONTRIBUTING.md. |
 | License | GPL-3.0-only for original project code; third-party licenses retained. |
-| Last updated | 2026-11-10 |
+| Last updated | 2026-11-12 |
 
 Update this table at the end of every work session.
 

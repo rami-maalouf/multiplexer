@@ -239,6 +239,89 @@ final class MatrixCoreTests: XCTestCase {
         XCTAssertLessThanOrEqual(max(picture.size.width, picture.size.height), 400)
     }
 
+    func testABridgedDirectChatUsesTheOtherMembersProfilePicture() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"],
+              let otherUser = env["MATRIX_TEST_USER2"], let otherPassword = env["MATRIX_TEST_PASSWORD2"], !otherPassword.isEmpty else {
+            throw XCTSkip("two test accounts required")
+        }
+        let home = env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org"
+        let reader = try await testAccount(home, user, password)
+        let writer = try await testAccount(home, otherUser, otherPassword)
+        let session = try reader.savedSession(), otherSession = try writer.savedSession()
+        func api(_ method: String, _ path: [String], _ body: [String: Any], _ saved: SavedSession) async throws -> [String: Any] {
+            var url = URL(string: saved.homeserverUrl)!.appendingPathComponent("_matrix/client/v3")
+            for component in path { url.appendPathComponent(component) }
+            var request = URLRequest(url: url)
+            request.httpMethod = method
+            request.setValue("Bearer " + saved.accessToken, forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            for attempt in 0..<4 {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let code = (response as? HTTPURLResponse)?.statusCode
+                let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+                if code == 429, attempt < 3 {
+                    let wait = (json["retry_after_ms"] as? NSNumber)?.doubleValue ?? 5000
+                    try await Task.sleep(nanoseconds: UInt64(max(1000, wait) * 1_000_000))
+                    continue
+                }
+                XCTAssertEqual(code, 200)
+                return json
+            }
+            throw CancellationError()
+        }
+        let created = try await api("POST", ["createRoom"], ["name": "Profile picture regression", "preset": "private_chat", "invite": [otherUser],
+            "initial_state": [["type": "io.element.functional_members", "state_key": "", "content": ["service_members": [user]]]]], session)
+        let room = try XCTUnwrap(created["room_id"] as? String)
+        _ = try await api("POST", ["join", room], [:], otherSession)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 80, height: 80)).jpegData(withCompressionQuality: 0.8) { context in
+            UIColor.systemIndigo.setFill(); context.fill(CGRect(x: 0, y: 0, width: 80, height: 80))
+        }
+        let uri = try await upload(image, session: otherSession)
+        _ = try await api("PUT", ["rooms", room, "state", "m.room.member", otherUser], ["membership": "join", "displayname": "Test Sender", "avatar_url": uri], otherSession)
+        // keep the profile event outside the initial recent-message window.
+        for index in 0..<24 {
+            _ = try await api("PUT", ["rooms", room, "send", "m.room.message", UUID().uuidString],
+                              ["msgtype": "m.text", "body": "Avatar regression outgoing \(index)"], session)
+        }
+        // a new install must resolve the picture without visiting the members screen.
+        let viewer = try await signInTestDevice(home, user, password)
+        let deadline = Date().addingTimeInterval(20)
+        var summary: RoomSummary?
+        repeat {
+            summary = try await viewer.rooms().first { $0.id == room }
+            if summary?.isOneToOne == true { break }
+            try await Task.sleep(nanoseconds: 200_000_000)
+        } while Date() < deadline
+        XCTAssertEqual(summary?.isOneToOne, true, "bridge-style one-to-one room must use person semantics")
+        let avatarDeadline = Date().addingTimeInterval(20)
+        repeat {
+            summary = try await viewer.rooms().first { $0.id == room }
+            if !(summary?.avatarName.isEmpty ?? true) { break }
+            try await Task.sleep(nanoseconds: 200_000_000)
+        } while Date() < avatarDeadline
+        let picture = try await viewer.avatarFile(roomId: room, directory: freshDirectory())
+        XCTAssertNotNil(picture, "the chat has a member profile picture but shows initials")
+        XCTAssertFalse(summary?.avatarName.isEmpty ?? true, "the inbox must request that picture")
+        let members = try await viewer.chatMembers(roomId: room)
+        XCTAssertEqual(members.first { $0.userId == otherUser }?.pictureUrl, uri, "the member really has an avatar")
+        let detail = try await viewer.chatInfo(roomId: room)
+        XCTAssertEqual(detail.pictureUrl, uri, "chat info must use the same profile image")
+        let large = try await viewer.chatPicture(roomId: room, directory: freshDirectory())
+        XCTAssertNotNil(large)
+        _ = try await api("PUT", ["rooms", room, "state", "io.element.functional_members"], ["service_members": []], session)
+        let groupDeadline = Date().addingTimeInterval(15)
+        while Date() < groupDeadline {
+            summary = try await viewer.rooms().first { $0.id == room }
+            if summary?.isOneToOne == false { break }
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
+        XCTAssertEqual(summary?.isOneToOne, false)
+        let groupPicture = try await viewer.avatarFile(roomId: room, directory: freshDirectory())
+        XCTAssertNil(groupPicture, "a group must not borrow one members profile image")
+    }
+
     private func upload(_ jpeg: Data, session: SavedSession) async throws -> String {
         var upload = URLRequest(url: URL(string: session.homeserverUrl)!.appendingPathComponent("_matrix/media/v3/upload"))
         upload.httpMethod = "POST"
