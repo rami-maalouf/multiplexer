@@ -101,21 +101,20 @@ another team also requires that team's own gateway credentials and shared groups
 The prepared preview IPA has passed artifact checks. AppDrop's final re-signing,
 installation and locked-phone delivery remain separate verification gates.
 
-**The gateway URL is currently fixed in the app**, in
-[`PushRegistration.swift`](../apps/multiplexer/modules/apple/PushRegistration.swift),
-to `sygnal.ramimaalouf.com`. Signing in to another homeserver does not change it.
+**The gateway is chosen at build time.** The maintainer defaults in
+`ios.config.json` use `sygnal.ramimaalouf.com`; self-hosted builds use their own
+`ios.config.local.json` and the [iPhone setup command](iphone-self-hosting.md#configure-once).
+Signing in to another homeserver does not change the build's configured gateway.
 The app registers an `event_id_only` pusher: the gateway receives room/event IDs
 and device routing data, and sends a generic alert through Apple. The notification
 extension fetches the event from the homeserver and renders its content on-device.
 The gateway is separate infrastructure from your homeserver; running your own
 Synapse does not make the shipped push path fully self-hosted.
 
-For your own build and gateway, change that source URL and configure Sygnal for
-your Apple team, bundle ID and APNs environment. Configure the app and notification
-extension with matching App Group and Keychain entitlements and provisioning.
-The checked-in extension packager is specific to the maintainer's signing
-identifiers, so adapt and review it as well. The server inventory is an operator
-example, not a drop-in public push service or availability promise.
+For your own build and gateway, follow [Build your own iPhone app](iphone-self-hosting.md).
+The app and packagers consume one identity/gateway configuration and derive the
+shared identifiers. Configure Sygnal and Apple's profiles to match. The server
+inventory remains an operator example, not a drop-in public push service.
 
 On Mac, notifications are local and need the app running. A real macOS system
 banner remains unverified in the recorded development checks.

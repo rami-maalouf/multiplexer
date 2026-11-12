@@ -1,0 +1,5 @@
+{
+  "teamId": "3V2UU7RRK9",
+  "bundleId": "com.ramimaalouf.multiplexer",
+  "pushGateway": "https://sygnal.ramimaalouf.com/_matrix/push/v1/notify"
+}

@@ -21,17 +21,19 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 app_dir="$root/apps/multiplexer"
 modules="$app_dir/modules/apple"
-app_id="com.ramimaalouf.multiplexer"
-extension_id="$app_id.notifications"
-group="group.$app_id"
-team="3V2UU7RRK9"
-session_service="$app_id.session"
+config="$(bun "$root/scripts/ios-config.ts" --shell)"
+{ read -r team; read -r app_id; read -r extension_id; read -r group; read -r session_service; read -r push_gateway; } <<< "$config"
 name="MultiplexerNotifications"
 
 
 mode="${1:-}"; target="${2:-}"; app="${3:-}"
 case "$mode" in --sim|--device|--store) ;; *) echo "usage: $0 --sim <udid> <app> | --device <phone udid> <app> | --store <dSYMs directory> <app>" >&2; exit 2 ;; esac
 [ -n "$target" ] && [ -d "$app" ] || { echo "usage: $0 $mode <udid> <path to Mux.app>" >&2; exit 2; }
+actual_id="$(plutil -extract CFBundleIdentifier raw -o - "$app/Info.plist")"
+[ "$actual_id" = "$app_id" ] || { echo "built app identity differs from configured bundleId" >&2; exit 1; }
+if [ "$mode" = "--device" ]; then
+  bun "$root/scripts/ios-config.ts" --preflight "$target" "$app"
+fi
 ls "$modules"/core-*.swift >/dev/null 2>&1 || { echo "no matrix-core copies in $modules: run scripts/setup-matrix-sdk.sh" >&2; exit 1; }
 
 if [ "$mode" = "--sim" ]; then
@@ -101,6 +103,16 @@ fi
 if ! /usr/libexec/PlistBuddy -c 'Print :NSUserActivityTypes' "$app/Info.plist" | grep -q INSendMessageIntent; then
   /usr/libexec/PlistBuddy -c 'Add :NSUserActivityTypes:0 string INSendMessageIntent' "$app/Info.plist"
 fi
+# runtime configuration belongs to the packaged bundle, never compiled credentials.
+for metadata in MultiplexerAppGroup MultiplexerKeychainGroup MultiplexerSessionService MultiplexerPushGateway; do
+  case "$metadata" in
+    MultiplexerAppGroup) value="$group" ;;
+    MultiplexerKeychainGroup) value="$keychain_group" ;;
+    MultiplexerSessionService) value="$session_service" ;;
+    MultiplexerPushGateway) value="$push_gateway" ;;
+  esac
+  plutil -replace "$metadata" -string "$value" "$app/Info.plist"
+done
 appex="$app/PlugIns/$name.appex"
 rm -rf "$appex"
 mkdir -p "$appex"

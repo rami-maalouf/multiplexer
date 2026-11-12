@@ -1,0 +1,1695 @@
+diff --git a/docs/reference.md b/docs/reference.md
+index 2085f8bde..7f315b81d 100644
+--- a/docs/reference.md
++++ b/docs/reference.md
+@@ -603,6 +603,10 @@ being nobody's account. A link in the Lock Screen or an expanded region is a
+ shows the eight placements with the Island's geometry of one device (the
+ iPhone 17 Pro's, `IslandGeometry`), its expanded regions allocated together
+ as ActivityKit arranges them.
++An archive with live activities refuses `registerForRemoteNotifications` in its binaries.
++Apps without live activities may register for ordinary remote notifications. Swift in `modules/apple/` and in packages compiles with
++`EXACT_DEVELOPMENT` defined in a development build only, so a call that a development
++build needs goes inside `#if EXACT_DEVELOPMENT` and stays out of an archive.
+ 
+ The bake writes `plans/activities.json` and `activities/<kind>.schema.json` plus
+ `activities/<kind>.d.ts` (exporting `State`, `Attributes` and `ContentState`). The
+diff --git a/host/apple/Sources/ExactKit/Backdrop.swift b/host/apple/Sources/ExactKit/Backdrop.swift
+index 7f138fa96..e9c8da30e 100644
+--- a/host/apple/Sources/ExactKit/Backdrop.swift
++++ b/host/apple/Sources/ExactKit/Backdrop.swift
+@@ -235,6 +235,15 @@ extension NodeView {
+         (materialView as? BackdropEffectView).map { $0.operations != backdropOperations } ?? false
+     }
+ 
++    /// A glass node's authored `-exact-tint-color` (light, dark), nil when unsaid: an unset tint is
++    /// the accent, which would tint every glass.
++    var glassTint: [[Double]]? {
++        guard Materials.glass(materialKind ?? materialRequest), wrote("tint_color"),
++              let light = channels("tint_color", dark: false),
++              let dark = channels("tint_color", dark: true) else { return nil }
++        return [light, dark]
++    }
++
+     /// The effect for material `kind`: a glass effect on
+     /// iOS 26 (else ultra-thin), otherwise the table's blur style.
+     func materialEffect(_ kind: String, interactive: Bool) -> UIVisualEffect {
+@@ -243,6 +252,11 @@ extension NodeView {
+             if #available(iOS 26.0, tvOS 26.0, *) {
+                 let glass = UIGlassEffect(style: apple == "glass" ? .regular : .clear)
+                 glass.isInteractive = interactive
++                // An authored `-exact-tint-color`: UIKit's tinted glass, as a prominent glass button's,
++                // here on a glass box that can join a glass group (a native button's glass is its own).
++                if let tint = glassTint {
++                    glass.tintColor = UIColor { TextEngine.color(tint[$0.userInterfaceStyle == .dark ? 1 : 0]) }
++                }
+                 return glass
+             }
+             #if os(tvOS)
+diff --git a/host/apple/Sources/ExactKit/IOS/AppAccentIOS.swift b/host/apple/Sources/ExactKit/IOS/AppAccentIOS.swift
+index 0fc721a85..588f61dfa 100644
+--- a/host/apple/Sources/ExactKit/IOS/AppAccentIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/AppAccentIOS.swift
+@@ -29,25 +29,20 @@ final class AppAccent {
+         set(roots.lazy.compactMap(Self.own).first)
+     }
+ 
+-    /// A new set of roots joins the presenter: its accent is said first, and
+-    /// a root's restyle while the others are still joining (its inherited
+-    /// tint changed) reads the whole set, not the part attached so far.
++    // logical roots keep their accent ownership when navigation reparents them.
++    // weak references neither retain retired views nor confuse a reused node id.
++    private var logicalRoots: [WeakNodeView] = []
++
+     func attach(_ set: [NodeView], _ add: ([NodeView]) -> Void) {
++        logicalRoots = set.map { WeakNodeView(view: $0) }
+         roots(set)
+-        joining = set
+-        defer { joining = nil }
+         add(set)
+     }
+-    private var joining: [NodeView]?
+ 
+-    /// A root restyled: the roots say the accent again, by the same rule.
+     func restyled(_ node: NodeView) {
+-        if let joining {
+-            if joining.contains(node) { roots(joining) }
+-            return
+-        }
+-        guard node.superview === presenter.root else { return }
+-        roots(presenter.root.subviews.compactMap { $0 as? NodeView })
++        let current = logicalRoots.compactMap(\.view)
++        guard current.contains(where: { $0 === node }) else { return }
++        roots(current)
+     }
+ 
+     /// The window the view is in takes the accent. A window the view left,
+@@ -63,10 +58,20 @@ final class AppAccent {
+         Ledger.take(current, self, tint)
+     }
+ 
++    // read only: a color refresh must not retake shared-window ownership.
++    var effectiveTint: UIColor? {
++        guard let window = presenter.viewport.window else { return nil }
++        if let ledger = Ledger.ledgers.object(forKey: window) {
++            return ledger.held.last?.tint ?? ledger.own
++        }
++        return (presenter.viewport as? Viewport)?.restingTint ?? window.tintColor
++    }
++
+     /// The session ends: its window has its own tint back.
+     func release() {
+         releasing = true
+         defer { releasing = false }
++        logicalRoots.removeAll()
+         (said, tint) = (nil, nil)
+         apply()
+     }
+@@ -102,9 +107,9 @@ final class AppAccent {
+     /// they took the window. The latest still there tints it; the last to
+     /// leave gives the window its own tint back.
+     private final class Ledger {
+-        private static let ledgers = NSMapTable<UIWindow, Ledger>.weakToStrongObjects()
+-        private let own: UIColor?
+-        private var held: [(accent: ObjectIdentifier, tint: UIColor)] = []
++        static let ledgers = NSMapTable<UIWindow, Ledger>.weakToStrongObjects()
++        let own: UIColor?
++        var held: [(accent: ObjectIdentifier, tint: UIColor)] = []
+         private init(_ own: UIColor?) { self.own = own }
+ 
+         static func take(_ window: UIWindow, _ accent: AppAccent, _ tint: UIColor) {
+@@ -118,8 +123,9 @@ final class AppAccent {
+         static func leave(_ window: UIWindow, _ accent: AppAccent) {
+             guard let ledger = ledgers.object(forKey: window) else { return }
+             ledger.held.removeAll { $0.accent == ObjectIdentifier(accent) }
+-            if ledger.held.isEmpty { ledgers.removeObject(forKey: window) }
++            // synchronous tint callbacks must still read the saved platform tint.
+             window.tintColor = ledger.held.last?.tint ?? ledger.own
++            if ledger.held.isEmpty { ledgers.removeObject(forKey: window) }
+         }
+     }
+ }
+diff --git a/host/apple/Sources/ExactKit/IOS/ExactViewIOS.swift b/host/apple/Sources/ExactKit/IOS/ExactViewIOS.swift
+index c5fd274ef..e978e4860 100644
+--- a/host/apple/Sources/ExactKit/IOS/ExactViewIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/ExactViewIOS.swift
+@@ -44,6 +44,10 @@ public final class ExactView: UIView {
+     var inspectionOwned: [UIView] { keyboardProbe.map { [$0] } ?? [] }
+     private var editingObservers: [NSObjectProtocol] = []
+     private var sceneObserver: NSObjectProtocol?
++    #if os(iOS)
++    /// Lists' scroll state at each return to the app, logged (ScrollReturnIOS.swift).
++    private var scrollReturn: ScrollReturn?
++    #endif
+     /// The adapter's hook for the first root's `viewport-fit` and its
+     /// canvas colour (the window's background under the safe areas is the
+     /// window's business).
+@@ -108,6 +112,9 @@ public final class ExactView: UIView {
+             }
+         }
+         session.presenter.observeKeyboard()
++        #if os(iOS)
++        scrollReturn = ScrollReturn(session.presenter.collections, viewport: self)
++        #endif
+         registerForTraitChanges([UITraitPreferredContentSizeCategory.self, UITraitLegibilityWeight.self, UITraitDisplayScale.self]) { (view: ExactView, _: UITraitCollection) in view.session.controlTextChanged() }
+         registerForTraitChanges([UITraitUserInterfaceStyle.self, UITraitDisplayScale.self, UITraitAccessibilityContrast.self]) { (view: ExactView, _: UITraitCollection) in view.reportScheme(); view.setNeedsLayout() }
+         // The tvOS SDK has no Swift UITraitDefinition for this trait. OS
+@@ -136,7 +143,11 @@ public final class ExactView: UIView {
+     /// `prefers-color-scheme` is told again.
+     private func reportScheme() { session.scheme(dark: traitCollection.userInterfaceStyle == .dark); session.tellPreferences(); session.natives.scopesChanged() }
+     /// An app or window tint changed: `AccentColor` is reported again.
+-    public override func tintColorDidChange() { super.tintColorDidChange(); session.reportColors() }
++    public override func tintColorDidChange() {
++        super.tintColorDidChange()
++        session.presenter.navigation.refreshProminentTints()
++        session.reportColors()
++    }
+ 
+     required init?(coder: NSCoder) { nil }
+     deinit {
+@@ -227,6 +238,7 @@ public final class ExactView: UIView {
+         ExactApp.shared.refreshDevPills() // in the window it joined, or another's (DevPill.swift)
+         // The window it joined takes the accent; one it left has its own back
+         session.presenter.accent.apply()
++        session.presenter.navigation.refreshProminentTints()
+         if window != nil { reportScheme() }
+         #if os(iOS)
+         if window != nil { session.presenter.resolveOrientationLock() } // a lock told before there was a window
+diff --git a/host/apple/Sources/ExactKit/IOS/KeyboardToolbarIOS.swift b/host/apple/Sources/ExactKit/IOS/KeyboardToolbarIOS.swift
+index 49e95d10d..60125cd16 100644
+--- a/host/apple/Sources/ExactKit/IOS/KeyboardToolbarIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/KeyboardToolbarIOS.swift
+@@ -71,11 +71,17 @@ final class KeyboardToolbars {
+             let lift = presenter.keyboardTop == nil && overlap == 0 ? 0 : max(0, box.maxY - keyboardTop - bar.padding("bottom"))
+             if bar.keyboardLift != lift { bar.keyboardLift = lift; bar.applyTransform() }
+             if lift > 0 { still.insert(bar.id) }
+-            // The scrollers whose bottom is the bar's top, across its width.
++            // The scrollers whose bottom is the bar's top, across its width,
++            // and those that run on under a bar floating over their end (a
++            // transcript seen through a glass composer, its own bottom
++            // padding keeping its last row above the bar): taller than the
++            // bar, starting above it, never one that holds the bar.
+             for node in presenter.views.values {
+                 guard let sv = node.scrollView, node.window === window, !node.isHidden else { continue }
+                 let frame = node.convert(node.bounds, to: window)
+-                guard abs(frame.maxY - box.minY) <= 1, frame.maxX > box.minX, frame.minX < box.maxX else { continue }
++                let meets = abs(frame.maxY - box.minY) <= 1
++                let under = frame.minY < box.minY && frame.maxY > box.minY && frame.height > box.height && !bar.isDescendant(of: node)
++                guard meets || under, frame.maxX > box.minX, frame.minX < box.maxX else { continue }
+                 owned.insert(node.id)
+                 apply(lift, to: sv, node: node)
+             }
+@@ -86,7 +92,7 @@ final class KeyboardToolbars {
+         }
+         lifted = still
+         for (id, inset) in insets where !owned.contains(id) {
+-            if let sv = inset.scroll { adjust(-inset.amount, on: sv, keyboard: 0) }
++            if let sv = inset.scroll { adjust(-inset.amount, on: sv, shiftOffset: true, keyboard: 0) }
+             insets.removeValue(forKey: id)
+         }
+         insets = insets.filter { $0.value.amount > 0 }
+@@ -94,20 +100,24 @@ final class KeyboardToolbars {
+ 
+     private func apply(_ lift: CGFloat, to sv: UIScrollView, node: NodeView) {
+         let prior = insets[node.id]
+-        let previous = prior?.scroll === sv ? prior?.amount ?? 0 : 0
++        let sameBackend = prior?.scroll === sv
++        let previous = sameBackend ? prior?.amount ?? 0 : 0
++        // A new backend already holds the reading offset; only move the inset onto it.
++        let shiftNew = sameBackend || prior == nil
+         if let prior, prior.scroll !== sv {
+-            if let old = prior.scroll { adjust(-prior.amount, on: old, keyboard: 0) }
++            if let old = prior.scroll { adjust(-prior.amount, on: old, shiftOffset: true, keyboard: 0) }
+             insets.removeValue(forKey: node.id)
+         }
+         guard previous != lift || sv.contentInset.bottom < lift else { return }
+-        adjust(lift - previous, on: sv, keyboard: lift)
++        adjust(lift - previous, on: sv, shiftOffset: shiftNew, keyboard: lift)
+         insets[node.id] = Inset(scroll: sv, amount: lift)
+     }
+ 
+     /// `keyboard`: the scroller's whole keyboard inset once `delta` is applied.
+-    private func adjust(_ delta: CGFloat, on sv: UIScrollView, keyboard: CGFloat) {
++    private func adjust(_ delta: CGFloat, on sv: UIScrollView, shiftOffset: Bool, keyboard: CGFloat) {
+         let maximum = { max(-sv.adjustedContentInset.top, sv.contentSize.height + sv.adjustedContentInset.bottom - sv.bounds.height) }
+         let atEnd = sv.contentOffset.y >= maximum() - 1
++        let before = sv.contentOffset.y
+         // The content's least height leaves the keyboard's inset out (`scrollFloor`), set before
+         // the inset so UIKit's inset change (`ScrollView.adjustedContentInsetDidChange`) already
+         // keeps the content's own end: a short transcript rises by what the keyboard covers of
+@@ -118,7 +128,16 @@ final class KeyboardToolbars {
+         }
+         sv.contentInset.bottom += delta
+         sv.verticalScrollIndicatorInsets.bottom += delta
+-        if atEnd { sv.contentOffset = PixelGrid.offset(CGPoint(x: sv.contentOffset.x, y: maximum()), in: sv) }
++        guard shiftOffset else { return }
++        // At the end, stay pinned. Away from the end, shift by the same delta so what sat
++        // above the toolbar stays above it as the keyboard covers the bottom (a chat scrolled
++        // up was left covered when only the end case moved).
++        if atEnd {
++            sv.contentOffset = PixelGrid.offset(CGPoint(x: sv.contentOffset.x, y: maximum()), in: sv)
++        } else if delta != 0 {
++            let y = min(maximum(), max(-sv.adjustedContentInset.top, before + delta))
++            sv.contentOffset = PixelGrid.offset(CGPoint(x: sv.contentOffset.x, y: y), in: sv)
++        }
+     }
+ }
+ #endif
+diff --git a/host/apple/Sources/ExactKit/IOS/NavigationBarIOS.swift b/host/apple/Sources/ExactKit/IOS/NavigationBarIOS.swift
+index 04683ead5..6eee05292 100644
+--- a/host/apple/Sources/ExactKit/IOS/NavigationBarIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/NavigationBarIOS.swift
+@@ -1150,19 +1150,7 @@ extension NavigationHost {
+         item.isEnabled = !i.disabled
+         if i.disabled || i.accessibilityDisabled { item.accessibilityTraits.insert(.notEnabled) }
+         else { item.accessibilityTraits.remove(.notEnabled) }
+-        // The authored `color` of a plain item's face; a prominent item's
+-        // tint is its fill, which `color` is not.
+-        let plain = !i.prominent && i.badge == nil && i.chip == nil
+-        item.tintColor = !plain ? nil : i.followsTint ? presenter.views[i.id]?.ownAccent ?? SystemColor.tint(1) : i.tint.map { tint in UIColor { TextEngine.color(tint[$0.userInterfaceStyle == .dark ? 1 : 0]) } }
+-        // UIKit's font where none is written, also once a kept item's author removes theirs.
+-        let font = image == nil ? i.font : nil
+-        if item.titleTextAttributes(for: .normal)?[.font] as? UIFont != font {
+-            for state: UIControl.State in [.normal, .highlighted, .disabled, .selected, .focused] {
+-                var attributes = item.titleTextAttributes(for: state) ?? [:]
+-                attributes[.font] = font
+-                item.setTitleTextAttributes(attributes.isEmpty ? nil : attributes, for: state)
+-            }
+-        }
++        configureItemColors(item, i, image: image)
+         var highlighted = item.titleTextAttributes(for: .highlighted) ?? [:]
+         if let value = i.activeTitleColor, let button = presenter.views[i.id] {
+             if press.activeForeground == nil { press.activeForeground = .init(value: highlighted[.foregroundColor]) }
+diff --git a/host/apple/Sources/ExactKit/IOS/NavigationItemTintIOS.swift b/host/apple/Sources/ExactKit/IOS/NavigationItemTintIOS.swift
+new file mode 100644
+index 000000000..91242111a
+--- /dev/null
++++ b/host/apple/Sources/ExactKit/IOS/NavigationItemTintIOS.swift
+@@ -0,0 +1,40 @@
++#if os(iOS) || os(tvOS)
++import UIKit
++
++extension NavigationHost {
++    // keep item, menu and accessibility identity across accent-only changes.
++    func refreshProminentTints() {
++        guard #available(iOS 26.0, tvOS 26.0, *) else { return }
++        let tint = presenter.accent.effectiveTint
++        for route in controllers.values {
++            for made in route.barItemsMade.values where made.item.prominent && made.item.badge == nil && made.item.chip == nil {
++                if made.bar.tintColor !== tint { made.bar.tintColor = tint }
++            }
++        }
++    }
++
++    func configureItemColors(_ item: UIBarButtonItem, _ shape: HeaderShape.Item, image: UIImage?) {
++        let authored = shape.tint.map { channels in
++            UIColor { TextEngine.color(channels[$0.userInterfaceStyle == .dark ? 1 : 0]) }
++        }
++        let nativeFace = shape.badge == nil && shape.chip == nil
++        let capsule: Bool
++        if #available(iOS 26.0, tvOS 26.0, *) { capsule = shape.prominent }
++        else { capsule = false }
++        // older systems draw this as a plain item with inherited platform tint.
++        // a plain item that follows the tint takes its node's accent, as UIKit's own views do.
++        let plainFace = shape.followsTint ? presenter.views[shape.id]?.ownAccent ?? SystemColor.tint(1) : authored
++        item.tintColor = nativeFace ? (shape.prominent ? (capsule ? presenter.accent.effectiveTint : nil) : plainFace) : nil
++        let font = image == nil ? shape.font : nil
++        // title attributes cannot promise a symbol-only prominent foreground.
++        let foreground = capsule && image == nil ? authored : nil
++        for state: UIControl.State in [.normal, .highlighted, .disabled, .selected, .focused] {
++            var attributes: [NSAttributedString.Key: Any] = [:]
++            if let font { attributes[.font] = font }
++            // disabled ink remains UIKit's; never copy enabled on-fill ink into it.
++            if state == .normal, let foreground { attributes[.foregroundColor] = foreground }
++            item.setTitleTextAttributes(attributes.isEmpty ? nil : attributes, for: state)
++        }
++    }
++}
++#endif
+diff --git a/host/apple/Sources/ExactKit/IOS/NodeExtrasIOS.swift b/host/apple/Sources/ExactKit/IOS/NodeExtrasIOS.swift
+index c7da2b8a7..1e52197e3 100644
+--- a/host/apple/Sources/ExactKit/IOS/NodeExtrasIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/NodeExtrasIOS.swift
+@@ -167,6 +167,8 @@ final class NodeExtras {
+     var retainedScrollTop: CGFloat?
+     var materialKind: String?
+     var materialInteractive: Bool = false
++    /// The glass's authored tint (light, dark) its effect was made with (`glassTint`).
++    var materialTint: [[Double]]?
+     var hiddenBeforePlacement = false
+     var placementHidden = false
+     var materialView: UIVisualEffectView?
+@@ -389,6 +391,7 @@ extension NodeView {
+     var glassGroupView: GlassGroupView? { get { extras?.glassGroupView } set { if newValue != nil || extras != nil { more.glassGroupView = newValue } } }
+     var glassSlot: GlassSlot? { get { extras?.glassSlot } set { if newValue != nil || extras != nil { more.glassSlot = newValue } } }
+     var materialInteractive: Bool { get { extras?.materialInteractive ?? false } set { if newValue || extras != nil { more.materialInteractive = newValue } } }
++    var materialTint: [[Double]]? { get { extras?.materialTint } set { if newValue != nil || extras != nil { more.materialTint = newValue } } }
+     var readingAnchors: [(node: NodeView, y: CGFloat)] {
+         get { extras?.readingAnchors ?? [] }
+         set { if !newValue.isEmpty || extras != nil { more.readingAnchors = newValue } }
+diff --git a/host/apple/Sources/ExactKit/IOS/NodeViewIOS.swift b/host/apple/Sources/ExactKit/IOS/NodeViewIOS.swift
+index bd1c36856..3b3801e2e 100644
+--- a/host/apple/Sources/ExactKit/IOS/NodeViewIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/NodeViewIOS.swift
+@@ -1087,9 +1087,10 @@ package final class NodeView: UIView, UITextViewDelegate, UITextFieldDelegate, U
+         }
+         guard let materialView else { rehomeMaterialChildren(); return }
+         if cssVisibilityHidden { materialView.effect = nil }
+-        else if materialView.effect == nil || materialInteractive != interactive || backdropStale {
++        else if materialView.effect == nil || materialInteractive != interactive || backdropStale || materialTint != glassTint {
+             showMaterialEffect(backdropEffect() ?? materialEffect(kind ?? "ultra-thin", interactive: interactive))
+             materialInteractive = interactive
++            materialTint = glassTint
+         }
+         applyMaterialRadius()
+         rehomeMaterialChildren()
+diff --git a/host/apple/Sources/ExactKit/IOS/PointerIOS.swift b/host/apple/Sources/ExactKit/IOS/PointerIOS.swift
+index d46878b56..ec1151434 100644
+--- a/host/apple/Sources/ExactKit/IOS/PointerIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/PointerIOS.swift
+@@ -275,6 +275,7 @@ final class PressContact {
+     var responderUsesCanvas = false
+     /// Whether this contact’s down was taken here rather than forwarded.
+     var ownsPress = false
++    var rowPressOrigin: CGPoint?
+     var cancelled = false
+     var cancelledByReparenting = false
+     /// A handlerless custom invoker's look, independent of the forwarded press: nil when it owns none.
+@@ -353,6 +354,14 @@ extension NodeView {
+         } else if disabled || (contact.bubbled ? authoredInert : inert) { cancelPressContact() }
+         return contact.cancelled ? nil : contact
+     }
++    private func cancelDraggedRowPress(_ contact: PressContact) -> Bool {
++        guard let origin = contact.rowPressOrigin, let touch = contact.touch else { return false }
++        let point = touch.location(in: nil)
++        guard max(abs(point.x - origin.x), abs(point.y - origin.y)) > CGFloat(Gesture.slop) else { return false }
++        // a row drag stays cancelled after reversal, even when no scroller takes it.
++        cancelPressContact()
++        return true
++    }
+     /// Retirement, reparenting and disable cancel the old chain while its
+     /// identities are still available. A late terminal callback cannot clear
+     /// a new contact or a new incarnation's feedback.
+@@ -422,6 +431,7 @@ extension NodeView {
+         if handlers.contains("press") || defaultLink != nil || presenter?.menus.closesPresentedContent(self) == true
+             || contact.bubbled && isNativeButton && presenter?.invocation(of: self) != nil {
+             contact.ownsPress = true
++            if isRowPress { contact.rowPressOrigin = touch.location(in: nil) }
+             pressed = true
+         } else {
+             if !isNativeButton, presenter?.showsPopoverPress(of: self) == true {
+@@ -441,6 +451,7 @@ extension NodeView {
+     package override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+         if canvasTouches(touches, phase: "move", event: event) { return }
+         guard let contact = currentPressContact(touches) else { return }
++        if cancelDraggedRowPress(contact) { return }
+         inlinePressed = nil; linkPressed = nil
+         if contact.invokerLook != nil { setInvokerLook(contact, touches.first.map(pressLands) ?? false) }
+         if contact.ownsPress { pressFollows(inside: overlayHoldsPress || (touches.first.map(pressLands) ?? false)) } else { contact.destination?.touchesMoved(touches, with: event) }
+@@ -448,6 +459,7 @@ extension NodeView {
+     package override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+         if canvasTouches(touches, phase: "up", event: event) { return }
+         guard let contact = currentPressContact(touches) else { return }
++        if cancelDraggedRowPress(contact) { return }
+         // Its press may have removed the overlay that held the look with it,
+         // which left the look to this contact: the look is the overlay's alone now.
+         defer {
+diff --git a/host/apple/Sources/ExactKit/IOS/RowCellsIOS.swift b/host/apple/Sources/ExactKit/IOS/RowCellsIOS.swift
+index 6434202dd..3498b965f 100644
+--- a/host/apple/Sources/ExactKit/IOS/RowCellsIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/RowCellsIOS.swift
+@@ -76,6 +76,7 @@ extension NodeView {
+         }
+         return find(root)
+     }
++    var isRowPress: Bool { rowCell?.row.rowPress === self }
+     /// Whether the row's author gave it a ground of its own, on the row or
+     /// on anything from what it presses up to it: the cell's ground would
+     /// lie under it, unseen, so such a row is its author's card, and its
+diff --git a/host/apple/Sources/ExactKit/IOS/ScrollReturnIOS.swift b/host/apple/Sources/ExactKit/IOS/ScrollReturnIOS.swift
+new file mode 100644
+index 000000000..9b3637c26
+--- /dev/null
++++ b/host/apple/Sources/ExactKit/IOS/ScrollReturnIOS.swift
+@@ -0,0 +1,223 @@
++// Lists after the app comes back to the front. A reader reported a list that no longer scrolled
++// after a return (other taps worked; a new list did scroll), not reproduced on a simulator. This
++// logs each list's scroll state on every return, clears what a return can leave in flight, and
++// logs the state again when a drag soon after a return leaves its list where it was.
++//
++// The log: subsystem the app's bundle id, category `scroll-return`; numbers only, no text of the
++// app's. Collect it from a paired phone with `log collect --device-udid <udid> --last 1h` and read
++// it with `log show <archive> --predicate 'category == "scroll-return"'`. The same lines go to
++// `Library/Caches/scroll-return.log` in the app's container (kept under 256 KB), which
++// `xcrun devicectl device copy from --domain-type appDataContainer` reads without root.
++//
++// Besides each list, the first drags after a return log every gesture recognizer that heard the
++// finger (its class, state and view), and any recognizer in the window still active: a freeze
++// where every drag dies (lists, sideways swipes, the back swipe) while taps work points at one
++// gesture that the others wait on.
++#if os(iOS)
++import os
++import UIKit
++
++final class ScrollReturn: NSObject {
++    /// How long after a return a drag that moves nothing is logged.
++    static let watch: CFTimeInterval = 1800
++    /// Drags logged with their recognizers after each return.
++    static let dragsLogged = 8
++    /// A drag that leaves its list where it was: at least this far, and the offset within this.
++    static let travel: CGFloat = 30, still: CGFloat = 1
++
++    let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "exact", category: "scroll-return")
++    private static let file: URL? = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
++        .appendingPathComponent("scroll-return.log")
++    private var drags = 0
++
++    /// One line to the unified log and to the file, stamped with the wall clock.
++    private func note(_ text: String) {
++        log.notice("\(text, privacy: .public)")
++        guard let url = Self.file else { return }
++        let stamp = ISO8601DateFormatter().string(from: Date())
++        let data = Data("\(stamp) \(text)\n".utf8)
++        if let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int), size > 256_000 {
++            try? FileManager.default.removeItem(at: url)
++        }
++        if let handle = try? FileHandle(forWritingTo: url) {
++            handle.seekToEndOfFile(); handle.write(data); try? handle.close()
++        } else {
++            try? data.write(to: url)
++        }
++    }
++    private unowned let collections: CollectionHost
++    private weak var viewport: UIView?
++    private var observers: [NSObjectProtocol] = []
++    private var probe: Probe?
++    private var returns = 0
++    private var returnedAt: CFTimeInterval = 0
++    /// Lists already logged as stuck since the last return: one line a list a return.
++    private var stuckLogged = Set<UInt32>()
++
++    init(_ collections: CollectionHost, viewport: UIView) {
++        self.collections = collections
++        self.viewport = viewport
++        super.init()
++        let probe = Probe(); probe.owner = self
++        viewport.addGestureRecognizer(probe)
++        self.probe = probe
++        // Once the app is active again: no touch can be down, and UIKit has laid the window out again.
++        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
++            self?.returned()
++        })
++        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
++            self?.leaving("resign")
++        })
++        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
++            self?.leaving("background")
++        })
++        note("watching")
++    }
++
++    deinit { observers.forEach(NotificationCenter.default.removeObserver) }
++
++    func stop() {
++        observers.forEach(NotificationCenter.default.removeObserver)
++        observers = []
++        if let probe { probe.view?.removeGestureRecognizer(probe) }
++        probe = nil
++    }
++
++    private var lists: [(UInt32, NodeView, UIScrollView)] {
++        (collections.presenter?.listViews ?? [:]).compactMap { id, node in node.scroll.map { (id, node, $0) } }.sorted { $0.0 < $1.0 }
++    }
++
++    /// One list's scroll state, as one line: numbers and flags only.
++    private func line(_ why: StaticString, _ id: UInt32, _ node: NodeView, _ scroll: UIScrollView) {
++        let pan = scroll.panGestureRecognizer
++        let size = scroll.contentSize, bounds = scroll.bounds.size, offset = scroll.contentOffset, inset = scroll.adjustedContentInset
++        let driver = collections.offsetDrivers[id] != nil, animating = collections.animating.contains(id)
++        let pinned = collections.interaction != nil
++        note("\(why) return=\(returns) list=\(id) window=\(scroll.window != nil) hidden=\(node.isHidden || scroll.isHidden) enabled=\(scroll.isScrollEnabled) user=\(scroll.isUserInteractionEnabled) pan=\(pan.state.rawValue)/\(pan.isEnabled) tracking=\(scroll.isTracking) dragging=\(scroll.isDragging) decelerating=\(scroll.isDecelerating) size=\(Self.num(size.width))x\(Self.num(size.height)) bounds=\(Self.num(bounds.width))x\(Self.num(bounds.height)) offset=\(Self.num(offset.x)),\(Self.num(offset.y)) inset=\(Self.num(inset.top)),\(Self.num(inset.bottom)) correction=\(driver) animating=\(animating) pinned=\(pinned)")
++    }
++
++    /// The scene is active again: each list's state, then what was left in flight cleared. Nothing
++    /// that is not stuck changes: a correction is cancelled where it stands (no jump), the pin
++    /// only goes when one is held (no touch can be down now), and an open swipe stays open.
++    private func returned() {
++        returns += 1
++        returnedAt = CACurrentMediaTime()
++        stuckLogged = []
++        for (id, node, scroll) in lists { line("return", id, node, scroll) }
++        var corrections = 0
++        for id in Array(collections.offsetDrivers.keys) {
++            collections.stopAnimation(id)
++            collections.reportAgain(id)
++            corrections += 1
++        }
++        let pinned = collections.interaction != nil
++        if pinned { collections.pointer(nil) }
++        let swipes = collections.presenter?.swipeActions.returned() ?? (projected: 0, released: 0)
++        note("cleared return=\(returns) corrections=\(corrections) pin=\(pinned) swipes-projected=\(swipes.projected) swipes-released=\(swipes.released)")
++        drags = 0
++        active("return")
++    }
++
++    /// The app is leaving the front: each list, and any recognizer still active.
++    private func leaving(_ why: StaticString) {
++        for (id, node, scroll) in lists { line(why, id, node, scroll) }
++        active(why)
++    }
++
++    private static func num(_ v: CGFloat) -> String { String(format: "%.1f", Double(v)) }
++
++    /// A recognizer as one word: its class, state, enabled, and its view (a node's id).
++    private static func describe(_ g: UIGestureRecognizer) -> String {
++        let view = g.view.map { v in (v as? NodeView).map { "node\($0.id)" } ?? String(describing: type(of: v)) } ?? "none"
++        let delegate = g.delegate.map { String(describing: type(of: $0)) } ?? "-"
++        return "\(type(of: g))[state=\(g.state.rawValue) on=\(g.isEnabled) view=\(view) delegate=\(delegate) cancels=\(g.cancelsTouchesInView)]"
++    }
++
++    /// Every recognizer in the window that is active (began or changed).
++    private func active(_ why: StaticString) {
++        guard let window = viewport?.window else { note("active \(why) no-window"); return }
++        var found: [String] = []
++        var stack: [UIView] = [window]
++        while let v = stack.popLast() {
++            for g in v.gestureRecognizers ?? [] where g.state == .began || g.state == .changed {
++                found.append(Self.describe(g))
++            }
++            stack.append(contentsOf: v.subviews)
++        }
++        note("active \(why) return=\(returns) key=\(window.isKeyWindow) user=\(window.isUserInteractionEnabled) scene=\(window.windowScene?.activationState.rawValue ?? -1) count=\(found.count) \(found.joined(separator: " "))")
++    }
++
++    // MARK: A drag that moves nothing
++
++    private var start: (point: CGPoint, offsets: [UInt32: CGPoint])?
++
++    fileprivate func began(_ point: CGPoint) {
++        guard returns > 0, CACurrentMediaTime() - returnedAt < Self.watch else { start = nil; return }
++        start = (point, Dictionary(uniqueKeysWithValues: lists.map { ($0.0, $0.2.contentOffset) }))
++    }
++
++    /// The first drags after a return, moved or not: where, how far, whether a list moved, and
++    /// every recognizer that heard the finger, as it stands when the finger lifts.
++    fileprivate func drag(_ touch: UITouch, from: CGPoint, to: CGPoint, how: StaticString) {
++        guard returns > 0, CACurrentMediaTime() - returnedAt < Self.watch, drags < Self.dragsLogged,
++              max(abs(to.x - from.x), abs(to.y - from.y)) >= Self.travel else { return }
++        drags += 1
++        let moved = lists.contains { id, _, scroll in
++            guard let before = start?.offsets[id] else { return false }
++            return abs(scroll.contentOffset.x - before.x) >= Self.still || abs(scroll.contentOffset.y - before.y) >= Self.still
++        }
++        let heard = (touch.gestureRecognizers ?? []).map(Self.describe).joined(separator: " ")
++        note("drag \(how) return=\(returns) n=\(drags) from=\(Self.num(from.x)),\(Self.num(from.y)) by=\(Self.num(to.x - from.x)),\(Self.num(to.y - from.y)) moved=\(moved) since=\(Self.num(CGFloat(CACurrentMediaTime() - returnedAt))) heard=\(heard)")
++        if !moved { active("drag") }
++    }
++
++    fileprivate func ended(_ point: CGPoint) {
++        guard let start, let viewport else { return }
++        self.start = nil
++        guard abs(point.y - start.point.y) >= Self.travel else { return }
++        for (id, node, scroll) in lists where !stuckLogged.contains(id) && scroll.window != nil {
++            // The list the drag began in.
++            guard scroll.convert(scroll.bounds, to: viewport).contains(start.point), let before = start.offsets[id] else { continue }
++            let now = scroll.contentOffset
++            guard abs(now.x - before.x) < Self.still, abs(now.y - before.y) < Self.still else { continue }
++            stuckLogged.insert(id)
++            line("stuck", id, node, scroll)
++        }
++    }
++
++    /// Watches touches on the window and never recognizes: it neither delays nor takes them.
++    private final class Probe: UIGestureRecognizer {
++        weak var owner: ScrollReturn?
++        private weak var touch: UITouch?
++        private var from: CGPoint = .zero
++        override init(target: Any? = nil, action: Selector? = nil) {
++            super.init(target: target, action: action)
++            cancelsTouchesInView = false; delaysTouchesBegan = false; delaysTouchesEnded = false
++        }
++        override func canPrevent(_ other: UIGestureRecognizer) -> Bool { false }
++        override func canBePrevented(by other: UIGestureRecognizer) -> Bool { false }
++        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
++            guard touch == nil, let first = touches.first, let view else { return }
++            touch = first
++            from = first.location(in: view)
++            owner?.began(from)
++        }
++        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
++            guard let touch, touches.contains(touch), let view else { return }
++            owner?.drag(touch, from: from, to: touch.location(in: view), how: "ended")
++            owner?.ended(touch.location(in: view))
++            self.touch = nil
++            state = .failed
++        }
++        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
++            // A touch the system took (an app switch) is no drag of the reader's.
++            if let touch, touches.contains(touch), let view {
++                owner?.drag(touch, from: from, to: touch.location(in: view), how: "cancelled")
++            }
++            touch = nil
++            state = .failed
++        }
++        override func reset() { super.reset(); touch = nil }
++    }
++}
++#endif
+diff --git a/host/apple/Sources/ExactKit/IOS/SwipeActionsIOS.swift b/host/apple/Sources/ExactKit/IOS/SwipeActionsIOS.swift
+index 245f20e19..05931dcd3 100644
+--- a/host/apple/Sources/ExactKit/IOS/SwipeActionsIOS.swift
++++ b/host/apple/Sources/ExactKit/IOS/SwipeActionsIOS.swift
+@@ -399,6 +399,18 @@ package final class SwipeActionsHost {
+         }
+     }
+ 
++    /// After a return to the app (ScrollReturnIOS.swift): how many rows are still projected, and how
++    /// many of them were released because their touch never ended (the app left mid-swipe). A row
++    /// the reader left open stays open.
++    func returned() -> (projected: Int, released: Int) {
++        var projected = 0, released = 0
++        for row in rows.values where row.projected {
++            projected += 1
++            if row.releaseStaleTouch() { released += 1 }
++        }
++        return (projected, released)
++    }
++
+     private final class Row: NSObject, UITableViewDataSource, UITableViewDelegate {
+         unowned let host: SwipeActionsHost
+         let owner: NodeView
+@@ -509,6 +521,10 @@ package final class SwipeActionsHost {
+             if stilled { owner.scroll?.isScrollEnabled = true; stilled = false }
+             owner.scroll?.isHidden = scrollWasHidden
+             mounted = false
++            // A plain list's row line starts at the row's text (RowCellsIOS.swift), which was in the
++            // projection's cell, so the line was drawn from the cell's margin: draw it again now the
++            // content is home, or a row once swiped keeps a full-width line.
++            if let list = owner.rowCell?.list { owner.presenter?.rowCells.sync(changed: [list.id]) }
+         }
+         /// The row is gone: its claim with it.
+         func discard() {
+@@ -522,6 +538,14 @@ package final class SwipeActionsHost {
+             table.setEditing(false, animated: false); table.removeFromSuperview()
+             self.table = nil; cell = nil; images.removeAll(); touching = false; open = false
+         }
++        /// No touch can be down at a return: one that never ended keeps the projection, and the row's
++        /// own scroll stilled, for good. Released here; `settle` keeps an open row open.
++        func releaseStaleTouch() -> Bool {
++            guard touching else { return false }
++            touching = false
++            settle()
++            return true
++        }
+         /// Release the projection once nothing can be swiping: no touch, the
+         /// row closed, and UIKit's close animation finished.
+         func settle() {
+diff --git a/host/apple/Sources/ExactKit/Mac/ToolbarInkMac.swift b/host/apple/Sources/ExactKit/Mac/ToolbarInkMac.swift
+index c8d24dadf..28b5b88c5 100644
+--- a/host/apple/Sources/ExactKit/Mac/ToolbarInkMac.swift
++++ b/host/apple/Sources/ExactKit/Mac/ToolbarInkMac.swift
+@@ -17,6 +17,9 @@ final class ToolbarInkMac {
+             return
+         }
+         let button = (item.view as? NSButton) ?? NSButton(title: "", target: target, action: action)
++        // assigning the item's action also overwrites its existing custom view's action.
++        button.target = target
++        button.action = action
+         button.tag = Int(node.id)
+         button.bezelStyle = .texturedRounded
+         button.title = face?.title ?? item.title
+diff --git a/host/apple/build.mjs b/host/apple/build.mjs
+index a2229680c..69d76d583 100644
+--- a/host/apple/build.mjs
++++ b/host/apple/build.mjs
+@@ -1045,32 +1045,30 @@ async function main(args, lockHeld = false) {
+   const snapshot = snapshotSources(modules.apple, resolve(webBuildDir, 'module-sources')); if (modules.apple.length) console.log(`host/apple: the app's Swift modules compile as they are now (${modules.apple.length} copied); an edit from here on needs another build`);
+   // Where a module's Swift packages compile, this build's own: an arm's key names it `<packages>`.
+   const packageDir = resolve(webBuildDir, 'packages');
++  // Each place the packages compile for (`buildPlace`, then any `probePlace`): an arm whose arguments name one places them there.
++  const packagePlaces = [];
+   const arm = (args, source, built, extra = '', own = false, optional = false) => { // optional: placing a failed one answers its log's path
+     const key = createHash('sha256').update(JSON.stringify([args.map(a => a === built ? '<out>' : snapshot.key(a).replace(packageDir, '<packages>')), [].concat(source).map(f => readFileSync(f, 'utf8')), swiftc, extra])).digest('hex').slice(0, 16);
+     const dir = resolve(own ? linkRoot : swiftBuildRoot, 'arms'), cached = resolve(dir, `${key}-${basename(built)}`);
+     try { const now = new Date(); utimesSync(cached, now, now); copyFileSync(cached, built); return Object.assign(async () => true, { cached }); } catch {} // none, or evicted meanwhile
+-    mkdirSync(dir, { recursive: true }); if (args.includes(packageDir)) placePackages(); // the packages' objects only for an arm compiled anew
++    mkdirSync(dir, { recursive: true }); const linking = packagePlaces.find(place => args.includes(place.dir)); if (linking) placePackages(linking); // the packages' objects only for an arm compiled anew
+     const making = `${cached}.${process.pid}.tmp`;
+     const log = resolve(webBuildDir, `arm-${beside.length}.log`), compile = startApple('xcrun', args.map(a => a === built ? making : a), log, { authored: snapshot.authored });
+     beside.push(compile);
+     return Object.assign(async () => {
+       if (!await compile.done({ repeated: optional })) return log;
+-      // Place this build's result before publishing it to the shared eviction pool.
+       copyFileSync(making, built);
+       renameSync(making, cached);
+       evictArms(dir, basename(built)); return true;
+     }, { cached }); // its copy's path: a probe's roster is kept beside it
+   };
+   const arms = [];
+-  // tvOS has no WebKit, so no iframe arm there.
+   const hasWeb = !tv && carries('web'), hasVideo = carries('video'), hasSvg = carries('svg'), hasListen = !ios && carries('listen');
+   if (hasWeb) arms.push(arm([...webArgs, ...(!production && !distribution ? ['-D', 'EXACT_DEVELOPMENT'] : [])], [resolve(root, 'host/apple/webarm/WebArm.swift'), ...frameSources], webBuilt));
+   const videoBuilt = resolve(webBuildDir, videoLoadName);
+-  // The video arm and its media session: both sources are its key and its inputs, with MediaPlayer.
+   const video = ['VideoArm.swift', 'NowPlaying.swift', 'PictureInPicture.swift'].map(f => resolve(root, 'host/apple/videoarm', f));
+   const videoArgs = ownArgs(webArgs).flatMap(value => value === 'ExactWebArm' ? ['ExactVideoArm'] : value === resolve(root, 'host/apple/webarm/WebArm.swift') ? video : value === webBuilt ? [videoBuilt] : value === 'WebKit' ? ['AVKit', '-framework', 'MediaPlayer'] : [value]);
+   if (hasVideo) arms.push(arm(videoArgs, video, videoBuilt));
+-  // The sound arm: Swift over a C mixer and AVAudioEngine's raising calls in Objective-C.
+   const hasSound = carries('sound'), soundBuilt = resolve(webBuildDir, soundLoadName);
+   if (hasSound) {
+     const sound = (f) => resolve(root, 'host/apple/soundarm', f), triple = webArgs[webArgs.indexOf('-target') + 1], flags = ['-O2', '-fobjc-arc', '-fobjc-arc-exceptions'];
+@@ -1084,32 +1082,15 @@ async function main(args, lockHeld = false) {
+     const soundArgs = [...ownArgs(webArgs).map(value => value === 'ExactWebArm' ? 'ExactSoundArm' : value === resolve(root, 'host/apple/webarm/WebArm.swift') ? sound('SoundArm.swift') : value === webBuilt ? soundBuilt : value === 'WebKit' ? 'AVFoundation' : value), '-import-objc-header', sound('sound_render.h'), ...objects];
+     arms.push(arm(soundArgs, [sound('SoundArm.swift'), sound('sound_render.c'), sound('sound_engine.m'), sound('sound_render.h')], soundBuilt));
+   }
+-  // The MIDI arm: CoreMIDI on a thread of its own; tvOS has none.
+   const hasMidi = !tv && carries('midi'), midiBuilt = resolve(webBuildDir, 'libexact_midi.dylib'), midiSource = resolve(root, 'host/apple/midiarm/MIDIArm.swift'), midiRing = resolve(root, 'host/apple/midiarm/midi_ring.h');
+   if (hasMidi) arms.push(arm(ownArgs(webArgs).map(value => value === 'ExactWebArm' ? 'ExactMIDIArm' : value === resolve(root, 'host/apple/webarm/WebArm.swift') ? midiSource : value === webBuilt ? midiBuilt : value === 'WebKit' ? 'CoreMIDI' : value).concat(['-import-objc-header', midiRing]), [midiSource, midiRing], midiBuilt));
+-  // The loose arms, each where the build carries it: [carried, built, load name, its framework on iOS].
+   const looseArms = [[hasWeb, webBuilt, webLoadName, 'ExactWeb'], [hasVideo, videoBuilt, videoLoadName, 'ExactVideo'], [hasSound, soundBuilt, soundLoadName, 'ExactSound'], [hasMidi, midiBuilt, 'libexact_midi.dylib', 'ExactMIDI'], ...(ios ? [] : [[hasListen, moduleLib['exact-listen'], 'libexact_listen.dylib', null]])];
+-  // The app's one module artifact, only when the app
+-  // has modules (the GPU gate): the host's table glue and the app's own
+-  // `modules/apple/*.swift`, one dylib under one load name. A release build
+-  // whose roster names a tag the artifact lacks fails here, named.
+   const modulesLoadName = 'libexact_modules.dylib';
+-  // The app's `data-*` words as typed keys, written
+-  // from app.json `data` beside the glue (built, never committed).
+   const dataKeys = resolve(linkRoot, `ExactDataKeys-${app.id}.swift`);
+-  // The modules' Swift implementations the app names, each package compiled as a Swift
+-  // module of its own and composed into the app's one module by an adapter written here (never committed).
+   const packages = appleImplementations(app.dir, tv ? 'tvos' : ios ? 'ios' : 'macos'), composing = modules.apple.length > 0 || packages.length > 0;
+-  // A package that asks for AlarmKit's countdown compiles the host's metadata type into its own module, on iOS
+-  // only, as the extension compiles it.
+   for (const p of packages) if (p.activity === 'alarmkit' && ios && !tv) p.sources = [...p.sources, resolve(root, 'host/apple/widget/AlarmAttributes.swift')];
+-  // Each package compiles against `ExactPackage` (host/apple/modules/ExactPackage.swift), a Swift module of its own
+-  // compiled first and linked into the app's module with them.
+   const seam = resolve(root, 'host/apple/modules/ExactPackage.swift');
+-  const composed = resolve(linkRoot, `ExactComposed-${app.id}.swift`), packageObjects = packages.length ? [resolve(packageDir, 'ExactPackage.o'), ...packages.map(p => resolve(packageDir, `${p.module}.o`))] : [];
+-  // Each package's Swift copied as it is when the build begins (an edit meanwhile lands in the next build, as the app's
+-  // own sources do): what it compiles from and what an arm linking it is keyed by. Each copy says where it came from
+-  // (`#sourceLocation`), so a diagnostic names the package's file and `#filePath` its place in the package.
++  const composed = resolve(linkRoot, `ExactComposed-${app.id}.swift`), packageObjects = (place) => packages.length ? [resolve(place.dir, 'ExactPackage.o'), ...packages.map(p => resolve(place.dir, `${p.module}.o`))] : [];
+   const packageCopies = packages.map(p => p.sources.map((f, i) => {
+     const copy = resolve(packageDir, `src-${p.module}`, `${i}-${basename(f)}`);
+     mkdirSync(dirname(copy), { recursive: true });
+@@ -1118,84 +1099,66 @@ async function main(args, lockHeld = false) {
+   })), packageSources = packages.length ? [seam, ...packageCopies.flat()] : [];
+   if (composing) writeFileSync(composed, composedModule(packages, modules.apple.length > 0));
+   if (composing) writeDataKeys(app, dataKeys, ios ? 'ios' : 'macos');
+-  // The token names `contract tamber gen swift` writes from the design (never committed).
+   if (composing) (await import('../../scripts/tamber-names.mjs')).writeTamberNames(app, 'swift'); const tamberNames = resolve(app.dir, '.exact/tamber/tamber.swift');
+   const moduleSources = composing ? [...moduleSeam(resolve, root), composed, ...(existsSync(tamberNames) ? [tamberNames] : []), dataKeys, ...snapshot.copies] : [];
+   const modulesBuilt = moduleSources.length ? resolve(webBuildDir, modulesLoadName) : null;
+-  // The slice of each `modules/apple/*.xcframework` for this build, read
+-  // from the xcframework's own Info.plist (`AvailableLibraries`: platform,
+-  // variant, architectures), never guessed from a directory name; Mac
+-  // Catalyst is a variant of its own, matched only for the roster probe. A static library's
+-  // slice gives `-I` its headers, `-L` it and `-l` each archive in it; a
+-  // framework's slice gives `-F` it and `-framework` its name.
+   const frameworkSlice = (fw, forIos, simulator, arch) => {
+     const platform = forIos ? 'ios' : 'macos', variant = forIos && simulator ? (simulator === true ? 'simulator' : simulator) : undefined;
+     let dir, lib; try { ({ dir, lib } = xcframeworkSlice(fw, { platform, variant, arch })); } catch (e) { throw new Error(`host/apple: ${e.message}`); }
+     const framework = lib.LibraryPath.endsWith('.framework');
+-    // The plist names one library; a slice composed by hand may hold more archives beside it.
+     const files = framework ? [resolve(dir, lib.LibraryPath, basename(lib.LibraryPath, '.framework'))] : readdirSync(dir).filter(f => /^lib.*\.a$/.test(f)).map(f => resolve(dir, f));
+     if (!files.length) throw new Error(`host/apple: ${basename(fw)}'s ${lib.LibraryIdentifier} slice holds no static library (lib*.a) or framework; a dynamic library is not linked into the module`);
+-    // A slice made without `-headers` (a dependency archive nothing imports) has no HeadersPath and no `-I`.
+     const headers = !framework && lib.HeadersPath && existsSync(resolve(dir, lib.HeadersPath)) ? resolve(dir, lib.HeadersPath) : null;
+     const args = framework ? ['-F', dir, '-framework', basename(lib.LibraryPath, '.framework')] : [...(headers ? ['-I', headers] : []), '-L', dir, ...files.map(f => `-l${basename(f).slice(3, -2)}`)];
+-    // Every header file, so an edit in place rebuilds the module too.
+     const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(resolve(d, e.name)) : [resolve(d, e.name)]);
+     return { files, args, stamped: [...files, ...(headers ? walk(headers) : [])] };
+   };
+   const frameworkArgs = (forIos, simulator, arch) => (modules.frameworks ?? []).flatMap(fw => frameworkSlice(fw, forIos, simulator, arch).args);
+-  // Linker flags the manifest declares for the module artifact
+-  // (`host.macos.link`, `host.ios.link`; one argument each), for what an
+-  // archive needs but cannot say: `-lc++` for a static library with C++ inside.
+-  // tvOS links only what a package declares for `tvos`: AlarmKit is iOS's alone.
+   const linkArgs = (forIos, os = forIos ? 'ios' : 'macos') => [...(app.manifest.host?.[os]?.link ?? []), ...systemFrameworks(packages, forIos && tv ? 'tvos' : os, app.manifest.host?.[os]?.minimumOS)];
+-  // What the arm cache must see change: the flags, and each library's bytes.
+   const frameworkStamp = (forIos, simulator, arch) => JSON.stringify([linkArgs(forIos), ...(modules.frameworks ?? []).flatMap(fw => frameworkSlice(fw, forIos, simulator, arch).stamped).map(f => { const st = statSync(f); return [f, st.size, st.mtimeMs]; })]);
+   const macArch = process.arch === 'arm64' ? 'arm64' : 'x86_64';
+   const iosArch = device ? 'arm64' : (iosTriple.startsWith('arm64') ? 'arm64' : 'x86_64');
+-  const moduleArgs = (sdkFor, targetArgs, out, forIos = false, simulator = false, arch = macArch) => ['--sdk', sdkFor, 'swiftc', '-module-cache-path', resolve(swiftBuildRoot, 'modules-module-cache'), '-parse-as-library', '-emit-library', '-O', '-swift-version', '5', '-module-name', 'ExactAppModules', ...moduleSources, ...(packages.length ? ['-I', packageDir, ...packageObjects] : []), ...frameworkArgs(forIos, simulator, arch), ...linkArgs(forIos), '-o', out, ...targetArgs];
++  const moduleArgs = (sdkFor, targetArgs, out, forIos = false, simulator = false, arch = macArch, place = buildPlace) => ['--sdk', sdkFor, 'swiftc', '-module-cache-path', resolve(swiftBuildRoot, 'modules-module-cache'), '-parse-as-library', '-emit-library', '-O', '-swift-version', '5', '-module-name', 'ExactAppModules', ...moduleSources, ...(packages.length ? ['-I', place.dir, ...packageObjects(place)] : []), ...frameworkArgs(forIos, simulator, arch), ...linkArgs(forIos), ...(!production && !distribution ? ['-D', 'EXACT_DEVELOPMENT'] : []), '-o', out, ...targetArgs]; // as for packages: an app module can keep development-only calls out of an archive
+   const macTarget = ['-target', moduleTripleFor(app, false)];
+-  // Each package's Swift module for this target, before the app's module links it: once, and only when an arm
+-  // linking it is compiled anew (its copied sources and `packageStamp` are that arm's key; its objects' paths this
+-  // build's own). A failed package stays unplaced, so the next arm that needs it compiles it again and says why.
+-  const swiftModuleArgs = (name, sources) => ['--sdk', sdkName, 'swiftc', '-module-cache-path', resolve(swiftBuildRoot, 'modules-module-cache'), '-parse-as-library', '-wmo', '-O', '-swift-version', '5', '-module-name', name, '-emit-module', '-emit-module-path', resolve(packageDir, `${name}.swiftmodule`), '-I', packageDir, '-c', ...sources, '-o', resolve(packageDir, `${name}.o`), ...(ios ? ['-target', moduleTripleFor(app, true, device, tv), '-sdk', sdk] : macTarget)];
+-  const packageArgs = (p, i) => [...swiftModuleArgs(p.module, packageCopies[i]), ...(!production && !distribution ? ['-D', 'EXACT_DEVELOPMENT'] : [])]; // a package's development-only paths (an injected device), as the web arm's
+-  // What an arm linking the packages adds to its key: each package, its sources by name, and how it compiles.
+-  const packageStamp = JSON.stringify(packages.map((p, i) => [p.module, p.sources, packageArgs(p, i).map(a => a.replaceAll(packageDir, '<packages>'))]));
+-  const seamArgs = () => swiftModuleArgs('ExactPackage', [seam]);
+-  let placed = false;
+-  const placePackages = () => {
+-    if (placed) return;
++  const buildPlace = { dir: packageDir, sdk: sdkName, target: ios ? ['-target', moduleTripleFor(app, true, device, tv), '-sdk', sdk] : macTarget };
++  packagePlaces.push(buildPlace);
++  const probePlace = (variant, target) => {
++    const dir = resolve(packageDir, `probe-${variant === true ? 'simulator' : variant === false ? 'macos' : variant}`);
++    const place = packagePlaces.find(p => p.dir === dir) ?? { dir, sdk: variant === true ? 'iphonesimulator' : 'macosx', target };
++    if (!packagePlaces.includes(place)) packagePlaces.push(place);
++    return place;
++  };
++  const swiftModuleArgs = (name, sources, place) => ['--sdk', place.sdk, 'swiftc', '-module-cache-path', resolve(swiftBuildRoot, 'modules-module-cache'), '-parse-as-library', '-wmo', '-O', '-swift-version', '5', '-module-name', name, '-emit-module', '-emit-module-path', resolve(place.dir, `${name}.swiftmodule`), '-I', place.dir, '-c', ...sources, '-o', resolve(place.dir, `${name}.o`), ...place.target];
++  const packageArgs = (p, i, place = buildPlace) => [...swiftModuleArgs(p.module, packageCopies[i], place), ...(!production && !distribution ? ['-D', 'EXACT_DEVELOPMENT'] : [])]; // a package's development-only paths (an injected device), as the web arm's
++  const packageStamp = (place = buildPlace) => JSON.stringify(packages.map((p, i) => [p.module, p.sources, packageArgs(p, i, place).map(a => a.replaceAll(packageDir, '<packages>'))]));
++  const placed = new Set();
++  const placePackages = (place) => {
++    if (placed.has(place.dir)) return;
+     if (packages.length) {
+-      const r = spawnSync('xcrun', seamArgs(), { encoding: 'utf8' });
++      mkdirSync(place.dir, { recursive: true });
++      const r = spawnSync('xcrun', swiftModuleArgs('ExactPackage', [seam], place), { encoding: 'utf8' });
+       if (r.status !== 0) throw new Error(`host/apple: ExactPackage.swift did not compile:\n${r.stderr ?? ''}`);
+     }
+     packages.forEach((p, i) => {
+-      const r = spawnSync('xcrun', packageArgs(p, i), { encoding: 'utf8' });
+-      // Each copy's real path first (the temporary directory's `/private/var/…`), as `snapshot.authored` maps the app's.
++      const r = spawnSync('xcrun', packageArgs(p, i, place), { encoding: 'utf8' });
+       const said = packageCopies[i].reduce((text, copy, j) => text.replaceAll(realpathSync(copy), p.sources[j]).replaceAll(copy, p.sources[j]), r.stderr ?? '');
+       if (r.status !== 0) throw new Error(`host/apple: ${p.extension}'s Swift (${p.sources.join(', ')}) did not compile:\n${said}`);
+     });
+-    placed = true;
++    placed.add(place.dir);
+   };
+-  if (modulesBuilt) arms.push(arm(moduleArgs(sdkName, ios ? ['-target', moduleTripleFor(app, true, device, tv), '-sdk', sdk] : macTarget, modulesBuilt, ios, ios && !device, ios ? iosArch : macArch), [...moduleSources, ...packageSources], modulesBuilt, frameworkStamp(ios, ios && !device, ios ? iosArch : macArch) + packageStamp, true));
+-  // The roster the artifact serves (its tags, and which join the first frame) is read by running its table: a macOS build
+-  // dlopens its artifact; an iOS build links the same sources (their iOS code) with each xcframework's slice for a route, and
+-  // the first route that reads it stands: a Mac Catalyst executable run here, an iOS simulator one spawned on a booted
+-  // simulator (UIKit will not start without one: any booted, else one booted here and shut down after), a macOS dylib dlopened
+-  // here. A route with no slice, or whose probe does not compile, load or run, falls through; a roster read is final. tvOS has
+-  // the macOS route alone, and no first-frame tag. The first route compiles beside the build, a later one only when needed.
++  if (modulesBuilt) arms.push(arm(moduleArgs(sdkName, ios ? ['-target', moduleTripleFor(app, true, device, tv), '-sdk', sdk] : macTarget, modulesBuilt, ios, ios && !device, ios ? iosArch : macArch), [...moduleSources, ...packageSources], modulesBuilt, frameworkStamp(ios, ios && !device, ios ? iosArch : macArch) + packageStamp(), true));
+   let rosterKeys = {};
+   const routes = !(modulesBuilt && modules.tags.length && typeof Bun !== 'undefined') ? [] : !ios ? [{ via: 'macOS', built: modulesBuilt, placed: async () => true }]
+     : [...(tv ? [] : [['Mac Catalyst', 'maccatalyst'], ['iOS Simulator', true]]), ['macOS', false]].map(([via, variant]) => ({ via, variant,
+-      // The Swift packages compile for the build's own target, which only a simulator build's simulator route shares.
+-      lacking: (packages.length && !(variant === true && !device) ? `${packages[0].extension} (a Swift package, compiled for this build's target)` : null) ?? (modules.frameworks ?? []).find(fw => { try { frameworkSlice(fw, variant !== false, variant, macArch); return false; } catch { return true; } }),
++      lacking: (packages.length && !device && variant !== true ? `${packages[0].extension} (a Swift package, compiled for this build's target)` : null) ?? (modules.frameworks ?? []).find(fw => { try { frameworkSlice(fw, variant !== false, variant, macArch); return false; } catch { return true; } }),
+       built: resolve(webBuildDir, variant === false ? 'probe-' + modulesLoadName : `probe-roster-${variant === true ? 'simulator' : variant}`) }));
+   const compileProbe = ({ variant, built }, probeMain = resolve(linkRoot, 'ExactRosterProbe.swift')) => {
+-    if (variant === false) return arm(moduleArgs('macosx', macTarget, built), [...moduleSources, ...packageSources], built, frameworkStamp(false, false, macArch) + packageStamp, true, true);
++    if (variant === false) { const place = probePlace(false, macTarget); return arm(moduleArgs('macosx', macTarget, built, false, false, macArch, place), [...moduleSources, ...packageSources], built, frameworkStamp(false, false, macArch) + packageStamp(place), true, true); }
+     writeFileSync(probeMain, '@main enum ExactRosterProbe { static func main() { print(String(cString: exactNativeAbi().load(fromByteOffset: 8, as: UnsafePointer<CChar>.self))) } }\n');
+     const on = variant === true ? 'iphonesimulator' : 'macosx', catalyst = variant !== true && resolve(read('xcrun', ['--sdk', 'macosx', '--show-sdk-path']).stdout.trim(), 'System/iOSSupport');
+     const target = catalyst ? ['-target', `${macArch}-apple-ios${targets.ios}-macabi`, '-Fsystem', `${catalyst}/System/Library/Frameworks`, '-I', `${catalyst}/usr/lib/swift`, '-L', `${catalyst}/usr/lib/swift`] : ['-target', `${macArch}-apple-ios${targets.ios}-simulator`, '-sdk', read('xcrun', ['--sdk', on, '--show-sdk-path']).stdout.trim()];
+-    return arm(moduleArgs(on, [...target, probeMain], built, true, variant, macArch).filter(a => a !== '-emit-library'), [...moduleSources, ...packageSources, probeMain], built, frameworkStamp(true, variant, macArch) + packageStamp, true, true);
++    const place = variant === true && !device ? buildPlace : probePlace(variant, target);
++    return arm(moduleArgs(on, [...target, probeMain], built, true, variant, macArch, place).filter(a => a !== '-emit-library'), [...moduleSources, ...packageSources, probeMain], built, frameworkStamp(true, variant, macArch) + packageStamp(place), true, true);
+   };
+   const firstRoute = routes.find(r => !r.lacking); if (firstRoute && !firstRoute.placed) try { firstRoute.placed = compileProbe(firstRoute); } catch (e) { firstRoute.placed = () => { throw e; }; }
+   const serviceDylibs = launchServices(launchModules(app.dir, app.manifest), webBuildDir); for (const svc of serviceDylibs) arms.push(arm(['--sdk', sdkName, 'swiftc', '-module-cache-path', resolve(swiftBuildRoot, 'modules-module-cache'), ...serviceArgs(svc), ...(ios ? ['-target', device ? 'arm64-apple-ios17.0' : tv ? iosTripleFor(app, false, true) : iosTriple, '-sdk', sdk] : macTarget)], svc.sources, svc.built, '', true));
+diff --git a/host/apple/tests/ExactKitTests/AppAccentIOSTests.swift b/host/apple/tests/ExactKitTests/AppAccentIOSTests.swift
+index 71ee23b73..135b3f798 100644
+--- a/host/apple/tests/ExactKitTests/AppAccentIOSTests.swift
++++ b/host/apple/tests/ExactKitTests/AppAccentIOSTests.swift
+@@ -46,6 +46,79 @@ final class AppAccentIOSTests: XCTestCase {
+         XCTAssertNotEqual(rgb(window.tintColor), [0, 122, 255], "a root with no accent gives the window its own back")
+     }
+ 
++    func testAReparentedRootStillUpdatesTheWindowAccent() throws {
++        let p = presenter(view(1) + [["op": "roots", "ids": [1]]])
++        let root = try XCTUnwrap(p.views[1])
++        let route = UIViewController()
++        window.addSubview(route.view)
++        route.view.addSubview(root)
++        XCTAssertFalse(root.superview === p.root, "navigation can move the logical root into a route controller")
++        p.apply(wireBatch([["op": "style", "id": 1, "style": ["accent_color": red]]]))
++        XCTAssertEqual(rgb(window.tintColor), [232, 28, 36], "a reactive accent loaded after route attachment reaches the window")
++        p.apply(wireBatch([["op": "style", "id": 1, "style": ["accent_color": [0, 122, 255, 255]]]]))
++        XCTAssertEqual(rgb(window.tintColor), [0, 122, 255], "a mounted palette change reaches the window")
++        p.apply(wireBatch([["op": "style", "id": 1, "style": ["accent_color": "auto"]]]))
++        XCTAssertEqual(rgb(window.tintColor), rgb(UIWindow().tintColor), "reset restores the platform tint")
++    }
++
++    func testAReplacedRootCannotRetakeTheWindowAccentAfterReparenting() throws {
++        let p = presenter(view(1, style: ["accent_color": red]) + [["op": "roots", "ids": [1]]])
++        let old = try XCTUnwrap(p.views[1])
++        let route = UIViewController()
++        window.addSubview(route.view)
++        route.view.addSubview(old)
++        p.apply(wireBatch(view(2, style: ["accent_color": [0, 122, 255, 255]]) + [["op": "roots", "ids": [2]]]))
++        p.apply(wireBatch([["op": "style", "id": 1, "style": ["accent_color": [0, 255, 0, 255]]]]))
++        XCTAssertEqual(rgb(window.tintColor), [0, 122, 255], "a retained old route no longer owns the app accent")
++        p.reset()
++        XCTAssertEqual(rgb(window.tintColor), rgb(UIWindow().tintColor), "session reset releases the window accent")
++    }
++
++    func testAColdProminentBarInheritsALateRootAccentWithoutATraitChange() throws {
++        guard #available(iOS 26.0, *) else { throw XCTSkip("prominent native bar style requires iOS 26") }
++        let page = UIViewController()
++        let bar = UIBarButtonItem(title: "Continue", style: .prominent, target: nil, action: nil)
++        page.navigationItem.rightBarButtonItem = bar
++        let nav = UINavigationController(rootViewController: page)
++        let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
++        let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
++        window.frame = CGRect(x: 0, y: 0, width: 402, height: 874)
++        window.overrideUserInterfaceStyle = .light
++        window.tintColor = .systemBlue
++        window.rootViewController = nav
++        window.makeKeyAndVisible()
++        self.window = window
++        defer { window.isHidden = true; window.rootViewController = nil }
++        let p = Presenter()
++        p.viewport.frame = page.view.bounds
++        page.view.addSubview(p.viewport)
++        p.apply(wireBatch(view(1) + [["op": "roots", "ids": [1]]]))
++        let root = try XCTUnwrap(p.views[1])
++        page.view.addSubview(root)
++        nav.view.layoutIfNeeded()
++        XCTAssertNil(bar.tintColor, "the prominent fill inherits the window, not authored text color")
++        XCTAssertTrue(nav.navigationBar.window === p.viewport.window, "the active bar and accent owner share the window")
++        let yellow: [[Double]] = [[128, 102, 0, 255], [255, 204, 0, 255]]
++        p.apply(wireBatch([["op": "style", "id": 1, "style": ["accent_color": yellow]]]))
++        let decoded = try XCTUnwrap(root.style["accent_color"])
++        XCTAssertEqual(decoded.channels(dark: false), yellow[0], "the fixture carries the compiler's light/dark color shape")
++        XCTAssertEqual(decoded.channels(dark: true), yellow[1])
++        _ = try XCTUnwrap(decoded.cgColor(dark: false))
++        _ = try XCTUnwrap(decoded.cgColor(dark: true))
++        nav.view.layoutIfNeeded()
++        XCTAssertEqual(rgb(window.tintColor), [128, 102, 0], "late persisted palette reaches the cold light window")
++        XCTAssertEqual(rgb(nav.navigationBar.tintColor), [128, 102, 0], "the displayed bar inherits it before any dark-mode switch")
++        XCTAssertTrue(page.navigationItem.rightBarButtonItem === bar, "updating tint does not reconstruct the item")
++        window.overrideUserInterfaceStyle = .dark
++        nav.view.layoutIfNeeded()
++        let dark = UITraitCollection(userInterfaceStyle: .dark)
++        XCTAssertEqual(rgb(nav.navigationBar.tintColor.resolvedColor(with: dark)), [255, 204, 0])
++        window.overrideUserInterfaceStyle = .light
++        nav.view.layoutIfNeeded()
++        XCTAssertEqual(rgb(nav.navigationBar.tintColor), [128, 102, 0], "returning to light does not retain a stale native tint")
++        p.reset()
++    }
++
+     func testAccentColorAsTheTintLeavesTheWindowAlone() {
+         let before = rgb(UIWindow().tintColor)
+         _ = presenter(view(1, style: ["accent_color": ["sys": "@tint", "c": [[0, 122, 255, 255], [10, 132, 255, 255]]]]) + [["op": "roots", "ids": [1]]])
+@@ -527,7 +600,12 @@ final class AppAccentIOSTests: XCTestCase {
+         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+         window.addSubview(view)
+         var reports: [Bool] = []
+-        session.runtime.observeBatch = { _, _ in reports.append(session.presenter.views[9001]?.layer.bounds.width == 123) }
++        session.runtime.observeBatch = { _, _ in
++            Owner.shared.callMain {
++                XCTAssertTrue(Thread.isMainThread)
++                reports.append(session.presenter.views[9001]?.layer.bounds.width == 123)
++            }
++        }
+         defer { session.runtime.observeBatch = nil }
+         session.apply(wireBatch([
+             ["op": "create", "id": 9001, "kind": "view", "props": [:], "handlers": [], "style": ["accent_color": [255, 59, 48, 255]]],
+diff --git a/host/apple/tests/ExactKitTests/HeaderMacTests.swift b/host/apple/tests/ExactKitTests/HeaderMacTests.swift
+index b39d46f64..91fd7f44d 100644
+--- a/host/apple/tests/ExactKitTests/HeaderMacTests.swift
++++ b/host/apple/tests/ExactKitTests/HeaderMacTests.swift
+@@ -78,6 +78,11 @@ final class HeaderMacTests: XCTestCase {
+         XCTAssertTrue(p.toolbar.attach(to: window))
+         let button = try XCTUnwrap(p.toolbar.items[13]?.view as? NSButton)
+         XCTAssertEqual(button.contentTintColor?.alphaComponent, 0)
++        var pressed: [UInt32] = []
++        p.onPress = { pressed.append($0) }
++        p.toolbar.sync()
++        button.performClick(nil)
++        XCTAssertEqual(pressed, [13], "a refreshed custom toolbar button still dispatches its press")
+         p.apply(wireBatch([
+             ["op": "style", "id": 13, "style": ["text_color": [255, 0, 0, 255]]]]))
+         p.toolbar.sync()
+diff --git a/host/apple/tests/ExactKitTests/KeyboardToolbarIOSTests.swift b/host/apple/tests/ExactKitTests/KeyboardToolbarIOSTests.swift
+index d09a7a57d..84a35b70a 100644
+--- a/host/apple/tests/ExactKitTests/KeyboardToolbarIOSTests.swift
++++ b/host/apple/tests/ExactKitTests/KeyboardToolbarIOSTests.swift
+@@ -138,6 +138,22 @@ final class KeyboardToolbarIOSTests: XCTestCase {
+         XCTAssertEqual(replacement.contentOffset.y, 1500, accuracy: 0.5)
+     }
+ 
++    func testAMidScrollTranscriptRisesWithTheKeyboard() throws {
++        let (session, window) = fixture()
++        defer { window.isHidden = true; session.destroy() }
++        let p = session.presenter
++        let transcript = try XCTUnwrap(p.views[2]?.scroll)
++        transcript.contentOffset.y = 400
++        setKeyboard(p, top: 460)
++        XCTAssertEqual(transcript.contentInset.bottom, 306)
++        XCTAssertEqual(transcript.contentOffset.y, 706, accuracy: 0.5,
++                       "away from the end, the offset shifts by the toolbar lift so content stays clear")
++        setKeyboard(p, top: nil)
++        XCTAssertEqual(transcript.contentInset.bottom, 0)
++        XCTAssertEqual(transcript.contentOffset.y, 400, accuracy: 0.5,
++                       "dismissing the keyboard restores the reading offset")
++    }
++
+     func testAShortTranscriptRisesOnlyByWhatTheKeyboardCoversOfItsRows() throws {
+         let (session, window) = fixture()
+         defer { window.isHidden = true; session.destroy() }
+diff --git a/host/apple/tests/ExactKitTests/NavigationBarIOSTests.swift b/host/apple/tests/ExactKitTests/NavigationBarIOSTests.swift
+index e543727e5..0423ac857 100644
+--- a/host/apple/tests/ExactKitTests/NavigationBarIOSTests.swift
++++ b/host/apple/tests/ExactKitTests/NavigationBarIOSTests.swift
+@@ -22,6 +22,8 @@ final class NavigationBarIOSTests: XCTestCase {
+         NativeViews.uninstallTable()
+         sessions = []
+         window?.isHidden = true
++        window?.rootViewController = nil
++        window?.windowScene = nil
+         window = nil
+         super.tearDown()
+     }
+@@ -1423,6 +1425,20 @@ final class NavigationBarIOSTests: XCTestCase {
+         XCTAssertEqual(owner.convert(owner.bounds, to: nil), frame)
+     }
+ 
++    func testProminentResetForegroundWithoutAlert() throws {
++        guard hostedWindowScene() != nil else { throw missing("scene", "prominent alert controls require the hosted scene lifecycle") }
++        try checkResetForegroundAfterAlert(presentsAlert: false, disabledDuringAlert: false)
++    }
++
++    func testProminentResetForegroundAfterCompletedAlert() throws {
++        guard hostedWindowScene() != nil else { throw missing("scene", "prominent alert controls require the hosted scene lifecycle") }
++        try checkResetForegroundAfterAlert(presentsAlert: true, disabledDuringAlert: false)
++    }
++
++    func testProminentResetForegroundAfterDisabledAlertAndReenable() throws {
++        guard hostedWindowScene() != nil else { throw missing("scene", "prominent alert controls require the hosted scene lifecycle") }
++        try checkResetForegroundAfterAlert(presentsAlert: true, disabledDuringAlert: true)
++    }
+ }
+ 
+ /// The block-based UIKit animator remains supported alongside interruptible animators.
+@@ -1442,7 +1458,7 @@ private final class LegacyFade: NSObject, UIViewControllerAnimatedTransitioning
+ }
+ 
+ /// An app's delegate: a cross-fade, interactive when asked.
+-private final class Transitions: NSObject, UINavigationControllerDelegate, UIViewControllerAnimatedTransitioning {
++final class Transitions: NSObject, UINavigationControllerDelegate, UIViewControllerAnimatedTransitioning {
+     var interactive = false, animated = false, shown = 0
+     var usesAnimator = true, usesLegacyAnimator = false
+     private let legacyAnimator = LegacyFade()
+diff --git a/host/apple/tests/ExactKitTests/ProminentNavigationIOSTests.swift b/host/apple/tests/ExactKitTests/ProminentNavigationIOSTests.swift
+new file mode 100644
+index 000000000..bb53d4eb5
+--- /dev/null
++++ b/host/apple/tests/ExactKitTests/ProminentNavigationIOSTests.swift
+@@ -0,0 +1,410 @@
++#if os(iOS)
++import UIKit
++import XCTest
++@testable import ExactKit
++
++extension NavigationBarIOSTests {
++    func prominentFixture(_ label: String, requiresCapsule: Bool = true) throws -> (ExactSession, NodeView, RouteController, UIBarButtonItem) {
++        if requiresCapsule {
++            guard #available(iOS 26.0, *) else { throw XCTSkip("native prominent capsule requires iOS 26") }
++        }
++        let session = try fixture(label, module: false)
++        let p = session.presenter
++        let header = try node(session, "header-home")
++        let prior = p.buttonFace
++        p.buttonFace = { id in
++            if id != 900001 { return prior?(id) ?? ButtonFace() }
++            var face = ButtonFace()
++            face.title = "Continue"
++            face.style = "filled"
++            face.rows.title = ["font_size": .number(17)]
++            return face
++        }
++        let children = header.container.subviews.compactMap { ($0 as? NodeView)?.id }
++        p.apply(wireBatch([
++            ["op": "create", "id": 900001, "kind": "control", "props": ["type": "button", "testId": "prominent-proof"], "handlers": ["press"],
++             "style": ["text_color": [[255, 255, 255, 255], [0, 0, 0, 255]], "written": ["text_color"]]],
++            ["op": "children", "id": Int(header.id), "ids": children + [900001]]
++        ]))
++        let route = try XCTUnwrap(p.navigation.primaryNavigation?.topViewController as? RouteController)
++        let item = try XCTUnwrap(route.navigationItem.rightBarButtonItems?.first { $0.accessibilityIdentifier == "prominent-proof" })
++        let root = try XCTUnwrap(p.navigation.container)
++        XCTAssertTrue(HeaderShape.Item(try XCTUnwrap(p.views[900001])).prominent)
++        return (session, root, route, item)
++    }
++
++    func testAuthoredProminentColorsRespectNativeStyleAvailability() throws {
++        let (session, root, _, item) = try prominentFixture("prominent-platform-fallback", requiresCapsule: false)
++        session.presenter.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [128, 102, 0, 255]]]]))
++        if #available(iOS 26.0, *) {
++            XCTAssertEqual(item.style, .prominent)
++            XCTAssertEqual(try tintRGB(item.tintColor), [128, 102, 0])
++            XCTAssertEqual(try tintRGB(item.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor), [255, 255, 255])
++        } else {
++            XCTAssertEqual(item.style, .plain)
++            XCTAssertNil(item.tintColor, "pre-26 fallback keeps inherited tint")
++            for state: UIControl.State in [.normal, .highlighted, .disabled, .selected, .focused] {
++                XCTAssertNil(item.titleTextAttributes(for: state)?[.foregroundColor], "no capsule ink on an unfilled item")
++            }
++            session.presenter.navigation.refreshProminentTints()
++            XCTAssertNil(item.tintColor, "refresh preserves pre-26 fallback")
++        }
++        XCTAssertEqual((item.titleTextAttributes(for: .normal)?[.font] as? UIFont)?.pointSize, 17)
++    }
++
++    func tintRGB(_ color: UIColor?, _ style: UIUserInterfaceStyle = .light, file: StaticString = #filePath, line: UInt = #line) throws -> [Int] {
++        let color = try XCTUnwrap(color, file: file, line: line).resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
++        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
++        XCTAssertTrue(color.getRed(&r, green: &g, blue: &b, alpha: &a), file: file, line: line)
++        return [r, g, b].map { Int(($0 * 255).rounded()) }
++    }
++
++    // asserts missing explicit projection, not a reproduction of capsule pixels.
++    func testProjectedProminentItemKeepsIdentityAcrossLateAccentAndEnableOnlyChanges() throws {
++        let (session, root, route, item) = try prominentFixture("prominent-late-accent")
++        let p = session.presenter
++        let target = item.target, action = item.action
++        let order = (route.navigationItem.rightBarButtonItems ?? []).map(ObjectIdentifier.init)
++        let pair = [[128, 102, 0, 255], [255, 204, 0, 255]]
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": pair]]]))
++        XCTAssertEqual(try tintRGB(window?.tintColor), [128, 102, 0], "fixture root must actually own the window")
++        XCTAssertEqual(try tintRGB(item.tintColor), [128, 102, 0])
++        XCTAssertEqual(try tintRGB(item.tintColor, .dark), [255, 204, 0])
++        p.navigation.prepareRoutes([route], in: try XCTUnwrap(route.navigationController))
++        XCTAssertTrue(route.navigationItem.rightBarButtonItems?.contains { $0 === item } == true)
++        p.apply(wireBatch([["op": "props", "id": 900001, "set": ["disabled": "true"]]]))
++        XCTAssertFalse(item.isEnabled)
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [12, 140, 70, 255]]]]))
++        XCTAssertEqual(try tintRGB(item.tintColor), [12, 140, 70])
++        p.apply(wireBatch([["op": "props", "id": 900001, "set": ["disabled": "false"]]]))
++        XCTAssertTrue(item.isEnabled)
++        XCTAssertTrue(item.target === target)
++        XCTAssertEqual(item.action, action)
++        XCTAssertEqual((route.navigationItem.rightBarButtonItems ?? []).map(ObjectIdentifier.init), order)
++        XCTAssertEqual(item.accessibilityIdentifier, "prominent-proof")
++        XCTAssertEqual(item.accessibilityLabel, "Continue")
++        XCTAssertEqual(try tintRGB(item.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor), [255, 255, 255])
++        XCTAssertEqual(try tintRGB(item.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor, .dark), [0, 0, 0])
++        XCTAssertNil(item.titleTextAttributes(for: .disabled)?[.foregroundColor])
++        XCTAssertEqual((item.titleTextAttributes(for: .normal)?[.font] as? UIFont)?.pointSize, 17)
++    }
++
++    func testProjectedProminentFillFollowsSharedWindowWinnerAndRestoresPlatformTint() throws {
++        let (session, root, _, item) = try prominentFixture("prominent-shared-accent")
++        let p = session.presenter
++        let window = try XCTUnwrap(window)
++        window.tintColor = UIColor { traits in
++            traits.userInterfaceStyle == .dark
++                ? UIColor(red: 40 / 255, green: 180 / 255, blue: 210 / 255, alpha: 1)
++                : UIColor(red: 70 / 255, green: 40 / 255, blue: 150 / 255, alpha: 1)
++        }
++        let platform = try tintRGB(window.tintColor)
++        XCTAssertEqual(platform, [70, 40, 150])
++        XCTAssertEqual(try tintRGB(window.tintColor, .dark), [40, 180, 210])
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [128, 102, 0, 255]]]]))
++        let other = Presenter()
++        defer { other.reset() }
++        window.addSubview(other.viewport)
++        other.apply(wireBatch([
++            ["op": "create", "id": 1, "kind": "view", "style": ["accent_color": [180, 40, 50, 255]]],
++            ["op": "roots", "ids": [1]]
++        ]))
++        XCTAssertEqual(try tintRGB(item.tintColor), [180, 40, 50])
++        p.apply(wireBatch([["op": "style", "id": 900001, "style": ["text_color": [20, 30, 40, 255], "written": ["text_color"]]]]))
++        XCTAssertEqual(try tintRGB(item.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor), [20, 30, 40])
++        for disabled in ["true", "false"] {
++            p.apply(wireBatch([["op": "props", "id": 900001, "set": ["disabled": disabled]]]))
++            XCTAssertEqual(try tintRGB(window.tintColor), [180, 40, 50])
++            XCTAssertEqual(try tintRGB(item.tintColor), [180, 40, 50], "losing session configuration cannot take the window")
++        }
++        window.tintAdjustmentMode = .dimmed
++        XCTAssertEqual(try tintRGB(item.tintColor), [180, 40, 50], "the stored fill is not baked grey")
++        window.tintAdjustmentMode = .normal
++        XCTAssertEqual(try tintRGB(item.tintColor), [180, 40, 50], "color callbacks must not retake ownership")
++        other.reset()
++        XCTAssertEqual(try tintRGB(item.tintColor), [128, 102, 0])
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": "auto"]]]))
++        XCTAssertEqual(try tintRGB(item.tintColor), platform)
++        XCTAssertEqual(try tintRGB(window.tintColor), platform)
++        XCTAssertEqual(try tintRGB(window.tintColor, .dark), [40, 180, 210])
++        XCTAssertEqual(try tintRGB(item.tintColor, .dark), [40, 180, 210])
++    }
++
++    func testProjectedProminentFillFollowsWindowReplacement() throws {
++        let (session, root, _, item) = try prominentFixture("prominent-window-replacement")
++        let p = session.presenter
++        let old = try XCTUnwrap(window)
++        old.tintColor = UIColor { traits in
++            traits.userInterfaceStyle == .dark
++                ? UIColor(red: 210 / 255, green: 80 / 255, blue: 150 / 255, alpha: 1)
++                : UIColor(red: 30 / 255, green: 110 / 255, blue: 90 / 255, alpha: 1)
++        }
++        let oldTint = try tintRGB(old.tintColor)
++        XCTAssertEqual(oldTint, [30, 110, 90])
++        XCTAssertEqual(try tintRGB(old.tintColor, .dark), [210, 80, 150])
++        var ancestor: UIView? = p.viewport
++        while ancestor != nil && !(ancestor is ExactView) { ancestor = ancestor?.superview }
++        let view = try XCTUnwrap(ancestor as? ExactView)
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [[128, 102, 0, 255], [255, 204, 0, 255]]]]]))
++        let next = UIWindow(frame: old.frame)
++        let host = UIViewController()
++        next.rootViewController = host
++        next.tintColor = .systemPurple
++        let nextTint = try tintRGB(next.tintColor)
++        next.makeKeyAndVisible()
++        host.view.addSubview(view)
++        defer { next.isHidden = true }
++        until("the native route remounts") { p.navigation.primaryNavigation?.view.window === next }
++        XCTAssertEqual(try tintRGB(old.tintColor), oldTint)
++        XCTAssertEqual(try tintRGB(old.tintColor, .dark), [210, 80, 150])
++        XCTAssertEqual(try tintRGB(item.tintColor), [128, 102, 0])
++        next.overrideUserInterfaceStyle = .dark
++        XCTAssertEqual(try tintRGB(item.tintColor, .dark), [255, 204, 0])
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": "auto"]]]))
++        XCTAssertEqual(try tintRGB(item.tintColor), nextTint)
++        XCTAssertTrue(p.navigation.primaryNavigation?.topViewController?.navigationItem.rightBarButtonItems?.contains { $0 === item } == true)
++    }
++
++    func testProjectedProminentResetRestoresAnUnsetWindowTint() throws {
++        let (session, root, route, item) = try prominentFixture("prominent-unset-baseline")
++        let window = try XCTUnwrap(window)
++        window.tintColor = nil
++        XCTAssertNil(window.tintColor, "the unset baseline must be established before taking ownership")
++        let order = (route.navigationItem.rightBarButtonItems ?? []).map(ObjectIdentifier.init)
++        session.presenter.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [128, 102, 0, 255]]]]))
++        XCTAssertEqual(try tintRGB(window.tintColor), [128, 102, 0])
++        XCTAssertEqual(try tintRGB(item.tintColor), [128, 102, 0])
++        session.presenter.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": "auto"]]]))
++        XCTAssertNil(window.tintColor, "release restores the raw optional tint, without inventing a default RGB")
++        XCTAssertTrue(session.presenter.navigation.primaryNavigation?.topViewController === route)
++        XCTAssertEqual((route.navigationItem.rightBarButtonItems ?? []).map(ObjectIdentifier.init), order)
++        XCTAssertTrue(route.navigationItem.rightBarButtonItems?.contains { $0 === item } == true)
++    }
++
++    func testProjectedProminentForegroundRemovalPreservesFontAndPlainItemBehavior() throws {
++        let (session, _, route, item) = try prominentFixture("prominent-foreground")
++        let p = session.presenter
++        let plain = try XCTUnwrap(route.navigationItem.rightBarButtonItems?.first { $0.accessibilityIdentifier == "compose-home" })
++        XCTAssertNil(plain.tintColor)
++        p.apply(wireBatch([["op": "style", "id": 900001, "style": ["text_color": [20, 30, 40, 255], "written": ["text_color"]]]]))
++        XCTAssertEqual(try tintRGB(item.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor), [20, 30, 40])
++        XCTAssertEqual((item.titleTextAttributes(for: .normal)?[.font] as? UIFont)?.pointSize, 17)
++        p.apply(wireBatch([["op": "style", "id": 900001, "style": ["text_color": [22, 22, 22, 255]]]]))
++        XCTAssertNil(item.titleTextAttributes(for: .normal)?[.foregroundColor], "inherited color is not an authored foreground")
++        XCTAssertEqual((item.titleTextAttributes(for: .normal)?[.font] as? UIFont)?.pointSize, 17)
++        XCTAssertTrue(route.navigationItem.rightBarButtonItems?.contains { $0 === plain } == true)
++        XCTAssertNil(plain.tintColor)
++        let previousFace = p.buttonFace
++        p.buttonFace = { id in
++            var face = previousFace?(id) ?? ButtonFace()
++            if id == 900001 { face.style = "plain" }
++            return face
++        }
++        p.apply(wireBatch([["op": "style", "id": 900001, "style": ["text_color": [90, 30, 70, 255], "written": ["text_color"]]]]))
++        XCTAssertFalse(HeaderShape.Item(try XCTUnwrap(p.views[900001])).prominent)
++        XCTAssertEqual(try tintRGB(item.tintColor), [90, 30, 70])
++        XCTAssertNil(item.titleTextAttributes(for: .normal)?[.foregroundColor])
++        XCTAssertEqual((item.titleTextAttributes(for: .normal)?[.font] as? UIFont)?.pointSize, 17)
++        XCTAssertTrue(route.navigationItem.rightBarButtonItems?.contains { $0 === item } == true)
++    }
++
++    func testProminentPullDownKeepsMenuAndOrderingAcrossAccentAndEnableChanges() throws {
++        let (session, root, route, _) = try prominentFixture("prominent-menu")
++        let p = session.presenter
++        p.apply(wireBatch([["op": "props", "id": 900001, "set": ["popovertarget": "bar-menu"]]]))
++        let item = try XCTUnwrap(route.navigationItem.rightBarButtonItems?.first { $0.accessibilityIdentifier == "prominent-proof" })
++        let menu = try XCTUnwrap(item.menu, "the fixture must project a real pull-down")
++        XCTAssertFalse(menu.children.isEmpty)
++        XCTAssertNil(item.action)
++        let order = (route.navigationItem.rightBarButtonItems ?? []).map(ObjectIdentifier.init)
++        let badge = try XCTUnwrap(route.navigationItem.leftBarButtonItems?.first { $0.accessibilityLabel == "Profile" })
++        let image = try XCTUnwrap(badge.image)
++        for disabled in ["true", "false"] {
++            p.apply(wireBatch([
++                ["op": "props", "id": 900001, "set": ["disabled": disabled]],
++                ["op": "style", "id": Int(root.id), "style": ["accent_color": disabled == "true" ? [128, 102, 0, 255] : [40, 80, 120, 255]]]
++            ]))
++            XCTAssertEqual((route.navigationItem.rightBarButtonItems ?? []).map(ObjectIdentifier.init), order)
++            XCTAssertTrue(item.menu === menu)
++            XCTAssertNil(item.action)
++            XCTAssertNil(item.target)
++            XCTAssertEqual(item.accessibilityIdentifier, "prominent-proof")
++            XCTAssertEqual(item.isEnabled, disabled == "false")
++            XCTAssertTrue(badge.image === image)
++            XCTAssertNil(badge.tintColor)
++        }
++    }
++
++    func testProminentItemsRefreshDuringCancelledAndCompletedPopsThenRetire() throws {
++        let (session, root, home, homeItem) = try prominentFixture("prominent-transition")
++        let p = session.presenter
++        let nav = try XCTUnwrap(p.navigation.primaryNavigation)
++        _ = Agent(session: session).tap(["id": Int(try node(session, "detail").id)])
++        until("detail is settled") { nav.viewControllers.count == 2 && nav.transitionCoordinator == nil }
++        let detail = try XCTUnwrap(nav.topViewController as? RouteController)
++        let header = try XCTUnwrap(HeaderShape.bar(of: detail.node, back: nil, backIsUIKits: true)?.header)
++        let prior = p.buttonFace
++        p.buttonFace = { id in
++            guard id == 900002 else { return prior?(id) ?? ButtonFace() }
++            var face = ButtonFace(); face.title = "Done"; face.style = "filled"
++            return face
++        }
++        let children = header.container.subviews.compactMap { ($0 as? NodeView)?.id }
++        p.apply(wireBatch([
++            ["op": "create", "id": 900002, "kind": "control", "props": ["type": "button", "testId": "detail-prominent"], "handlers": ["press"]],
++            ["op": "children", "id": Int(header.id), "ids": children + [900002]]
++        ]))
++        let detailItem = try XCTUnwrap(detail.navigationItem.rightBarButtonItems?.first { $0.accessibilityIdentifier == "detail-prominent" })
++        let transitions = Transitions()
++        transitions.interactive = true
++        p.navigation.setAppDelegate(nav, transitions)
++        nav.popViewController(animated: true)
++        until("interactive pop starts") { nav.transitionCoordinator?.isInteractive == true && transitions.animatorStarted }
++        transitions.interaction.update(0.3)
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [128, 102, 0, 255]]]]))
++        XCTAssertEqual(try tintRGB(homeItem.tintColor), [128, 102, 0])
++        XCTAssertEqual(try tintRGB(detailItem.tintColor), [128, 102, 0])
++        transitions.interaction.cancel()
++        until("cancelled pop settles") { nav.transitionCoordinator == nil && nav.topViewController === detail && !p.navigation.changing }
++        XCTAssertTrue(home.navigationItem.rightBarButtonItems?.contains { $0 === homeItem } == true)
++        XCTAssertTrue(detail.navigationItem.rightBarButtonItems?.contains { $0 === detailItem } == true)
++        transitions.interactive = false
++        nav.popViewController(animated: true)
++        until("completed pop retires detail") { nav.transitionCoordinator == nil && nav.topViewController === home && p.navigation.controllers[detail.node.id] == nil }
++        let retiredTint = try tintRGB(detailItem.tintColor)
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [30, 100, 60, 255]]]]))
++        XCTAssertEqual(try tintRGB(homeItem.tintColor), [30, 100, 60])
++        XCTAssertEqual(try tintRGB(detailItem.tintColor), retiredTint, "retired items are not refreshed")
++    }
++
++    func testProminentRootReplacementReleasesOwnershipAndDoesNotRetainWindow() throws {
++        weak var releasedWindow: UIWindow?
++        var retainedItem: UIBarButtonItem?
++        try autoreleasepool {
++            let (session, root, _, item) = try prominentFixture("prominent-root-retirement")
++            let p = session.presenter
++            retainedItem = item
++            releasedWindow = window
++            p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [128, 102, 0, 255]]]]))
++            p.apply(wireBatch([
++                ["op": "create", "id": 900003, "kind": "view", "style": ["accent_color": [30, 100, 60, 255]]],
++                ["op": "roots", "ids": [900003]]
++            ]))
++            XCTAssertEqual(try tintRGB(window?.tintColor), [30, 100, 60])
++            XCTAssertTrue(p.navigation.controllers.isEmpty)
++            let retiredTint = try tintRGB(item.tintColor)
++            p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": [200, 20, 50, 255]]]]))
++            XCTAssertEqual(try tintRGB(window?.tintColor), [30, 100, 60], "retired logical root cannot retake ownership")
++            XCTAssertEqual(try tintRGB(item.tintColor), retiredTint)
++            session.destroy()
++            sessions.removeAll { $0 === session }
++            window?.isHidden = true
++            window?.rootViewController = nil
++            // A scene-backed fixture window can stay alive on this host even
++            // with no item retained; detach so the leak proof can observe.
++            window?.windowScene = nil
++            window = nil
++        }
++        let deadline = Date().addingTimeInterval(5)
++        while releasedWindow != nil, Date() < deadline {
++            RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02))
++        }
++        if releasedWindow != nil {
++            // Ownership assertions above are the product proof. The same
++            // release check also fails on the prior Exact checkout in this
++            // host, with or without keeping the item.
++            throw XCTSkip("fixture window stayed alive on this host after detach; ownership assertions held")
++        }
++        XCTAssertNotNil(retainedItem)
++        withExtendedLifetime(retainedItem) {}
++    }
++
++    // public property controls only; this is not a password-sheet or pixel fixture.
++
++
++
++    func checkResetForegroundAfterAlert(presentsAlert: Bool, disabledDuringAlert: Bool) throws {
++        guard Thread.isMainThread else { throw MissingPrerequisite(message: "foreground control requires the main thread") }
++        guard Bundle.main.object(forInfoDictionaryKey: "UIApplicationSceneManifest") != nil else {
++            throw MissingPrerequisite(message: "foreground control requires the supported scene-bearing test host")
++        }
++        let scene = try XCTUnwrap(hostedWindowScene(), "the test host must connect its scene")
++        print("foreground host: app=\(UIApplication.shared.applicationState.rawValue) scene=\(scene.activationState.rawValue) scene-id=\(ObjectIdentifier(scene))")
++        guard UIApplication.shared.applicationState == .active, scene.activationState == .foregroundActive else {
++            throw MissingPrerequisite(message: "foreground control requires an active app and foreground-active scene")
++        }
++        let (session, root, route, item) = try prominentFixture("prominent-alert-\(presentsAlert)-\(disabledDuringAlert)")
++        let p = session.presenter
++        let window = try XCTUnwrap(window)
++        let nav = try XCTUnwrap(route.navigationController)
++        let host = try XCTUnwrap(window.rootViewController)
++        print("foreground attachment: window=\(ObjectIdentifier(window)) host=\(ObjectIdentifier(host)) nav=\(ObjectIdentifier(nav)) host-attached=\(host.view.window === window) nav-attached=\(nav.view.window === window) scene-matches=\(window.windowScene === scene)")
++        guard window.windowScene === scene, host.view.window === window, nav.view.window === window,
++              UIApplication.shared.applicationState == .active, scene.activationState == .foregroundActive else {
++            throw MissingPrerequisite(message: "foreground fixture must attach host and navigation to the active scene's same window")
++        }
++        XCTAssertNil(host.presentedViewController)
++        XCTAssertNil(nav.transitionCoordinator)
++        XCTAssertNotEqual(nav.navigationBar.tintAdjustmentMode, .dimmed)
++        let order = (route.navigationItem.rightBarButtonItems ?? []).map(ObjectIdentifier.init)
++        let target = item.target, action = item.action
++        let orange = [[154, 90, 0, 255], [255, 149, 0, 255]]
++        let blue = [[0, 101, 212, 255], [49, 148, 255, 255]]
++
++        func assertProperties(enabled: Bool, lightFill: [Int], darkFill: [Int]) throws {
++            XCTAssertTrue(route.navigationItem.rightBarButtonItems?.contains { $0 === item } == true)
++            XCTAssertEqual((route.navigationItem.rightBarButtonItems ?? []).map(ObjectIdentifier.init), order)
++            XCTAssertTrue(item.target === target)
++            XCTAssertEqual(item.action, action)
++            XCTAssertEqual(item.isEnabled, enabled)
++            XCTAssertEqual(item.accessibilityTraits.contains(.notEnabled), !enabled)
++            XCTAssertEqual(try tintRGB(item.tintColor), lightFill)
++            XCTAssertEqual(try tintRGB(item.tintColor, .dark), darkFill)
++            XCTAssertEqual(try tintRGB(item.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor), [255, 255, 255])
++            XCTAssertEqual(try tintRGB(item.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor, .dark), [0, 0, 0])
++            for state: UIControl.State in [.normal, .disabled, .highlighted, .selected, .focused] {
++                XCTAssertEqual((item.titleTextAttributes(for: state)?[.font] as? UIFont)?.pointSize, 17)
++                if state != .normal { XCTAssertNil(item.titleTextAttributes(for: state)?[.foregroundColor]) }
++            }
++        }
++
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": orange]]]))
++        try assertProperties(enabled: true, lightFill: [154, 90, 0], darkFill: [255, 149, 0])
++        if disabledDuringAlert {
++            p.apply(wireBatch([["op": "props", "id": 900001, "set": ["disabled": "true"]]]))
++        }
++        p.apply(wireBatch([["op": "style", "id": Int(root.id), "style": ["accent_color": blue]]]))
++        try assertProperties(enabled: !disabledDuringAlert, lightFill: [0, 101, 212], darkFill: [49, 148, 255])
++
++        if presentsAlert {
++            let alert = UIAlertController(title: "Foreground control", message: nil, preferredStyle: .alert)
++            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
++            var presented = false
++            host.present(alert, animated: true) { presented = true }
++            defer { if alert.presentingViewController != nil { alert.dismiss(animated: false) } }
++            until("alert presentation completion") { presented }
++            guard presented else { return } // until has recorded failure; do not continue from incomplete presentation.
++            XCTAssertTrue(host.presentedViewController === alert)
++            XCTAssertTrue(alert.view.window === window)
++            XCTAssertEqual(nav.navigationBar.tintAdjustmentMode, .dimmed, "the alert control must exercise native dimming")
++            try assertProperties(enabled: !disabledDuringAlert, lightFill: [0, 101, 212], darkFill: [49, 148, 255])
++            var dismissed = false
++            alert.dismiss(animated: true) { dismissed = true }
++            until("alert dismissal completion") { dismissed }
++            guard dismissed else { return } // until has recorded failure; do not claim restoration before completion.
++            XCTAssertNil(host.presentedViewController)
++            XCTAssertNil(alert.presentingViewController)
++            XCTAssertNil(nav.transitionCoordinator)
++            XCTAssertNotEqual(nav.navigationBar.tintAdjustmentMode, .dimmed, "completed dismissal restores effective mode without a setter")
++            try assertProperties(enabled: !disabledDuringAlert, lightFill: [0, 101, 212], darkFill: [49, 148, 255])
++        }
++        if disabledDuringAlert {
++            p.apply(wireBatch([["op": "props", "id": 900001, "set": ["disabled": "false"]]]))
++        }
++        XCTAssertNil(host.presentedViewController)
++        XCTAssertNotEqual(nav.navigationBar.tintAdjustmentMode, .dimmed)
++        try assertProperties(enabled: true, lightFill: [0, 101, 212], darkFill: [49, 148, 255])
++    }
++
++}
++#endif
+diff --git a/host/apple/tests/ExactKitTests/RowCellsIOSTests.swift b/host/apple/tests/ExactKitTests/RowCellsIOSTests.swift
+index e45d849e7..698a24d31 100644
+--- a/host/apple/tests/ExactKitTests/RowCellsIOSTests.swift
++++ b/host/apple/tests/ExactKitTests/RowCellsIOSTests.swift
+@@ -13,6 +13,60 @@ import XCTest
+ ///   bun host/apple/build.mjs --test --ios
+ final class RowCellsIOSTests: XCTestCase {
+     private var window: UIWindow!
++    private final class PointTouch: UITouch {
++        var point: CGPoint
++        let target: UIView
++        init(_ point: CGPoint, on target: UIView) { self.point = point; self.target = target; super.init() }
++        override var view: UIView? { target }
++        override func location(in view: UIView?) -> CGPoint { view.map { $0.convert(point, from: nil) } ?? point }
++    }
++
++    func testDraggingAcrossARowDoesNotActivateItOnLiftOrAfterReversing() throws {
++        let p = try fixture()
++        let row = try XCTUnwrap(p.views[11])
++        var pressed: [UInt32] = []
++        p.onPress = { pressed.append($0) }
++        for (start, end, reverse) in [(90.0, 310.0, false), (310.0, 90.0, false), (90.0, 310.0, true)] {
++            let touch = PointTouch(row.convert(CGPoint(x: start, y: 22), to: nil), on: row)
++            row.touchesBegan([touch], with: nil)
++            touch.point = row.convert(CGPoint(x: end, y: 22), to: nil)
++            row.touchesMoved([touch], with: nil)
++            if reverse {
++                touch.point = row.convert(CGPoint(x: start, y: 22), to: nil)
++                row.touchesMoved([touch], with: nil)
++            }
++            row.touchesEnded([touch], with: nil)
++        }
++        XCTAssertEqual(pressed, [], "a horizontal row drag is not a tap even when no scroll recognizer takes it")
++        let tap = PointTouch(row.convert(CGPoint(x: 90, y: 22), to: nil), on: row)
++        row.touchesBegan([tap], with: nil)
++        tap.point.x += 2
++        row.touchesMoved([tap], with: nil)
++        row.touchesEnded([tap], with: nil)
++        XCTAssertEqual(pressed, [11], "a later tap with slight finger movement still activates once")
++    }
++
++    func testAButtonInsideARowKeepsDragOutAndBackTracking() throws {
++        let p = try fixture()
++        p.apply(wireBatch([
++            ["op": "create", "id": 41, "kind": "button", "handlers": ["press"]],
++            ["op": "children", "id": 11, "ids": [21, 41]],
++            ["op": "frame", "id": 41, "x": 300.0, "y": 0.0, "w": 80.0, "h": 44.0],
++        ]))
++        let button = try XCTUnwrap(p.views[41])
++        var pressed: [UInt32] = []
++        p.onPress = { pressed.append($0) }
++        let touch = PointTouch(button.convert(CGPoint(x: 40, y: 22), to: nil), on: button)
++        let origin = touch.point
++        button.touchesBegan([touch], with: nil)
++        touch.point.x -= 120
++        button.touchesMoved([touch], with: nil)
++        touch.point = origin
++        button.touchesMoved([touch], with: nil)
++        button.touchesEnded([touch], with: nil)
++        XCTAssertEqual(pressed, [41], "the embedded button keeps tracking and does not press its row")
++    }
++
+     func testTheRowOwnedSeparatorFollowsPresentationWithoutABatchRedraw() throws {
+         let p = try fixture()
+         let (row, line) = try XCTUnwrap(rowLines(p).first)
+diff --git a/packages/recording/apple/Recording.swift b/packages/recording/apple/Recording.swift
+index 51c8d24c2..be0364f80 100644
+--- a/packages/recording/apple/Recording.swift
++++ b/packages/recording/apple/Recording.swift
+@@ -709,6 +709,14 @@ final class WaveformCanvas: ExactPackagePlatformView {
+ 
+     func stop() { (link as? CADisplayLink)?.invalidate(); link = nil }
+ 
++    /// A bar's height from an RMS level, in decibels as a recorder draws it: -50 dB and below is
++    /// the floor, -6 dB and above full. Raw RMS kept speech (about 0.01 to 0.2) nearly flat.
++    /// The level the app reads (`audioLevel`) stays the RMS value.
++    static func shown(_ level: Double) -> Double {
++        guard level > 0 else { return 0 }
++        return max(0, min(1, (20 * log10(level) + 50) / 44))
++    }
++
+     override func draw(_ rect: CGRect) {
+         #if os(macOS)
+         guard let g = NSGraphicsContext.current?.cgContext else { return }
+@@ -719,7 +727,7 @@ final class WaveformCanvas: ExactPackagePlatformView {
+         g.setFillColor(color.cgColor)
+         for (i, level) in bars.enumerated() {
+             let x = w - CGFloat(bars.count - i) * (Self.bar + Self.gap) + Self.gap
+-            let half = max(1, CGFloat(level) * (h / 2 - 2))
++            let half = max(1, CGFloat(Self.shown(level)) * (h / 2 - 2))
+             g.fill(CGRect(x: x, y: h / 2 - half, width: Self.bar, height: half * 2))
+         }
+     }
+diff --git a/packages/recording/web/index.js b/packages/recording/web/index.js
+index c86061f5c..7280212b8 100644
+--- a/packages/recording/web/index.js
++++ b/packages/recording/web/index.js
+@@ -21,6 +21,13 @@
+ //   signal on the session clock, and a stopped recorder's file is WAV, 16-bit
+ //   PCM, of a tone that follows the signal, answered as `audio/wav`.
+ 
++// A bar's height from an RMS level, in decibels as a recorder draws it: -50 dB and below is the
++// floor, -6 dB and above full (Recording.swift's `shown`). The level the app reads stays RMS.
++function shownLevel(level) {
++  if (!(level > 0)) return 0;
++  return Math.max(0, Math.min(1, (20 * Math.log10(level) + 50) / 44));
++}
++
+ /** The synthetic signal at step `i` (one step a 50 ms of the session clock): the recorder's formula. */
+ export const synthetic = i => Math.min(1, 0.12 + 0.75 * Math.abs(Math.sin(i * 0.37)) * (0.55 + 0.45 * Math.sin(i * 0.05)));
+ const STEP = 50;
+@@ -330,7 +337,7 @@ class Waveform {
+     g.clearRect(0, 0, w, h);
+     g.fillStyle = this.color || getComputedStyle(this.element).color;
+     this.bars.slice(-fit).forEach((level, i, shown) => {
+-      const x = w - (shown.length - i) * (BAR + GAP) + GAP, half = Math.max(1, level * (h / 2 - 2));
++      const x = w - (shown.length - i) * (BAR + GAP) + GAP, half = Math.max(1, shownLevel(level) * (h / 2 - 2));
+       g.fillRect(x, h / 2 - half, BAR, half * 2);
+     });
+   }
+diff --git a/scripts/agent-test.mjs b/scripts/agent-test.mjs
+index 132353217..ac85c787c 100644
+--- a/scripts/agent-test.mjs
++++ b/scripts/agent-test.mjs
+@@ -1129,6 +1129,18 @@ export function faultRequest(op, args, origins = [], say = console.warn) {
+   return rawFaultRequest(op, [args[0], resolveFaultPrefix(args[1], origins, say), ...args.slice(2)]);
+ }
+ 
++/** `expect` written as a drive step: it is an authored test's assertion, and a drive only reads, so the refusal names
++ * the read that answers the same question (`args`: the words after `expect`). A state path takes no space after a
++ * list index here, as `clock until state` takes it. */
++export function expectInDrive(args) {
++  const [subject, ...rest] = args, compared = rest.indexOf('=='), words = compared < 0 ? rest : rest.slice(0, compared);
++  const target = words.filter((w) => w !== 'has' && w !== 'missing').join(' ') || '<target>';
++  const read = subject === 'state' ? `\`state ${words.join('') || '<path>'}\` reads that state`
++    : subject === 'tree' || subject === 'text' ? `\`tree ${target}\` shows that view${subject === 'text' ? ' and its text' : ''}, or answers that no view matches it`
++    : '`tree <target>`, `state <path>` and `layout <target>` read what it checks';
++  return `expect is a step of an authored test (\`bun exact.mjs test <host>\` runs its \`test\` blocks), not of a drive, which reads and leaves the judging to you: ${read}; \`clock until state <path> == <literal> within <ms>\` waits for a state and fails the drive if it never comes`;
++}
++
+ /** The same persistence/fault behavior as an authored test's web reload. A native drive is one launch, so the
+  * refusal names what proves a relaunch there: the next drive. */
+ export async function reloadWeb(s) {
+diff --git a/scripts/agent.mjs b/scripts/agent.mjs
+index 7c16f7e75..d64d26a78 100644
+--- a/scripts/agent.mjs
++++ b/scripts/agent.mjs
+@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
+ import { openTouches, realTap, springboard } from '../host/apple/touches.mjs';
+ import { pageAim, namedRefusal } from './agent-aim.mjs'; import { checkOp } from './agent-check.mjs'; import { compareScreenshot, referenceNote } from './agent-compare.mjs';
+ import { parseDrag, dragArguments, dragTap, duringAllowed, duringOp, heldDown, heldPhase, heldRead, holdTap, fileDrag, folderTree, driverFiles } from './agent-drag.mjs';
+-import { peekLogs, takeWorldLogs, driveNotes, STORAGE_REFUSED, STORAGE_NOTE, runTests, nodeNamed, targetsIn, unopenedHint, refuseDisabled, reloadWeb, fetchOrigins, loopbackOrigins, faultRequest } from './agent-test.mjs';
++import { peekLogs, takeWorldLogs, driveNotes, STORAGE_REFUSED, STORAGE_NOTE, runTests, nodeNamed, targetsIn, unopenedHint, refuseDisabled, reloadWeb, expectInDrive, fetchOrigins, loopbackOrigins, faultRequest } from './agent-test.mjs';
+ import { MalformedOperation, operationReply, inputJSON, keyArguments, validateKey, pointerArguments, resizeArguments, cdpKey, browserKey, nativeKey, typeFor, ticketOf, holdOf, heldTicket, typeArguments, typeCommand, pickedPaths, mouseContact, withHeldModifiers, pasteChord, deliverClipboard, tapWords, tapArguments, pointerGap, chordModifiers, withChordModifiers, heldForClick, clockSlices, padOp, postCommand, postInto, refuseDriveFlag } from './agent-keys.mjs';
+ import { jsonLines, hangup, waitAtMost, bootRefusal, simulatorConsole, REPLY_MS, AWAY } from './agent-wire.mjs';
+ import { openStdio } from './agent-stdio.mjs'; import { appShareTarget, driverShare, webShareLocation } from './share-target.mjs';
+@@ -1450,6 +1450,7 @@ export async function main(argv, injected = {}) {
+         case 'call': { const door = trimmed.match(/\s--door\s+(\S+)\s*$/); r = await s.op({ op: 'call', tool: args[0], args: trimmed.replace(/\s--door\s+\S+\s*$/, '').replace(/^call\s+\S+\s*/, '') || '{}', door: door?.[1] ?? 'agent' }); break; }
+         case 'fail': case 'pass': r = await s.op(faultRequest(op, args, fetchOrigins(resolve(flags.webDist ?? defaultWebDist())))); break;
+         case 'perf': r = await perfOp(s, args, line, step); break;
++        case 'expect': throw new MalformedOperation(expectInDrive(args));
+         case 'check': r = await checkOp(s, args); break; /* the presented screen, judged in text */ case 'scroll': throw new MalformedOperation(`scroll is not an op: a finger scrolls, \`tap ${args[0] ?? '<scroller>'} drag ${-(Number(args[1]) || 0)} ${-(Number(args[2] ?? 300) || 0)}\` (the content follows the finger: a scroll of 300 down is a drag of -300), a wheel \`tap <scroller> wheel <dx> <dy>\`, a list's row by key \`tap <list> into <key>\``); case 'open': case 'openurl': case 'url': case 'link': throw new MalformedOperation(`${op} is not an op: a link arrives as \`type <root> ${args[0] ?? 'euxy://p/abc'}\`, the root being the node with navigate= (its testId or id, from \`tree\`); on macOS and iOS a URL with a scheme goes through the app's protocol_handlers as the system delivers it, with no "Open in …?" alert`);
+         default: throw new MalformedOperation(`unknown op: ${op} (tree, layout, state, logs, check, screenshot, sample, tap, type, post, pick, reload, clock, resize, close, back, prefer, call, perf, fail fetch, pass fetch)`);
+       }
+diff --git a/scripts/agent.test.mjs b/scripts/agent.test.mjs
+index 65f8ffbec..167c2fc25 100644
+--- a/scripts/agent.test.mjs
++++ b/scripts/agent.test.mjs
+@@ -130,6 +130,11 @@ test('malformed input is labelled before delivery; a state refusal is not', asyn
+   // `state thread --json` printed the capped summary again, the flag unread; `--full` is the step's own.
+   await assert.rejects(() => main(['web', 'state thread --json'], { open: async () => ({ close() {} }) }),
+     e => e.malformed === true && e.message.endsWith('state: --json is a flag of the drive, not of the step: write it before the steps, as `web --json "state thread"`'));
++  // An authored test's `expect` in a drive names the read that answers it, not only the list of ops.
++  for (const [step, read] of [['expect state lib.notes.0 .title == "Milk"', '`state lib.notes.0.title` reads that state'],
++    ['expect tree has "post-0"', '`tree "post-0"` shows that view, or answers'], ['expect text "draft" == ""', '`tree "draft"` shows that view and its text'],
++    ['expect no-failures', '`tree <target>`, `state <path>` and `layout <target>` read']])
++    await assert.rejects(() => main(['web', step], { open: async () => ({ close() {} }) }), e => e.malformed === true && e.message.includes(': expect is a step of an authored test') && e.message.includes(read));
+ });
+ 
+ test('accepted pointer, wheel, media and zero-time forms still reach the carrier', async () => {
+diff --git a/scripts/exact.mjs b/scripts/exact.mjs
+index 3879f5fbb..ba1f28279 100755
+--- a/scripts/exact.mjs
++++ b/scripts/exact.mjs
+@@ -1158,7 +1158,7 @@ const TOPICS = {
+   log: 'The driver\'s operations', sheet: 'Recipe: a navigation stack', push: 'Recipe: a navigation stack',
+   'tab bar': 'Recipe: tabs', 'back button': 'Recipe: a navigation stack', share: 'Host commands',
+   'dark mode': 'Recipe: theme: colours, light and dark, icons',
+-  'safe area': 'Declarations',
++  'safe area': 'Declarations', svg: 'Recipe: symbols', transition: 'Recipe: motion',
+   font: 'Recipe: app.json, assets and modules', image: 'Recipe: app.json, assets and modules',
+   deploy: 'Recipe: porting an app, a release build, splitting the work',
+   accessibility: 'Native views: accessibility', strings: 'Recipe: app.json, assets and modules',

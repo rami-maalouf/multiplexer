@@ -3,13 +3,32 @@ import Foundation
 import UIKit
 #endif
 
+// bare exact agent hosts have no packaging metadata; keep their established session service.
+enum IOSPushConfiguration {
+    static let legacyBundle = "com.ramimaalouf.multiplexer"
+    static var bundleId: String { Bundle.main.bundleIdentifier ?? legacyBundle }
+    static var appGroup: String { Bundle.main.object(forInfoDictionaryKey: "MultiplexerAppGroup") as? String ?? "group.\(bundleId)" }
+    static var pushGateway: String {
+        Bundle.main.object(forInfoDictionaryKey: "MultiplexerPushGateway") as? String
+            ?? "https://sygnal.ramimaalouf.com/_matrix/push/v1/notify"
+    }
+    static func sessionService(agent: Bool) -> String {
+        let configured = Bundle.main.object(forInfoDictionaryKey: "MultiplexerSessionService") as? String
+        let service = configured ?? "\(agent ? legacyBundle : bundleId).session"
+        return service + (agent ? ".agent" : "")
+    }
+    static func pusherAppId(development: Bool) -> String {
+        "\(bundleId).ios" + (development ? ".dev" : "")
+    }
+}
+
 /// Push (Phase 3): the phone's APNs token, given to the server as a pusher (MatrixCore's
 /// Push.swift), so a new message reaches the notification extension
 /// (`extensions/notifications/`). Exact has no push registration yet (LLP 1133.004 §9), so the
 /// token's callbacks are added to its app delegate at run time.
 extension Matrix {
     /// Where our server sends each push: the push gateway (Sygnal), at the one path Synapse allows.
-    static let pushGateway = "https://sygnal.ramimaalouf.com/_matrix/push/v1/notify"
+    static var pushGateway: String { IOSPushConfiguration.pushGateway }
 
     /// Asks iOS for the push token, then sets the account's pusher; a new token replaces the
     /// pusher of the old one. False when there is nothing to register: a drive on an account
@@ -93,7 +112,7 @@ extension Matrix {
     private static var installed = false
 
     /// The gateway's name for this app and its APNs environment (Sygnal's config, P3.3).
-    static var appId: String { "com.ramimaalouf.multiplexer.ios" + (isDevelopment ? ".dev" : "") }
+    static var appId: String { IOSPushConfiguration.pusherAppId(development: isDevelopment) }
 
     /// APNs' sandbox: the Simulator, and a build whose profile says `aps-environment development`.
     /// An App Store or TestFlight build has no embedded profile and pushes in production.

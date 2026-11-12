@@ -1,3 +1,4 @@
+import { loadIOSConfig, loadIOSDefaults, checkIOSManifest } from './ios-config.ts';
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -28,22 +29,35 @@ export function packagePreview(archive: string): string {
   if (!existsSync(extension)) throw new Error('preview is missing its notification extension; build with scripts/testflight.sh --archive-only');
   const info = plist(join(app, 'Info.plist'));
   const ext = plist(join(extension, 'Info.plist'));
-  const bundle = 'com.ramimaalouf.multiplexer';
-  if (info.CFBundleIdentifier !== bundle || ext.CFBundleIdentifier !== `${bundle}.notifications`
+  const config = loadIOSConfig();
+  const bundle = config.bundleId;
+  if (info.CFBundleIdentifier !== bundle || ext.CFBundleIdentifier !== config.extensionId
       || info.CFBundleVersion !== ext.CFBundleVersion
-      || ext.MultiplexerAppGroup !== `group.${bundle}`
-      || ext.MultiplexerKeychainGroup !== `3V2UU7RRK9.${bundle}`
-      || ext.MultiplexerSessionService !== `${bundle}.session`
+      || ext.MultiplexerAppGroup !== config.appGroup
+      || ext.MultiplexerKeychainGroup !== config.keychainGroup
+      || ext.MultiplexerSessionService !== config.sessionService
       || !info.NSUserActivityTypes?.includes('INSendMessageIntent')
       || !ext.NSUserActivityTypes?.includes('INSendMessageIntent')) {
     throw new Error('preview app and notification extension have inconsistent identities or shared-session configuration');
   }
-  for (const [path, id] of [[app, bundle], [extension, `${bundle}.notifications`]]) {
+  const metadata = {
+    MultiplexerPushGateway: config.pushGateway,
+    MultiplexerAppGroup: config.appGroup,
+    MultiplexerKeychainGroup: config.keychainGroup,
+    MultiplexerSessionService: config.sessionService,
+  };
+  // existing maintainer archives predate main-bundle metadata and use the same runtime defaults.
+  const defaults = loadIOSDefaults();
+  const legacy = config.bundleId === defaults.bundleId && config.teamId === defaults.teamId && config.pushGateway === defaults.pushGateway;
+  for (const [key, value] of Object.entries(metadata)) {
+    if (info[key] !== value && !(legacy && info[key] === undefined)) throw new Error('preview runtime configuration differs from ios configuration');
+  }
+  for (const [path, id] of [[app, bundle], [extension, config.extensionId]]) {
     const ent = entitlements(path);
-    if (ent['application-identifier'] !== `3V2UU7RRK9.${id}`
+    if (ent['application-identifier'] !== `${config.teamId}.${id}`
         || ent['get-task-allow'] !== false
-        || !ent['com.apple.security.application-groups']?.includes(`group.${bundle}`)
-        || !ent['keychain-access-groups']?.includes(`3V2UU7RRK9.${bundle}`)) {
+        || !ent['com.apple.security.application-groups']?.includes(config.appGroup)
+        || !ent['keychain-access-groups']?.includes(config.keychainGroup)) {
       throw new Error('preview is missing distribution identity or shared-session entitlements');
     }
   }
@@ -65,6 +79,7 @@ export function packagePreview(archive: string): string {
 
 export function previewIOS(args: string[]): string {
   if (args.length !== 1 || !/^\d+$/.test(args[0])) throw new Error('usage: bun scripts/preview-ios.ts <build number>');
+  checkIOSManifest(loadIOSConfig());
   const result = Bun.spawnSync(['bash', resolve(import.meta.dir, 'testflight.sh'), args[0], '--archive-only'],
     { stdout: 'pipe', stderr: 'inherit' });
   process.stdout.write(result.stdout);
@@ -78,6 +93,6 @@ if (import.meta.main) {
   try {
     const ipa = previewIOS(process.argv.slice(2));
     console.log(`notification-capable preview: ${ipa}`);
-    console.log('publish through AppDrop People you approve using the app owner’s Apple team, or use TestFlight; personal re-signing cannot preserve this push identity');
+    console.log('use your configured Apple team for distribution signing; nothing was uploaded');
   } catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; }
 }

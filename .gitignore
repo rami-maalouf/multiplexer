@@ -21,3 +21,6 @@
 /cli/.sdk/
 /cli/.build/
 /cli/.swiftpm/
+
+# local nonsecret apple identity and self-hosted push gateway
+/ios.config.local.json

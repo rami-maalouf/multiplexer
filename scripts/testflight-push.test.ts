@@ -1,5 +1,6 @@
+import { tmpdir } from 'node:os';
 import { describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { packagePreview, previewIOS } from './preview-ios.ts';
 
@@ -163,4 +164,28 @@ describe.skipIf(!exported)("actual distribution export", () => {
     }
     run(["codesign", "--verify", "--deep", "--strict", app]);
   });
+});
+
+test('custom preview refuses a missing or mismatched runtime gateway before signing or packaging', () => {
+  const work = mkdtempSync(join(tmpdir(), 'mux-preview-config-'));
+  const prior = process.env.MUX_IOS_CONFIG;
+  try {
+    const bundle = 'org.example.chat';
+    const team = 'ABCDE12345';
+    const config = join(work, 'config.json');
+    writeFileSync(config, JSON.stringify({ teamId: team, bundleId: bundle, pushGateway: 'https://push.example.org/_matrix/push/v1/notify' }));
+    process.env.MUX_IOS_CONFIG = config;
+    const app = join(work, 'Products/Applications/Mux.app');
+    const ext = join(app, 'PlugIns/MultiplexerNotifications.appex');
+    mkdirSync(ext, { recursive: true });
+    const main = { CFBundleIdentifier: bundle, CFBundleVersion: '1', NSUserActivityTypes: ['INSendMessageIntent'] };
+    writeFileSync(join(ext, 'Info.plist'), JSON.stringify({ ...main, CFBundleIdentifier: `${bundle}.notifications`, MultiplexerAppGroup: `group.${bundle}`, MultiplexerKeychainGroup: `${team}.${bundle}`, MultiplexerSessionService: `${bundle}.session` }));
+    for (const gateway of [undefined, 'https://wrong.example.org/_matrix/push/v1/notify']) {
+      writeFileSync(join(app, 'Info.plist'), JSON.stringify({ ...main, MultiplexerPushGateway: gateway }));
+      expect(() => packagePreview(work)).toThrow('runtime configuration');
+    }
+  } finally {
+    if (prior === undefined) delete process.env.MUX_IOS_CONFIG; else process.env.MUX_IOS_CONFIG = prior;
+    rmSync(work, { recursive: true, force: true });
+  }
 });

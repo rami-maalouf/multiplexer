@@ -66,3 +66,10 @@ published preview consequently had no notification extension or push entitlement
 The app now prepares its preview IPA through a separate production archive and
 packaging command. A declared extension or supported pre-upload packaging hook
 would let share preserve the same capabilities as other builds.
+
+2026-11-12 self-hosting follow-up: another signing identity must be synchronized
+across the manifest, native session storage and the post-build extension packager.
+The device wrapper also needs to pass EXACT_PROFILE; confirming this required
+reading the framework's signing sources (about two minutes). A documented profile
+option and declarative notification extension/shared entitlements would remove
+these extra integration steps.

@@ -1,3 +1,4 @@
+import { checkIOSManifest, loadIOSConfig, readDevelopmentProfile, validateDevelopmentProfile } from './ios-config.ts';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -20,19 +21,19 @@ export async function installIOS(args: string[]): Promise<void> {
     throw new Error('usage: bun scripts/install-ios.ts --sim <udid> | --device <udid>');
   }
   const [mode, target] = args;
+  const config = loadIOSConfig();
+  checkIOSManifest(config);
   if (mode === '--device') {
     for (const name of ['APP_PROFILE', 'EXTENSION_PROFILE']) {
       const path = process.env[name];
       if (!path || !existsSync(path)) throw new Error(`set ${name} to an existing development provisioning profile before building`);
     }
-    const decoded = Bun.spawnSync(['security', 'cms', '-D', '-i', process.env.APP_PROFILE!]);
-    if (decoded.exitCode !== 0 || !grantsCommunicationNotifications(decoded.stdout)) {
-      throw new Error('enable Communication Notifications for the app identifier and regenerate APP_PROFILE before installing sender avatars');
-    }
+    validateDevelopmentProfile(readDevelopmentProfile(process.env.APP_PROFILE!), config, 'app', target);
+    validateDevelopmentProfile(readDevelopmentProfile(process.env.EXTENSION_PROFILE!), config, 'extension', target);
   }
   const root = resolve(import.meta.dir, '..');
   const build = Bun.spawn(['bun', 'exact.mjs', 'ios', ...(mode === '--device' ? ['--device', '--phone', target] : ['--sim', target])],
-    { cwd: resolve(root, 'apps/multiplexer'), stdout: 'pipe', stderr: 'pipe' });
+    { cwd: resolve(root, 'apps/multiplexer'), env: { ...process.env, ...(mode === '--device' ? { EXACT_PROFILE: process.env.APP_PROFILE! } : {}) }, stdout: 'pipe', stderr: 'pipe' });
   const relay = async (stream: ReadableStream<Uint8Array>, sink: NodeJS.WriteStream) => {
     const decoder = new TextDecoder();
     let output = "";

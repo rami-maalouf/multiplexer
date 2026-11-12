@@ -1,5 +1,26 @@
 # Mux: tasks
 
+## Self-hosted iPhone builds, 2026-11-12
+
+- [x] Shared nonsecret team/bundle/gateway configuration, ignored local override and
+  configure command; derive extension, shared storage, session and pusher identities.
+- [x] Validate both device profiles and manifest before building; pass the chosen profile
+  into Exact, then package runtime settings with the notification service.
+- [x] Public Exact setup command plus licensed integration patch, verified from a public
+  fetch to the validated source tree; refuse existing checkout destinations.
+- [x] Own iPhone installer completed without launch; verify configured metadata, shared
+  access, APNs, communication and strict signatures. Existing identifiers remain stable.
+- [x] Fresh signed production export; 74 combined Bun checks with no skips; 13 native
+  authored iOS tests. Custom runtime/settings/profile fixtures passed. Owned simulator shut down.
+- [x] Self-hosted iPhone guide and discoverable links replace manual source-edit advice.
+- [x] Independent review and follow-up passed; configuration tests preserve an operator's
+  override file byte-for-byte. Both retained isolation findings are resolved.
+- [ ] Verify fresh-Mac toolchain provisioning and another operator's actual Apple signing,
+  gateway and locked-phone delivery. Current custom-identity proof uses fixtures.
+- Notes: no AppDrop API key grant, store upload, server mutation or real-account drive.
+  The user's chosen priority is own installation plus easy self-hosted builds; AppDrop
+  owner-team sharing is an optional distribution choice, not a remaining setup requirement.
+
 ## Push across distribution channels, 2026-11-12
 
 - [x] Reproduce the published preview missing push/notification service: AppDrop revision 2
@@ -9,8 +30,8 @@
 - [x] Add `bun scripts/preview-ios.ts <build>` to produce a checked preview IPA using the
   production packager. It uploads nothing and rejects the old incomplete preview.
 - [x] Run all archive/export cases: final combined Bun suite 64 passed, no skips.
-- [ ] Owner authorizes AppDrop People you approve with team 3V2UU7RRK9. This creates an
-  AppDrop App Manager API key; no such credential access was granted during this task.
+- [x] Resolve preview direction: user prioritized own install and self-hosted builds.
+  AppDrop People you approve is optional; no App Manager API key access was granted.
 - [ ] Publish the prepared preview IPA, approve a test iPhone, inspect final re-signed
   entitlements, and prove a natural locked-phone production push and sender photo.
 - Notes: initial store-extension link failed with disk full. Removed only disposable
@@ -82,9 +103,10 @@
   be captured (preview timeouts, fallback browser unavailable). Evidence:
   `tasks/evidence/public-docs-20261110.json`. No native/server/production deploy run.
 - [x] Add font license notices to the website's published assets.
-- [ ] Publish or upstream the validated Exact integration patches and prove a clean
-  public native build. Local integration 8536d208c is not available at its public
-  upstream commit URL; CONTRIBUTING.md states this rather than claiming reproducibility.
+- [x] Bundle the validated Exact integration patch and verify public source reconstruction
+  (2026-11-12). The local commit need not be available at its public upstream URL.
+- [ ] Prove complete toolchain provisioning and native build on a fresh Mac using the
+  public setup path; source-tree equivalence alone does not establish that environment.
 - [ ] Reconfirm the AppDrop preview's availability and separately prove public beta
   access and TestFlight push delivery. The existing URL responded after an initial
   timeout, but pairing/install were not exercised; upload receipts alone are not

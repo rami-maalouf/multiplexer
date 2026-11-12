@@ -28,11 +28,11 @@ case "${2:-}" in
 esac
 [ $# -le 2 ] || { echo "too many arguments" >&2; exit 2; }
 
-team="3V2UU7RRK9"
-bundle="com.ramimaalouf.multiplexer"
 version="${EXACT_VERSION:-0.1.0}"
 here="$(cd "$(dirname "$0")" && pwd)"
 app_dir="$here/../apps/multiplexer"
+config="$(bun "$here/ios-config.ts" --shell)"
+{ read -r team; read -r bundle; } <<< "$config"
 work="$(mktemp -d /tmp/mx-testflight-XXXXXX)"
 echo "work folder: $work"
 

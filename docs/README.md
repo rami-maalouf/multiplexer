@@ -6,6 +6,8 @@ Current entry points, reviewed against repository source on 2026-11-10:
   CLI and notification requirements.
 - [Self-hosting](self-hosting.md): one-user Matrix server and bridge setup, with
   the maintainer's tested configuration and explicit limits.
+- [Build your own iPhone app](iphone-self-hosting.md): your Apple identity,
+  push gateway, profiles and installation commands.
 - [Contributing](../CONTRIBUTING.md): native prerequisites, Exact integration,
   build commands and test-account setup.
 - [CLI](../cli/README.md): `mx`, JSONL output, guarded writes and known limits.

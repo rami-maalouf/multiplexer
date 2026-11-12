@@ -4,6 +4,20 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Self-hosted iPhone builds (2026-11-12, PR #22):** the owner install and
+self-hosted forks use one Apple team/bundle/gateway configuration. A configure
+command saves the ignored local settings and synchronizes the manifest; runtime,
+session groups, pusher routes and all packagers derive the same identity.
+Both development profiles are checked before building. The default phone build
+was rebuilt and installed, with configured runtime metadata and strict app/service
+signatures verified; no real account was accessed. A fresh production export and
+all 74 Bun checks pass with no skips; 13 native iOS tests pass. Custom settings,
+Swift runtime bundles and profile mismatches have fixture evidence, not a second
+Apple team's live deployment. The public Exact base plus bundled MIT-licensed
+integration patch reproduced the validated source tree exactly; full toolchain
+provisioning on another Mac is not claimed. AppDrop credential sharing is optional
+and was not enabled. Setup: `docs/iphone-self-hosting.md`.
+
 **Push across distribution channels (2026-11-12, PR #22):** the published AppDrop
 revision 2 reports `pushNotifications: false`, no extensions, and its downloaded
 IPA has no notification service or communication activity type. Exact's share
