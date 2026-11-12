@@ -4,6 +4,15 @@ Multiplexer combines many chat networks into one inbox on a server I own.
 
 ## Status
 
+**Login help (2026-11-12):** the signed-out form now offers "New to Mux? Start here".
+A native, scrollable Getting Started sheet explains Matrix accounts, server/user/password
+fields, and bridges, with links to the repository and server setup guide. Closing it keeps
+the draft credentials. iOS verification passed all 13 authored tests and light/dark plus
+15 largest-text screens; separate open-sheet and bottom-link captures passed light/dark
+checks at body 53. No account or server was modified. Physical iPhone/macOS remain unchecked.
+The task is committed locally without the pre-existing edits; those remain preserved in
+the working tree. Feedback finding 139 stays local.
+
 **Account privacy (2026-11-10):** public instructions use an explicit test-account
 allowlist; private identities and lookup details live in ignored `.local/accounts.md`.
 Tracked account references are generalized. Runtime behavior and existing git history
@@ -91,7 +100,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
 | License | GPL-3.0-only for original project code; third-party licenses retained. |
-| Last updated | 2026-11-10 |
+| Last updated | 2026-11-12 |
 
 Update this table at the end of every work session.
 

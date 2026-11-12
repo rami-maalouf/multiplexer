@@ -160,6 +160,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 135 | Glass is interactive only on a node with its own `press`; the docs do not say so, and the agent cannot show it. | About 15 min | P3 | [glass-is-interactive-only-with](issues/20261106-glass-is-interactive-only-with.md) |
 | 136 | A growing textarea comes up a line short on iOS, so its first line scrolls under its top. | About 15 min | P2 | [a-growing-textarea-comes-up](issues/20261106-a-growing-textarea-comes-up.md) |
 | 137 | After a return, liquid-glass `_UIFlexInteractionPanGestureRecognizer` can stay `.changed` and block every drag (scroll, row swipe, back); taps still work. An `isEnabled` release try did not fix it on device and was reverted. | About 15 min reading the phone log | P1 | [flex-pan-blocks-every-drag-after](issues/20261106-flex-pan-blocks-every-drag-after.md) |
+| 139 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
 
 ## What worked well
 

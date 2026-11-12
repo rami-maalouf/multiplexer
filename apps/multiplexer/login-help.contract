@@ -1,0 +1,53 @@
+component LoginHelp
+  props
+    route: string
+    close: action
+  action setup
+    openURL("https://github.com/rami-maalouf/multiplexer/blob/main/server/README.md")
+  action repository
+    openURL("https://github.com/rami-maalouf/multiplexer")
+  view
+    column navigationKey=route navigationPresentation="modal" navigationDetent="large" navigationScroll="login-help-content"
+      position="absolute" inset=0 display="flex" flex-direction="column" testId="login-help-sheet"
+      header display="flex" align-items="center"
+        text "Getting Started" role="heading" aria-level=1 flex=1
+        button press=close testId="login-help-done"
+          text "Done"
+      list id="login-help-content" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        section
+          row
+            column gap=6 flex=1 min-width=0
+              text "Your chats, through Matrix" font="-exact-title2" role="heading" aria-level=2
+              text "Mux signs in to a Matrix server. To bring in WhatsApp and other networks, that server also needs bridges." color="-exact-secondary-label"
+        section
+          header
+            text "1. Get a Matrix account"
+          row
+            text "Already use Matrix? Use your existing account. Otherwise, create an account with a Matrix server that accepts registrations, or ask the person running your server to create one for you. Mux does not create accounts in the app." testId="login-help-account"
+          footer
+            text "For your own server and bridges, follow the server setup guide below."
+        section
+          header
+            text "2. Enter your sign-in details"
+          row
+            column gap=6 flex=1 min-width=0
+              text "Server" font="-exact-headline"
+              text "The address of the Matrix server where your account lives, such as matrix.org. Use the address your server administrator gave you." color="-exact-secondary-label"
+          row
+            column gap=6 flex=1 min-width=0
+              text "User Name and Password" font="-exact-headline"
+              text "Use your Matrix user name (for example, alice or @alice:example.org) and Matrix password. These are not your WhatsApp, Telegram, or Instagram sign-in details." color="-exact-secondary-label" testId="login-help-details"
+        section
+          header
+            text "3. Connect your other networks"
+          row
+            text "Signing in alone does not connect your other messaging accounts. Your server needs a bridge for each network. Set up the bridges, then follow each bridge's instructions to link your accounts. Your bridged chats will appear in Mux." testId="login-help-bridges"
+        section
+          button press=setup testId="login-help-setup"
+            text "Open Server Setup Guide"
+            image "symbol:link" aria-hidden=true
+          button press=repository testId="login-help-repository"
+            text "View Project on GitHub"
+            image "symbol:link" aria-hidden=true
+          footer
+            text "Opens in your browser. Mux currently requires a separately configured Matrix server for chats from other networks."

@@ -2683,3 +2683,24 @@ The diagnostic observer now narrows the blue DISPLAY failure to below correct wi
 tint propagation. Native prominent fill/foreground acceptance remains open; a public-API
 item styling/invalidation correction needs source review and rendered verification.
 `exact2-navigation` stays clean at `7529006ab9` for Inbox.
+
+
+### Login help (2026-11-12)
+
+- [x] Offer getting-started help directly from the signed-out form.
+- [x] Explain account creation outside the app, Matrix credentials/server address, and
+  the bridges required for other networks; link to the project and server setup guide.
+- [x] Native large sheet with Done and interactive dismissal, preserving form drafts.
+- [x] Focused native test passed; baseline drive refused the missing help target before
+  integration. Full `verify ios` passed 13 tests, light/dark and 15 body-53 screens in
+  153.1 s. Separate open-sheet and bottom-link body-53 captures/checks passed.
+- [x] Task-scoped code review completed without findings; simplification removed one
+  redundant component comment. No native module, SDK, sign-in or server changes.
+- Evidence: `apps/multiplexer/.exact/login-help/` (baseline, light/dark, large text and links),
+  `.exact/verify/`; review `/tmp/compound-engineering-501/ce-code-review/20261112-login-help/`.
+- An initial verify run was invalidated by a comment edit during execution; final run
+  used unchanged sources. A hand-written drag targeted an id without a testId and was
+  refused; tapping the repository row then scrolled it into view for visual inspection.
+- Rami approved preserving existing edits and committing only this task. The scoped commit
+  excludes unrelated app, server, framework-feedback and diary changes.
+- Physical iPhone and macOS verification were not run. No account was used.
