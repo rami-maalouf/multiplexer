@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { builtApp, installIOS } from './install-ios.ts';
+import { builtApp, grantsCommunicationNotifications, installIOS } from './install-ios.ts';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -19,4 +19,17 @@ test('bad arguments fail before building or installing', async () => {
   for (const args of [[], ['--sim'], ['--run', 'device'], ['--device', '--run']]) {
     await expect(installIOS(args)).rejects.toThrow('usage:');
   }
+});
+
+test.skipIf(process.platform !== 'darwin')('profile preflight accepts certificate data and dates while requiring the communication grant', () => {
+  const profile = (entitlements: string) => new TextEncoder().encode(`<?xml version="1.0"?>
+    <plist version="1.0"><dict>
+    <key>DeveloperCertificates</key><array><data>AQID</data></array>
+    <key>ExpirationDate</key><date>2027-11-12T14:02:39Z</date>
+    <key>Entitlements</key><dict>${entitlements}</dict></dict></plist>`);
+  const key = '<key>com.apple.developer.usernotifications.communication</key>';
+  expect(grantsCommunicationNotifications(profile(`${key}<true/>`))).toBe(true);
+  expect(grantsCommunicationNotifications(profile(`${key}<false/>`))).toBe(false);
+  expect(grantsCommunicationNotifications(profile(''))).toBe(false);
+  expect(grantsCommunicationNotifications(new TextEncoder().encode('not a profile'))).toBe(false);
 });

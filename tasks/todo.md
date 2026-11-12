@@ -14,9 +14,15 @@
   final initials banner inspected. Synthetic test sender profile restored; fixture logged out.
 - [x] Three focused thumbnail tests, two plain/encrypted live push tests, native intent fixture,
   52 Bun tests, 13 native app tests and Contract/TypeScript checks pass. Independent review retained no findings.
-- [ ] Enable Communication Notifications for the Apple app identifier, regenerate its
-  development profile and install/verify the avatar build on the phone. Apple Developer
-  currently requires sign-in; the request is pending. Existing reliable phone build preserved.
+- [x] Enable Communication Notifications for the Apple app identifier, regenerate its
+  development profile and install/verify the avatar build on the phone. Strict signatures,
+  development APNs, shared groups, device coverage and intent activity types pass.
+- [x] Fix profile preflight to extract only Entitlements: whole-profile JSON conversion
+  fails on Apple certificate/date values. A representative regression fixture passes;
+  distribution assertions use the same extraction. Final Bun run: 57 passed, five artifact skips.
+- [ ] Rami opens the updated phone app once and confirms a natural locked-phone sender photo.
+- Installation: Apple's connection reset on the initial install; packaging/re-signing and
+  install succeeded on retry. The phone app was not launched. No new server/account access.
 - Notes: no Contacts access or real-account drive. Tests cover bad URL, status, MIME, size and
   invalid/missing image paths; full delayed network, expiration and Apple donation-failure
   races are not injected. New diary remains local until separately approved.

@@ -15,9 +15,16 @@ terminated-app real sandbox banners showed the test sender's photo (497/452 ms,
 Three focused thumbnail tests, two live plain/encrypted push tests, 13 native app
 tests, the native intent fixture and 52 Bun checks pass; five distribution artifact checks skip
 without artifacts. The device installer refuses old profiles before replacing the
-working phone build. Communication-capable provisioning and physical avatar
-installation remain blocked on Apple Developer sign-in. No real account was
-accessed. Existing reliability build remains installed on the phone. The prior
+working phone build. Communication Notifications is now enabled on the Apple app
+identifier, and the regenerated development profile grants it. The avatar build
+is installed on the paired iPhone; strict signatures, development APNs, shared
+storage, device coverage and intent activity types pass verification. The initial
+device connection reset; packaging and installation succeeded on retry without
+launching the app. A real profile exposed a preflight JSON conversion bug with
+certificate/date values: only the entitlement dictionary is now converted, with
+a regression fixture. The final Bun run passed 57 tests, with five artifact skips.
+Physical locked-phone avatar delivery still needs a natural incoming message
+after Rami opens Mux once. No real account was accessed. The prior
 approved diary was sent separately (receipt in the feedback index); new avatar
 notes stay local. See `tasks/evidence/notification-avatars-20261112.json`.
 

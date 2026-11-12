@@ -9,6 +9,12 @@ export function builtApp(output: string): string {
   return path;
 }
 
+export function grantsCommunicationNotifications(profile: Uint8Array): boolean {
+  const converted = Bun.spawnSync(['plutil', '-extract', 'Entitlements', 'json', '-o', '-', '-'], { stdin: profile });
+  if (converted.exitCode !== 0) return false;
+  try { return JSON.parse(converted.stdout.toString())['com.apple.developer.usernotifications.communication'] === true; } catch { return false; }
+}
+
 export async function installIOS(args: string[]): Promise<void> {
   if (args.length !== 2 || !['--sim', '--device'].includes(args[0]) || !args[1] || args[1].startsWith('-')) {
     throw new Error('usage: bun scripts/install-ios.ts --sim <udid> | --device <udid>');
@@ -20,10 +26,9 @@ export async function installIOS(args: string[]): Promise<void> {
       if (!path || !existsSync(path)) throw new Error(`set ${name} to an existing development provisioning profile before building`);
     }
     const decoded = Bun.spawnSync(['security', 'cms', '-D', '-i', process.env.APP_PROFILE!]);
-    const converted = Bun.spawnSync(['plutil', '-convert', 'json', '-o', '-', '-'], { stdin: decoded.stdout });
-    let granted = false;
-    try { granted = JSON.parse(converted.stdout.toString()).Entitlements?.['com.apple.developer.usernotifications.communication'] === true; } catch {}
-    if (!granted) throw new Error('enable Communication Notifications for the app identifier and regenerate APP_PROFILE before installing sender avatars');
+    if (decoded.exitCode !== 0 || !grantsCommunicationNotifications(decoded.stdout)) {
+      throw new Error('enable Communication Notifications for the app identifier and regenerate APP_PROFILE before installing sender avatars');
+    }
   }
   const root = resolve(import.meta.dir, '..');
   const build = Bun.spawn(['bun', 'exact.mjs', 'ios', ...(mode === '--device' ? ['--device', '--phone', target] : ['--sim', target])],

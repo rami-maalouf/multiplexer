@@ -120,22 +120,24 @@ describe.skipIf(!exported)("actual distribution export", () => {
       run(["codesign", "--verify", "--strict", path]);
       const ent = entitlements(path);
       const xml = run(["security", "cms", "-D", "-i", join(path, "embedded.mobileprovision")]);
-      const result = Bun.spawnSync(["plutil", "-convert", "json", "-o", "-", "-"], { stdin: Buffer.from(xml) });
+      const result = Bun.spawnSync(["plutil", "-extract", "Entitlements", "json", "-o", "-", "-"], { stdin: Buffer.from(xml) });
       expect(result.exitCode).toBe(0);
-      const profile = JSON.parse(result.stdout.toString());
-      for (const grants of [ent, profile.Entitlements]) {
+      const profileEntitlements = JSON.parse(result.stdout.toString());
+      for (const grants of [ent, profileEntitlements]) {
         expect(grants["application-identifier"]).toBe(`${team}.${id}`);
         expect(grants["com.apple.developer.team-identifier"]).toBe(team);
         expect(grants["get-task-allow"]).toBe(false);
         expect(grants["com.apple.security.application-groups"]).toContain(group);
         expect(grants["keychain-access-groups"].some((value: string) =>
-          value === keychain || (grants === profile.Entitlements && value === `${team}.*`))).toBe(true);
+          value === keychain || (grants === profileEntitlements && value === `${team}.*`))).toBe(true);
       }
-      expect(profile.ProvisionedDevices).toBeUndefined();
-      expect(profile.ProvisionsAllDevices).not.toBe(true);
+      const devices = Bun.spawnSync(["plutil", "-extract", "ProvisionedDevices", "json", "-o", "-", "-"], { stdin: Buffer.from(xml) });
+      expect(devices.exitCode).not.toBe(0);
+      const allDevices = Bun.spawnSync(["plutil", "-extract", "ProvisionsAllDevices", "json", "-o", "-", "-"], { stdin: Buffer.from(xml) });
+      if (allDevices.exitCode === 0) expect(JSON.parse(allDevices.stdout.toString())).not.toBe(true);
       if (id === bundle) {
         expect(ent["aps-environment"]).toBe("production");
-        expect(profile.Entitlements["aps-environment"]).toBe("production");
+        expect(profileEntitlements["aps-environment"]).toBe("production");
       }
     }
     run(["codesign", "--verify", "--deep", "--strict", app]);

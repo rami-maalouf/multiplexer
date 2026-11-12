@@ -18,6 +18,6 @@ task: show sender profile photos in remote notifications
 - native intents: sender identity, image, group context and missing/corrupt image paths passed.
 - real notification: first uncached profile photo displayed with the app in background (497 ms, 18 MB), and with the app terminated (452 ms, 18 MB).
 - no photo: the message arrived (214 ms, 14 MB); an explicit local initials image was then added because the system otherwise chose the app icon.
-- device install: waiting for communication-capable provisioning; existing installed build preserved.
+- device install: communication-capable provisioning completed; packaged build installed and signed capabilities verified.
 
 - final verification: rebuilt app and all 13 authored ios tests passed; final local initials banner inspected.
