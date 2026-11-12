@@ -19,6 +19,9 @@ extension Matrix {
         let account = try await signedIn()
         guard try sendsReadReceipts(account) else { return false }
         #if os(iOS)
+        let session = try account.savedSession()
+        guard let owner = try keychain.read(), owner.session.userId == session.userId,
+              owner.session.deviceId == session.deviceId else { return false }
         let token: Data
         do {
             token = try await PushToken.request()
@@ -26,17 +29,23 @@ extension Matrix {
             moduleLog("matrix: no push token: \(error.localizedDescription)")
             return false
         }
-        if PushToken.isDevelopment { moduleLog("matrix: push token \(token.map { String(format: "%02x", $0) }.joined())") }
-        guard var stored = try keychain.read() else { return false }
+        guard let stored = try keychain.read(), stored.store == owner.store,
+              stored.session.deviceId == owner.session.deviceId else { return false }
         let pusher = Pusher(appId: PushToken.appId, pushkey: Pusher.pushkey(apnsToken: token), url: Self.pushGateway,
                             appDisplayName: "Mux", deviceDisplayName: context.agent ? "Mux test" : "Mux")
-        if let oldKey = stored.pushkey, let oldApp = stored.pusherAppId, oldKey != pusher.pushkey || oldApp != pusher.appId {
+        // keep the old route until the replacement is accepted. a failed set stays retryable.
+        try await account.setPusher(pusher)
+        // sign out, another sign-in or an sdk token refresh can run while the network waits.
+        // merge metadata into the current session instead of writing an old access token back.
+        guard var current = try keychain.read(), current.store == stored.store,
+              current.session.deviceId == stored.session.deviceId else { return false }
+        current.pushkey = pusher.pushkey
+        current.pusherAppId = pusher.appId
+        try keychain.write(current)
+        if let oldKey = stored.pushkey, let oldApp = stored.pusherAppId,
+           oldKey != pusher.pushkey || oldApp != pusher.appId {
             try? await account.deletePusher(appId: oldApp, pushkey: oldKey)
         }
-        try await account.setPusher(pusher)
-        stored.pushkey = pusher.pushkey
-        stored.pusherAppId = pusher.appId
-        try keychain.write(stored)
         moduleLog("matrix: pusher set for \(pusher.appId)")
         return true
         #else
@@ -59,13 +68,18 @@ extension Matrix {
     /// Permission left `granted` (turned off in the iPhone's Settings): drop this device's
     /// pusher and forget its stored key so a later Allow can register cleanly.
     @MainActor func unregisterPush() async throws {
-        guard var stored = try keychain.read() else { return }
-        guard stored.pushkey != nil, stored.pusherAppId != nil else { return }
+        guard let stored = try keychain.read() else { return }
+        guard let pushkey = stored.pushkey, let appId = stored.pusherAppId else { return }
         let account = try await signedIn()
-        await deletePusher(account, stored)
-        stored.pushkey = nil
-        stored.pusherAppId = nil
-        try keychain.write(stored)
+        let session = try account.savedSession()
+        guard session.userId == stored.session.userId, session.deviceId == stored.session.deviceId else { return }
+        // propagate failure so the view retries disabling instead of forgetting a live pusher.
+        try await account.deletePusher(appId: appId, pushkey: pushkey)
+        guard var current = try keychain.read(), current.store == stored.store,
+              current.session.deviceId == stored.session.deviceId else { return }
+        current.pushkey = nil
+        current.pusherAppId = nil
+        try keychain.write(current)
         moduleLog("matrix: pusher cleared after notifications left granted")
     }
 }

@@ -56,3 +56,6 @@ To build against a framework worktree with a local fix, five app files were rewr
 "[patch.crates-io] must name exact2's vendored ..." and printed the old paths, because
 `exact.mjs` still named the shared checkout. Setting `EXACT2=<checkout>` fixed it. The message
 does not say that `EXACT2` decides which checkout it compares against. About 2 minutes.
+
+
+2026-11-12 follow-up: in an isolated worktree, EXACT2 alone did not repair the generated cargo paths. update repaired those paths but left package file dependencies at the original folder depth; installed package copies were needed locally. no generated path changes are intended to ship.

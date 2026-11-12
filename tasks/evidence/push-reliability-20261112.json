@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-12",
+  "base": "93af9c3e51eaf9a2691175a03ca90c5e7231b5be",
+  "branch": "fix/reliable-mobile-push",
+  "reproductions": {
+    "ordinary_build": {
+      "apns_entitlement": false,
+      "app_group_entitlement": false,
+      "notification_extension": false
+    },
+    "native_baseline_regression": "failed replacement deleted the working route"
+  },
+  "verification": {
+    "automated_pass": 51,
+    "artifact_tests_skipped": 5,
+    "native_ios_pass": 13,
+    "contract_typescript": "[]",
+    "sandbox_background_banner": "sender and text observed",
+    "foreground_registration_success_count": 2,
+    "terminated_banner": "visually inspected after native suite ended",
+    "extension_ms": [
+      227,
+      119,
+      121,
+      180,
+      197
+    ],
+    "extension_peak_mb": [
+      18,
+      18,
+      18,
+      18,
+      14
+    ],
+    "test_pushers_after_signout": 0,
+    "phone_installer": "success, app not launched",
+    "phone_signature_checks": "app and extension strict verification passed",
+    "phone_apns_environment": "development",
+    "phone_shared_groups": "app and extension verified"
+  },
+  "limits": [
+    "no physical locked-phone runtime acceptance in this session",
+    "initial failed registration repairs when the app is visible",
+    "timer retry policy compiled and controlled IO checked; no system-wide network outage injected",
+    "early overlapping screenshot captures excluded from terminated-app proof",
+    "baseline test device remote absence not independently established"
+  ],
+  "local_capture": "apps/multiplexer/.exact/push-reliability/terminated-final.png",
+  "review": "/tmp/compound-engineering-501/ce-code-review/mux-push-20261112"
+}

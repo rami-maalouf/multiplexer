@@ -98,7 +98,11 @@ scripts/mx-lock.sh matrixcore <your-lane> -- ./scripts/test-matrix-core.sh
 Build, run and drive the app (from `apps/multiplexer/`):
 
 ```sh
+# for ordinary ui work; this does not package remote push:
 bun exact.mjs ios --run
+# for a push-capable install, from the repository root:
+# bun scripts/install-ios.ts --sim <udid>
+# APP_PROFILE=<profile> EXTENSION_PROFILE=<profile> bun scripts/install-ios.ts --device <udid>
 bun exact.mjs agent ios "clock data" "state" "screenshot .exact/shot.png"
 bun exact.mjs test ios
 bun exact.mjs contract build app.contract --json --errors-only

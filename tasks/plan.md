@@ -4,6 +4,24 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**iPhone push reliability (2026-11-12, `fix/reliable-mobile-push`):** a fresh ordinary
+Exact install lacked APNs/App Group entitlements and the notification extension;
+`bun scripts/install-ios.ts` now builds, packages and reinstalls as one operation.
+A native regression against main reproduced deletion of a working pusher before a
+failed replacement. Replacement now sets first, preserves current session tokens,
+guards session identity, and keeps failed disables retryable. Registration is
+serialized, retried every 30 s after failure while visible, and refreshed on return.
+51 automated tests pass (5 distribution-artifact cases skipped), Contract/TypeScript
+returns `[]`, and all 13 native iOS tests pass. Real sandbox pushes showed sender/text
+in the background and after termination; the final terminated banner was visually
+inspected. Extension outcomes were 119-227 ms and 14-18 MB. The complete installer
+built and installed on the paired iPhone; strict signatures, development APNs and
+shared groups pass for app/extension. The phone app was not launched and no real
+account was accessed: physical locked-phone acceptance still needs Rami to open
+Mux once and receive a natural message. Gateway diagnostics were read-only; no
+server configuration changed. Test sign-out returned the pusher count to zero.
+Evidence: `tasks/evidence/push-reliability-20261112.json`.
+
 **Public documentation audit (2026-11-10):** source-checked the public entry points,
 added docs/install.md, docs/README.md and CONTRIBUTING.md, and corrected stale Mac,
 push and server-bootstrap claims. Documented the fixed maintainer push gateway,
@@ -337,7 +355,7 @@ after the one-time stop. This deadline overrides the work queue below.
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
 | Exact | expo/exact local/mux-integration at 8536d208c40f97be3f132ea266d5029e2e3c10ba atop 94b8671f70fe2e25b307a40e7fce66dc27c9f802. The validated integration commit was not available from public upstream at the audit; see CONTRIBUTING.md. |
 | License | GPL-3.0-only for original project code; third-party licenses retained. |
-| Last updated | 2026-11-10 |
+| Last updated | 2026-11-12 |
 
 Update this table at the end of every work session.
 

@@ -1,5 +1,30 @@
 # Mux: tasks
 
+## iPhone push reliability, 2026-11-12
+
+- [x] Start a clean worktree from origin/main; preserve unrelated original checkout edits.
+- [x] Read-only live gateway audit: services active, production/sandbox configured, zero
+  pushers before testing, no continuing APNs rejection outage in inspected logs.
+- [x] Reproduce ordinary install missing APNs/shared entitlements and notification extension.
+- [x] Reproduce failed replacement deleting the previous working route using actual native
+  registration methods compiled with controlled IO, then verify corrected behavior.
+- [x] Retry failed registration/disable while visible, register again on foreground return,
+  serialize preference changes and preserve current session across suspension.
+- [x] Add a complete development installer and document the push-capable build command.
+- [x] 51 automated checks passed, 5 archive/export artifact cases skipped; 13 native app tests
+  and the Contract/TypeScript gate passed. Independent review retained no findings.
+- [x] Natural sandbox background alert inspected; foreground re-registration counted;
+  final terminated-app sender/text banner inspected. Extension: 119-227 ms, 14-18 MB.
+- [x] Complete installer installed the paired iPhone build without launching it; strict signing,
+  APNs development and both shared groups verified. No real-account drive or server mutation.
+- [ ] Rami opens the updated phone app once, then confirms a natural locked-phone message.
+- Notes: a native test run overlapped early screenshot capture, so those captures do not prove
+  a terminated app; the final terminated capture was repeated after the suite ended. Ordinary
+  native test/verify builds need packaging again before APNs checks. One earlier baseline
+  test-device session became inaccessible after replacing the old bundle; its pusher is gone,
+  but remote device absence was not established. No server device deletion was attempted.
+
+
 ## Public documentation (2026-11-10)
 
 - [x] Audit README, install/self-hosting/contributor guides, CLI/SDK/operator docs,

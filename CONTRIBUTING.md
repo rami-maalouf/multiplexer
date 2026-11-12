@@ -61,8 +61,20 @@ bun exact.mjs ios --run
 `setup-matrix-sdk.sh` downloads and checks SDK release `26.10.27` and copies
 MatrixCore into the app. Run it again after every edit in `matrix-core/`; otherwise
 the app compiles the old copy. Initial native builds can take several minutes.
-Physical-device signing and notification-extension packaging are separate from
-this Simulator path.
+For push-capable installs, use the complete installer from the repository root:
+
+```sh
+bun scripts/install-ios.ts --sim <simulator-udid>
+# for a phone, set APP_PROFILE and EXTENSION_PROFILE to development profiles first:
+bun scripts/install-ios.ts --device <phone-udid>
+```
+
+The installer builds, adds the notification service and shared entitlements, and
+reinstalls the signed app. It stops on a packaging failure. Ordinary `exact ios`
+and native test/verify commands install a bare bundle, so run the complete installer
+again before testing push. Open the installed app once to register with APNs and
+allow notifications. Device profiles must cover the phone, App Group and Keychain
+group; the app profile must also grant development APNs.
 
 For the Mac app, run these from the repository root before `bun exact.mjs mac --run`
 in `apps/multiplexer/`:

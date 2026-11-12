@@ -51,6 +51,14 @@ gateway configuration and extension packaging exist, but TestFlight delivery and
 notification support for a re-signed AppDrop preview are not established by those
 development tests.
 
+For a development build installed from a Mac, use
+`bun scripts/install-ios.ts --device <phone-udid>` from the repository root, with
+`APP_PROFILE` and `EXTENSION_PROFILE` set to the matching development profiles.
+The ordinary framework build does not package remote push. See
+[the build guide](../CONTRIBUTING.md#run-the-app). After installing, open Mux once
+and allow notifications. Registration retries after a transient failure while
+Mux is visible and runs again when you return to the app.
+
 **The gateway URL is currently fixed in the app**, in
 [`PushRegistration.swift`](../apps/multiplexer/modules/apple/PushRegistration.swift),
 to `sygnal.ramimaalouf.com`. Signing in to another homeserver does not change it.

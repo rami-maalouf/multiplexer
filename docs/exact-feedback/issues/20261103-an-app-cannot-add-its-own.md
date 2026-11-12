@@ -48,3 +48,6 @@ installed.
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS 26.5 Simulator: the extension was registered by the
 system ("plugin INSTALLED"), and the app's patched entitlements gave it its push token.
+
+
+2026-11-12 follow-up: a fresh ordinary ios build again contained no remote push or app-group entitlement and no notification extension, replacing a separately packaged build. the app now wraps build plus packaging plus reinstall in one command. a declarative extension and entitlement build would remove this workaround.
