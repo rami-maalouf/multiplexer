@@ -3183,3 +3183,21 @@ the current Exact checkout; new build-cost evidence was added to finding 30. The
 
 - [x] With explicit permission, inspect Oracle bridge and Synapse avatar metadata read-only; verify source files and sample authenticated thumbnail responses. The real metadata matches the missing room-to-member fallback. No user login/session or chat mutation.
 - [x] Send only this task's approved Exact diary, receipt `594fc919-b6ac-4b88-8a0d-52c99bc57f93`; no logs, attachments or other diaries.
+
+
+### Main and AppDrop delivery (2026-11-12)
+
+- [x] Preserve and commit pending work, integrate current main and exact heads of PRs #22/#23.
+- [x] Resolve overlaps without regressing main's Mac, production gateway or setup documentation.
+- [x] Contract/TypeScript check, 68 Bun checks, notification communication fixture, 14 native
+  authored tests, light/dark and 16 largest-text screens pass. Seven initial Bun skips
+  require a Simulator or release artifacts; the Simulator fixture was then run and passed.
+- [ ] Push integrated main and confirm both PRs are merged.
+- [ ] Build the complete notification preview IPA and update existing AppDrop revision 2.
+- [ ] Verify the published revision/build and record signing/delivery limits.
+- Integration correction: an initial conflict parser consumed too much across multiple
+  conflict regions. Before pushing, restored the saved all-work commit and re-merged with
+  line-bounded markers. File-size checks, exact production-source comparisons to PR heads,
+  Contract compilation and the combined native run then passed. No erroneous merge was pushed.
+- Collaborative preview snapshots timed out twice and alternate browser host was unavailable.
+  The installed AppDrop CLI retains the existing management credential; it is not printed.

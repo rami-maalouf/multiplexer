@@ -4,6 +4,16 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Main integration and preview preparation (2026-11-12):** at Rami's request,
+combined current main, PR #22 (reliable push/distribution), PR #23 (bridged profile
+pictures), the login help and all pending tracked work. Push and avatar production
+sources match their reviewed PR heads; the only app-view delta from #22 is login help.
+Contract/TypeScript passes; 68 Bun checks pass (7 artifact/Simulator-gated skips), and
+the gated communication-intent Simulator fixture separately passes. Combined native
+verification passes all 14 authored tests, light/dark and 16 body-53 screens in 268.4 s.
+All 39 MatrixCore app copies match canonical sources. Main push and AppDrop publication
+are the next steps. No real account or live server was modified.
+
 **Login help (2026-11-12):** the signed-out form now offers "New to Mux? Start here".
 A native, scrollable Getting Started sheet explains Matrix accounts, server/user/password
 fields, and bridges, with links to the repository and server setup guide. Closing it keeps
@@ -11,7 +21,7 @@ the draft credentials. iOS verification passed all 13 authored tests and light/d
 15 largest-text screens; separate open-sheet and bottom-link captures passed light/dark
 checks at body 53. No account or server was modified. Physical iPhone/macOS remain unchecked.
 The task is committed locally without the pre-existing edits; those remain preserved in
-the working tree. Feedback finding 139 was sent with approval (receipt `8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`).
+the working tree. Feedback finding 163 was sent with approval (receipt `8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`).
 
 **Account privacy (2026-11-10):** public instructions use an explicit test-account
 allowlist; private identities and lookup details live in ignored `.local/accounts.md`.
