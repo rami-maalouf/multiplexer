@@ -2704,3 +2704,6 @@ item styling/invalidation correction needs source review and rendered verificati
 - Rami approved preserving existing edits and committing only this task. The scoped commit
   excludes unrelated app, server, framework-feedback and diary changes.
 - Physical iPhone and macOS verification were not run. No account was used.
+
+- Feedback sent with Rami's approval: one generic diary and 13 command-log lines; receipt
+  `8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`. Other pending diaries and repository documents were excluded.

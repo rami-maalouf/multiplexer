@@ -11,7 +11,7 @@ the draft credentials. iOS verification passed all 13 authored tests and light/d
 15 largest-text screens; separate open-sheet and bottom-link captures passed light/dark
 checks at body 53. No account or server was modified. Physical iPhone/macOS remain unchecked.
 The task is committed locally without the pre-existing edits; those remain preserved in
-the working tree. Feedback finding 139 stays local.
+the working tree. Feedback finding 139 was sent with approval (receipt `8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`).
 
 **Account privacy (2026-11-10):** public instructions use an explicit test-account
 allowlist; private identities and lookup details live in ignored `.local/accounts.md`.

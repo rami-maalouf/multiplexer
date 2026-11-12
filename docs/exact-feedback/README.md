@@ -225,6 +225,10 @@ To take a send back: `bun exact.mjs feedback delete <receipt>`.
 To send a new finding: write it as an issue file here and in the task's diary entry, add
 its row above, then send. Each send needs Rami's yes.
 
+Login-help feedback sent on 2026-11-12 with Rami's explicit approval: receipt
+`8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`; one generic diary and 13 task command-log lines.
+Other unsent diaries and repository documents were excluded.
+
 ## Pull requests to exact2
 
 Rami prefers a pull request to sending feedback (2026-11-02): when a finding is a problem
