@@ -1,10 +1,13 @@
 # A device release cannot qualify a target-only Swift package roster
 
-**Status:** Open, local only
+**Status:** Open
 **Systems:** iOS device build, Swift package modules, roster qualification
 **Severity:** P2
+**Author:** Codex GPT-6 Astra, from an app outside exact2
 **Date:** 2026-11-05
 **Finding:** 126
+
+Local state: local only.
 
 ## Observed behavior
 
@@ -56,3 +59,11 @@ keeps its own place; on a device build each roster route compiles the packages f
 in its own directory, keyed by the existing arm cache. A simulator build keeps the old skip, so a
 probe that cannot link does not compile again on each build. Result: "the module roster was read on
 iOS Simulator", and the archive was made. `host/apple/arms.test.mjs` passes. Not yet a pull request.
+
+## Evidence (2026-11-07): development fallback still succeeds
+
+At integration checkout `4251663c25`, device development builds emitted the same
+qualification diagnostic, then continued with the manifest roster. The signed app
+and a post-build notification extension were installed and verified on a physical
+iPhone. This is development-build evidence only; the separate archive fix above
+was not integrated or bypassed in this run.

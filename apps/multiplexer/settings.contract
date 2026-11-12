@@ -2,8 +2,9 @@ use Balloon from "./bubble.contract"
 use Appearance, AccentBadge, accentPresets from "./appearance.contract"
 
 // Settings, from the inbox's title menu, in the platform's grouped style: the signed-in account,
-// whether new messages notify (and a way to allow it), the one speed every voice message plays at
-// (the speed chip on a voice message changes the same setting), and Sign Out, which asks first.
+// whether new messages notify (an in-app switch; Open Settings only when the iPhone refused),
+// the one speed every voice message plays at (the speed chip on a voice message changes the same
+// setting), and Sign Out, which asks first.
 
 // the account as others see it. avatar: its picture once it is downloaded ("" until then, or
 // for none), else its initials show. version: the app's.
@@ -53,11 +54,17 @@ component SettingsScreen
     typeKey: action
     unlock: action
     largeText: bool
-    // the notification permission: "granted", "denied", "prompt" (not asked yet) or "unknown".
+    // the system permission: "granted", "denied", "prompt" (not asked yet) or "unknown".
     notifications: string
-    allowNotifications: action
+    // the app's preference; the switch is on only while this is true and the system allowed it.
+    messageNotifications: bool
+    setMessageNotifications: action
+    // opens this app's page in the iPhone's Settings (camera and mic use the same path).
+    openNotificationSettings: action
   derive side = largeText ? 72 : 60
   derive shown = profile.userId == userId
+  // the switch mirrors delivery: preference on and the system has allowed alerts.
+  derive notificationsOn = messageNotifications and notifications == "granted"
   view
     column navigationKey=route navigationScroll="settings" position="absolute" inset=0 display="flex" flex-direction="column"
       testId="settings"
@@ -81,16 +88,21 @@ component SettingsScreen
                   testId="account-id"
         if userId != "" and notifications != "unknown"
           section
-            // at the largest text sizes the button goes under the word, which never breaks inside it.
+            // as Messages and other chat apps: an in-app switch. The system permission is separate;
+            // when the iPhone refused, only its Settings can grant again.
             row column-gap=12 row-gap=4 align-items="center" flex-wrap="wrap" testId="notifications"
               text "Notifications" flex="1 0 auto"
-              if notifications == "prompt"
-                button press=allowNotifications testId="allow-notifications"
-                  text "Turn On"
+              if notifications == "denied"
+                text "Off" color="-exact-secondary-label" testId="notifications-state"
+                button press=openNotificationSettings testId="notification-settings"
+                  text "Open Settings"
               else
-                text (notifications == "granted" ? "On" : "Off") color="-exact-secondary-label" testId="notifications-state"
+                input type="checkbox" switch checked=notificationsOn change=setMessageNotifications
+                  aria-label="Notifications" testId="notifications-switch" margin=0 flex-shrink=0
             footer
-              text (notifications == "denied" ? "Turn them on in the iPhone's Settings, under Multiplexer." : "A new message shows its chat, its sender and its text.")
+              text (notifications == "denied"
+                ? "Turn them on in the iPhone's Settings, under Mux."
+                : "A new message shows its chat, its sender and its text.")
         section testId="appearance-settings"
           header
             text "Appearance"
@@ -165,4 +177,4 @@ component SettingsScreen
               button press=signOut destructive=true testId="sign-out" flex=1
                 text "Sign Out"
             footer
-              text (shown and profile.version != "" ? `Multiplexer ${profile.version}` : "") testId="version"
+              text (shown and profile.version != "" ? `Mux ${profile.version}` : "") testId="version"

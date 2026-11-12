@@ -50,3 +50,15 @@ WP9)`. For that one archive, the call was replaced by an immediate "no token" an
 uncommitted copy (a re-signing service signs with the recipient's own Apple ID, which has no push
 entitlement, so nothing was lost). The archive was then made. The refusal applies to every archive,
 also to an app with no Live Activity, which is what the WP9 ruling is about.
+
+## Evidence (2026-11-07): delivery works through the development workaround
+
+At integration checkout `4251663c25`, the custom registration callbacks and post-build
+extension delivered real APNs notifications while the app was terminated. Plain and
+encrypted messages showed their sender and text on an iOS 26.5 Simulator; extension
+processing took 120 to 227 ms with a 17 to 19 MB peak footprint. A person confirmed a
+fallback banner on a locked physical iPhone using a development-signed build.
+
+This verifies the workaround, not framework support. The host's notification presenter
+still accepts only its own activation envelope, and exposes no app-defined remote tap
+or foreground-presentation callback. No private activation key was used as a workaround.

@@ -1,14 +1,14 @@
 {
-  "$schema": "../../../exact/exact2-multiplexer-integration/scripts/app.schema.json",
-  "name": "Multiplexer",
-  "short_name": "Multiplexer",
+  "$schema": "../../../exact/expo-exact/scripts/app.schema.json",
+  "name": "Mux",
+  "short_name": "Mux",
   "id": "com.ramimaalouf.multiplexer",
   "start_url": "/",
   "display": "standalone",
   "audio_session": "playback",
   "app": {
     "id": "com.ramimaalouf.multiplexer",
-    "name": "Multiplexer"
+    "name": "Mux"
   },
   "host": {
     "ios": {

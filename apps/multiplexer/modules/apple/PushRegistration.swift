@@ -29,7 +29,7 @@ extension Matrix {
         if PushToken.isDevelopment { print("matrix: push token \(token.map { String(format: "%02x", $0) }.joined())") }
         guard var stored = try keychain.read() else { return false }
         let pusher = Pusher(appId: PushToken.appId, pushkey: Pusher.pushkey(apnsToken: token), url: Self.pushGateway,
-                            appDisplayName: "Multiplexer", deviceDisplayName: context.agent ? "Multiplexer test" : "Multiplexer")
+                            appDisplayName: "Mux", deviceDisplayName: context.agent ? "Mux test" : "Mux")
         if let oldKey = stored.pushkey, let oldApp = stored.pusherAppId, oldKey != pusher.pushkey || oldApp != pusher.appId {
             try? await account.deletePusher(appId: oldApp, pushkey: oldKey)
         }
@@ -53,6 +53,19 @@ extension Matrix {
             // the server also drops a device's pushers when the device signs out.
             print("matrix: the pusher stays until the server forgets the device: \(error.localizedDescription)")
         }
+    }
+
+    /// Permission left `granted` (turned off in the iPhone's Settings): drop this device's
+    /// pusher and forget its stored key so a later Allow can register cleanly.
+    @MainActor func unregisterPush() async throws {
+        guard var stored = try keychain.read() else { return }
+        guard stored.pushkey != nil, stored.pusherAppId != nil else { return }
+        let account = try await signedIn()
+        await deletePusher(account, stored)
+        stored.pushkey = nil
+        stored.pusherAppId = nil
+        try keychain.write(stored)
+        print("matrix: pusher cleared after notifications left granted")
     }
 }
 

@@ -341,6 +341,10 @@ final class Matrix: ExactModule {
                 case "registerPush":
                     // with the notification permission: the push token to the server (PushRegistration.swift).
                     reply.send(["registered": try await registerPush()])
+                case "unregisterPush":
+                    // permission no longer granted: stop the server pushing to this device.
+                    try await unregisterPush()
+                    reply.send(["ok": true])
                 case "readCopies":
                     // the chats' kept last answers (R04), "" for none (app.ts's threadCopies).
                     reply.send(["text": try readThreadCopies()])
@@ -351,7 +355,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers registerPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, linkPreviews, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers registerPush, unregisterPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, linkPreviews, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -422,7 +426,7 @@ final class Matrix: ExactModule {
             account = nil
             shownThumbnails = [:]
             let signedIn = try await MatrixAccount.signIn(homeserver: server, user: user, password: password,
-                                                          deviceName: context.agent ? "Multiplexer test" : "Multiplexer",
+                                                          deviceName: context.agent ? "Mux test" : "Mux",
                                                           storeDirectory: directory, searchIndexKey: searchKey,
                                                           sessionStorage: sessionStorage)
             do {

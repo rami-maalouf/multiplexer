@@ -24,16 +24,32 @@ declares the scope and copyright, and app package/Cargo metadata agrees. There
 was no root license before; Cargo metadata alone declared MIT. Third-party
 licenses and asset attribution remain in force. No runtime behavior changed.
 
-**Push resumed (2026-11-07):** Rami requested implementation of iPhone push notifications.
-Read-only preflight confirmed both `multiplexer-apns` Keychain items are missing,
-the installed Multiplexer provisioning profile has neither push nor App Groups and is
-distribution-only, and `sygnal.ramimaalouf.com` does not resolve. Apple Developer is
-signed in. A new key form is prepared for sandbox, Topic Specific,
-`com.ramimaalouf.multiplexer`; no key has been registered or downloaded. Credential
-creation and installation await the computer-use tool's required explicit confirmation.
-The current Apple form separates sandbox and production, so the prepared server branch's
-assumption of one new key for both environments must be corrected before deployment.
-No Apple capability, DNS, server, app binary or real-account state was changed.
+**Push setup applied (2026-11-07):** after Rami's explicit approval, created a sandbox-only
+APNs key restricted to `com.ramimaalouf.multiplexer`, stored and verified it in Keychain,
+and deployed it through the playbook (0600, matrix:matrix; hash matches Keychain).
+The App Group, both App IDs and two development profiles are configured; decoded profiles
+cover the connected phone, shared group and this Mac's signing identity; the app grants
+`aps-environment: development`. Cloudflare's DNS-only Sygnal CNAME is published.
+Sygnal runs with only the sandbox app; HTTPS health is 200 with a valid certificate,
+and an intentional invalid-token probe reached APNs and returned `BadDeviceToken`.
+Production remains disabled. DNS now resolves through the Mac's system resolver too;
+normal HTTPS health is 200 without address overrides or disabled verification.
+The fresh app and extension are signed and installed on the connected iPhone; strict
+signature verification and exact App Group/Keychain entitlements pass for both. Fixed
+missing/dotted entitlement insertion and selected the existing signer's fingerprint.
+Earlier signing errors did not reproduce after rebuilding the artifacts removed during
+a pause; their precise cause remains unknown.
+Rami opened the phone app, allowed notifications and locked it; APNs returned 200
+and he confirmed the "New message" banner. A generic push through Sygnal also
+returned no rejected pushkeys. On the Simulator, terminated-app plain and encrypted
+notifications displayed sender/text, with 120 to 227 ms extension processing and
+17 to 19 MB peak footprint. The focused core test passed in 76.578 s after aligning
+its fresh-store initial-sync bootstrap with the existing 120 s test-device budget.
+M3 is met (2026-11-07): with the phone locked, a natural WhatsApp message showed
+its sender and text; Rami confirmed, and agents sent nothing through his chats.
+P3.6 (mute/badge decisions) and P3.7 (tap routing / foreground suppression) remain
+open. The test account signed out, its pusher count returned to zero, and the owned
+simulator is off. No agent drive of the real account was performed.
 Other feature lanes remain outside this authorization.
 
 **R03 / capsule tabs (2026-11-07, `fix/r03-scroll-and-tabs`):** phone log still points at
@@ -95,10 +111,10 @@ after the one-time stop. This deadline overrides the work queue below.
 |---|---|
 | Current phase | Phase 0 done: M0 passed on 2026-10-28 (Synapse and WhatsApp on our server). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
 | Beeper parity | Tasks B1 to B22 in `tasks/todo.md` ("Beeper parity"), from Rami's walkthrough (`research/beeper-walkthrough/report/index.html`, local only). Every question of the report is answered (decision log, 2026-11-02). Order: B1, then photos and files (B10, B11 with T2.12), then the rest of the inbox (B3 to B8), then push (Phase 3), then the chat details. Rules: D9 (Beeper's features, Messages' feel; dark mode first), D10 (GIFs from KLIPY), D11 (Send Later on our server). |
-| Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; push (P3.0) waits for Rami's Apple setup. Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is prepared on `server/p3.3-sygnal`, not merged: it installs once P3.0's APNs key and DNS record exist (Rami's OK). |
-| Blocked on Rami | Phase 3's Apple setup (P3.0 in `tasks/todo.md`): an App Group, two App IDs, an APNs key in the Keychain, two development profiles, and the DNS name `sygnal.ramimaalouf.com`. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
+| Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; P3.0 is complete and sandbox push is installed (2026-11-07); M3 is met (locked-phone WhatsApp sender/text confirmed). Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is deployed with the approved sandbox-only key and DNS record (2026-11-07); production is disabled. |
+| Blocked on Rami | M3 is met (locked-phone WhatsApp sender/text confirmed). P3.6 still needs his mute-copy and badge-count decisions; P3.7 needs Exact's remote activation/presentation hatch. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
-| Exact | Root host/compiler: `exact2-multiplexer-integration` at `4251663c25` (R03 release workaround reverted); package sources remain the identical normal `exact2` tree at `ed43ad09a0`. Cache harness retains its separately reviewed normal-checkout toolchain. |
+| Exact | Upstream `expo/exact` at `94b8671f70fe2e25b307a40e7fce66dc27c9f802` in `../exact/expo-exact`; launcher, Rust and JavaScript package sources use this checkout. iOS simulator build and 12 authored signed-out tests passed; phone delivery and signed-in visual parity remain unqualified. See the 2026-11-09 diary. |
 | License | GPL-3.0-only for original project code; third-party licenses retained. |
 | Last updated | 2026-11-12 |
 

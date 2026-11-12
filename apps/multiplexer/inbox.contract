@@ -30,10 +30,10 @@ fn listTitle(l: string, scope: string): string = l == "inbox" ? (scope == "" ? "
 fn listEmptyTitle(l: string): string = l == "archive" ? "No Archived Chats" : (l == "reminders" ? "No Reminders" : "No Low Priority Chats")
 fn listEmptyMessage(l: string, scope: string): string = l == "reminders" ? `Chats you ask to be reminded about${scope == "" ? "" : ` from ${scope}`} show here until you answer them.` : `${l == "archive" ? "Chats you archive" : "Chats you move to Low Priority"}${scope == "" ? "" : ` from ${scope}`} show here.${l == "archive" ? " A new message brings one back, unless it’s muted." : ""}`
 // what Delete's alert says: the chat leaves this app only.
-fn deleteMessage(network: string): string = `It leaves Multiplexer on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
+fn deleteMessage(network: string): string = `It leaves Mux on all your devices, but stays ${network == "matrix" ? "on your server" : `in ${networkName(network)}`}. A new message brings it back.`
 // select chats' delete: the same, for several chats.
 fn deleteChatsTitle(n: number): string = n == 1 ? "Delete 1 Chat?" : `Delete ${n} Chats?`
-fn deleteChatsMessage(n: number): string = `${n == 1 ? "It leaves" : "They leave"} Multiplexer on all your devices, but ${n == 1 ? "stays" : "stay"} on ${n == 1 ? "its" : "their"} network. A new message brings ${n == 1 ? "it" : "each"} back.`
+fn deleteChatsMessage(n: number): string = `${n == 1 ? "It leaves" : "They leave"} Mux on all your devices, but ${n == 1 ? "stays" : "stay"} on ${n == 1 ? "its" : "their"} network. A new message brings ${n == 1 ? "it" : "each"} back.`
 fn selectedTitle(n: number): string = n == 0 ? "Select Chats" : `${n} Selected`
 
 // the floating bar over the chat list: a round filter button on the left (filled with the accent

@@ -144,7 +144,7 @@ type MessagesAnswer = {
 const problems: Record<string, (server: string) => string> = {
   'wrong-password': () => 'The user name or password is wrong.',
   'server-not-found': (server) => `No Matrix server answered at ${server}. Check the server name.`,
-  'server-not-supported': (server) => `${server} does not support sliding sync, which Multiplexer needs.`,
+  'server-not-supported': (server) => `${server} does not support sliding sync, which Mux needs.`,
   'rate-limited': () => 'The server got too many sign-in attempts. Wait a minute, then try again.',
 };
 
@@ -679,7 +679,7 @@ const sources: Sources = {
     if (!native?.available) return { ok: false, error: 'This build has no Matrix SDK.' };
     const answer = (await native.later({ op: 'signIn', server, user, password })) as SignInAnswer;
     if (answer.ok) return { ok: true, error: '' };
-    return { ok: false, error: problems[answer.problem]?.(server) ?? `Multiplexer could not sign in: ${answer.detail}` };
+    return { ok: false, error: problems[answer.problem]?.(server) ?? `Mux could not sign in: ${answer.detail}` };
   },
   // a failure to send shows on the message itself (state "failed"), not as a refusal here.
   sendMessage: async ([roomId, text, replyTo], _store, _storage, native): Promise<Result<'sendMessage'>> => {
@@ -709,9 +709,18 @@ const sources: Sources = {
   },
   // the largest file the server takes, in bytes; 0 while it is not known.
   // the module asks for the phone's push token and gives it to the server as a pusher; a drive
-  // does that only for a test user. Without the permission, nothing.
-  registerPush: async ([userId, permission], _store, _storage, native): Promise<Result<'registerPush'>> => {
-    if (userId === '' || permission !== 'granted' || !native?.available) return { registered: false };
+  // does that only for a test user. Without the permission, or with Settings' switch off, drop
+  // any pusher left from when it was on.
+  registerPush: async ([userId, permission, enabled], _store, _storage, native): Promise<Result<'registerPush'>> => {
+    if (userId === '' || !native?.available) return { registered: false };
+    if (permission !== 'granted' || !enabled) {
+      try {
+        await native.later({ op: 'unregisterPush' });
+      } catch {
+        // no session yet, or the server already dropped the pusher.
+      }
+      return { registered: false };
+    }
     return (await native.later({ op: 'registerPush' })) as { registered: boolean };
   },
   loadUploadLimit: async ([userId], _store, _storage, native): Promise<Result<'loadUploadLimit'>> => {

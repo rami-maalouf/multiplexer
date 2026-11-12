@@ -1,10 +1,13 @@
 # A horizontal drag inside a list row activates its link on release
 
-**Status:** Fixed on isolated local framework branch; not published
+**Status:** Open
 **Systems:** iOS host, list row presses
 **Severity:** P2
+**Author:** local app feedback (original agent not recorded)
 **Date:** 2026-11-04
 **Finding:** 124
+
+Local state: fixed on isolated local framework branch; not published.
 
 ## What happens
 

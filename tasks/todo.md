@@ -9,6 +9,8 @@
   request): add the official license and root notice, align package/Cargo metadata,
   preserve third-party licenses, and verify the license text and metadata.
 
+Framework migration (2026-11-09): app integration and local package dependencies now use `expo/exact` at `94b8671f70fe2e25b307a40e7fce66dc27c9f802`. Existing feature edits are preserved. The iOS simulator build and all 12 authored signed-out tests passed; frozen Bun install and Contract compilation passed. Physical-device delivery and signed-in visual parity were not requalified. Details are in the migration diary.
+
 - [x] Enforce the user's 2026-11-05 stop: wind down at 07:44:48 UTC, halt all related
   lanes and delegated tasks by 07:49:48 UTC, verify cleanup, disable the one-time alarms
   and remain stopped until fresh user authorization. Deadline overrides remaining tasks.
@@ -2443,28 +2445,25 @@ What the research found:
 
 ### P3.0 The Apple setup (Rami)
 
-**Rechecked 2026-11-07:** Rami requested push implementation. Both APNs Keychain
-items are absent, the installed app profile has no push/App Group entitlement and
-does not provision the phone, and the gateway DNS name does not resolve. Apple
-Developer is signed in. A dedicated sandbox/topic-specific key form is prepared
-for `com.ramimaalouf.multiplexer`, but not saved or registered: the computer-use
-tool requires explicit confirmation to create the persistent credential and deploy
-it to the gateway. Its current form separates sandbox and production; do not use
-this sandbox key for the prepared production gateway entry. No existing keys were
-revoked, no server changes were applied, and no real-account drive was performed.
+**Applied 2026-11-07 with Rami's explicit approval:** sandbox/topic-specific APNs key
+created, verified in Keychain and installed through the playbook. Both App IDs and the
+shared group are configured. Both decoded development profiles include the phone and
+this Mac's signing certificate; the app includes development push. DNS-only CNAME is
+published. Public DNS, the server and the Mac's system resolver reach it. Production
+needs a separate credential and remains disabled.
 
 **Description:** push and an App Group need explicit App IDs and profiles; the team wildcard
 profile grants neither. Rami can do this now, while the inbox tasks run.
 
 **Acceptance criteria:**
-- [ ] App Group `group.com.ramimaalouf.multiplexer` exists.
-- [ ] App ID `com.ramimaalouf.multiplexer` has Push Notifications and App Groups; App ID
+- [x] App Group `group.com.ramimaalouf.multiplexer` exists.
+- [x] App ID `com.ramimaalouf.multiplexer` has Push Notifications and App Groups; App ID
   `com.ramimaalouf.multiplexer.notifications` has App Groups (the same group).
-- [ ] An APNs key (`.p8`) is in the Mac's Keychain as base64 (service `multiplexer-apns`, account
+- [x] An APNs key (`.p8`) is in the Mac's Keychain as base64 (service `multiplexer-apns`, account
   `key`), with its Key ID (account `key-id`). Never in chat or git.
-- [ ] A development profile for each App ID, with the iPhone `00008140-0002155C01F3001C`, is
+- [x] A development profile for each App ID, with the iPhone `00008140-0002155C01F3001C`, is
   installed on the Mac.
-- [ ] Cloudflare: `CNAME sygnal -> matrix.ramimaalouf.com`, DNS only.
+- [x] Cloudflare: `CNAME sygnal -> matrix.ramimaalouf.com`, DNS only.
 
 **Verification:** `security cms -D -i` on each profile shows `aps-environment development`, the
 group and the phone; `security find-generic-password -s multiplexer-apns` finds the key.
@@ -2472,6 +2471,17 @@ group and the phone; `security find-generic-password -s multiplexer-apns` finds 
 **Dependencies:** none. **Scope:** XS (Rami)
 
 ### P3.1 Spike: a notification extension inside the Exact app
+
+**Device proof, 2026-11-07:** signed development app and extension installed on the
+connected iPhone. Strict signatures, application identifiers, shared Keychain group,
+App Group and the app's development push entitlement all verified. A direct APNs test
+returned 200; Rami confirmed its "New message" banner on the locked phone. A second
+generic test through Sygnal returned no rejected pushkeys. No real chat was read or sent.
+Device extension log extraction was refused by CoreDevice's container access policy;
+physical extension memory/timing and fetched message text are not claimed.
+The post-build script now escapes the App Group plist key path and reuses the original
+signer's certificate fingerprint. Earlier transient signing errors disappeared after a
+fresh build. A later Exact build still needs this script reapplied.
 
 **Description:** the biggest unknown. Prove that the app ships a notification service extension,
 signed for push, on Rami's iPhone. No Matrix code yet: the extension only changes the text. The
@@ -2492,15 +2502,19 @@ push goes from the Mac straight to APNs, so no server is needed.
   the token. (2026-11-03, the Simulator: it asks after sign-in; Settings has a Notifications row
   with "Turn On" when not asked yet; the token arrives through the callbacks added at run time,
   `modules/apple/PushRegistration.swift`.)
-- [ ] `scripts/send-test-push.sh` sends a push to APNs sandbox, signed with the `.p8` from the Keychain.
+- [x] `scripts/send-test-push.sh` sends a push to APNs sandbox, signed with the `.p8` from the Keychain.
   (2026-11-03: written; `--dry-run` signs with a throwaway key and checks the signature. The real
   send waits for P3.0's key. It works for the Simulator too: the Simulator has a real sandbox token,
   so the extension can be proved on the Simulator before the iPhone.)
-- [ ] The locked iPhone shows the text the extension wrote (Rami confirms once).
-- [ ] A phone drive after the script still runs the app with the extension, or the gap is written down.
+- [x] The locked iPhone shows the text the extension wrote (Rami confirms once).
+  (2026-11-07: generic APNs "New message" on the locked phone; later a natural WhatsApp
+  message showed sender and text.)
+- [x] A phone drive after the script still runs the app with the extension, or the gap is written down.
   (2026-11-03, the Simulator: a drive keeps it, as the script patches Exact's build in place; an
-  Exact rebuild drops it until the script runs again.)
-- [ ] After 3 failed rounds: stop, write down the blocker, and decide whether to wait for Exact.
+  Exact rebuild drops it until the script runs again. 2026-11-07: the entitled device build with
+  the script applied stayed installed through permission grant and locked-phone delivery.)
+- [x] After 3 failed rounds: stop, write down the blocker, and decide whether to wait for Exact.
+  (Not needed: device delivery succeeded.)
 
 **Verification:** `codesign -d --entitlements -` on the app and the extension; the extension logs
 one line per push into the App Group.
@@ -2508,6 +2522,19 @@ one line per push into the App Group.
 **Dependencies:** P3.0. **Scope:** M
 
 ### P3.2 Spike: MatrixCore in the extension, with the sender and the text
+
+**Live Simulator proof, 2026-11-07:** real Synapse -> Sygnal -> APNs delivery with the
+app terminated showed chat, sender and text for a plain message and an encrypted event.
+The encrypted event's server timestamp matches the extension's successful log entry.
+An APNs replay of that event was visually captured at `.exact/push-live/encrypted-banner.png`.
+Measured extension processing: 120 to 227 ms, peak 17 to 19 MB; these are Simulator
+figures, not physical-phone metrics or end-to-end latency. The focused core test passed
+in 76.578 s (encrypted fetch 2.14 s; plain fetch 2.30 s). An earlier run failed at the
+fresh-store fixture's default 30 s first sync. The fixture now waits for its initial
+sync with the existing test-device 120 s budget; no product timeout or assertion changed.
+Artifacts: `/tmp/multiplexer-push-core-20261107{,-retry}.log` and matching `.xcresult`.
+The native test account signed out; its pusher count returned to zero and the owned
+Simulator was shut down. Cleanup used the shared helper only around each drive.
 
 **Description:** the plan's high risk. The extension restores the session from the shared
 Keychain, opens the store in the App Group, fetches one event, and shows the chat, the sender and
@@ -2549,8 +2576,10 @@ Integrated into main from `86d3a80`. Conservative limitation: when both the grou
 unavailable and legacy data is absent, the app retains the session and refuses replacement
 login. This also affects a genuinely deleted legacy store, because it cannot distinguish that
 case from a move completed before its metadata was saved.
-The acceptance criterion above stays unchecked until P3.0 permits a real entitled migration
-without signing in again. Phone delivery, memory and timing also remain unproved.
+The entitled App Group is live on the phone (2026-11-07). Fresh sign-in after install
+proved delivery; a no-relogin migration from a pre-group install remains unchecked.
+Physical extension memory/timing stay unclaimed (CoreDevice refused container logs);
+Simulator figures are recorded above.
 After incorporating main cebda48, `verify ios` passed all 6 tests, light/dark checks and
 8 largest-text screens (75.2 s; `/tmp/mx-store-migration-logs/integrated-verify.log`).
 Settings matches cebda48. Test sessions signed out; MX main shut down.
@@ -2559,16 +2588,26 @@ the documented Exact notification activation/presentation integration. Neither i
 
 ### P3.3 Server: Sygnal (server conversation)
 
+**Applied 2026-11-07:** adapted the prepared branch to the new sandbox-only key,
+installed with `install-sygnal,install-aux,install-traefik` (35 ok, 7 changed, 0 failed),
+and started only Sygnal/Traefik through the playbook. Key is 0600 and matches Keychain.
+HTTPS `/health` is 200, certificate validated, and an all-zero token probe reached APNs
+and returned `BadDeviceToken` through the gateway. A later valid phone-token probe
+through Sygnal returned no rejected pushkeys; locked-phone delivery is confirmed.
+
 **Acceptance criteria:**
-- [ ] Rami's OK, and the DNS record from P3.0. (Rami's OK, 2026-11-03: install it when P3.0's
-  APNs key is in the Keychain and the DNS record exists. Neither exists yet.)
-- [ ] Through the playbook (invariant 6): `matrix_sygnal_enabled: true`; two APNs apps,
-  `com.ramimaalouf.multiplexer.ios.dev` (`platform: sandbox`) and `com.ramimaalouf.multiplexer.ios`
-  (production), both with team `3V2UU7RRK9` and topic `com.ramimaalouf.multiplexer`; the key from
+- [x] Rami's OK, and the DNS record from P3.0. (Explicit key creation and deployment approval,
+  2026-11-07; the key and DNS record now exist.)
+- [x] Through the playbook (invariant 6): `matrix_sygnal_enabled: true`; APNs app
+  `com.ramimaalouf.multiplexer.ios.dev` (`platform: sandbox`), with team `3V2UU7RRK9` and
+  topic `com.ramimaalouf.multiplexer`; production stays disabled because the approved
+  key is sandbox-only; the key from
   the Keychain into the gitignored `vars.yml`, then to the server with mode 0600
   (`aux_file_definitions`). Keep the default host name; no path prefix.
-- [ ] Sygnal answers from the Mac, and a test POST with the phone's pushkey reaches the phone.
-- [ ] No key in git; `server/README.md` names the Keychain item, never the key.
+- [x] Sygnal answers from the Mac, and a test POST with the phone's pushkey reaches the phone.
+  (2026-11-07: HTTPS health 200; phone-token probe accepted with no rejected pushkeys;
+  Rami confirmed the locked-phone banner.)
+- [x] No key in git; `server/README.md` names the Keychain item, never the key.
 
 **Prepared (2026-11-03, branch `server/p3.3-sygnal`, not merged, not applied).** `config.yml`
 turns Sygnal on with the two APNs apps above (`keyfile: /data/apns-key.p8`, the Key ID from
@@ -2610,11 +2649,20 @@ the right values, and none after Sign Out.
 
 ### P3.5 End to end: a message wakes the locked iPhone (M3)
 
+**M3 met, 2026-11-07:** Rami opened the newly entitled build, allowed notifications and
+locked it. APNs accepted the generic test, and he confirmed the banner. Plain/encrypted
+sender/text delivery passed on the Simulator. With the phone still locked, a natural
+WhatsApp message showed its sender and text; Rami confirmed ("Yes, sender and text
+appear"). Agents sent nothing through his chats and did not drive the real account.
+Remaining P3.5 phone-lab items (`@test1`/`@test2`, reboot, ten-trial latency) stay open.
+P3.6 badge/clearing semantics and P3.7 remote activation/presentation remain follow-ups.
+
 **Acceptance criteria:**
 - [ ] `@test1` on the iPhone, `@test2` sends: chat, sender and text within 5 s with the app swiped
   away, in the background, and after a reboot and one unlock; also in an encrypted room.
-- [ ] M3: on Rami's iPhone, signed in as the real account for his own use, a WhatsApp message from another
+- [x] M3: on Rami's iPhone, signed in as the real account for his own use, a WhatsApp message from another
   person shows its sender and text. Rami confirms. Agents send nothing as the real account.
+  (2026-11-07: Rami confirmed sender and text on the locked phone.)
 - [ ] The delay from send to banner over 10 tries goes into `tasks/plan.md`.
 
 **Dependencies:** P3.2, P3.3, P3.4. **Scope:** S

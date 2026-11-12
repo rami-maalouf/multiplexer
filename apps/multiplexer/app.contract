@@ -390,9 +390,12 @@ component Multiplexer
   resource frequentEmojis = loadFrequentEmojis(session.userId) as shape EmojiList else empty()
   resource profile = loadProfile(session.userId) as shape Profile else empty()
   resource notifications = notificationStatus() as shape NotificationStatus
-  // with the permission, the phone's push token goes to the server as a pusher: at each launch
-  // and sign-in, and once the person allows notifications.
-  resource push = registerPush(session.userId, notifications.state) as shape Push else empty()
+  // the app's own preference (Settings' switch), kept across launches. The system permission is
+  // separate: register only when both this and notifications.state are on.
+  state messageNotifications = true persist
+  // with the permission and the preference, the phone's push token goes to the server as a
+  // pusher: at each launch and sign-in, and when either changes.
+  resource push = registerPush(session.userId, notifications.state, messageNotifications) as shape Push else empty()
   mutation askedNotifications as shape NotificationStatus
   mutation pinned as shape Reply refreshes roomList
   mutation changedChat as shape Reply queue refreshes roomList
@@ -633,6 +636,17 @@ component Multiplexer
   action allowNotifications
     if notifications.state == "prompt"
       send askedNotifications = requestNotificationPermission()
+  // Settings' switch: on asks for permission when needed, or opens the iPhone's Settings when
+  // the system already refused; off keeps the system permission and only drops the pusher.
+  action setMessageNotifications(on: bool)
+    messageNotifications = on
+    if on and notifications.state == "prompt"
+      allowNotifications()
+    else if on and notifications.state == "denied"
+      openURL("app-settings:")
+  // the system permission was refused: only the iPhone's Settings can grant it again.
+  action openNotificationSettings
+    openURL("app-settings:")
   action askSignOut
     showModal("sign-out")
   // drafts stay with the account that wrote them.
@@ -1001,7 +1015,7 @@ component Multiplexer
           if session.userId == ""
             column navigationKey=`${e.id}` navigationScroll="sign-in-form" position="absolute" inset=0 display="flex" flex-direction="column"
               header display="flex" align-items="center"
-                text "Multiplexer" role="heading" aria-level=1 flex=1
+                text "Mux" role="heading" aria-level=1 flex=1
                 button press=signIn disabled=(not canSignIn) buttonStyle="filled" color=((not canSignIn) ? "-exact-label" : appearance.onTint) testId="sign-in"
                   text "Sign In"
               list id="sign-in-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
@@ -1296,7 +1310,8 @@ component Multiplexer
           SettingsScreen(chooseAccent=chooseAccent, resetAccent=resetAccent, appearance=appearance, route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
             signOut=askSignOut, recovery=recovery, recoveryDraft=recoveryDraft, unlocking=pending(unlocked), refused=recoveryRefused,
             typeKey=typeRecoveryKey, unlock=unlockRecovery, largeText=viewport.accessibilityTextSize,
-            notifications=notifications.state, allowNotifications=allowNotifications)
+            notifications=notifications.state, messageNotifications=messageNotifications,
+            setMessageNotifications=setMessageNotifications, openNotificationSettings=openNotificationSettings)
         // the filter sheet, from the bottom: half height, pulled up to full; UIKit's glass below full.
         if e.name == "inboxes"
           column navigationKey=`${e.id}` navigationPresentation="modal" navigationDetent="medium large" navigationScroll="inboxes"
@@ -1852,7 +1867,7 @@ component Multiplexer
           text "Cancel"
       // the microphone was refused once: the system asks no more, so the alert says where to allow it.
       dialog id="microphone-off" role="alertdialog" aria-label="Microphone Access Is Off"
-        text "To record a voice message, turn on the microphone for Multiplexer in Settings." testId="microphone-off-text"
+        text "To record a voice message, turn on the microphone for Mux in Settings." testId="microphone-off-text"
         button press=openSettings commandfor="microphone-off" command="close" testId="microphone-settings"
           text "Open Settings"
         button commandfor="microphone-off" command="close" testId="microphone-cancel"

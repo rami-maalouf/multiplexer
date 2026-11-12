@@ -9,8 +9,7 @@
 #       __TEXT,__entitlements section, so the app's is rewritten in place (same size).
 #   scripts/add-notification-extension.sh --device <phone udid> <Multiplexer.app>
 #       a phone build, signed with the identity exact used and the two development profiles of
-#       P3.0 (APP_PROFILE and EXTENSION_PROFILE: .mobileprovision paths). not run yet: it waits
-#       for P3.0.
+#       APP_PROFILE and EXTENSION_PROFILE: .mobileprovision paths in the environment.
 #
 # the extension compiles matrix-core and the sdk's bindings (the copies setup-matrix-sdk.sh makes)
 # with apps/multiplexer/extensions/notifications/*.swift; the build is cached by its inputs.
@@ -68,12 +67,16 @@ key="$( { cat "${sources[@]}" "$ext_ent"; echo "$triple"; shasum -a 256 "$ffi/li
 binary="$work/$name-$key"
 if [ ! -x "$binary" ]; then
   echo "compiling the notification extension (about a minute)"
-  sim_entitlements=()
-  [ "$mode" = "--sim" ] && sim_entitlements=(-Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker "$ext_ent")
+  # under `set -u`, an empty "${array[@]}" is unbound; only pass the simulator
+  # entitlement section when this is a simulator build.
+  sim_ent=()
+  if [ "$mode" = "--sim" ]; then
+    sim_ent=(-Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker "$ext_ent")
+  fi
   xcrun --sdk "$sdk_name" swiftc -parse-as-library -O -wmo -swift-version 5 \
     -application-extension -Xlinker -e -Xlinker _NSExtensionMain \
     -module-name "$name" -target "$triple" -sdk "$sdk" -module-cache-path "$work/module-cache" \
-    -I "$ffi/Headers" -L "$ffi" -lmatrix_sdk_ffi "${sim_entitlements[@]}" \
+    -I "$ffi/Headers" -L "$ffi" -lmatrix_sdk_ffi ${sim_ent[@]+"${sim_ent[@]}"} \
     "${sources[@]}" -o "$binary.tmp"
   mv "$binary.tmp" "$binary"
   find "$work" -maxdepth 1 -name "$name-*" ! -name "$name-$key" -delete
@@ -127,14 +130,17 @@ if [ "$mode" = "--sim" ]; then
   xcrun simctl install "$target" "$app"
 else
   # the phone: the profiles of P3.0, and the identity exact signed the app with.
-  identity="$(codesign -dvv "$app" 2>&1 | sed -n 's/^Authority=\(Apple Development: .*\)$/\1/p' | head -n 1)"
+  # use the actual signer's fingerprint: multiple development certificates can share a name.
+  codesign -d --extract-certificates="$work/signing-cert-" "$app" 2>/dev/null
+  identity="$(shasum -a 1 "$work/signing-cert-0" | awk '{print $1}')"
   [ -n "$identity" ] || { echo "the app is not signed with a development identity" >&2; exit 1; }
   cp "$EXTENSION_PROFILE" "$appex/embedded.mobileprovision"
   cp "$APP_PROFILE" "$app/embedded.mobileprovision"
   app_ent="$work/app.entitlements"
   codesign -d --entitlements :- "$app" > "$app_ent" 2>/dev/null
+  # plutil inserts missing keys; literal dots in an entitlement key must be escaped.
   plutil -replace aps-environment -string development "$app_ent"
-  plutil -replace com.apple.security.application-groups -json "[\"$group\"]" "$app_ent"
+  plutil -replace 'com\.apple\.security\.application-groups' -json "[\"$group\"]" "$app_ent"
   plutil -replace keychain-access-groups -json "[\"$keychain_group\"]" "$app_ent"
   codesign -f -s "$identity" --entitlements "$ext_ent" "$appex"
   codesign -f -s "$identity" --entitlements "$app_ent" "$app"
