@@ -3319,12 +3319,23 @@ the current Exact checkout; new build-cost evidence was added to finding 30. The
 - [x] Contract/TypeScript check, 68 Bun checks, notification communication fixture, 14 native
   authored tests, light/dark and 16 largest-text screens pass. Seven initial Bun skips
   require a Simulator or release artifacts; the Simulator fixture was then run and passed.
-- [ ] Push integrated main and confirm both PRs are merged.
-- [ ] Build the complete notification preview IPA and update existing AppDrop revision 2.
-- [ ] Verify the published revision/build and record signing/delivery limits.
+- [x] Push integrated main and confirm both PRs are merged.
+- [x] Build the complete notification preview IPA and update existing AppDrop revision 2 to revision 3 (build 6).
+- [x] Verify the published revision/build and record signing/delivery limits.
 - Integration correction: an initial conflict parser consumed too much across multiple
   conflict regions. Before pushing, restored the saved all-work commit and re-merged with
   line-bounded markers. File-size checks, exact production-source comparisons to PR heads,
   Contract compilation and the combined native run then passed. No erroneous merge was pushed.
 - Collaborative preview snapshots timed out twice and alternate browser host was unavailable.
   The installed AppDrop CLI retains the existing management credential; it is not printed.
+
+- Final local-main integration also preserves 11 unpushed member-page, voice-control and demo
+  commits. Repeated native verification passes 14 tests and 16 body-53 screens in 157.7 s;
+  all 21 demo-tool tests pass, as do the repeated 68 Bun checks. Five fresh archive tests
+  pass; the distribution-export test remains out of this preview-only path.
+- AppDrop publication: https://appdrop.app/d/nb2nfrv68c, revision 3, version/build 6,
+  public API confirmed, no upload warnings. Receipt: `tasks/evidence/appdrop-main-20261112.json`.
+- Existing AppDrop access/signing mode is unchanged. Owner-team setup, final AppDrop
+  re-signing/install and physical locked-phone notification delivery remain unverified.
+- The preview wrapper emitted four generated Swift module sidecars in the root; moved only
+  those own build outputs into the temporary archive folder. Source worktrees remain clean.

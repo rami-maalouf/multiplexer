@@ -4,6 +4,18 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Main and AppDrop published (2026-11-12):** main `1686cd1` contains PRs #22 and
+#23, login help, all pending work, and the 11 previously unpushed local-main commits.
+GitHub confirms both PRs merged. Final verification: 14 native tests, light/dark and
+16 largest-text screens clean; 68 Bun checks and 21 demo-tool tests pass. The separate
+communication fixture and all five fresh archive assertions pass. Build 6 was published
+to the existing AppDrop link as revision 3, confirmed through its public API; upload
+returned no warnings. The IPA contains the notification service, shared access, production
+push and communication configuration with matching symbols. Access/signing mode was not
+changed: owner-team setup and final AppDrop signing, installation and locked-phone push
+remain unverified. No TestFlight upload, real-account access or live server changes.
+Receipt: `tasks/evidence/appdrop-main-20261112.json`.
+
 **Main integration and preview preparation (2026-11-12):** at Rami's request,
 combined current main, PR #22 (reliable push/distribution), PR #23 (bridged profile
 pictures), the login help and all pending tracked work. Push and avatar production
@@ -12,7 +24,7 @@ Contract/TypeScript passes; 68 Bun checks pass (7 artifact/Simulator-gated skips
 the gated communication-intent Simulator fixture separately passes. Combined native
 verification passes all 14 authored tests, light/dark and 16 body-53 screens in 268.4 s.
 All 39 MatrixCore app copies match canonical sources. Main push and AppDrop publication
-are the next steps. No real account or live server was modified.
+subsequently completed (receipt above). No real account or live server was modified.
 
 **Login help (2026-11-12):** the signed-out form now offers "New to Mux? Start here".
 A native, scrollable Getting Started sheet explains Matrix accounts, server/user/password

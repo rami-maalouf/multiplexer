@@ -12,8 +12,10 @@ The app targets iOS 17 or newer. The existing
 follow its current pairing and signing instructions. The URL responded during
 this audit, but pairing and installation were not exercised. Preview access and
 signing can change, so a link alone does not establish notification support.
-On 2026-11-12, its published revision 2 had no notification extension or push
-entitlement. It must be updated through the push-capable preview path below.
+On 2026-11-12, revision 3 (build 6) replaced the incomplete revision 2 through the
+notification-capable preview path below. The uploaded IPA includes the notification
+extension and push configuration; final AppDrop signing and physical delivery remain
+unverified.
 
 TestFlight archives have been uploaded, including build 4 on 2026-11-08, but this
 repository does not publish a verified public TestFlight invitation or App Store
@@ -98,8 +100,10 @@ yet enabled on the existing preview link. Its recipient-signing mode cannot
 preserve the owner's push identity for arbitrary Apple accounts. Re-signing with
 another team also requires that team's own gateway credentials and shared groups.
 
-The prepared preview IPA has passed artifact checks. AppDrop's final re-signing,
-installation and locked-phone delivery remain separate verification gates.
+The complete preview IPA passed five fresh archive checks and was published to the
+existing link as revision 3 (build 6) on 2026-11-12, confirmed through the public API.
+The upload returned no warnings. AppDrop's access/signing mode was left unchanged;
+final re-signing, installation and locked-phone delivery remain separate verification gates.
 
 **The gateway is chosen at build time.** The maintainer defaults in
 `ios.config.json` use `sygnal.ramimaalouf.com`; self-hosted builds use their own

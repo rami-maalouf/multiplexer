@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-12",
+  "source_head": "1686cd1480c5069a28fa8572aaef4112e5095325",
+  "framework_head": "8536d208c40f97be3f132ea266d5029e2e3c10ba",
+  "branch": "main",
+  "merged_prs": [
+    22,
+    23
+  ],
+  "local_main_commits_preserved": 11,
+  "verification": {
+    "native_tests_passed": 14,
+    "native_failures": 0,
+    "largest_text_screens": 16,
+    "light_dark_findings": 0,
+    "verify_seconds": 157.7,
+    "bun_passed": 68,
+    "initial_bun_skips": 7,
+    "demo_tests_passed": 21,
+    "communication_fixture": "passed on iOS Simulator",
+    "fresh_archive_checks_passed": 5,
+    "distribution_export": "not rerun; preview archive path does not require Xcode export",
+    "symbolic_limits": "10 scripts skipped; Lean unavailable"
+  },
+  "archive": "/tmp/mx-testflight-pNZ5jz/Mux.xcarchive",
+  "ipa": "/var/folders/k0/qs1dydf540z0559w7544mhh00000gn/T/mux-preview-a8riXd/Mux.ipa",
+  "ipa_sha256": "b949b4490fb0dc11130abba37ce9db5dc79f020331d875da4b90bcdd33920ac0",
+  "publication": {
+    "url": "https://appdrop.app/d/nb2nfrv68c",
+    "id": "nb2nfrv68c",
+    "revision": 3,
+    "updated": true,
+    "name": "Mux",
+    "version": "6",
+    "shortVersion": "0.1.0",
+    "size": 63183375,
+    "warnings": []
+  },
+  "public_api_verified": true,
+  "published_at": "2026-11-12T17:18:55.958994+00:00",
+  "limits": [
+    "AppDrop access/signing mode unchanged",
+    "owner-team signing setup not enabled",
+    "AppDrop final signing/install and physical notification delivery unverified",
+    "no TestFlight upload or real-account access",
+    "no live server changes"
+  ],
+  "build_notes": [
+    "vendor SDK dSYM tool warned about an unavailable original object; matching shipped dSYM UUID checks passed",
+    "moved generated Swift module sidecars into the temporary archive folder"
+  ]
+}
