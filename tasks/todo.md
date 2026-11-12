@@ -3162,3 +3162,24 @@ item styling/invalidation correction needs source review and rendered verificati
   `8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`. Other pending diaries and repository documents were excluded.
 
 Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).
+
+
+## Bridge profile pictures (2026-11-12)
+
+- [x] Reproduce a bridge-style direct room with a member avatar and no room avatar against the live test server: inbox avatar empty, download nil.
+- [x] Resolve room avatar first, then the single other participant for one-to-one chats; exclude own/service accounts and groups.
+- [x] Reuse that URL in inbox summaries, chat info and both download sizes.
+- [x] Live regression passed on a fresh client with 24 outgoing events after the profile update, before visiting Members; explicit room-avatar regression also passed.
+- [x] Inspect a synthetic purple profile picture in the simulator inbox and light/dark chat header; sign out test account.
+- [x] Independent code review: no remaining confirmed findings (receipt `avatar-20261112-r2`).
+- [x] 38 TypeScript tests passed.
+- [x] Final native verify: 13 tests passed, light/dark clean, no overflow across 15 largest-text screens. Separate symbolic delivery skipped 10 unsupported scripts and Lean was unavailable.
+- [x] Publish avatar fix PR #23: https://github.com/rami-maalouf/multiplexer/pull/23
+
+The first history fixture hit HTTP 429; it now respects retry_after_ms with bounded retries.
+An immediate first-frame cold assertion was replaced by a bounded eventual-image check;
+normal membership sync can arrive after room classification. No real-account messages were accessed and no server configuration was changed. The existing historical feedback issue checker is absent in
+the current Exact checkout; new build-cost evidence was added to finding 30. The approved generic diary was subsequently sent as recorded below.
+
+- [x] With explicit permission, inspect Oracle bridge and Synapse avatar metadata read-only; verify source files and sample authenticated thumbnail responses. The real metadata matches the missing room-to-member fallback. No user login/session or chat mutation.
+- [x] Send only this task's approved Exact diary, receipt `594fc919-b6ac-4b88-8a0d-52c99bc57f93`; no logs, attachments or other diaries.

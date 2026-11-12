@@ -84,7 +84,7 @@ extension MatrixAccount {
             joinedService += 1
         }
         return ChatInfo(id: roomId, name: custom.isEmpty ? roomName : custom, roomName: roomName, customName: custom,
-                        topic: info.topic ?? "", pictureUrl: target.avatarUrl() ?? "",
+                        topic: info.topic ?? "", pictureUrl: await roomAvatar(target, info: info, oneToOne: summary.isOneToOne) ?? "",
                         network: RoomNetwork.of(info, ownUserId: me), isOneToOne: summary.isOneToOne,
                         memberCount: Int(info.joinedMembersCount > joinedService ? info.joinedMembersCount - joinedService : 0),
                         canRename: levels?.canOwnUserSendState(stateEvent: .roomName) ?? false,
@@ -162,7 +162,7 @@ extension MatrixAccount {
     /// The room's picture as a file in `directory`, at most `side` pixels a side, larger than the
     /// list's (`avatarFile`); nil when it has none. Downloaded once.
     public func chatPicture(roomId: String, directory: URL, side: UInt64 = 480) async throws -> URL? {
-        guard let url = try client.getRoom(roomId: roomId)?.avatarUrl() else { return nil }
+        guard let room = try client.getRoom(roomId: roomId), let url = await roomAvatar(room) else { return nil }
         return try await pictureFile(url: url, directory: directory, side: side, name: Self.largePictureName(url))
     }
 
