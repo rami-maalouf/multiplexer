@@ -318,3 +318,7 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1407](https://github.com/ccheever/exact2/pull/1407): a link's spoken name counts a labelled image inside it, as on the web | 32 | Open |
 | 2026-11-03 | [#1410](https://github.com/ccheever/exact2/pull/1410): a large title opens when a route with no bar turns into one with a large title | 76 | Open |
 | 2026-11-03 | [#1411](https://github.com/ccheever/exact2/pull/1411): the reference says how a virtualized list shows a row that is not an item | 20 | Open |
+
+2026-11-12: with explicit approval, sent only the push-reliability diary (one diary,
+zero logged commands, no attachments). Receipt:
+`236a21c9-38ae-4cc3-b8e0-2bb6b11fd3e5`. Other unsent diaries remain local.
