@@ -12,6 +12,11 @@ public struct PushContent: Equatable, Sendable {
     public var chatName: String
     /// The sender's display name, or their id when they have none.
     public var senderName: String
+    /// stable sender identity and profile media url, including when the app has no cached avatar.
+    public var senderId: String
+    public var senderAvatarUrl: String
+    /// other recipients besides the sender and the current user, excluding bridge service members.
+    public var otherRecipientCount: Int
     /// The message as one line, in the chat list's words: its text, or what it is ("Photo").
     public var body: String
     /// The chat's network, as `RoomSummary.network` says it.
@@ -83,6 +88,8 @@ extension PushContent {
         self.init(roomId: roomId, eventId: eventId,
                   chatName: customName ?? room.displayName,
                   senderName: item.senderInfo.displayName.flatMap { $0.isEmpty ? nil : $0 } ?? sender,
+                  senderId: sender, senderAvatarUrl: item.senderInfo.avatarUrl ?? "",
+                  otherRecipientCount: Int(people > 2 ? people - 2 : 0),
                   body: body,
                   // in a bridged chat the sender is a ghost of the bridge (`@whatsapp_123:server`).
                   network: RoomNetwork.of(serviceMembers: room.serviceMembers, heroes: [sender], ownUserId: ownUserId),

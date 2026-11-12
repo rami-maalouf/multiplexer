@@ -84,6 +84,8 @@ describe.skipIf(!archive)("actual store archive", () => {
       expect(ent["keychain-access-groups"]).toEqual([keychain]);
     }
     expect(entitlements(app())["aps-environment"]).toBe("production");
+    expect(entitlements(app())["com.apple.developer.usernotifications.communication"]).toBe(true);
+    expect(plist(join(app(), "Info.plist")).NSUserActivityTypes).toContain("INSendMessageIntent");
     run(["codesign", "--verify", "--deep", "--strict", app()]);
   });
 

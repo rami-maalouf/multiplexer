@@ -74,7 +74,9 @@ reinstalls the signed app. It stops on a packaging failure. Ordinary `exact ios`
 and native test/verify commands install a bare bundle, so run the complete installer
 again before testing push. Open the installed app once to register with APNs and
 allow notifications. Device profiles must cover the phone, App Group and Keychain
-group; the app profile must also grant development APNs.
+group; the app profile must also grant development APNs and Communication
+Notifications. Enable that capability on the app identifier, then regenerate its
+profile. The installer checks the capability before replacing an existing phone build.
 
 For the Mac app, run these from the repository root before `bun exact.mjs mac --run`
 in `apps/multiplexer/`:

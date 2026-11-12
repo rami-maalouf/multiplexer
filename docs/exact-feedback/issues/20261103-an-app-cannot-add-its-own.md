@@ -51,3 +51,11 @@ system ("plugin INSTALLED"), and the app's patched entitlements gave it its push
 
 
 2026-11-12 follow-up: a fresh ordinary ios build again contained no remote push or app-group entitlement and no notification extension, replacing a separately packaged build. the app now wraps build plus packaging plus reinstall in one command. a declarative extension and entitlement build would remove this workaround.
+
+
+2026-11-12 avatar follow-up: adding the communication-notification entitlement
+failed with "the entitlements (501 bytes) do not fit exact's section (462 bytes)".
+The simulator workaround now uses a compact XML root and omits its debugger grant
+to preserve the required identity, shared storage and notification entitlements.
+Physical-device debug entitlements are retained. A declarative entitlement list
+or reserved space in the simulator link would avoid this trade-off.

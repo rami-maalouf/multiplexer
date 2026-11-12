@@ -4,6 +4,23 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Sender photos in iPhone notifications (2026-11-12, PR #22):** notification
+content now includes the actual sender identity and profile media URL. The service
+extension fetches a static 160 px thumbnail through the authenticated homeserver
+(no redirects, 2 s total deadline, 512 KiB cap), then donates an incoming message
+intent for the native sender-avatar layout. Text is ready as the fallback before
+photo work; missing/corrupt photos use a local initials image. First uncached and
+terminated-app real sandbox banners showed the test sender's photo (497/452 ms,
+18 MB). The final initials fallback was visually inspected.
+Three focused thumbnail tests, two live plain/encrypted push tests, 13 native app
+tests, the native intent fixture and 52 Bun checks pass; five distribution artifact checks skip
+without artifacts. The device installer refuses old profiles before replacing the
+working phone build. Communication-capable provisioning and physical avatar
+installation remain blocked on Apple Developer sign-in. No real account was
+accessed. Existing reliability build remains installed on the phone. The prior
+approved diary was sent separately (receipt in the feedback index); new avatar
+notes stay local. See `tasks/evidence/notification-avatars-20261112.json`.
+
 **iPhone push reliability (2026-11-12, `fix/reliable-mobile-push`):** a fresh ordinary
 Exact install lacked APNs/App Group entitlements and the notification extension;
 `bun scripts/install-ios.ts` now builds, packages and reinstalls as one operation.

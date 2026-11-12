@@ -57,7 +57,11 @@ For a development build installed from a Mac, use
 The ordinary framework build does not package remote push. See
 [the build guide](../CONTRIBUTING.md#run-the-app). After installing, open Mux once
 and allow notifications. Registration retries after a transient failure while
-Mux is visible and runs again when you return to the app.
+Mux is visible and runs again when you return to the app. Sender photos use the
+iOS communication-notification layout, with locally rendered initials when the
+profile has no usable photo. Photo fetching has a short deadline and the message
+still arrives if it fails. This does not request Contacts access. Development
+profiles must include the Communication Notifications capability.
 
 **The gateway URL is currently fixed in the app**, in
 [`PushRegistration.swift`](../apps/multiplexer/modules/apple/PushRegistration.swift),

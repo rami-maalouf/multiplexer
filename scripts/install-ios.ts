@@ -19,6 +19,11 @@ export async function installIOS(args: string[]): Promise<void> {
       const path = process.env[name];
       if (!path || !existsSync(path)) throw new Error(`set ${name} to an existing development provisioning profile before building`);
     }
+    const decoded = Bun.spawnSync(['security', 'cms', '-D', '-i', process.env.APP_PROFILE!]);
+    const converted = Bun.spawnSync(['plutil', '-convert', 'json', '-o', '-', '-'], { stdin: decoded.stdout });
+    let granted = false;
+    try { granted = JSON.parse(converted.stdout.toString()).Entitlements?.['com.apple.developer.usernotifications.communication'] === true; } catch {}
+    if (!granted) throw new Error('enable Communication Notifications for the app identifier and regenerate APP_PROFILE before installing sender avatars');
   }
   const root = resolve(import.meta.dir, '..');
   const build = Bun.spawn(['bun', 'exact.mjs', 'ios', ...(mode === '--device' ? ['--device', '--phone', target] : ['--sim', target])],

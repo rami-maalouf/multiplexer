@@ -1,5 +1,27 @@
 # Mux: tasks
 
+## Sender photos in iPhone notifications, 2026-11-12
+
+- [x] Carry the sender's stable ID, profile media URL and recipient count through MatrixCore.
+- [x] Fetch thumbnails only through the HTTPS homeserver, refuse redirects, bound total
+  request time and received bytes, and retain text before optional photo processing.
+- [x] Add incoming message intents with sender photos and local initials for missing/corrupt
+  images; retain content title/subtitle/body and group context.
+- [x] Package communication entitlement/activity types and reject old device profiles before
+  building/installing. Simulator XML fits the fixed 462-byte section by omitting its
+  version attribute/debugger grant; device debug entitlements remain unchanged.
+- [x] First uncached photo and terminated-app photo banners inspected on real sandbox APNs;
+  final initials banner inspected. Synthetic test sender profile restored; fixture logged out.
+- [x] Three focused thumbnail tests, two plain/encrypted live push tests, native intent fixture,
+  52 Bun tests, 13 native app tests and Contract/TypeScript checks pass. Independent review retained no findings.
+- [ ] Enable Communication Notifications for the Apple app identifier, regenerate its
+  development profile and install/verify the avatar build on the phone. Apple Developer
+  currently requires sign-in; the request is pending. Existing reliable phone build preserved.
+- Notes: no Contacts access or real-account drive. Tests cover bad URL, status, MIME, size and
+  invalid/missing image paths; full delayed network, expiration and Apple donation-failure
+  races are not injected. New diary remains local until separately approved.
+
+
 ## iPhone push reliability, 2026-11-12
 
 - [x] Start a clean worktree from origin/main; preserve unrelated original checkout edits.
