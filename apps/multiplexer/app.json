@@ -22,7 +22,10 @@
       "minimumOS": "14.0",
       "window": {
         "width": 900,
-        "height": 700
+        "height": 700,
+        "keepRunning": true,
+        "minWidth": 640,
+        "minHeight": 480
       }
     },
     "web": {}
@@ -39,5 +42,14 @@
   ],
   "modules": [
     "accent-picker"
+  ],
+  "description": "All your chats from different networks, together in one app.",
+  "icons": [
+    {
+      "src": "assets/mux-icon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

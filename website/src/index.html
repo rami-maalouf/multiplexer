@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Mux: one app for all your chats</title>
+    <meta name="description" content="Mux is a self-hosted, all-in-one messenger. WhatsApp, Instagram, LinkedIn and more in one iPhone inbox, through a server you own." />
+    <meta name="theme-color" content="#0C1118" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="canonical" href="https://mux.orbitlabs.studio/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mux.orbitlabs.studio/" />
+    <meta property="og:title" content="Mux: one app for all your chats" />
+    <meta property="og:description" content="A self-hosted, all-in-one messenger. Every network in one inbox, through a server you own." />
+    <meta property="og:image" content="https://mux.orbitlabs.studio/share.jpg" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" type="image/png" href="./img/mux-180.png" />
+    <link rel="apple-touch-icon" href="./img/mux-180.png" />
+
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="bar">
+      <a class="brand" href="#top" aria-label="Mux, top of the page">
+        <img src="./img/mux-mark.jpg" alt="" width="28" height="28" />
+        <span>Mux</span>
+      </a>
+      <nav aria-label="Sections">
+        <a href="#why">Why</a>
+        <a href="#how">How it works</a>
+        <a class="pill" href="https://github.com/rami-maalouf/multiplexer">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="stage" aria-hidden="true">
+          <canvas id="plane"></canvas>
+          <img class="stage-fallback" src="./img/mux-hero.jpg" alt="" width="360" height="360" />
+        </div>
+
+        <div class="hero-copy">
+          <!-- the title's full stop is the plane: title-flight.js flies it around the O, onto the l,
+               and down onto the dot. the marks and baselines below tell it where the letters are. -->
+          <h1 id="hero-title" class="reveal" style="--d: 1">
+            <span class="thin"><span class="mark" data-flight="o">O</span>ne app for</span><br />
+            al<span class="mark" data-flight="l">l<span class="trail" aria-hidden="true">l</span><i class="base" data-flight="l-base"></i></span> your chats<span class="slot" data-flight="slot"><i class="base" data-flight="slot-base"></i><span class="sr-only">.</span></span>
+          </h1>
+          <div class="title-plane" aria-hidden="true"></div>
+          <p class="lead reveal" style="--d: 2">
+            Mux is a self-hosted, all-in-one messenger. Your networks in one native iPhone app,
+            through a server that belongs to you.
+          </p>
+          <div class="actions reveal" style="--d: 3">
+            <a class="button primary" href="https://github.com/rami-maalouf/multiplexer">
+              <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
+              View the code
+              <svg class="arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" /></svg>
+            </a>
+            <a class="button ghost" href="#how">
+              How it works
+              <svg class="arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4" /></svg>
+            </a>
+          </div>
+          <ul class="networks reveal" style="--d: 4" aria-label="Works with">
+            <li><img src="./img/whatsapp.svg" alt="" width="18" height="18" />WhatsApp</li>
+            <li><img src="./img/instagram.svg" alt="" width="18" height="18" />Instagram</li>
+            <li><img src="./img/linkedin.svg" alt="" width="18" height="18" />LinkedIn</li>
+            <li class="more">and more on the way</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="why" class="pillars" aria-label="Why Mux">
+        <article class="pillar observe">
+          <span class="num">01</span>
+          <h2>All in one</h2>
+          <p>WhatsApp, Instagram, LinkedIn and more, in one native inbox.</p>
+        </article>
+        <article class="pillar observe" style="--d: 1">
+          <span class="num">02</span>
+          <h2>Self-hosted</h2>
+          <p>Your Matrix server and bridges run on infrastructure you control.</p>
+        </article>
+        <article class="pillar observe" style="--d: 2">
+          <span class="num">03</span>
+          <h2>Open</h2>
+          <p>Built on Matrix. GPL v3 source, with no Mux subscription.</p>
+        </article>
+      </section>
+
+      <section id="how" class="flow" aria-labelledby="how-title">
+        <p class="kicker observe">How it works</p>
+        <h2 id="how-title" class="observe">Many streams. <em>One path.</em></h2>
+        <ol class="route observe" style="--d: 1">
+          <li><span class="dot"></span><strong>Your networks</strong><small>stay where they are</small></li>
+          <li><span class="dot"></span><strong>Bridges</strong><small>sign in as you</small></li>
+          <li><span class="dot"></span><strong>Your server</strong><small>Matrix, on your machine</small></li>
+          <li><span class="dot"></span><strong>Mux</strong><small>on your iPhone</small></li>
+        </ol>
+      </section>
+
+      <section class="close" aria-labelledby="close-title">
+        <h2 id="close-title" class="observe">Own your <em>inbox.</em></h2>
+        <div class="actions observe" style="--d: 1">
+          <a class="button primary" href="https://github.com/rami-maalouf/multiplexer">
+            <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
+            View the code
+            <svg class="arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" /></svg>
+          </a>
+        </div>
+        <p class="note observe" style="--d: 2"><span>iPhone now</span><span>Mac in development</span><span><a href="https://github.com/rami-maalouf/multiplexer/blob/main/docs/self-hosting.md">Self-hosting guide</a></span></p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>© 2026 Mux · Rami Maalouf</span>
+      <a href="https://github.com/rami-maalouf/multiplexer/blob/main/LICENSE">GPL v3</a>
+      <a href="https://github.com/rami-maalouf/multiplexer">GitHub</a>
+    </footer>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

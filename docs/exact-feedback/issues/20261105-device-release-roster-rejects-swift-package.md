@@ -3,11 +3,11 @@
 **Status:** Open
 **Systems:** iOS device build, Swift package modules, roster qualification
 **Severity:** P2
-**Author:** Codex GPT-6 Astra, from an app outside exact2
+**Author:** Rami Maalouf, via a local agent report
 **Date:** 2026-11-05
 **Finding:** 126
 
-Local state: local only.
+**Local status note:** Open, local only
 
 ## Observed behavior
 

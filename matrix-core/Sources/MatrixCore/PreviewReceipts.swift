@@ -7,7 +7,11 @@ import MatrixRustSDK
 /// "sent" when the server has it, "seen" when another member's public read receipt is at or after
 /// it, and "" when the newest message is not this account's or its state is unknown (still being
 /// sent, or failed). From what the SDK already gives: the latest event has no id, so a receipt is
-/// placed by its event's time against the message's time. The members looked at are the room's
+/// placed by its event's time against the message's time. That time can be this device's clock (the
+/// SDK keeps a message's local time after it is sent, until a sync brings the server's copy), and a
+/// receipt's event has the server's: a device clock a few milliseconds ahead left a read message
+/// "sent". So a receipt on this account's own message with the same text, less than a minute before
+/// the message's time, also counts: it is the same message. The members looked at are the room's
 /// joined members other than this account and the bridge's service members, at most 25: in a larger
 /// group a reader beyond them leaves "sent", never a "seen" without evidence.
 extension MatrixAccount {
@@ -15,25 +19,26 @@ extension MatrixAccount {
     /// list is not on screen.
     public func watchPreviewReceipts(_ on: Bool) { receiptWatch.setActive(on) }
 
-    func previewStatus(_ room: Room, info: RoomInfo?, timestamp: UInt64) async -> String {
+    func previewStatus(_ room: Room, info: RoomInfo?, timestamp: UInt64, text: String) async -> String {
         guard let info else { return "sent" }
         let me = (try? client.userId()) ?? ""
         let others = await receipts.others(of: room, info: info, me: me)
         for user in others {
             guard let receipt = try? await room.loadUserReceipt(receiptType: .read, thread: .unthreaded, userId: user),
-                  let at = await receipts.time(of: receipt.eventId, in: room) else { continue }
-            if at >= timestamp { return "seen" }
+                  let read = await receipts.event(receipt.eventId, in: room) else { continue }
+            if read.at >= timestamp { return "seen" }
+            if read.sender == me, !text.isEmpty, read.text == text, timestamp - read.at < 60_000 { return "seen" }
         }
         return "sent"
     }
 }
 
-/// The times of the events receipts point at (an event's time never changes), and the chats whose
+/// The events receipts point at (their time, sender and text never change), and the chats whose
 /// preview says "sent", which `PreviewReceiptWatch` reads again for a "seen".
 final class PreviewReceipts: @unchecked Sendable {
     private let lock = NSLock()
-    private var times: [String: UInt64] = [:]
-    private var sent: [String: UInt64] = [:]
+    private var events: [String: ReadEvent] = [:]
+    private var sent: [String: (timestamp: UInt64, text: String)] = [:]
     /// Each room's other members, kept 10 minutes: memberships rarely change.
     private var members: [String: (ids: [String], at: Date)] = [:]
     static let memberLimit: UInt32 = 25
@@ -56,24 +61,37 @@ final class PreviewReceipts: @unchecked Sendable {
         return found
     }
 
-    func time(of eventId: String, in room: Room) async -> UInt64? {
-        if let known = lock.withLock({ times[eventId] }) { return known }
+    struct ReadEvent { let at: UInt64; let sender: String; let text: String? }
+
+    func event(_ eventId: String, in room: Room) async -> ReadEvent? {
+        if let known = lock.withLock({ events[eventId] }) { return known }
         guard let event = try? await room.loadOrFetchEvent(eventId: eventId) else { return nil }
-        let at = UInt64(event.timestamp())
+        let read = ReadEvent(at: UInt64(event.timestamp()), sender: event.senderId(), text: Self.text(of: event))
         lock.withLock {
-            if times.count > 2000 { times.removeAll() }
-            times[eventId] = at
+            if events.count > 2000 { events.removeAll() }
+            events[eventId] = read
         }
-        return at
+        return read
+    }
+
+    /// A text, notice or emote message's words, as the list shows them; nil for anything else.
+    static func text(of event: TimelineEvent) -> String? {
+        guard case .messageLike(let content)? = try? event.content(), case .roomMessage(let type, _) = content else { return nil }
+        switch type {
+        case .text(let c): return FormattedText.plain(c.body, c.formatted)
+        case .notice(let c): return FormattedText.plain(c.body, c.formatted)
+        case .emote(let c): return FormattedText.plain(c.body, c.formatted)
+        default: return nil
+        }
     }
 
     /// After a list read: the chats whose own newest message is still only "sent", by its time.
     func remember(_ rooms: [RoomSummary]) {
         let pending = rooms.filter { $0.lastStatus == "sent" && $0.mergeId == nil }
-        lock.withLock { sent = Dictionary(pending.prefix(30).map { ($0.id, $0.lastTimestamp) }, uniquingKeysWith: { a, _ in a }) }
+        lock.withLock { sent = Dictionary(pending.prefix(30).map { ($0.id, (timestamp: $0.lastTimestamp, text: $0.lastMessage)) }, uniquingKeysWith: { a, _ in a }) }
     }
 
-    var waiting: [String: UInt64] { lock.withLock { sent } }
+    var waiting: [String: (timestamp: UInt64, text: String)] { lock.withLock { sent } }
     /// Seen now: the watch stops reading it, until a list read finds it "sent" again.
     func seen(_ roomId: String) { _ = lock.withLock { sent.removeValue(forKey: roomId) } }
 }
@@ -96,10 +114,10 @@ final class PreviewReceiptWatch: @unchecked Sendable {
                 try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                 guard let account, !Task.isCancelled else { return }
                 guard self.lock.withLock({ self.active }) else { continue }
-                for (id, timestamp) in account.receipts.waiting {
+                for (id, last) in account.receipts.waiting {
                     guard let room = try? account.client.getRoom(roomId: id) else { continue }
                     let info = try? await room.roomInfo()
-                    if await account.previewStatus(room, info: info, timestamp: timestamp) == "seen" {
+                    if await account.previewStatus(room, info: info, timestamp: last.timestamp, text: last.text) == "seen" {
                         account.receipts.seen(id)
                         changed()
                     }

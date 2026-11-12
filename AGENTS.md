@@ -1,8 +1,15 @@
-# Multiplexer: instructions for agents
+# Mux: instructions for agents
 
-Multiplexer is Rami's own replacement for Beeper: one app (iPhone first, Mac later)
-that shows all of Rami's chats (WhatsApp, Signal, Telegram, Instagram, ...). Messages go
-through a Matrix server that Rami controls. Rami is the only user for now.
+Mux (formerly Multiplexer) is Rami's own replacement for Beeper: one app for iPhone
+and an experimental Mac build that shows his chats across messaging networks.
+Messages go through a Matrix server that Rami controls. The live deployment is
+Rami's; public contributors use their own servers and test accounts.
+[CONTRIBUTING.md](CONTRIBUTING.md) is the public build guide; [docs/install.md](docs/install.md)
+tracks platform and preview limitations.
+
+The approved name, paper-plane logo, and palette are in `docs/brand.md`. Use Mux in
+visible copy. Keep existing bundle IDs, Keychain services, App Group, push topics,
+storage paths, package names, and test-room names stable across the rename.
 
 **Read `tasks/plan.md` first** (Status, decisions D1 to D8, invariants, facts, risks,
 open questions, decision log). The tasks with acceptance criteria are in
@@ -12,21 +19,24 @@ open questions, decision log). The tasks with acceptance criteria are in
 
 ```
 WhatsApp, Signal, ...  <->  mautrix bridges  ->  Synapse (Matrix server)  <->  iOS app
-                            (on Rami's Oracle server, not set up yet)          Exact UI -> native module -> MatrixCore -> matrix-rust-sdk
+                            (running on Rami's Oracle server)          Exact UI -> native module -> MatrixCore -> matrix-rust-sdk
 ```
 
 | Folder | What it is |
 |---|---|
-| `apps/multiplexer/` | The Exact app (iOS; Mac later). `app.contract` is the view, `app.ts` the data, `modules/apple/Matrix.swift` the native module. Its own `AGENTS.md` is Exact's generated guide. |
+| `apps/multiplexer/` | The Exact app (iOS and macOS). `app.contract` is the view, `app.ts` the data, `modules/apple/Matrix.swift` the native module. Its own `AGENTS.md` is Exact's generated guide. |
 | `matrix-core/` | The only code that calls matrix-rust-sdk. A Swift package with its own tests. Its public API uses plain types only. `NOTES.md` explains how it links. |
 | `scripts/setup-matrix-sdk.sh` | Downloads the pinned SDK (`26.10.27`), checks its checksum, and copies the SDK and `matrix-core` into `apps/multiplexer/modules/apple/`. |
-| `scripts/test-matrix-core.sh` | Runs MatrixCore's end-to-end test on the iOS Simulator against matrix.org. |
+| `cli/` | `mx`, the command line for agents (Swift). It links the same MatrixCore (`cli/Sources/MatrixCore` is a link) and a macOS build of the SDK. `cli/README.md` explains it. |
+| `scripts/setup-cli-sdk.sh` | Builds the SDK for macOS from the commit of the app's release (about 5 min the first time) and copies it into `cli/.sdk`. |
+| `scripts/test-matrix-core.sh` | Runs MatrixCore's live iOS suite; defaults to the designated test users on our server. |
 | `vendor/` | The downloaded SDK. Not in git. |
 | `tasks/` | The plan and the task list. |
 | `docs/exact-feedback/` | Every place where Exact was hard, for Rami and the Exact team: one issue file each, and an index. |
 
 The Exact framework is a separate checkout at `/Users/rami/Documents/code/exact/expo-exact`.
-The app uses it by path. Do not put this project inside it.
+The app uses it by path. Do not put this project inside it. The validated local
+integration and its public-reproduction limit are documented in CONTRIBUTING.md.
 
 ## Rules
 
@@ -36,7 +46,8 @@ The app uses it by path. Do not put this project inside it.
    Keychain (service `multiplexer-test-account`, account `@rami-m-test:matrix.org`).
 3. Prove each step with a test or a screenshot before the next step. Start small.
 4. Work from the Mac. Reach the Oracle server only with `ssh oracle`. Do not run an
-   agent on the server. The server is not set up yet: Phase 0 waits for Rami's domain.
+   agent on the server. Phase 0 is complete; the live inventory is maintainer-specific.
+   Contributors must adapt a separate inventory before running any server command.
 5. Commit after each task: conventional prefix, lowercase, one line, no co-author line.
 6. Ask Rami before deleting anything on the server, and before anything that costs money.
 
@@ -60,7 +71,9 @@ GIFs (B12) need KLIPY's app key at build. Once per checkout, and after the key c
 
 Without it the app builds, and the GIF sheet says it could not load GIFs.
 
-Test MatrixCore (about 10 s after the first build):
+MatrixCore live tests require configured Keychain test credentials and network access.
+The full suite can take many minutes; timings from early focused runs do not
+estimate the full suite. Use the shared lock:
 
 Two MatrixCore runs at once (two conversations, the same test users) time out on "the first
 sync". Hold the shared lock around every run, on your own simulator. Take every shared lock
@@ -69,18 +82,17 @@ the shared branch) only through the helper, which waits, removes a lock whose pr
 always releases its own lock, never another's:
 `scripts/mx-lock.sh matrixcore <your-lane> -- ./scripts/test-matrix-core.sh ...`.
 Never `rmdir` a lock by hand.
-The app builds with [expo/exact](https://github.com/expo/exact) at
-`/Users/rami/Documents/code/exact/expo-exact` (migration baseline
-`94b8671f70fe2e25b307a40e7fce66dc27c9f802`). `EXACT2` overrides the launcher checkout.
-Keep framework experiments in a separate worktree; the shared upstream checkout stays clean.
-After moving it, regenerate the app integration with its `exact new <app-path> --update` command.
+The app builds with a shared local Exact checkout (`expo-exact`, branch
+`local/mux-integration`). Never leave uncommitted edits in it: work on Exact in your own
+worktree of it, point your build at that, and commit to the shared branch only compiled, tested
+changes.
 The SDK's start on a new device is CPU-bound: with many Simulators and builds at once, a test's first
 sync misses its limit. Keep at most one Simulator booted per conversation, and shut it down
 (`xcrun simctl shutdown <udid>`) whenever you are not driving or testing. Shut down only your own Simulator, by its
 udid: never `xcrun simctl shutdown all`, which stops other conversations' test runs.
 
 ```sh
-./scripts/test-matrix-core.sh
+scripts/mx-lock.sh matrixcore <your-lane> -- ./scripts/test-matrix-core.sh
 ```
 
 Build, run and drive the app (from `apps/multiplexer/`):
@@ -93,8 +105,9 @@ bun exact.mjs contract build app.contract --json --errors-only
 ```
 
 - `prefer` takes a full key: `"prefer prefers-color-scheme dark"`.
-- **The app's tests run on iOS only** (`test ios`, `verify ios`). The web has no Matrix
-  SDK, so `verify` on the web fails the sign-in tests. Two tests reach matrix.org and DNS
+- **Use native tests:** `test ios` / `verify ios`, and `test mac` for Mac changes.
+  The web has no Matrix SDK, so web verification cannot validate chat or sign-in.
+  Two tests reach matrix.org and DNS
   (no real account): they need the network.
 - **Sign in to the practice account in a drive** without the password in chat or logs:
   `pw="$(security find-generic-password -s multiplexer-test-account -a @rami-m-test:matrix.org -w)"`,

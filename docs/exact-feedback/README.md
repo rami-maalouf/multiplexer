@@ -1,6 +1,6 @@
 # Exact feedback
 
-This folder records each place where building Multiplexer with Exact was hard. Its
+This folder records each place where building Mux (formerly Multiplexer) with Exact was hard. Its
 purpose: Rami and the Exact team can improve the framework. Read this page first.
 
 | What | Where |
@@ -15,13 +15,18 @@ Exact team as they are.
 
 ## Findings
 
+This is a dated development archive, not an upstream issue-status dashboard.
+"Open" and "fixed" reflect the inspection named in each entry; the framework has
+since moved to expo/exact. Preserve the original observations and follow the
+current build guide in [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
 Findings 1 to 22 were rechecked against exact2 `cee509ac82` (2026-10-27); 23 to 27 were seen at `1bc4c36cb7` (2026-10-31), where 12 and 15 were seen again (their files have the evidence). On 2026-11-02, 28 was seen at `1bc4c36cb7` 29 at `ed43ad09a0`, and 33 and 34 at `d165f8959f`, with new evidence for 13, 26 and 27; at `ed43ad09a0`, 15 was seen again and 21 is fixed; 30 to 32 and 35 to 41 were seen at `ed43ad09a0`, 17 was seen again, and 13 and 30 have new evidence; 48 to 50 were seen at `ed43ad09a0`, with new evidence for 37; 51 to 56 on 2026-11-03, with new evidence for 13, 26, 27 and 44; 57 to 59 were found while fixing findings in pull requests (first numbered 51 to 53, which were taken); 60 to 63 on 2026-11-03, with new evidence for 4, 41 and 55; 64 to 68 on 2026-11-03, with new evidence for 13, 4, 27, 54 and the virtualized list's strip. 69 to 72 on 2026-11-03, with new evidence for 10 and 26; 73 to 76 on 2026-11-03, with new evidence for 2 and 60; 83 to 85 on 2026-11-03 (77 to 82 are B18 search's, with new evidence for 13 and 26), with new evidence for 61 and the zoom filming finding; 86 on 2026-11-03, with new evidence for the long-press scroll finding. 87 to 89 on 2026-11-03 at `ed43ad09a0`, with new evidence for 13 and 37. 97 to 101 on 2026-11-03 at `574720f370`, while fixing findings in pull requests, with new evidence for 42. 106 and 107 on 2026-11-03 at `ed43ad09a0`, from the transcript's loading line, with new evidence for 29. 108 to 110 on 2026-11-03 at `ed43ad09a0`, from Remind Me. 119 on 2026-11-03 at `ed43ad09a0`, from Merge Chats, with new evidence for 55. 120 on 2026-11-04 at `ed43ad09a0`, from the UI faults, with new evidence for 55 (its cause, and a local fix), 76 and 106. 90 and 91 on 2026-11-03, with new evidence for 26. 93 to 95 on 2026-11-03 (Send Later; 92 is the GIF task's), with new evidence for 26 and 61. 92 on 2026-11-03, with new evidence for 61. On 2026-11-03 (a jump count task), new evidence for 13 and 19. 102 to 105 on 2026-11-03 at `ed43ad09a0` (a camera), with new evidence for 37 and 46. 117 and 118 on 2026-11-03 at `ed43ad09a0` (push on the Simulator), with new evidence for 46.
 
 Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Space, findings 1, 2 and 52; preview checks, finding 40; verification exit status, finding 121.
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
-| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04. | 31 to 42 s for each edit; latest native build 83.0 s (host arms 63.8 s) | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
+| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04. | 31 to 42 s for each edit; latest branding rebuild: arms 95.8 s | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
 | 2 | An authored test cannot read a secret, so `verify` never reaches the screens behind a sign-in. | A text-size bug that `verify` missed | P2 | [authored-tests-cannot-read-a-secret](issues/20261027-authored-tests-cannot-read-a-secret.md) |
 | 3 | A native module can use only real files in `modules/apple`: no links, no local Swift package. | About 20 min, then a copy step after each edit | P3 | [module-swift-only-from-modules-apple](issues/20261027-module-swift-only-from-modules-apple.md) |
 | 4 | A native module cannot keep a secret in Exact's store, so its Keychain items outlive a fresh drive. | A test device left signed in on the server | P3 | [native-module-has-no-secret-store](issues/20261027-native-module-has-no-secret-store.md) |
@@ -62,10 +67,10 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 39 | The docs do not say that a picked file's copy has another name than `Picked.name`. Fixed in PR #1342 (open). | One wrong send, about 10 min | P3 | [the-docs-do-not-say-that](issues/20261102-the-docs-do-not-say-that.md) |
 | 40 | After `check both`, nodes made later in the drive drew in the other color scheme (seen once). | About 8 min and a wrong fix | P3 | [after-check-both-nodes-made-later](issues/20261102-after-check-both-nodes-made-later.md) |
 | 41 | `font-size` still refuses `rem` inside `min()`, which `width` now takes (follows closed finding 21). Partly fixed in PR #1349 (open): the refusal names the forms. | About 3 min | P3 | [font-size-still-refuses-rem-inside](issues/20261102-font-size-still-refuses-rem-inside.md) |
-| 42 | Running a framework script's tests with a newer Bun fails: `ensureBun` drops the `test` verb. Fixed in PR #1345 (open). | About 3 min | P3 | [running-a-framework-script-s-tests](issues/20261102-running-a-framework-script-s-tests.md) |
+| 42 | Running a framework script's tests with a newer Bun fails: `ensureBun` drops the `test` verb. Fixed in PR #1345 (open); seen again on 2026-11-07 before that fix. | About 3 min | P3 | [running-a-framework-script-s-tests](issues/20261102-running-a-framework-script-s-tests.md) |
 | 43 | Parallel sessions on one machine share the default Simulator: an `ios --run` replaced another session's app in the middle of its drive. Fixed in PR #1329 (open). | About 15 min | P3 | [parallel-sessions-on-one-machine-share](issues/20261102-parallel-sessions-on-one-machine-share.md) |
 | 44 | A virtualized list draws rows past its frame, under the bar that follows it, and refuses `overflow`. | About 25 min | P3 | [a-virtualized-list-draws-rows-past](issues/20261102-a-virtualized-list-draws-rows-past.md) |
-| 45 | No keyboard fact: a chat cannot keep a message in view as the keyboard comes up. | About 15 min | P3 | [no-keyboard-fact-a-chat-cannot](issues/20261102-no-keyboard-fact-a-chat-cannot.md) |
+| 45 | No keyboard fact: a chat cannot keep a message in view as the keyboard comes up. Further evidence on 2026-11-07: Send and the voice button keep the keyboard's state by hand. | About 15 min | P3 | [no-keyboard-fact-a-chat-cannot](issues/20261102-no-keyboard-fact-a-chat-cannot.md) |
 | 46 | An app checkout at another folder depth cannot build: `EXACT2` does not cover the app's Cargo paths. Partly fixed in PR #1346 (open). | About 10 min, four builds | P3 | [an-app-checkout-at-another-depth](issues/20261102-an-app-checkout-at-another-depth.md) |
 | 47 | A real-touch tap at a point does not scroll its target into view, and a tap that opened nothing still says "tapped". Partly fixed in PR #1340 (open). | About 8 min, five drives | P3 | [a-real-touch-tap-at-a](issues/20261102-a-real-touch-tap-at-a.md) |
 | 48 | `check` measures a half-height sheet's rows at their drawn size (x0.96) and does not say why. Partly fixed in PR #1368 (open). | About 3 min | P3 | [check-measures-a-half-height-sheet](issues/20261102-check-measures-a-half-height-sheet.md) |
@@ -136,8 +141,8 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 113 | A large title shows inline over a list with rows and large over an empty state, on the same page (not isolated). | About 3 min | P3 | [a-large-title-shows-inline-over](issues/20261103-a-large-title-shows-inline-over.md) |
 | 114 | A plain list button sizes to its content instead of its cell, overflowing at large text sizes. | About 5 min | P3 | [a-plain-list-button-sizes-to](issues/20261103-a-plain-list-button-sizes-to.md) |
 | 115 | A members name collision does not name the file declaring the state. | About 3 min | P3 | [a-members-name-collision-does-not](issues/20261103-a-members-name-collision-does-not.md) |
-| 116 | The local run log retains a password argument that terminal output masks. | Found in under a minute | P1 | [the-local-run-log-retains-a](issues/20261103-the-local-run-log-retains-a.md) |
-| 117 | An app cannot receive remote push: no token callback or source, no `aps-environment` for an app, and the archive check refuses `registerForRemoteNotifications` (also blocks an install-link archive, 2026-11-07). | About 30 min, a run-time workaround, and no TestFlight | P2 | [an-app-cannot-receive-remote-push](issues/20261103-an-app-cannot-receive-remote-push.md) |
+| 116 | The local run log retains a password argument that terminal output masks. Seen again on 2026-11-07. | Found in under a minute | P1 | [the-local-run-log-retains-a](issues/20261103-the-local-run-log-retains-a.md) |
+| 117 | An app cannot receive remote push: no token callback or source, no `aps-environment` for an app, and the archive check refuses `registerForRemoteNotifications` (also blocks an install-link archive, 2026-11-07; app modules had no development flag to keep it out; local fix `8e547ca606`, 2026-11-07). | About 30 min, a run-time workaround, and no TestFlight | P2 | [an-app-cannot-receive-remote-push](issues/20261103-an-app-cannot-receive-remote-push.md) |
 | 118 | An app cannot add its own app extension (a notification service extension) or declare an App Group, a Keychain group or `aps-environment`; on the Simulator the entitlements section has no room to grow. | About 90 min, and a script after every build | P2 | [an-app-cannot-add-its-own](issues/20261103-an-app-cannot-add-its-own.md) |
 | 119 | A `derive` whose expression goes on to a second line is refused ("expected a section, found an indented block") with no word of the one-line rule. | About 2 min | P3 | [a-derive-s-expression-cannot-go](issues/20261104-a-derive-s-expression-cannot-go.md) |
 | 120 | Content placed inside a `glassGroup` row took the glass away from its round glass buttons; no doc says what a glass group does with a child that is not glass. | About 5 min | P3 | [content-placed-inside-a-glass-group](issues/20261104-content-placed-inside-a-glass-group.md) |
@@ -154,14 +159,41 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 129 | A swipe row in a plain list loses the cell's 16-point margin, with no warning: its content needs its own padding. | About 20 min, one regression | P3 | [a-swipe-row-in-a-plain](issues/20261106-a-swipe-row-in-a-plain.md) |
 | 130 | A swiped row's line runs from the cell's margin after it closes; fixed locally in the integration checkout (`cc75ef11d0`). | About 15 min | P3 | [a-swiped-row-s-line-runs](issues/20261106-a-swiped-row-s-line-runs.md) |
 | 131 | A drive cannot cross the app leaving the foreground and coming back: no Home, app switcher or lock op, and every op fails while the app is away. | About 30 min | P3 | [a-drive-cannot-cross-a-return](issues/20261106-a-drive-cannot-cross-a-return.md) |
-| 132 | `verify` leaves the drives' kept session signed out, and says nothing: the next drive meets the sign-in screen. | About 3 min | P3 | [verify-leaves-the-drives-kept-session](issues/20261106-verify-leaves-the-drives-kept-session.md) |
+| 132 | `verify` leaves the drives' kept session signed out, and says nothing: the next drive meets the sign-in screen. `test ios` does the same (2026-11-07). | About 3 min | P3 | [verify-leaves-the-drives-kept-session](issues/20261106-verify-leaves-the-drives-kept-session.md) |
 | 133 | A text that spills its box shows only in `check`, one screen at a time; `layout` ranges and `tap <list> into` give no sign. | About 60 min | P3 | [a-text-that-spills-its-box](issues/20261106-a-text-that-spills-its-box.md) |
 | 134 | A tinted glass circle needs `appearance="none"` plus `backgroundMaterial="glass"`; `buttonStyle="glass"` refuses a tint. | About 2 min | P3 | [a-tinted-glass-circle-needs](issues/20261106-a-tinted-glass-circle-needs.md) |
 | 135 | Glass is interactive only on a node with its own `press`; the docs do not say so, and the agent cannot show it. | About 15 min | P3 | [glass-is-interactive-only-with](issues/20261106-glass-is-interactive-only-with.md) |
 | 136 | A growing textarea comes up a line short on iOS, so its first line scrolls under its top. | About 15 min | P2 | [a-growing-textarea-comes-up](issues/20261106-a-growing-textarea-comes-up.md) |
-| 137 | After a return, liquid-glass `_UIFlexInteractionPanGestureRecognizer` can stay `.changed` and block every drag (scroll, row swipe, back); taps still work. An `isEnabled` release try did not fix it on device and was reverted. | About 15 min reading the phone log | P1 | [flex-pan-blocks-every-drag-after](issues/20261106-flex-pan-blocks-every-drag-after.md) |
-| 138 | A native popover action is reachable by its visible label but does not expose its authored test id to an external native drive. | About 2 min | P3 | [native-popover-action-test-id](issues/20261107-a-native-popover-action-does-not.md) |
-| 139 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
+| 137 | A woken built page keeps the build's `exactViewport` width until a resize, so a width branch never shows its wide side on a desktop. | About 25 min | P2 | [a-woken-built-page-keeps-the](issues/20261107-a-woken-built-page-keeps-the.md) |
+| 138 | A radial gradient's explicit size is refused with a message about the stop's colour. | About 5 min | P3 | [a-radial-gradient-s-size-is](issues/20261107-a-radial-gradient-s-size-is.md) |
+| 139 | `verify`'s contrast check reads the page under a `background-image` gradient fill, so text on a gradient pill is reported. | About 3 min | P3 | [verify-s-contrast-check-ignores-a](issues/20261107-verify-s-contrast-check-ignores-a.md) |
+| 140 | `verify.accept` cannot take a fixed-type finding on a text whose `testId` is a template. | About 5 min | P3 | [verify-accept-cannot-take-a-template](issues/20261107-verify-accept-cannot-take-a-template.md) |
+| 141 | A dark-only site cannot set the document's background, so overscroll shows black. | About 5 min | P3 | [a-dark-only-site-cannot-set](issues/20261107-a-dark-only-site-cannot-set.md) |
+| 142 | A site with no API must still export `grants`; the recipe does not say so. | About 2 min | P3 | [a-site-with-no-api-must](issues/20261107-a-site-with-no-api-must.md) |
+| 143 | An iOS archive cannot be signed with a cloud-managed distribution certificate: the signed path needs a local distribution identity and profile, and the unsigned archive carries the bare bundle id as `application-identifier`. | About 10 min, an Xcode-export workaround | P3 | [an-ios-archive-cannot-be-signed](issues/20261107-an-ios-archive-cannot-be-signed.md) |
+| 144 | A short scroller under a keyboard toolbar rises by the whole keyboard, so its newest rows go under the top bar; fixed locally in exact2 `4a187c1bbe`. | About 40 min | P2 | [a-short-scroller-under-a-keyboard](issues/20261107-a-short-scroller-under-a-keyboard.md) |
+| 145 | A scroller whose keyboard inset changes without moving its offset sends no `scroll` event, so the app reads a stale port; fixed locally in exact2 `91d7b12620`. | About 25 min | P3 | [a-scroller-whose-keyboard-inset-changes](issues/20261107-a-scroller-whose-keyboard-inset-changes.md) |
+| 146 | `layout` shows no scroll state (offset, content size, insets) for a windowed list. | About 20 min, host logging by hand | P3 | [layout-shows-no-scroll-state-for](issues/20261107-layout-shows-no-scroll-state-for.md) |
+| 147 | A drive screenshot leaves the keyboard out, so a keyboard bug needs a Simulator recording and a hand-made frame sheet. | About 10 min over two tasks | P3 | [a-drive-screenshot-leaves-the-keyboard](issues/20261107-a-drive-screenshot-leaves-the-keyboard.md) |
+| 148 | Smooth scrolling cannot be limited to following a list's end, so an appended message is a one-frame shift. | Not timed | P3 | [smooth-scrolling-cannot-be-limited-to](issues/20261107-smooth-scrolling-cannot-be-limited-to.md) |
+| 149 | A held device request (a microphone permission) shows only on `clock settle`; `clock +N real` passes in silence, and a disabled-control failure does not name it. | About 15 min, two takes | P3 | [a-held-device-request-shows-only](issues/20261107-a-held-device-request-shows-only.md) |
+| 150 | `state` does not show a state that a `members` file declares. | About 3 min | P3 | [state-does-not-show-a-state](issues/20261107-state-does-not-show-a-state.md) |
+| 151 | After a return, liquid-glass `_UIFlexInteractionPanGestureRecognizer` can stay `.changed` and block every drag (scroll, row swipe, back); taps still work. An `isEnabled` release try did not fix it on device and was reverted. | About 15 min reading the phone log | P1 | [flex-pan-blocks-every-drag-after](issues/20261106-flex-pan-blocks-every-drag-after.md) |
+| 152 | A native popover action is reachable by its visible label but does not expose its authored test id to an external native drive. | About 2 min | P3 | [native-popover-action-test-id](issues/20261107-a-native-popover-action-does-not.md) |
+| 153 | A package's Swift that did not compile shows an empty error: "did not compile:" and nothing after it. | About 3 min and a 2-min build | P3 | [a-package-s-swift-that-did](issues/20261107-a-package-s-swift-that-did.md) |
+| 154 | A drive cannot show a component in a given state (props or app state), so `layout` of a short-lived state needs a contract edit for each measurement. | About 8 min, four drives | P3 | [a-drive-cannot-show-a-component](issues/20261107-a-drive-cannot-show-a-component.md) |
+| 155 | An entry `animation` on a node mounted with a navigation push holds its first keyframe until a later commit, so a button laid out on time appears late. | About 15 min, two probe recordings | P3 | [an-entry-animation-waits-for-a-later-commit](issues/20261107-an-entry-animation-waits-for-a-later-commit.md) |
+| 156 | Fix proposed: Exact [#1604](https://github.com/ccheever/exact2/pull/1604). On macOS a native module's `print` goes to the stream that answers a drive, so the drive reads a log line as its reply ("unreadable reply"). | About 15 min, and a log helper in each module file | P2 | [on-macos-a-native-module-s](issues/20261108-on-macos-a-native-module-s.md) |
+| 157 | On macOS 27 the app traps (SIGTRAP) in AppKit's `NSGlassEffectContainerView.layout()` right after a send from a glass composer bar; no crash report, no Exact frame on the stack. | App workaround: omit composer glass group on Mac; underlying fault open | P1 | [on-macos-the-app-traps-in](issues/20261108-on-macos-the-app-traps-in.md) |
+| 158 | Docs proposed: Exact [#1603](https://github.com/ccheever/exact2/pull/1603). The Mac commands are missing from start-here, the build verb is `mac` but drives take `macos`, and `verify macos` is refused. Further detail-route/sidebar documentation evidence on 2026-11-08. | About 10 min | P3 | [the-macos-commands-are-missing-from](issues/20261108-the-macos-commands-are-missing-from.md) |
+
+| 159 | A styled macOS toolbar button loses its click handler after refresh; clicks do nothing while keyboard submission works. | About 10 min tracing; Return workaround | P1 | [macos-styled-toolbar-click-loses-handler](issues/20261108-macos-styled-toolbar-click-loses-handler.md) |
+
+| 160 | `glassGroup` cannot be conditionally absent; an optional numeric expression is refused. | About 3 min; slot wrapper required | P3 | [glass-group-cannot-be-conditionally-absent](issues/20261108-glass-group-cannot-be-conditionally-absent.md) |
+
+| 161 | Field appearance requires a literal, so one field with platform-specific chrome needs duplicate declarations. | About 3 min | P3 | [field-appearance-cannot-depend-on-the](issues/20261108-field-appearance-cannot-depend-on-the.md) |
+| 162 | `docs svg` opens the theme recipe instead of the symbols recipe (missing topic key). | About 5 min | P3 | [docs-svg-opens-the-theme-recipe](issues/20261109-docs-svg-opens-the-theme-recipe.md) |
+| 163 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
 
 ## What worked well
 
@@ -200,7 +232,18 @@ task down. Record that in the task's notes (`tasks/todo.md`), not here.
 If a new diary file does not show in `git status`, check `apps/multiplexer/.gitignore`:
 it must keep `!/.exact/diary/`.
 
+## Validation resumption findings
+
+| Finding | Cost | Severity | Evidence |
+|---|---|---|---|
+| saved native test run loses its bundles | about 2 min plus rebuilding | P3 | [native replay](issues/20261107-native-test-replay-loses-bundles.md) |
+| affected hides an unavailable cargo executable | about 1 min | P3 | [affected lookup](issues/20261107-affected-hides-missing-cargo.md) |
+
 ## Sent to the Exact team
+
+Validation continuation, 2026-11-07: receipt `ac9481f6-814f-49b1-bbc1-33193c87b718`,
+one diary, zero logged commands, sent with Rami's prior authorization. Findings:
+saved native-test replay and the missing-cargo diagnostic above.
 
 Findings go to the team through Exact's private feedback tool. Run it from
 `apps/multiplexer/`: `bun exact.mjs feedback preview` shows what would go, and
@@ -210,6 +253,8 @@ Findings go to the team through Exact's private feedback tool. Run it from
 
 | Date | Receipt | What | Sent by |
 |---|---|---|---|
+| 2026-11-07 | `be9ec5d7-b554-4bc1-8762-38bedae7bf5a` | 1 diary (member/composer/group fixes: finding 155, new evidence for 42 and 116) and 21 command-log lines | Codex, with Rami's prior yes |
+| 2026-11-06 | `a83c1989-e345-4828-8cb5-60c983aeb0df` | One branding diary, isolated from the backlog: native rebuild cost and manifest icon packaging. Zero command-log entries or attachments. | Codex, with Rami's yes |
 | 2026-10-27 | `4c8a0a07-60a8-466e-ae9a-bef9a0b29f82` | 4 diary entries (findings 1 to 15, in their Rough sections) and 77 command-log lines | Rami |
 | 2026-10-27 | `ac63ff5c-08e3-461b-ae7f-5f1598b2125b` | Findings 1 to 15 as issue files, rechecked at exact2 `cee509ac82`, in the entry `2026-10-27-findings-for-the-team.md` | Claude, at Rami's request |
 | 2026-10-27 | `cea3ed9a-11b2-4359-9849-7cab26e44f59` | 2 diary entries (findings 16 to 19, and new evidence for finding 4) and 20 command-log lines | Claude, with Rami's yes |
@@ -217,6 +262,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 | 2026-11-02 | `f63c011a-dedb-4c1e-ae6b-4bee50181ae4` | 7 diary entries (findings 21 to 29, 33 and 34, and new evidence for findings 13 and 15; from the B1 and inbox entries, findings 30 to 32 and 35 to 37, and new evidence for findings 13 and 17) and 287 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `623dd86e-723a-4d6d-a5e1-d671e965d0d9` | 17 diary entries (the tasks of 2026-11-02 and 2026-11-03, B19 included; the app's README not attached) and 63 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `c0048b5e-44e2-40f5-aae3-63299084a8f0` | 2 diary entries (swipe to reply on media and Copy for a photo; Send Later: findings 90, 91 and 93 to 95) and 1 command-log line | Claude, with Rami's yes |
+| 2026-11-07 | `77e85bbe-29ca-49f0-9931-aac5ff2eb9d4` | 6 diary entries (the landing site of 2026-11-06; the TestFlight build, keyboard, Send, spinner and demo bug tasks of 2026-11-07: findings 143 to 150, 153 and 154, and new evidence for 45, 46, 116, 132 and 149) and 34 command-log lines | Claude, with Rami's yes |
 | 2026-11-03 | `1a0285c9-b1bf-4f21-a7f9-69a05a6cfc20` | 1 diary entry (GIFs: finding 92, new evidence for 61) and 18 command-log lines | Claude, with Rami's yes |
 
 The first two sends include finding 14, which was withdrawn after they were sent.

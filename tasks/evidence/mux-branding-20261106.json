@@ -1,0 +1,64 @@
+{
+  "name": "Mux",
+  "date": "2026-11-06",
+  "scope": "brand rename and selected paper-plane icon",
+  "identityPreserved": {
+    "bundleId": "com.ramimaalouf.multiplexer",
+    "keychain": "unchanged",
+    "appGroup": "unchanged",
+    "pushTopics": "unchanged",
+    "storedData": "unchanged"
+  },
+  "icon": {
+    "path": "apps/multiplexer/assets/mux-icon.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": false,
+    "sha256": "151af0c210a5dc48eb7234c9ac3907f5f34fb858dd40c65ec0d3b37230509c4c",
+    "matchesApprovedArtwork": true
+  },
+  "build": {
+    "result": "passed",
+    "app": "Mux.app",
+    "executableSha256": "1846b23ddc19ff825f1321567a30920437e60c4da96eaca03454543f27ffeb37",
+    "framework": "31063d7dbb0eaed6e075dcc76ab2d9e7bddde27b",
+    "nativeModulesSeconds": 95.8
+  },
+  "verification": {
+    "command": "bun exact.mjs verify ios --sim 68009A18-DA60-4433-819B-93A1C467F916",
+    "result": "clean",
+    "seconds": 124.4,
+    "nativeTestsPassed": 12,
+    "nativeTestsFailed": 0,
+    "lightDarkFindings": 0,
+    "largestTextScreens": 14,
+    "largestTextOverflow": false,
+    "propertyWalks": 20,
+    "propertyProof": false,
+    "existingCompilerNote": "tamber-unreachable: platform disabled controls keep native appearance"
+  },
+  "visualInspection": {
+    "homeScreen": "selected three-fold paper plane shown with Mux label",
+    "signInLight": "Mux title, aligned and readable",
+    "signInDark": "Mux title, aligned and readable",
+    "localCaptures": [
+      "apps/multiplexer/.exact/branding/home-screen.png",
+      "apps/multiplexer/.exact/branding/sign-in-light.png",
+      "apps/multiplexer/.exact/branding/sign-in-dark.png"
+    ]
+  },
+  "otherChecks": [
+    "branding audit passed",
+    "MatrixCore copied source equals canonical source",
+    "feedback issue format passed",
+    "git diff --check passed"
+  ],
+  "newTests": "none: mechanical strings, assets and manifest changes; existing native tests run unchanged",
+  "codeReview": "Code review: skipped (mechanical diff)",
+  "limits": [
+    "not installed on the physical iPhone",
+    "no real account accessed",
+    "existing server-side device/pusher names update on later sign-in/registration; no server data rewritten",
+    "MatrixCore voice metadata compiled through app; separate MatrixCore network suite not run"
+  ]
+}

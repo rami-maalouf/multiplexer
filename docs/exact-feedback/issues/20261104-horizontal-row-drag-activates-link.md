@@ -3,11 +3,11 @@
 **Status:** Open
 **Systems:** iOS host, list row presses
 **Severity:** P2
-**Author:** local app feedback (original agent not recorded)
+**Author:** Rami Maalouf, via a local agent report
 **Date:** 2026-11-04
 **Finding:** 124
 
-Local state: fixed on isolated local framework branch; not published.
+**Local status note:** Fixed on isolated local framework branch; not published
 
 ## What happens
 

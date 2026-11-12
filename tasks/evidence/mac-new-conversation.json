@@ -1,0 +1,80 @@
+{
+  "date": "2026-11-09",
+  "base": "85ba969",
+  "scope": "cmd+n new direct conversation; cmd+k existing chat search",
+  "review": {
+    "status": "complete",
+    "run_id": "mux-new-conversation-20261108-quality",
+    "artifact_path": "/tmp/compound-engineering-501/ce-code-review/mux-new-conversation-20261108-quality",
+    "applied_findings": [
+      1,
+      2,
+      4
+    ],
+    "unresolved": [],
+    "receipt_recovery": "completed review.json persisted before provider usage-limit failure"
+  },
+  "verification": {
+    "core": {
+      "passed": 42,
+      "skipped": 1,
+      "failed": 0,
+      "log": "/tmp/mux-conversations-review-green.log"
+    },
+    "regression_red": "/tmp/mux-conversations-review-red.log",
+    "authenticated": {
+      "passed": 1,
+      "log": "/tmp/mux-conversations-auth-self.log",
+      "scope": "self/peer dm creation or reuse, immediate reuse and m.direct preservation; fresh creation not forced"
+    },
+    "bun": {
+      "passed": 38,
+      "log": "/tmp/mux-new-conversation-reviewed-bun.log"
+    },
+    "native_mac": {
+      "passed": 13,
+      "log": "/tmp/mux-new-conversation-reviewed-mac-tests.log"
+    },
+    "drive_logs": [
+      "/tmp/mux-new-conversation-drive-reviewed.log",
+      "/tmp/mux-new-conversation-drive-resume.log",
+      "/tmp/mux-new-conversation-send-settled.log"
+    ],
+    "drive_correction": "first drive stopped on unsupported authored-test expect; resumed with tree/state and completed verification",
+    "sent_message_event": "$IcCgCzwe_gd0h-OeaCSIxfaAZtrKuYPymo0oJjntaWo",
+    "test_account_signed_out": true,
+    "final_placeholder": {
+      "log": "/tmp/mux-new-conversation-final-layout.log",
+      "result": "shortened native placeholder fits narrow field; final signed-out dark capture inspected"
+    }
+  },
+  "screenshots": {
+    "directory": "apps/multiplexer/.exact/mac",
+    "inspected": [
+      "new-conversation-reviewed-empty.png",
+      "new-conversation-reviewed-result.png",
+      "new-conversation-reviewed-dark-narrow.png",
+      "new-conversation-reviewed-existing-search.png",
+      "new-conversation-reviewed-send-confirmed.png",
+      "new-conversation-reviewed-shortcut.png",
+      "new-conversation-final-narrow.png"
+    ],
+    "widths": [
+      900,
+      700
+    ]
+  },
+  "limitations": [
+    "connected bridge contacts and create-dm unverified with real remote accounts",
+    "iOS runtime not rerun",
+    "self DM creation branch not forced in integration test",
+    "old self-room encrypted history from a previous device lacks keys after test-device signout; current-device send confirmed"
+  ],
+  "not_touched": [
+    "server configuration",
+    "real-account rooms",
+    "distribution and updater configuration",
+    "shared Exact sources"
+  ],
+  "feedback": "five unsent diaries retained locally; prior send question remains unanswered"
+}

@@ -162,3 +162,17 @@ component FileBubble
       column min-width=0 max-width="100%" align-self=(stacked ? "stretch" : "auto") gap=1
         text name color=ink font-weight=600 overflow-wrap="break-word"
         text fileDetail(name, size) font="-exact-footnote" color=ink
+
+// keep ios's merged glass; appkit's group traps when send and voice controls swap.
+component ComposerRow
+  props
+    ready: bool
+    groupedGlass: bool
+  slot
+  view
+    if groupedGlass
+      row inert=(not ready) align-items="flex-end" gap=8 margin="6px 12px" glassGroup=8
+        children
+    else
+      row inert=(not ready) align-items="flex-end" gap=8 margin="6px 12px"
+        children

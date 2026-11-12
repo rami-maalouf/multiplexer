@@ -69,15 +69,24 @@ extension MatrixAccount {
         let levels = try? await target.getPowerLevels()
         let custom = await customNames()[roomId] ?? ""
         let roomName = target.displayName() ?? roomId
-        // the bot of a bridge is a service member (`io.element.functional_members`).
-        let service = UInt64(info.serviceMembers.count)
         var summary = RoomSummary(id: roomId, name: roomName, isDirect: await target.isDirect(), lastMessage: "",
                                   lastSenderName: "", lastIsOwn: false, lastTimestamp: 0)
-        summary.fillKind(info, pins: pins)
+        // a chat the member count leaves open is asked of its bridge now, and kept for the list.
+        if summary.fillKind(info, pins: pins, kinds: roomKinds), let kind = await bridgedKind(roomId: roomId) {
+            roomKinds.remember(roomId, kind)
+            summary.fillKind(info, pins: pins, kinds: roomKinds)
+        }
+        // the people who have joined, as `chatMembers` lists them: a bridge's bot (a service member,
+        // `io.element.functional_members`) is left out only when it has joined. a room may name a
+        // bot that is no member, and the count then said one fewer than the list showed.
+        var joinedService: UInt64 = 0
+        for userId in info.serviceMembers where (try? await target.member(userId: userId))?.membership == .join {
+            joinedService += 1
+        }
         return ChatInfo(id: roomId, name: custom.isEmpty ? roomName : custom, roomName: roomName, customName: custom,
                         topic: info.topic ?? "", pictureUrl: target.avatarUrl() ?? "",
                         network: RoomNetwork.of(info, ownUserId: me), isOneToOne: summary.isOneToOne,
-                        memberCount: Int(info.joinedMembersCount > service ? info.joinedMembersCount - service : 0),
+                        memberCount: Int(info.joinedMembersCount > joinedService ? info.joinedMembersCount - joinedService : 0),
                         canRename: levels?.canOwnUserSendState(stateEvent: .roomName) ?? false,
                         canChangePicture: levels?.canOwnUserSendState(stateEvent: .roomAvatar) ?? false,
                         canInvite: levels?.canOwnUserInvite() ?? false)

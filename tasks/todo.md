@@ -1,4 +1,204 @@
-# Multiplexer: tasks
+# Mux: tasks
+
+## Public documentation (2026-11-10)
+
+- [x] Audit README, install/self-hosting/contributor guides, CLI/SDK/operator docs,
+  website copy and relative documentation links against current main source.
+- [x] Correct credential-handling examples, state push/GIF/bridge privacy boundaries,
+  separate live operator scripts from portable setup, and preserve dated evidence.
+- [x] Validate local links/anchors, shell-block syntax, external guide URLs and
+  the website production build. DOM layout checks passed; screenshots could not
+  be captured (preview timeouts, fallback browser unavailable). Evidence:
+  `tasks/evidence/public-docs-20261110.json`. No native/server/production deploy run.
+- [x] Add font license notices to the website's published assets.
+- [ ] Publish or upstream the validated Exact integration patches and prove a clean
+  public native build. Local integration 8536d208c is not available at its public
+  upstream commit URL; CONTRIBUTING.md states this rather than claiming reproducibility.
+- [ ] Reconfirm the AppDrop preview's availability and separately prove public beta
+  access and TestFlight push delivery. The existing URL responded after an initial
+  timeout, but pairing/install were not exercised; upload receipts alone are not
+  public installation proof.
+
+- [x] Declare GPL-3.0-only for the project's original code (2026-11-10, Rami's
+  request): add the official license and root notice, align package/Cargo metadata,
+  preserve third-party licenses, and verify the license text and metadata.
+
+## Expo Exact migration (2026-11-09, branch `chore/expo-exact`)
+
+- [x] Point the app at `/Users/rami/Documents/code/exact/expo-exact` (`local/mux-integration`):
+  Cargo patches, apple/web crates, `exact.mjs`, `app.json`, package file deps, AGENTS paths,
+  packaging script default.
+- [x] Port Mux's local Exact fixes into that checkout (scroll return, keyboard toolbar under
+  glass, navigation tint, recording levels, archive packaging, Mac toolbar click); keep Expo's
+  newer navigation/build behavior where they overlapped.
+- [x] Framework checks: caps clean, docs `svg` topic fixed, Mac toolbar 25/25, targeted iOS
+  Swift suites green (one XCTSkip for a window-release assertion that also fails on the old
+  checkout in this host).
+- [x] App checks on the new checkout: 38 Bun tests, contract `[]`, `verify ios` 13/13, Mac
+  authored tests 13/13.
+- [x] Commit the app path rewrite on `chore/expo-exact` / `main` (`e23147c`).
+- [x] Commit the Exact port on `expo-exact` `local/mux-integration` (`8536d208c`).
+- [ ] Resume the Mux vs Beeper side-by-side demo robot once the migration is settled.
+
+## Agent CLI (2026-11-08, branch `feat/cli-c0`)
+
+`mx`: agents read the account and act on it from the Mac (plan D12). Layers: `mx` (Swift) ->
+MatrixCore (shared with the app) -> matrix-rust-sdk built for macOS -> our Synapse.
+
+### C0 Spike: MatrixCore on the Mac (done 2026-11-08)
+
+- [x] The SDK built for macOS from the app's release commit (`scripts/setup-cli-sdk.sh`).
+- [x] MatrixCore compiles for macOS with no change; `cli/` links it through a folder link.
+- [x] `mx login`, `whoami`, `chats [--json] [--limit]`, `logout`.
+- [x] As `@test1`: sign-in 12.6 s; `mx chats` lists the chats; `whoami` names SDK `14a0ada`.
+- [x] Warm runs 0.3 to 0.5 s, fresh: a message `@test2` sent a moment before is at the top, unread 1.
+- [x] Three `mx chats` at once on one store: all exit 0 with the same answer.
+- [x] `mx logout`: the device is gone from the server (`clean-test-devices.sh --older-than 0`),
+  and the local store and Keychain item are deleted.
+- Seen: the cold first run printed chats before the server's order arrived (not by recency).
+  Fix in C1: wait for the room list's order, or keep a background process synced.
+
+### C1 Read only (implemented 2026-11-08; proof limits below)
+
+- [x] `mx read <chat> [--limit n]`: messages as JSON lines (sender, text, time, ids, reactions).
+- [x] A chat by room id or by name; a name that matches more than one chat is an error that
+  lists the matches.
+- [x] `mx search "<text>"`, `mx watch` (new messages as JSON lines, until stopped).
+- [x] Decide from measurements: one process per command, or a background `mxd` (launchd) that
+  stays synced, with `mx` as its client over a Unix socket. `watch` needs a long-lived process.
+- [x] Read receipts never go out in C1.
+- [x] `mx recover --key-stdin` opens the existing backup through MatrixCore; wrong-key refusal tested.
+- [x] Valid-key recovery on a new CLI device: expanded suite proves an initially undecryptable
+  historical message is readable after recovery. Private test key retained in Keychain.
+- [x] Live read/write/watch acceptance as `@test1`, with synthetic incoming messages from `@test2`.
+- [ ] Real-account read-only acceptance: no password in the documented Keychain service.
+- [ ] Cold first-run order: rank coverage and before/after rank consistency were insufficient
+  while SDK latest-event hydration continues; both attempted barriers removed.
+  Cold ordering remains observational; warm newest-message ordering is asserted.
+
+### C2 Writes, with safety (implemented 2026-11-08)
+
+- [x] `send`, `react`, `mark-read`, `later` (Send Later).
+- [x] Read-only unless a write is asked for; read receipts off except the explicit `mark-read` command.
+- [x] External exact account/room allow-list, deny by default including test accounts.
+  No CLI policy-edit operation. Real account stays denied until its five test-room ids are
+  independently confirmed by the operator. This is a CLI guard, not a same-user OS sandbox.
+- [x] `--dry-run`, and a local audit log of every write.
+- [x] Proof: allowed/refused test-room writes, dry-run absence, audit outcomes and process lock.
+  Text/reaction return server event ids; reactions add only and do not toggle.
+- [ ] Allowed/refused dry-run on `@rami`: credential unavailable; no real-account writes attempted.
+
+### C3 Agent door (optional)
+
+- [x] Plain CLI and agent usage documentation suffice for the scripted acceptance; no MCP
+  wrapper or daemon added. Watch is a foreground best-effort stream with a bounded snapshot,
+  not a durable event queue. Stop it before another session command.
+
+Final review (2026-11-08): five mechanical findings applied; release build, three unit tests,
+and 50 live checks passed. An injected incomplete audit record refused a send without
+appending; scheduled delivery now uses a bounded poll. Server-confirmed writes report
+postaccept audit failure explicitly and schedule success follows the durable audit.
+- [ ] Add attachment metadata and reply context to read/watch JSON; current text can be empty
+  for an uncaptioned attachment. Review finding 3 requires a richer public output schema.
+
+Current-main integration (`f6169a8`): retained both sets of additive plan/task entries;
+release build, three parser/policy tests and 51 live checks passed on the combined source.
+
+Verification expansion (2026-11-08, requested after the smoke-test coverage audit):
+- [x] 58 XCTest entries (57 substantive and a subprocess helper): every command's arguments,
+  output/resolution/watch contracts, policy, audit short-write/fsync faults, confirmed-write
+  failure reporting and real process contention/SIGKILL release.
+- [x] 18 named live scenarios passed, zero blocked: recovery, encrypted wire data and peer
+  decryption, merged read/search, receipt absence and explicit receipt arrival at a peer,
+  scoped/merged/unscoped watch, restart, bursts, scheduling and server-side logout revocation.
+- [x] Fractional-second ISO scheduling regression reproduced through the CLI and a failing
+  unit case, then fixed. Postaccept output-failure regression also failed before its fix.
+- [x] Coverage and limits: `docs/cli-test-coverage.md`; per-feature live evidence:
+  `tasks/evidence/cli-feature-coverage-20261108.json`. Passing tests do not certify cold ordering,
+  durable watch replay, real-account acceptance or a whole-server outage.
+- [x] Reviewed full-suite rerun: 58 XCTest entries, five Bun policy-backup cases, 19 live
+  scenarios (zero blocked), legacy smoke passed. Real closed-stdout regression failed before
+  explicit SIGPIPE ignore and now verifies exact output-failure reporting after server acceptance.
+  Encrypted scheduling verifies refusal reached the mutation boundary plus no pending/delivered
+  event; each scheduling command computes a fresh deadline. Private on-disk policy backups
+  survive interrupted runs and refuse stale overwrite. Review methods/limits are recorded in
+  `docs/reviews/2026-11-08-cli-coverage.md`.
+
+Verification commands: `swift test --package-path cli --filter ArgumentsTests`;
+`scripts/mx-lock.sh matrixcore cli-acceptance -- bun scripts/test-cli.ts`.
+The release linker currently warns about one missing Rust debug object referenced by the
+prebuilt archive; executable linking and live acceptance work. SDK xtask deletes the
+Rust object referenced by its debug map. A trial whole-archive strip changed global symbol
+addresses and broke third-party assembly linking; the pristine archive was restored and
+rebuilt successfully. No strip workaround shipped. Record separately from Exact.
+
+## Exact validation continuation (2026-11-07)
+
+- [x] Recover the original thread's later TestFlight check: compliance saved, build 2
+  Ready to Submit, Teammates contains only its invited owner. This supersedes the
+  earlier pending-France checklist below. PR #14 is still absent from build 2.
+- [x] Fix the text fade endpoint clock mismatch, local Exact commit `a7ae7d07b0`.
+  All 35 TextPlace iOS cases pass, including the hosted pixel comparison. Existing
+  endpoint assertion unchanged. Earlier tracing edits were present and are not
+  committed with the production fix. Logs: `/tmp/mx-continue-fade-tests.log`.
+  Endpoint stress: 100 consecutive passes (`/tmp/mx-continue-fade-repeat.log`);
+  caps passed (`/tmp/mx-continue-fade-caps-final.log`).
+- [x] Recheck the drive refusal fix: 49 focused tests pass with pinned Bun 1.4.2.
+- [x] Send one validation diary with existing authorization, receipt
+  `ac9481f6-814f-49b1-bbc1-33193c87b718`; owned Simulator is shut down.
+- [ ] Complete publication gates and publish the isolated endpoint fix. Broad build
+  prerequisites consumed disk space and were stopped before completion. Cargo's
+  supported dev cleanup recovered 24 GB. No broad suite is claimed green.
+- [ ] Resolve the separate fade-completion callback timeout and hosted navigation
+  failure. Do not replace either with a relaxed assertion or another timeout increase.
+- [ ] Finish menu/surface validation. Direct replay of the saved menu xctestrun
+  failed because it had no test bundles; the fresh rebuild was stopped for disk pressure.
+- [ ] Integrate validated fixes under the helper lock before making another release.
+
+## Teammate-testing checkpoint (2026-11-07 resumption)
+
+- [x] Recover app helper results and inspect the saved group-info comparison. PR #14
+  holds all four fixes, on #13; its description now explains behavior and evidence.
+- [x] Inspect the full MatrixCore result: 129 tests, two skipped, two failures.
+  Unread-line count stayed 22; recovery first sync timed out. Rerun both together
+  through the shared lock on MX demo: two passed, zero failures, 191.625 s.
+  Logs: `.exact/members-fix/logs/{matrixcore-full,isolated-rerun}.log` in this checkout.
+  Cause remains unresolved; isolated success does not make the full suite green.
+- [x] Verify the Exact CLI refusal branch: 49 tests passed with pinned Bun 1.4.2;
+  caps passed. Newer Bun re-execution hit known finding 42; evidence added.
+- [x] Send the remaining diary with Rami's existing authorization: one diary,
+  21 command-log lines, receipt `be9ec5d7-b554-4bc1-8762-38bedae7bf5a`.
+- [x] Shut down only the owned MX demo Simulator after test teardown.
+- [ ] Finish Exact native validation and publish the four local branches. Large-title
+  validation and the baseline both have native failures; a stress run also found
+  `testAFadeWaitsForTheLatestChangesCommit` failing once in 680 cases. Local branches
+  are `drive-refuses-expect-naming-steps`, `large-title-opens-expanded`,
+  `drive-picks-upward-menu-rows`, and `painted-menu-surface`. None was integrated.
+- [ ] Rami answers the France question and saves it. Inspect TestFlight build 2's
+  current status afterward. Preview snapshots timed out; browser fallback is
+  unavailable. No compliance answer or export metadata was changed.
+- [ ] Include PR #14 in a later TestFlight build after integration and verification.
+  Build 2 does not contain these four fixes.
+
+## Mux identity (2026-11-06)
+
+- [x] With Rami's approval, send only the branding session's Exact diary. Receipt
+  `a83c1989-e345-4828-8cb5-60c983aeb0df`: one diary, zero logged commands, no
+  attachments. Archived that diary; preserved the 41 older diaries and command cursor.
+- [x] Adopt the selected three-fold glass paper-plane PNG and the name Mux. Update
+  visible copy, manifest names, device/push display names, and voice-file vendor.
+  Keep installation, storage, Keychain and test-room identities stable.
+- [x] Verify the installed app icon and name, inspect the sign-in screen in both
+  appearances, and run the existing iOS verification. Branding is a mechanical
+  rename/configuration change; no new behavior tests are needed. MatrixCore's voice
+  metadata change uses the existing dynamic vendor-length encoding. Its app copy
+  was refreshed with `scripts/setup-matrix-sdk.sh`. Verification: 12 native tests
+  passed, no light/dark findings, no overflow on 14 largest-text screens (124.4 s).
+  Visually inspected the installed icon/Mux label and both sign-in appearances.
+  Receipt: `tasks/evidence/mux-branding-20261106.json`. No physical-phone install.
+  Also repaired three inherited feedback-report headers; issue format now passes.
+  Code review: skipped (mechanical diff): strings, assets, configuration, documentation
+  and metadata only; no control flow changed.
 
 - [x] Keep real-account identifiers and lookup details local (2026-11-10):
   generalize tracked references, preserve the safety rule and original context in
@@ -23,14 +223,30 @@ detail. Later phases are rough. We detail each one at the checkpoint before it.
 
 T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 
-## Open: "seen" in the list on a long-running device (2026-11-06)
+## Website and README (2026-11-06, branch `feat/mux-website`)
 
-- [ ] With one signed-in device per test user for a whole MatrixCore run, `testThePreviewSaysSentThenSeen`
-  fails after any earlier test of its class (the sender's list stays "sent" for 20 s after the reader
-  marks the chat read) and passes alone or on new devices. The list reads the reader's receipt from the
-  sender's store (`previewStatus`), so a device that has synced for a while may not get receipts for a
-  chat it does not keep open. Check whether the app's inbox shows "Seen" late in a long session. The
-  test uses new devices until then (marked FRESH DEVICES).
+- [x] Root `README.md`: what Mux is, why we built it, how it works, how we built it, the folders.
+- [x] `website/` v1: an Exact site, one page built ahead; `verify` clean (replaced by v2).
+- [x] `website/` v2 (Rami: "production website", Three.js plane, little text, no other product
+  named): static HTML, CSS, a Three.js scene loaded after first paint (117 KB brotli), fonts
+  self-hosted; checked at 1440 and 390 px, the opening flight, reduced motion and scrolled states.
+- [x] Exact findings 137 to 142 (diary `apps/multiplexer/.exact/diary/2026-11-06-a-landing-site.md`).
+- [x] Published at `https://mux.orbitlabs.studio` (`website/deploy.sh`, Vercel project `mux`, 2026-11-06); checked live at 1280 and 390 px.
+- [x] v3 (Rami, 2026-11-06): title "One app for all your chats", Sora and Geist, no gradient on any
+  heading; the plane as the title's full stop with one flight (wind-up around the O, throw, spring
+  down the l, release, roll, spring landing); the 3D plane in the logo's sampled colours with sparks
+  and shooting stars against its flight. Checked at 1440 and 390 px, 320 px, reduced motion.
+- [ ] The setup guide: a server, a domain, the bridges, and the app, for someone other than Rami.
+
+## Fixed: "seen" in the list on a long-running device (2026-11-06)
+
+- [x] The reader's receipt did reach the long-synced sender (both stores held it within 2 s). The list
+  compared the receipt's event time (the server's) with the sent message's time, which on a device
+  that has synced for a while was the device's own clock: 53 ms later, so the preview stayed "sent".
+  `previewStatus` now also counts a receipt on this account's own message with the same text, less
+  than a minute before. `testThePreviewSaysSentThenSeen` passes on the run's shared devices, after the
+  other tests of its class. On an iPhone whose clock runs ahead of the server, read messages would
+  have stayed "sent" in the inbox.
 
 ## iPhone video review (2026-11-05, documentation only)
 
@@ -139,10 +355,16 @@ T1.1 and T1.2 do not need the server. They can run while Phase 0 waits for DNS.
 - [ ] R03 scrolling frozen after a return to the app (2026-11-06 → 2026-11-07): still open on
   the iPhone. Simulator never reproduced; diagnostics remain (`dd9343b324`, file log
   `584858860a`). Phone log (return=2): `_UIFlexInteractionPanGestureRecognizer` on the Exact
-  window stayed `.changed` after the finger lifted (finding 137). A host try that toggled
+  window stayed `.changed` after the finger lifted (finding 151). A host try that toggled
   `isEnabled` on began/changed recognizers (`e2b58b6992`) did **not** stop the freeze; Rami
   confirmed; that workaround was reverted (`4251663c25`). Keep the log; do not ship speculative
   remount/release hacks until a real fix is proved on the phone.
+  Read-only recheck 2026-11-07 on the installed orbit build (`com.ramimaalouf.multiplexer.orbitb4a3b6a2`,
+  signed-in `@rami`): inbox scroll before background worked; after Home →
+  `runningBackgroundSuspended` → reopen, two further scrolls each moved the list (AX diffs
+  non-empty). No chats opened; nothing sent or marked read. Evidence `/tmp/mx-ready-r03/`.
+  Does not close R03: automation did not reproduce the stuck pan; leave open until a finger
+  freeze is gone or a real fix is proved.
 - [x] Inbox↔Archive capsule waited on a full native `rooms` reload (2026-11-07, with R03):
   `chatList` keyed `roomList`. Now `scopedInbox` lists every chat under the filter; the contract
   picks inbox/Archive/Low Priority/Reminders with `inChatList` (pinned still leave inbox+all for
@@ -307,6 +529,35 @@ had nothing to show at once.
   text size. Screenshots with real data only in `/tmp/mx-wide-text/`.
 - [ ] After a long time away, the newest message shows about 1 s before the ones between it and the
   older ones (the sync's gap, filled by the SDK). Hide the gap until it fills?
+- [x] A new device's first open showed the newest message alone for about 0.35 s, then the full
+  screen (demo recording, 2026-11-07, branch `fix/demo-bugs`). Cause: the early answer above, with no
+  kept copy in front. Fix: the app asks `messages` with `early` only when it has a copy; without one,
+  `opening(early: false)` waits for the fill, so the chat shows the loading spinner, then the full
+  first screen in one frame. Core test `testAChatWithNothingKeptOpensOnItsFullFirstScreen`. Frames:
+  `.exact/demo-bugs/bug1/` (in that worktree; a copy in the testflight checkout's `.exact/demo-bugs/`).
+- [x] The older-messages spinner row was 40 pt and the "Start of the chat" row 36 pt, so the messages
+  moved 4 pt when one replaced the other. Both now take the text line's height (the spinner over a
+  hidden copy of it): 36 and 36, and 72 and 72 at the largest text size.
+- [x] The demo staging's rooms list a bridge bot that never joins (the id belongs to the live bridge).
+  Fixed 2026-11-07 (branch `fix/members-composer-groups`, on `fix/demo-bugs`), with evidence in that
+  worktree's `.exact/members-fix/`:
+  - Info page "3 members" over a list of 4: `chatInfo` subtracted every listed service member,
+    `chatMembers` only joined ones. Now both leave out only a joined bot (`ChatInfo.swift`). Same drive:
+    after "4 members" over 4. Core test `testTheCountAndTheListAgreeWhenTheBotIsNoMember`.
+  - A bridged group with one other person counted as a DM (`fillKind`). Now `m.direct` decides first, then
+    the bridge's `m.bridge` room type, read once per ambiguous room (`RoomKinds.swift`, `matrix-core/NOTES.md`,
+    "A chat's kind"); the count only when the room has no bridge state. Push uses the same rule. Real account,
+    read only, same drive on the old and new core: DMs 257 and Groups 75, then 256 and 76 (one bridged group
+    with only the bot besides you). Core tests `testABridgedGroupWithOnePersonIsAGroup`,
+    `testTheBridgedKindAndTheOneToOneRule`.
+  - Seating the contact marked the group read and left "Seen by" (the invite and the join came after the
+    messages). `stage-demo.py` now makes a staged room that lacks a contact again instead of seating it;
+    `--redo hike` restored the badge (1) and no message status. The redone group now sits at the top of the
+    inbox (it is the newest), not in its staged place; a full restage would restore the order.
+- [x] On a chat's first open with no kept copy the composer appeared only with the messages (about 0.6 s
+  after the push). The composer bar was inside `if threadShown`; now it is there from the push's first frame.
+- [ ] The voice button in the composer still fades in only when the messages arrive: its entry animation
+  starts at the next commit (Exact finding 155). Its slot is laid out from the first frame, so nothing moves.
 
 ## Daily-use report: navigation, cached chats and preview receipts (2026-11-04)
 
@@ -2715,8 +2966,69 @@ notifications reach no app code (no `willPresent` / `didReceive` hatch).
 
 ## Phase 5: Mac app (M5), rough
 
-- Build matrix-rust-sdk's Swift bindings for macOS. The components package is iOS only.
-- Run the Exact app on macOS.
+Spike (step 0) done 2026-11-08 on `feat/mac-spike`. Screens in `apps/multiplexer/.exact/mac/`
+(gitignored, on the worktree that ran it).
+
+- [x] Build matrix-rust-sdk's Swift bindings for macOS: `./scripts/build-matrix-sdk-macos.sh`
+  (once per SDK version, about 5 min), then `./scripts/setup-matrix-sdk.sh` adds the slice.
+- [x] Run the Exact app on macOS: `bun exact.mjs mac`, then `bun exact.mjs agent macos
+  --size 900x700 --chrome platform ...`. Sign-in, the chat list, a chat, sending and Sign Out
+  work as `@test1`. `bun exact.mjs test macos` passes, as `test ios` does.
+- [x] Send approved diaries: receipt `d4e3cf84-6906-40a6-8113-9d12066c2420`.
+- [x] Open Exact fixes: [#1603](https://github.com/ccheever/exact2/pull/1603)
+  documents the Mac commands and verify limitation; [#1604](https://github.com/ccheever/exact2/pull/1604)
+  separates module logs from drive replies. Neither is merged or integrated here.
+- [x] Fix the enabled Mac Sign In toolbar button ignoring clicks: Exact local
+  `9a78f32cd9`, integration `afac7b1370`, 24 HeaderMacTests pass after a red regression.
+  Return from the password field worked around it in the running app. Corrected
+  build completed; current process remains on its original binary until relaunch.
+- [x] Work around the Mac send SIGTRAP: omit the composer's glass group on macOS,
+  keep iOS grouped. Three removal-control sends and five final-build sends survived;
+  final messages inspected in light/dark captures. All Mac authored and 13 TypeScript
+  tests pass. Test account signed out. Underlying Exact finding 157 remains open.
+- [ ] Fix the underlying AppKit glass-layout SIGTRAP in Exact (finding 157).
+  Reproduced again with the test account on 2026-11-08, signed out afterward.
+  Isolated animated/tinted glass swaps pass in manual drives. The saved authored
+  test crashed with SIGTRAP in 1 of 2 consecutive runs. Intermittent reduction:
+  `tools/mac-glass-probe/`. Next capture its debugger stack and compare with the
+  full app before claiming a shared mechanism.
+- [x] Visual faults seen at 900x700: the chat's header shows a Back button ("< 11") inside the
+  split and lies over the messages; the composer covers the newest message and is cut at the
+  window's bottom; the sidebar's bottom bar overlaps the list, with a stray sidebar button.
+  Desktop in-flow header/composer/bottom bar and separate phone offsets verified in light/dark
+  at 900x700 and narrow at 700x600. Sidebar controls no longer cover the final list rows.
+- [x] MatrixCore tests on macOS (no Simulator): opt-in local adapter and combined
+  XCFramework; 27 auth-free XCTest cases pass, including SDK link smoke. Default iOS
+  dependency/test selection preserved. Commit `5cd0b8c`; `/tmp/mx-mac-core-green.log`.
+  Authenticated Mac core coverage remains outside this runner.
+- [x] Desktop input: Enter sends, Shift+Enter adds a line, Cmd+K opens existing
+  conversation search; Escape closes it. Hover and right-click controls verified.
+  A real text-file drop staged an attachment and Send delivered the file/caption as `@test1`.
+  Native IME behavior remains unverified.
+- [x] Cmd+N starts a new direct conversation: dedicated contact picker, account filter,
+  Matrix full-ID selection, discovered bridge contacts/search and explicit room reuse/create.
+  Sidebar retained; normal composer opens. Review availability findings fixed with regressions.
+  Core 42 passed/one credential skip, separate authenticated DM test passed, Bun 38/38,
+  Mac authored 13/13. Test-account message confirmed sent; Cmd+N/Cmd+K, Cancel/Escape,
+  light/dark and narrow screenshots inspected; test account signed out. Connected bridge
+  contact/DM runtime and shared iOS runtime remain unverified. No Group/Blast/Join controls.
+  Evidence: `tasks/evidence/mac-new-conversation.json`.
+  Main `04905bb` integrated before merge: core 42 passed/one skip, Bun 43 passed,
+  Contract/TypeScript `[]`; only additive planning text required manual resolution.
+- [x] Local notifications from live sync, global unread Dock badge and `keepRunning`.
+  A hidden-window drive received a test message, recorded one delivered notification and
+  badge 12. Notification-click routing passed signed in; a saved click after signout
+  opened no room. Test account signed out and the badge cleared. Agent intercepts OS delivery; actual system banner/permission presentation
+  remains a manual check. Policy and delivery tests cover mute, merge, focus, startup,
+  account resets and overlapping refreshes. Timestamp collisions/backdated messages
+  remain silent because summaries do not expose an event identity.
+- [ ] Ship: Developer ID, notarization, `.dmg`, auto-update.
+  Preparation only is complete (`af9ddca`): `scripts/package-macos.sh` and
+  `docs/mac-distribution.md`, refusal/dry-run checks passed. Blocked by no valid Developer
+  ID Application identity and a development-trust bundle. Real signing/DMG generation,
+  notarization, clean-Mac install and update delivery are unverified; updates stay disabled.
+- Keychain on the Mac: the session went to the login keychain without a prompt in drives.
+  Check again in a signed build.
 
 ## Phase 6: others can install it (M6), rough
 
@@ -2755,3 +3067,5 @@ item styling/invalidation correction needs source review and rendered verificati
 
 - Feedback sent with Rami's approval: one generic diary and 13 command-log lines; receipt
   `8fbdbfd5-a50f-42b6-8faf-6a0277eaa0ed`. Other pending diaries and repository documents were excluded.
+
+Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).

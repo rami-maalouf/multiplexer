@@ -1,7 +1,15 @@
 import Foundation
-#if canImport(UIKit)
+#if os(macOS)
+import AppKit
+#else
 import UIKit
 #endif
+
+/// The module's log line, on standard error. Exact's mac host answers a drive on standard
+/// output, so a `print` there would be read as the drive's reply.
+func moduleLog(_ line: String) {
+    FileHandle.standardError.write(Data((line + "\n").utf8))
+}
 
 /// Answers app.ts's asks with MatrixCore (the core-*.swift files beside this one).
 /// the session is in the keychain; its store is in data or the app group's container.
@@ -16,11 +24,17 @@ final class Matrix: ExactModule {
     private lazy var pending = SessionKeychain(service: keychain.service, slot: "sign-out")
     private var signingOutPending = false
     private var sessionStore: SessionStore {
+        // the mac has no notification extension to share the store with, so no app group.
+        #if os(macOS)
+        let group: URL? = nil
+        #else
         let group = context.agent ? nil : FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ramimaalouf.multiplexer")
+        #endif
         return SessionStore(dataDirectory: context.data, groupContainer: group, agent: context.agent)
     }
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
     private var account: Task<MatrixAccount, Error>?
+    private var conversationRevision = 0
     /// The chat list's receipt watch reads only while the list is on screen and the app in front.
     private var listShown = true, inFront = true
     private var lifecycle: [NSObjectProtocol] = []
@@ -30,11 +44,30 @@ final class Matrix: ExactModule {
     }
     @MainActor private func observeLifecycle() {
         guard lifecycle.isEmpty else { return }
-        for (name, front) in [(UIApplication.didEnterBackgroundNotification, false), (UIApplication.willEnterForegroundNotification, true)] {
-            lifecycle.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.inFront = front; self?.applyReceiptWatch() }
+        #if os(macOS)
+        let changed: @MainActor @Sendable () -> Void = { [weak self] in
+            guard let self else { return }
+            self.inFront = NSApp.occlusionState.contains(.visible)
+            self.applyReceiptWatch()
+            self.context.changed("desktop")
+        }
+        for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification,
+                     NSApplication.didChangeOcclusionStateNotification, NSWindow.didChangeOcclusionStateNotification] {
+            lifecycle.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { changed() }
             })
         }
+        #else
+        let changed: @MainActor @Sendable (Bool) -> Void = { [weak self] front in
+            self?.inFront = front
+            self?.applyReceiptWatch()
+        }
+        for (name, front) in [(UIApplication.didEnterBackgroundNotification, false), (UIApplication.willEnterForegroundNotification, true)] {
+            lifecycle.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { changed(front) }
+            })
+        }
+        #endif
     }
     /// Topics that changed and app.ts has not heard of yet: a burst of changes becomes one ask.
     private var changedTopics: Set<String> = []
@@ -50,13 +83,21 @@ final class Matrix: ExactModule {
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
         switch request["op"] as? String {
+        case "composerSurface":
+            #if os(macOS)
+            return ["groupedGlass": false, "desktop": true]
+            #else
+            return ["groupedGlass": true, "desktop": false]
+            #endif
+        case "dropBatch":
+            return ["id": UUID().uuidString]
         case "session":
             defer { signOutPending() }
             return ["userId": try stored()?.session.session.userId ?? ""]
         case "keptLinkPreviews":
             // a kept copy of a chat shows its links' cards at once: the kept previews, read now.
             return ["items": ((request["known"] as? [String]) ?? []).compactMap { Self.keptLinkPreview(Self.linkPreviewName($0), in: media) }]
-        default: throw ExactNativeRefusal("matrix answers session and keptLinkPreviews")
+        default: throw ExactNativeRefusal("matrix answers composerSurface, session and keptLinkPreviews")
         }
     }
 
@@ -65,8 +106,24 @@ final class Matrix: ExactModule {
             do {
                 switch request["op"] as? String {
                 case "signIn":
+                    conversationRevision += 1
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
                                             password: request["password"] as? String ?? ""))
+                case "desktopRooms":
+                    let account = try await signedIn()
+                    let inbox = try await account.scopedInbox(filter: .all)
+                    let rooms = inbox.chats.filter { !$0.isHidden }
+                    #if os(macOS)
+                    let active = context.agent || NSApp.isActive
+                    let visible = context.agent
+                        ? NSApp.windows.contains { $0.isVisible && $0.canBecomeMain }
+                        : NSApp.occlusionState.contains(.visible)
+                    #else
+                    let active = true, visible = true
+                    #endif
+                    reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
+                                "unread": inbox.unreadChats, "active": active, "visible": visible,
+                                "now": UInt64(Date().timeIntervalSince1970 * 1000)])
                 case "rooms":
                     // every chat under the filter menu and the filter sheet's network ("": every
                     // network) or community; `listed` spans inbox, Archive and Low Priority so the
@@ -89,7 +146,7 @@ final class Matrix: ExactModule {
                     let community = communities.first { $0.id == chosen }
                     let inbox = community != nil ? all.on(community: community) : all.on(network: network.isEmpty ? nil : network)
                     let rooms = inbox.chats
-                    print("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+                    moduleLog("matrix: rooms answered \(rooms.count) chats in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
                     reply.send(["rooms": rooms.map { roomRecord($0, listed: inbox.listed.contains($0.id), account, topic: "rooms") },
                        "pinned": inbox.pinned.map(\.id), "unread": inbox.unreadChats,
                        "archiveUnread": inbox.unreadChats(in: .archive), "lowPriorityUnread": inbox.unreadChats(in: .lowPriority),
@@ -190,6 +247,8 @@ final class Matrix: ExactModule {
                 case "canSendLater", "sendLater", "scheduled", "scheduledAction", "reschedule":
                     // Send Later (MatrixCore's ScheduledMessages.swift): messages that wait on the server.
                     reply.send(try await sendLater(request["op"] as? String ?? "", request))
+                case "conversationAccounts", "conversationContacts", "startConversation":
+                    reply.send(await conversation(request))
                 case "search":
                     // what the search screen shows (MatrixCore's Search.swift): a kind's messages, the
                     // recent chats before any word, or chats by name, messages and links.
@@ -202,7 +261,9 @@ final class Matrix: ExactModule {
                     let roomId = request["roomId"] as? String ?? "", account = try await signedIn()
                     // the chat's messages at once, with its "New" line (the first message after this
                     // account's read receipt) when known; settling: more comes, and the chat hears of it.
-                    let opening = try await account.opening(roomId: roomId, limit: request["limit"] as? Int ?? 20)
+                    // early: the app has a kept copy to show in front; else it waits for the full first screen.
+                    let opening = try await account.opening(roomId: roomId, limit: request["limit"] as? Int ?? 20,
+                                                            early: request["early"] as? Bool ?? true)
                     let messages = opening.messages
                     reply.send(["atStart": opening.atStart, "firstUnread": opening.firstUnread ?? "", "settling": opening.settling,
                                 "messages": messages.map {
@@ -291,7 +352,7 @@ final class Matrix: ExactModule {
                     } catch RecoveryKeyError.wrongKey {
                         reply.send(["ok": false, "problem": "wrongKey"])
                     } catch {
-                        print("matrix: recovery failed: \(error)")
+                        moduleLog("matrix: recovery failed: \(error)")
                         reply.send(["ok": false, "problem": "failed"])
                     }
                 case "maxUploadSize":
@@ -363,6 +424,65 @@ final class Matrix: ExactModule {
         }
     }
 
+    // bind every reply to its signed-in owner and request; a session change invalidates it.
+    @MainActor private func conversation(_ request: [String: Any]) async -> [String: Any] {
+        let op = request["op"] as? String ?? ""
+        let owner = request["owner"] as? String ?? ""
+        let source = request["account"] as? String ?? ""
+        let query = request["query"] as? String ?? ""
+        let revision = conversationRevision
+        var result: [String: Any] = ["owner": owner, "problem": ""]
+        if op == "conversationAccounts" {
+            result["accounts"] = [[String: String]]()
+        } else if op == "conversationContacts" {
+            result["account"] = source
+            result["query"] = query
+            result["contacts"] = [[String: String]]()
+        } else {
+            result["visit"] = request["visit"] as? String ?? ""
+            result["account"] = source
+            result["identifier"] = request["identifier"] as? String ?? ""
+            result["room"] = ""
+        }
+        do {
+            let account = try await signedIn()
+            guard revision == conversationRevision, !owner.isEmpty, try account.userId == owner else {
+                throw ExactNativeRefusal("the signed-in account changed; reopen new conversation")
+            }
+            switch op {
+            case "conversationAccounts":
+                let listing = try await account.conversationAccounts()
+                result["problem"] = listing.problem
+                result["accounts"] = listing.items.map {
+                    ["id": $0.id, "name": $0.name, "network": $0.network]
+                }
+            case "conversationContacts":
+                let listing = try await account.conversationContacts(accountId: source, query: query)
+                result["problem"] = listing.problem
+                result["contacts"] = listing.items.map { contact in
+                    let picture = contact.avatar.isEmpty ? "" : cached(avatarFileName(contact.avatar), topic: "conversationContacts") {
+                        _ = try await account.pictureFile(url: contact.avatar, directory: self.media)
+                    }
+                    return ["id": contact.id, "accountId": contact.accountId, "name": contact.name,
+                            "identifier": contact.identifier, "network": contact.network, "avatar": picture]
+                }
+            default:
+                guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive starts conversations only as a test user") }
+                result["room"] = try await account.startConversation(accountId: source, identifier: request["identifier"] as? String ?? "")
+                context.changed("rooms")
+            }
+        } catch {
+            result["problem"] = (error as? ExactNativeRefusal)?.description
+                ?? (error as? LocalizedError)?.errorDescription
+                ?? (op == "startConversation" ? "Could not open this conversation. Check the address and try again." : "Could not load contacts. Choose another account or try again.")
+        }
+        if revision != conversationRevision {
+            result["owner"] = ""
+            if op == "startConversation" { result["room"] = "" }
+        }
+        return result
+    }
+
     /// The chats' kept last answers (R04: a chat opened again shows them in its first frame): message
     /// text, names, and the file names of pictures in the media cache (no picture itself). They live in
     /// the session's store folder, which Sign Out deletes, with the file protection the app can still
@@ -408,7 +528,7 @@ final class Matrix: ExactModule {
         Task { @MainActor in
             if await MatrixAccount.signOutOnServer(stale.session, scratchDirectory: scratch) {
                 try? pending.delete()
-                print("matrix: signed out a session whose store was gone")
+                moduleLog("matrix: signed out a session whose store was gone")
             }
             signingOutPending = false
         }
@@ -572,7 +692,7 @@ final class Matrix: ExactModule {
             case .scheduleRefused(let why): problem = why.contains("DELAY_TOO_LARGE") || why.contains("too large") ? "far" : (why.contains("past") ? "past" : "failed")
             default: throw error
             }
-            print("matrix: send later refused (\(problem)): \(error)")
+            moduleLog("matrix: send later refused (\(problem)): \(error)")
             return op == "scheduledAction" ? ["ok": false, "problem": problem] : ["id": "", "at": 0, "problem": problem]
         }
     }
@@ -601,7 +721,7 @@ final class Matrix: ExactModule {
             let found = try await account.search(query)
             (chats, messages, links) = (found.chats, found.messages, found.links)
         }
-        print("matrix: search answered \(chats.count) chats, \(messages.count) messages and \(links.count) links in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+        moduleLog("matrix: search answered \(chats.count) chats, \(messages.count) messages and \(links.count) links in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
         func hit(_ m: FoundMessage) -> [String: Any] {
             ["room": m.chat.id, "chatName": m.chat.name, "isDirect": m.chat.isDirect, "network": m.chat.network,
              "avatar": cached(m.chat.avatarName, topic: "search") { _ = try await account.avatarFile(roomId: m.chat.id, directory: self.media) },
@@ -628,7 +748,7 @@ final class Matrix: ExactModule {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
                 guard let account else { return }
                 let status = await account.searchIndexStatus()
-                print("matrix: search index \(mb(status.indexBytes)), event cache \(mb(status.eventCacheBytes)), backfill \(status.backfillDone ? "done" : "running") after \(Int(status.backfillSeconds)) s")
+                moduleLog("matrix: search index \(mb(status.indexBytes)), event cache \(mb(status.eventCacheBytes)), backfill \(status.backfillDone ? "done" : "running") after \(Int(status.backfillSeconds)) s")
                 if status.backfillDone { return }
             }
         }
@@ -780,6 +900,7 @@ final class Matrix: ExactModule {
     /// Asks the server to forget this device, then forgets the session here. If the server
     /// could not be reached, the session waits to be signed out there later.
     @MainActor private func signOut() async throws {
+        conversationRevision += 1
         // resolving first refuses sign-out when the actual store cannot be reached.
         // read the metadata after migration, so deletion always names its actual directory.
         let resolved = try stored()

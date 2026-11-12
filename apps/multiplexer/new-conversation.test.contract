@@ -1,0 +1,15 @@
+// auth-free route coverage; the parent runs native verification after integration.
+test "new conversation is distinct from existing chat search and cancel returns"
+  at "/conversations/new"
+  clock data
+  expect tree has "new-conversation"
+  expect tree has "contact-search"
+  expect tree has "conversation-account"
+  expect tree missing "search-field"
+  expect tree missing "contact-start-matrix"
+  type "contact-search" "@someone:example.org"
+  expect tree missing "contact-start-matrix"
+  expect text "contacts-signed-out" == "Sign in to choose a contact."
+  tap "new-conversation-cancel"
+  clock settle
+  expect tree missing "new-conversation"

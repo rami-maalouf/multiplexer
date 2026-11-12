@@ -87,6 +87,24 @@ final class ChatOpeningTests: XCTestCase {
         try await later.markRead(roomId: room)
     }
 
+    // FRESH DEVICE: a chat with nothing kept in front of it (no copy) opens on its full first screen,
+    // not on the newest message alone.
+    func testAChatWithNothingKeptOpensOnItsFullFirstScreen() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("MATRIX_TEST_USER and MATRIX_TEST_PASSWORD are not set")
+        }
+        let account = try await signInTestDevice(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let found = try await account.rooms().first { $0.name == roomName }?.id
+        let roomId = try XCTUnwrap(found, "no room \(roomName)")
+
+        let first = try await account.opening(roomId: roomId, limit: 20, early: false)
+        XCTAssertFalse(first.settling, "the answer waits for the fill")
+        XCTAssertGreaterThanOrEqual(first.messages.count, 20, "the room holds more than 20 messages")
+        let full = try await account.messages(roomId: roomId, limit: 20)
+        XCTAssertEqual(first.messages.map(\.id), full.map(\.id), "nothing comes after the first answer")
+    }
+
     /// Waits up to 30 s for `done`.
     private func until(_ what: String, _ done: () async throws -> Bool) async throws {
         let start = Date()

@@ -4,6 +4,9 @@ Documentation only, 2026-11-05. No agents, implementation, app builds, device ac
 
 The supplied 3:58 recording was retrieved at 1206 x 2622 and reviewed across the full timeline. Local speech transcription and timestamped source frames support the findings. The video does not display a build identity; the recently delivered phone build is context, not a verified identification of this recording.
 
+Screenshot timestamps below are references to private local evidence, not public
+image links. The public repository intentionally does not contain these captures.
+
 Raw evidence contains real chats and stays in gitignored `research/iphone-feedback-20261105/`. The safe issue descriptions below omit contact names, message bodies and private URLs. The local illustrated report is `research/iphone-feedback-20261105/report/index.html`; exact source PNGs, transcript and SHA256 manifest are alongside it.
 
 ## What matters first
@@ -54,7 +57,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Existing horizontal-list acceptance remains open. Finding 124 concerns drag-release link activation; that related fix does not prove absence of list panning.
 
-**Screenshots:** [00:10](../../research/iphone-feedback-20261105/screenshots/010s.png), [00:12](../../research/iphone-feedback-20261105/screenshots/012s.png), [00:17](../../research/iphone-feedback-20261105/screenshots/017s.png), [00:24](../../research/iphone-feedback-20261105/screenshots/024s.png), [00:28](../../research/iphone-feedback-20261105/screenshots/028s.png)
+**Screenshots:** 00:10 (`010s.png`, private local capture), 00:12 (`012s.png`, private local capture), 00:17 (`017s.png`, private local capture), 00:24 (`024s.png`, private local capture), 00:28 (`028s.png`, private local capture)
 
 ### R02: Add row swipe actions, including a full swipe
 
@@ -72,7 +75,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** B7 long-press actions do not satisfy this swipe requirement.
 
-**Screenshots:** [00:36](../../research/iphone-feedback-20261105/screenshots/036s.png), [00:42](../../research/iphone-feedback-20261105/screenshots/042s.png), [00:44](../../research/iphone-feedback-20261105/screenshots/044s.png), [00:45](../../research/iphone-feedback-20261105/screenshots/045s.png)
+**Screenshots:** 00:36 (`036s.png`, private local capture), 00:42 (`042s.png`, private local capture), 00:44 (`044s.png`, private local capture), 00:45 (`045s.png`, private local capture)
 
 ### R03: Restore scrolling immediately when returning to the app
 
@@ -90,7 +93,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Track separately from horizontal movement and chat swipe-back corruption.
 
-**Screenshots:** [01:00](../../research/iphone-feedback-20261105/screenshots/060s.png), [01:03](../../research/iphone-feedback-20261105/screenshots/063s.png), [01:06](../../research/iphone-feedback-20261105/screenshots/066s.png), [01:09](../../research/iphone-feedback-20261105/screenshots/069s.png), [01:14](../../research/iphone-feedback-20261105/screenshots/074s.png)
+**Screenshots:** 01:00 (`060s.png`, private local capture), 01:03 (`063s.png`, private local capture), 01:06 (`066s.png`, private local capture), 01:09 (`069s.png`, private local capture), 01:14 (`074s.png`, private local capture)
 
 ### R04: Stop replacing available chat history with a loading screen
 
@@ -108,7 +111,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Cache foundation/placement checkpoints are not integrated into the phone build. Their fixture passes and older timings do not close this report; final-page delivery and deep-unread remain open.
 
-**Screenshots:** [02:08](../../research/iphone-feedback-20261105/screenshots/128s.png), [02:09](../../research/iphone-feedback-20261105/screenshots/129s.png)
+**Screenshots:** 02:08 (`128s.png`, private local capture), 02:09 (`129s.png`, private local capture)
 
 ### R05: Make the inbox top edge translucent rather than a heavy dark band
 
@@ -126,7 +129,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Inbox status-band/background-extension work is unfinished. This is a product-level visual requirement, not proof that the proposed API is correct or sufficient.
 
-**Screenshots:** [01:32](../../research/iphone-feedback-20261105/screenshots/092s.png), [01:41](../../research/iphone-feedback-20261105/screenshots/101s.png), [01:54](../../research/iphone-feedback-20261105/screenshots/114s.png), [02:00](../../research/iphone-feedback-20261105/screenshots/120s.png)
+**Screenshots:** 01:32 (`092s.png`, private local capture), 01:41 (`101s.png`, private local capture), 01:54 (`114s.png`, private local capture), 02:00 (`120s.png`, private local capture)
 
 ### R06: Let inbox content remain perceptible beneath the floating bottom bar
 
@@ -144,7 +147,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** App-level backdrop intent must be reviewed alongside native clearance; changing only a glass token may leave the opaque backing intact.
 
-**Screenshots:** [01:41](../../research/iphone-feedback-20261105/screenshots/101s.png), [01:54](../../research/iphone-feedback-20261105/screenshots/114s.png), [02:00](../../research/iphone-feedback-20261105/screenshots/120s.png)
+**Screenshots:** 01:41 (`101s.png`, private local capture), 01:54 (`114s.png`, private local capture), 02:00 (`120s.png`, private local capture)
 
 ### R07: Use a progressive chat-header treatment, including the status area
 
@@ -162,7 +165,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Signed-out Settings tint/back proofs do not validate this authenticated chat header.
 
-**Screenshots:** [02:09](../../research/iphone-feedback-20261105/screenshots/129s.png), [02:16](../../research/iphone-feedback-20261105/screenshots/136s.png), [02:25](../../research/iphone-feedback-20261105/screenshots/145s.png), [02:34](../../research/iphone-feedback-20261105/screenshots/154s.png), [02:44](../../research/iphone-feedback-20261105/screenshots/164s.png), [03:53](../../research/iphone-feedback-20261105/screenshots/233s.png)
+**Screenshots:** 02:09 (`129s.png`, private local capture), 02:16 (`136s.png`, private local capture), 02:25 (`145s.png`, private local capture), 02:34 (`154s.png`, private local capture), 02:44 (`164s.png`, private local capture), 03:53 (`233s.png`, private local capture)
 
 ### R08: Make the composer field float over visible, softened conversation content
 
@@ -180,7 +183,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Treat content-underlay, field material and keyboard geometry together; no cosmetic-only acceptance based on a static token.
 
-**Screenshots:** [02:59](../../research/iphone-feedback-20261105/screenshots/179s.png), [03:06](../../research/iphone-feedback-20261105/screenshots/186s.png), [03:28](../../research/iphone-feedback-20261105/screenshots/208s.png), [03:53](../../research/iphone-feedback-20261105/screenshots/233s.png), [03:56](../../research/iphone-feedback-20261105/screenshots/236s.png)
+**Screenshots:** 02:59 (`179s.png`, private local capture), 03:06 (`186s.png`, private local capture), 03:28 (`208s.png`, private local capture), 03:53 (`233s.png`, private local capture), 03:56 (`236s.png`, private local capture)
 
 ### R09: Give Add and voice controls the same floating material treatment
 
@@ -198,7 +201,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Existing Add/media/voice functionality is retained; the recording requests a visual/layout correction, not a new sending workflow.
 
-**Screenshots:** [03:06](../../research/iphone-feedback-20261105/screenshots/186s.png), [03:28](../../research/iphone-feedback-20261105/screenshots/208s.png), [03:53](../../research/iphone-feedback-20261105/screenshots/233s.png)
+**Screenshots:** 03:06 (`186s.png`, private local capture), 03:28 (`208s.png`, private local capture), 03:53 (`233s.png`, private local capture)
 
 ### R10: Preserve the native translucent keyboard context
 
@@ -216,7 +219,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** This is a documented requirement and missing comparison, not a reproduced Multiplexer keyboard bug.
 
-**Screenshots:** [03:21](../../research/iphone-feedback-20261105/screenshots/201s.png), [03:28](../../research/iphone-feedback-20261105/screenshots/208s.png), [03:35](../../research/iphone-feedback-20261105/screenshots/215s.png)
+**Screenshots:** 03:21 (`201s.png`, private local capture), 03:28 (`208s.png`, private local capture), 03:35 (`215s.png`, private local capture)
 
 ### R11: Review rich link previews versus plain URL bubbles
 
@@ -232,7 +235,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Keep separate from the explicit loading/material blockers and do not silently expand this documentation task into network preview implementation.
 
-**Screenshots:** [02:09](../../research/iphone-feedback-20261105/screenshots/129s.png), [02:16](../../research/iphone-feedback-20261105/screenshots/136s.png), [03:06](../../research/iphone-feedback-20261105/screenshots/186s.png)
+**Screenshots:** 02:09 (`129s.png`, private local capture), 02:16 (`136s.png`, private local capture), 03:06 (`186s.png`, private local capture)
 
 ### R12: Review inbox typography, density and visual hierarchy
 
@@ -248,7 +251,7 @@ Priority is proposed triage, not permission to start implementation. The user ca
 
 **Existing work / limits:** Existing B1/B6/B9-style parity goals provide context; this remains a secondary design review item.
 
-**Screenshots:** [00:10](../../research/iphone-feedback-20261105/screenshots/010s.png), [01:32](../../research/iphone-feedback-20261105/screenshots/092s.png), [01:41](../../research/iphone-feedback-20261105/screenshots/101s.png), [02:00](../../research/iphone-feedback-20261105/screenshots/120s.png)
+**Screenshots:** 00:10 (`010s.png`, private local capture), 01:32 (`092s.png`, private local capture), 01:41 (`101s.png`, private local capture), 02:00 (`120s.png`, private local capture)
 
 ## Other visible differences and what they do not establish
 

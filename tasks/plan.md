@@ -1,6 +1,6 @@
-# Multiplexer: plan
+# Mux: plan
 
-Multiplexer combines many chat networks into one inbox on a server I own.
+Mux (formerly Multiplexer) combines many chat networks into one inbox on a server I own.
 
 ## Status
 
@@ -18,11 +18,223 @@ allowlist; private identities and lookup details live in ignored `.local/account
 Tracked account references are generalized. Runtime behavior and existing git history
 are unchanged; the local note is not included in commits.
 
+**Public documentation audit (2026-11-10):** source-checked the public entry points,
+added docs/install.md, docs/README.md and CONTRIBUTING.md, and corrected stale Mac,
+push and server-bootstrap claims. Documented the fixed maintainer push gateway,
+plaintext bridge boundary, domain-specific operator scripts and the unpublished
+Exact integration dependency. Removed public image links to intentionally private
+captures, retaining timestamps and filenames. Updated website copy and bundled
+font notices. This was a documentation audit, not a new native build or server
+inspection; dated verification below keeps its original scope.
+
 **License (2026-11-10):** at Rami's request, the project's original code is now
 GPL-3.0-only. The root LICENSE contains the official GNU GPL v3 text; README.md
 declares the scope and copyright, and app package/Cargo metadata agrees. There
 was no root license before; Cargo metadata alone declared MIT. Third-party
 licenses and asset attribution remain in force. No runtime behavior changed.
+
+**Expo Exact migration (2026-11-09):** Mux now builds against the shared
+`expo-exact` checkout on branch `local/mux-integration` (was
+`exact2-multiplexer-integration`). App path rewrites landed in this repo; Mux's
+local Exact fixes (scroll return, keyboard toolbar under glass, navigation tint,
+recording levels, archive packaging, Mac toolbar click) are committed there as
+`8536d208c`. The final app dependency paths use `expo-exact`; the initial
+`update` omission of package file dependencies remains recorded as finding 46.
+Verification on the new checkout: 38 Bun tests, contract
+`[]`, iOS verify 13/13, Mac authored tests 13/13, framework caps clean, Mac
+toolbar suite 25/25, and the targeted iOS Swift suites green (one XCTSkip for a
+pre-existing window-release assertion that also fails on the old checkout).
+
+**Mac merge preparation (2026-11-09):** integrated main `04905bb` into the Mac
+branch, preserving the CLI and TestFlight updates. The only manual conflict was
+additive plan/status text and the SDK risk entry; both build paths remain documented.
+Combined verification: 42 core tests passed, one credential-dependent test skipped,
+43 Bun tests passed, and the Contract/TypeScript gate returned `[]`.
+
+**New conversation (2026-11-09):** Cmd+N now opens a dedicated contact picker;
+Cmd+K retains existing chat search. The Mac sidebar stays visible, account filtering
+includes Matrix and discovered bridge logins, and explicit selection opens a new or
+existing direct room with the normal composer. Group, Blast and Join are outside
+this direct-chat slice. MatrixCore owns discovery, contact search, identifier
+resolution and room creation; native/UI replies remain bound to account and visit.
+Bearer requests accept only the homeserver HTTPS origin and refuse redirects.
+
+The completed review receipt `mux-new-conversation-20261108-quality` retained three
+availability defects. All are corrected: discovery failure preserves Matrix,
+individual bridge failure preserves other contacts with a warning, and identifier
+404 becomes an empty search. Fifteen conversation fixtures and the full native core
+suite pass (42 passed, one credential-dependent test skipped). The separate real
+integration test passed self/peer DM creation-or-reuse, immediate reuse and m.direct
+preservation. It does not force a fresh creation branch. All 38 Bun tests and 13
+Mac authored tests pass. A test-account drive opened the picker, selected a full
+Matrix ID, opened the composer, sent a server-confirmed message, verified Cmd+N,
+Cmd+K, Cancel and Escape, and signed out. Light 900x700 and dark 700x600 captures
+were inspected. No connected real-account bridge contacts or bridge DM creation
+were exercised; those remain a runtime verification limit. Shared iOS runtime was
+not rerun. Evidence: `tasks/evidence/mac-new-conversation.json`.
+
+**Remaining Mac features (2026-11-08):** desktop Enter/Shift+Enter, Cmd+K
+conversation search (Cmd+N superseded by the picker above), hover, context menus and staged file drops are implemented.
+The header and bottom controls use Mac spacing without the phone's negative
+insets; the header retains merged-network switching. The native module supplies
+unfiltered live summaries for local notifications and the global unread Dock
+badge, and the manifest enables `keepRunning`. Snapshot policy suppresses history,
+outgoing messages, focused chats and muted children of merges. Pending delivery
+survives ordinary refreshes and cancels on account/permission changes. Notification
+clicks validate against the current Keychain account before opening a room.
+
+Native auth-free MatrixCore tests pass 27/27 on Mac (commit `5cd0b8c`); iOS keeps
+its default package selection. All 38 TypeScript tests and all 12 Mac authored
+tests pass. A real test-account file drop and send succeeded. Light/dark and
+700x600 screenshots were inspected. A hidden-window test received a new message,
+reported one delivered local notification and a Dock badge of 12. Agent delivery
+is intercepted; no actual macOS system banner has been verified. Final chooser
+and merged-network screenshots were inspected in light/dark; the selector changed
+the open test room from WhatsApp to Instagram. A notification click opened the
+right room while signed in, and the same saved entry left a signed-out launch on
+sign-in. The test account signed out and the badge cleared. App commit `fdce07a`. Latest normal bundle rebuilt and reopened; native window
+inspected read-only at the inbox, with no real-account room opened.
+
+Independent `ce-code-review` receipt: `mac-20261108-remaining`, completed in
+`/tmp/compound-engineering-501/ce-code-review/mac-20261108-remaining`.
+All three actionable findings have local fixes and regression evidence.
+Distribution preparation is committed as `af9ddca`: a supplied production-bundle
+wrapper and operator guide. This Mac has no valid Developer ID Application
+identity; the existing app has development trust. Signing, real DMG generation,
+notarization, clean-Mac installation and updates remain unverified. No upload,
+notarization or update feed was configured. The underlying Exact glass fault
+remains open; the app uses its verified ungrouped-composer workaround. Shared iOS
+runtime and native IME composition were not rechecked in this Mac session.
+
+
+**Mac send-crash workaround (2026-11-08):** after a normal-app Send closed Mux,
+the crash report confirmed main-thread SIGTRAP in AppKit layout. Removing only the
+composer glass group survived three test-account sends. The final implementation
+asks the native module whether composer glass can be grouped: false on macOS,
+true on iOS. A slot wrapper shares all composer controls and selects a grouped or
+ungrouped row. Contract/TypeScript checks and all Mac authored tests pass; all 13
+TypeScript tests pass. Five consecutive sends on the final Mac build appeared in
+the test chat, then the account signed out. Light/dark captures inspected at
+`.exact/mac/send-fixed-{light,dark}.png`; existing Mac chrome overlaps remain.
+The framework's underlying glass fault (157) stays open; this is an app workaround.
+The iOS branch keeps spacing 8 but has no new native runtime verification this turn.
+
+
+**Mac sign-in click (2026-11-08):** reproduced an enabled toolbar button ignoring
+clicks in the normal Mac app. Return from the password field signed in; the running
+user session is left open. Root cause: AppKit forwards item.action changes to the
+custom NSButton, replacing its specialized handler on toolbar sync. Exact local
+commit `9a78f32cd9` restores the button target/action each refresh, integrated as
+`afac7b1370`. The native regression failed before the fix; all 24 HeaderMacTests
+pass afterward, and caps passes. Corrected app build completed; no upstream PR or
+feedback send for this new finding (159).
+
+
+**Mac follow-up (2026-11-08):** Rami approved sending the three diaries and opening
+Exact fixes. Sent 3 diaries/19 command records, receipt
+`d4e3cf84-6906-40a6-8113-9d12066c2420`. Public Exact PRs #1603 (Mac command docs)
+and #1604 (reserve stdio replies before native modules start) are open. Carrier
+regression failed before the change; driver tests pass 49 with 1 browser test
+skipped, the full Mac host builds and a live state drive passes. Caps passes.
+The full app still traps after Send as the test account; signed out afterward.
+An account-free composer probe crashed with SIGTRAP in one of two consecutive
+authored-test runs; manual drives passed. `tools/mac-glass-probe/` preserves the
+intermittent reduction. Its stack and shared root cause are still unproved; no
+glass fix is claimed. Finding 157 and daily-Mac readiness stay open.
+
+
+**Mac spike (2026-11-08, branch `feat/mac-spike`, Phase 5 step 0, Rami's yes):** the
+iPhone app runs on the Mac with Exact's AppKit host. Signed in as `@test1`, it listed 74
+chats, opened a chat, sent 5 messages and signed out. The inbox and the chat show side by
+side with no layout work (Exact's list-detail split). Blocker: every send ends with a
+SIGTRAP in AppKit's glass layout (Exact finding 157). Mac push: local notifications only,
+while the app runs (Rami, 2026-11-08). Full Mac work waits for Phase 2 and Phase 4.
+
+**Agent CLI, read and guarded write commands implemented (2026-11-08, `feat/cli-c0`):**
+Swift `mx` shares MatrixCore and the macOS SDK. Added JSONL read/search, foreground watch,
+stdin recovery, confirmed text/reaction sends, explicit read receipts and Send Later.
+All writes require an external exact account/room policy; dry-run and durable local audit
+are built in. Reactions add only. One process owns the SDK store; stop watch before another
+command. No daemon or MCP is needed for the scripted acceptance. Cold first-list order still
+changes during SDK hydration; attempted readiness barriers did not prove completion and were
+removed. Recovery lacked credentials in the first run; the expanded test fixture now verifies
+it without resetting an existing backup. Real-account checks remain unverified. Results are in
+`tasks/todo.md` and `tasks/evidence/cli-acceptance-20261108.json`. No real account was accessed.
+Final review corrections passed 50 live checks and three unit tests. Audit records block
+writes after an incomplete tail; postaccept audit errors cannot report a refused send.
+Name resolution uses visible rows; search reports its bounded index scan. Rich attachment
+and reply metadata remain a documented output limitation for follow-up.
+Integrated current main `f6169a8`: additive plan/task conflicts retained both sides;
+combined release build, three unit tests and 51 live acceptance checks passed.
+The requested coverage expansion now passes 58 XCTest entries (57 substantive plus one
+subprocess helper) and 18 named live scenarios, zero blocked. Valid recovery, encrypted
+confirmed sends, merged reads/search, independent receipt observation and unscoped watch
+are now verified on the test accounts. Fractional-second scheduling and postaccept output
+failure reporting have regression fixes. `docs/cli-test-coverage.md` maps each command to
+proof and retains the cold-order/watch-delivery/real-account limits.
+Final reviewed suite: 58 XCTest entries, five Bun policy-backup tests, 19 live scenarios
+(zero blocked) and the legacy smoke suite all pass through `scripts/test-cli.sh`. A real
+closed-pipe regression exposed SIGPIPE termination after acceptance; explicit signal handling
+now produces the output-failure warning. Test policy has a private on-disk recovery snapshot.
+
+**TestFlight build 4 uploaded (2026-11-08):** archive built with Exact tip
+`ba8256a4a8` (mx-testflight + archive-refusal scope), notification extension packaged,
+and App Store Connect upload succeeded (`Mux.ipa`). Extension Info.plist now carries
+`DTPlatformName`, `DTPlatformVersion` and `UIRequiredDeviceCapabilities` (`arm64`) so
+distribution export accepts it. ASC is processing the build for TestFlight.
+
+**Main merge (2026-11-08):** PR #16 (`fix/release-readiness`) merged to `main`
+(`2f5a35a`). Product fixes from #12 and #13 landed with it; #14 closed as
+superseded. Exact archive-refusal scope is open as ccheever/exact2#1602 (clean;
+needs Exact maintainer merge — no push on that repo). Next: TestFlight archive
+build 4 with that Exact fix applied locally if upstream is not merged yet.
+
+**R03 read-only phone recheck (2026-11-07):** with Rami's OK, scrolled the signed-in orbit
+Mux inbox on the paired iPhone only (no chats opened, nothing sent or marked read). Home
+put the app in `runningBackgroundSuspended`; after reopen, two more scrolls each changed
+the visible rows. Freeze did not reproduce under automation. R03 stays open until a real
+finger freeze is gone or a proved fix lands. Evidence `/tmp/mx-ready-r03/`.
+
+**Release readiness continuation (2026-11-07):** branch `fix/release-readiness` holds
+TestFlight push packaging (`90736ae`) and the production push gateway with a separate
+scoped key (`7fcb305`). Controlled APNs probes for both environments returned the expected
+rejection for invalid tokens. RoomKinds now retries failed bridged-kind lookups (unit tests
+6/6 pass; uncommitted). Full MatrixCore run: 129 tests, 2 skipped, 1 failure
+(`testANewLineFurtherBackThanTheChatLoads`, unread stayed 24). Self-host guide is in
+`docs/self-hosting.md`. App PRs #12–#14 remain open and mergeable. Branch not pushed yet.
+
+**Exact validation continuation (2026-11-07):** recovered the newer original-thread
+checkpoint: Rami saved export compliance and build 2 showed Ready to Submit, assigned
+to Teammates, which contained only its invited owner. The prior browser blocker below
+is historical. App PRs #12, #13 and #14 and Exact #1560 are linked to this thread.
+Exact text fade retiming sampled the clock twice, shifting the calculated endpoint
+when execution was delayed between samples. Local commit `a7ae7d07b0` uses one sample
+for progress and the layer clock origin. All 35 TextPlace iOS cases passed, including
+the hosted pixel comparison; the existing endpoint assertion is unchanged. The endpoint
+test also passed 100 consecutive repetitions, and caps passed. Feedback receipt:
+`ac9481f6-814f-49b1-bbc1-33193c87b718` (one diary). This does
+not resolve the separately observed fade-completion callback timeout. Earlier tracing
+edits remain uncommitted and were present during this run. Navigation, menu and surface
+candidates remain local. Broad prerequisite validation was stopped for disk pressure;
+Cargo cleaned the disposable dev artifacts, recovering 24 GB free. No upload or shared
+Exact integration was performed.
+
+**Teammate-testing resumption (2026-11-07):** app fixes are committed in PR #14
+(`fix/members-composer-groups`, stacked on #13). Recorded drives show matching group
+counts, the composer mounted during first-open loading, corrected two-person bridged
+groups, and the restored staged unread badge. Focused verification passed: 12 iOS,
+13 app and 15 core tests. The full core run finished with 129 tests, two skipped and
+two failures (unread count stayed 22; recovery first sync timed out). Both failed
+cases passed together in isolation in 191.625 s; the full suite is not claimed green.
+No product code or timeout was changed during resumption. The owned MX demo Simulator
+is shut down. Remaining Exact work is committed locally in `exact2-rm-{expect,largetitle,menu,menusurface}`;
+its broad native validation still contains failures, so those fixes were not published
+or integrated. The drive CLI's 49 tests pass under pinned Bun 1.4.2; caps passes.
+Browser snapshots timed out, including on a fresh tab, and the fallback browser host
+is unavailable. TestFlight build 2's current compliance/installability is unverified;
+Rami previously chose to answer France himself. PR #14 is not in build 2. Export
+metadata remains unchanged pending that answer. The remaining diary was sent with
+Rami's prior authorization: receipt `be9ec5d7-b554-4bc1-8762-38bedae7bf5a`.
 
 **Push setup applied (2026-11-07):** after Rami's explicit approval, created a sandbox-only
 APNs key restricted to `com.ramimaalouf.multiplexer`, stored and verified it in Keychain,
@@ -52,10 +264,33 @@ open. The test account signed out, its pusher count returned to zero, and the ow
 simulator is off. No agent drive of the real account was performed.
 Other feature lanes remain outside this authorization.
 
+**Website and README (2026-11-06, `feat/mux-website`):** a root `README.md` (what Mux is, why,
+how it works, how it was built; no other product named) and the production site in `website/`:
+static HTML and CSS with a Three.js scene of the glass plane (three streams converging into its
+nose), bundled with Bun; the scene loads after first paint and holds still for reduced motion.
+Rami asked for Three.js and very little text, so it replaced the first version, an Exact site
+(Exact findings 137 to 142 came from that one). Live at `mux.orbitlabs.studio` (Vercel project
+`mux`, `website/deploy.sh`). A setup guide for others is the next document.
+
+**Mux identity (2026-11-06):** Rami selected the three-fold glass paper plane and
+named the app Mux. Visible app copy, manifest names, new Matrix device/push display
+names, and voice-file vendor metadata now use Mux. The approved PNG is packaged
+through the manifest's icon array; `docs/brand.md` records the artwork and palette.
+Rami authorized sending only this session's Exact diary; receipt
+`a83c1989-e345-4828-8cb5-60c983aeb0df` confirms one diary, zero commands and no
+attachments. The 41 older unsent diaries and the command-log cursor were preserved.
+Installation, Keychain, App Group, push and storage identifiers remain unchanged.
+Native verification passed: 12 tests, light/dark checks and 14 largest-text
+screens, clean in 124.4 s. The installed Home Screen icon and Mux label were
+visually inspected, as were both sign-in appearances. Receipt:
+`tasks/evidence/mux-branding-20261106.json`. Physical iPhone installation was not
+part of this run. This authorization covers branding
+only and does not reopen the halted feature queue below.
+
 **R03 / capsule tabs (2026-11-07, `fix/r03-scroll-and-tabs`):** phone log still points at
-`_UIFlexInteractionPanGestureRecognizer` (finding 137). An Exact `isEnabled` release workaround
+`_UIFlexInteractionPanGestureRecognizer` (finding 151). An Exact `isEnabled` release workaround
 did not fix the freeze on device and was reverted (`4251663c25`). R03 remains open. Capsule
-Inbox↔Archive no longer re-keys `roomList` (`scopedInbox` + `inChatList`) — kept. Exact tip
+Inbox↔Archive no longer re-keys `roomList` (`scopedInbox` + `inChatList`): kept. Exact tip
 `4251663c25`.
 
 **Daily chat chrome (2026-11-06, `fix/daily-chat-experience`):** mid-scroll keyboard rise
@@ -109,14 +344,14 @@ after the one-time stop. This deadline overrides the work queue below.
 
 | | |
 |---|---|
-| Current phase | Phase 0 done: M0 passed on 2026-10-28 (Synapse and WhatsApp on our server). Phase 1 done on the practice account. Phase 2: daily reading and sending. |
+| Current phase | Phase 0 and initial iOS work complete; iOS preview, native Mac development and agent CLI implemented. See docs/install.md for public availability and limitations. |
 | Beeper parity | Tasks B1 to B22 in `tasks/todo.md` ("Beeper parity"), from Rami's walkthrough (`research/beeper-walkthrough/report/index.html`, local only). Every question of the report is answered (decision log, 2026-11-02). Order: B1, then photos and files (B10, B11 with T2.12), then the rest of the inbox (B3 to B8), then push (Phase 3), then the chat details. Rules: D9 (Beeper's features, Messages' feel; dark mode first), D10 (GIFs from KLIPY), D11 (Send Later on our server). |
-| Next task | Appearance settings are implemented on `work/appearance-accent`; final app-wide acceptance awaits the separate Exact navigation-root tint fix and native replay.  B22 Select Chats is complete (2026-11-03). Labels and shared-store preparation are integrated; remaining device proof waits for P3.0 and the iPhone checks. App, split across conversations (2026-11-03): "Later" tasks in `work/later-camera`: L1 (Camera in the + panel, photos) merged 2026-11-03, waits for a check on Rami's iPhone; Communities, Matrix invite Requests, New Space and preview sender fixes are now integrated from work/later-camera, including merged-chat membership compatibility. B14's "Message deleted" in the list and B7's other-device archive or delete are done (merged with the first-sync test fixes). Bookmarks (B14, B19, B20) merged 2026-11-03. B15's jump count and "New" line done 2026-11-03. B12 (GIFs, checked in WhatsApp) and B13 (Send Later) merged 2026-11-03. B18, B19, B20 and B21 merged 2026-11-03. Merged: B1, B3 to B11's photos and files. B2 applied on the server 2026-11-03; P3.0 is complete and sandbox push is installed (2026-11-07); M3 is met (locked-phone WhatsApp sender/text confirmed). Push without P3.0 done on the Simulator (2026-11-03, branch `work/push-prep`): MatrixCore's `PushContent`, the extension's fetch and the pusher (P3.2, P3.4), the permission, the token and the pusher in the app, the extension added after Exact's build (P3.1's script), and `send-test-push.sh` (dry run). Done 2026-11-02: B1, B3, B5, B6, T2.12, B10's "+", B11's photos and files. The chat bugs found on the way in T2.13 are fixed (2026-11-02): empty quotes, a reply hidden by the keyboard, messages showing through the composer, and drafts lost on quit. Server: Phase 0 done (M0 passed 2026-10-28, rechecked 2026-11-03 with 7 days of data). B6's pin check done (a pin cannot reach WhatsApp). M0's follow-ups applied 2026-11-03 (Rami: "do whatever you think is best"): a daily backup pull to the Mac, Instagram's debug log off, B2 (no network suffix in names), two images and our build cache deleted. P3.3 (Sygnal) is deployed with the approved sandbox-only key and DNS record (2026-11-07); production is disabled. |
-| Blocked on Rami | M3 is met (locked-phone WhatsApp sender/text confirmed). P3.6 still needs his mute-copy and badge-count decisions; P3.7 needs Exact's remote activation/presentation hatch. Q5's cost part: the account is Pay As You Go (Rami, 2026-10-27), so Oracle's idle reclaim (for Always Free instances) should not apply; Cost Analysis shows whether 4 OCPUs and 24 GB cost money since June 2026. |
+| Next task | Public native-build reproducibility still needs the validated Exact integration patches published or upstreamed. Mac signing/notarization and clean-install checks, TestFlight delivery proof, and open phone defects remain separately scoped work. |
+| Blocked on Rami | Public preview access, Mac release credentials and remaining mute/badge decisions need maintainer input. Oracle billing is still unconfirmed. No server or credential changes are part of this docs audit. |
 | Project | `/Users/rami/Documents/code/multiplexer` (own git repo, own T3 project) |
-| Exact | Upstream `expo/exact` at `94b8671f70fe2e25b307a40e7fce66dc27c9f802` in `../exact/expo-exact`; launcher, Rust and JavaScript package sources use this checkout. iOS simulator build and 12 authored signed-out tests passed; phone delivery and signed-in visual parity remain unqualified. See the 2026-11-09 diary. |
+| Exact | expo/exact local/mux-integration at 8536d208c40f97be3f132ea266d5029e2e3c10ba atop 94b8671f70fe2e25b307a40e7fce66dc27c9f802. The validated integration commit was not available from public upstream at the audit; see CONTRIBUTING.md. |
 | License | GPL-3.0-only for original project code; third-party licenses retained. |
-| Last updated | 2026-11-12 |
+| Last updated | 2026-11-10 |
 
 Update this table at the end of every work session.
 
@@ -311,16 +546,16 @@ Each milestone is a thing Rami can see work. Each one is small and can fail.
 
 | Part | Folder | Knows | Does not know |
 |---|---|---|---|
-| Server config | `server/` | The matrix-docker-ansible-deploy inventory: Synapse, PostgreSQL, Traefik, bridges, later Sygnal. | Anything about our client. |
+| Server config | `server/` | The matrix-docker-ansible-deploy inventory: Synapse, PostgreSQL, Traefik, bridges, Sygnal. | Anything about our client. |
 | MatrixCore | `matrix-core/` | Matrix, through matrix-rust-sdk: sign in, sync, rooms, messages, send, encryption. | UI, Exact, Expo. |
 | App | `apps/multiplexer/` | Screens (Contract), data (`app.ts`), one Swift native module that calls MatrixCore. | Matrix protocol details. It sees only MatrixCore's API. |
-| Notification extension | later | Uses MatrixCore to fetch and decrypt one event. | UI. |
+| Notification extension | `apps/multiplexer/extensions/notifications/` | Uses MatrixCore to fetch and decrypt one event. | UI. |
 
 ### Invariants
 
 These must always be true. A change that breaks one needs a decision log entry.
 
-1. The client talks only to our homeserver, with Matrix. It never talks to WhatsApp or another network. One exception (D10): GIF search calls KLIPY directly; KLIPY sees the search words and the phone's address, never a chat.
+1. Chat synchronization uses our homeserver through Matrix, without direct messaging-network API calls from the app. GIF search calls KLIPY directly with search terms and the client IP (D10). iPhone push registration selects the fixed maintainer Sygnal gateway; the event-id-only push path also uses APNs. See docs/install.md for the infrastructure boundary.
 2. Only MatrixCore calls matrix-rust-sdk. The app and the extension call MatrixCore. This keeps the UI framework choice reversible (Expo is the fallback).
 3. MatrixCore's public API uses plain types (strings, numbers, records). No SDK type leaks out.
 4. No secret goes into git: passwords, access tokens, the APNs key, `vars.yml`.
@@ -355,12 +590,15 @@ Use these to check that we work on the right thing.
 | D9 | Beeper's features, Messages' feel. Take every feature from Beeper (the whole inbox, its chat top bar, "Reply on WhatsApp", the full message menu, chat info, voice notes, photos, GIFs, Send Later). Keep what Messages already gives through Exact's recipe (bubble tails, sender runs, the long-press overlay, the "Replying to" bar, reaction pills). Follow the iPhone's light or dark setting; design and check dark first. | Rami, 2026-11-02: "Take the best from Beeper and Messages. I care more about the features of Beeper. But the user experience of Messages is pretty good, and if it's already there from the recipe, let's keep that." "I'll predominantly be using dark mode." |
 | D10 | GIFs come from KLIPY. The phone calls KLIPY directly, the one exception to invariant 1. Rami makes the account; the key stays out of git. | Rami, 2026-11-02. Beeper uses KLIPY; Google shut down Tenor's API on 2026-06-30; KLIPY's test key is free (100 calls an hour), its production key is asked for with a form and has no published price, its ads can be turned off; KLIPY requires calls from the user's app, not through a server. GIPHY's production key has a fee. |
 | D11 | Send Later: hold the Send button, as in Slack, and pick a time. The message waits on our server (Synapse's delayed events, MSC4140), so it goes with the phone off. Turning them on is a server change: Rami's OK first. | Rami, 2026-11-02. iOS does not promise to wake an app at an exact time; the SDK's bindings cannot send a delayed event, so MatrixCore calls the Matrix API itself (to check). |
+| D12 | Agents reach the account through `mx`, a Swift command line on the Mac that links MatrixCore. Not a desktop app first, not Rust or TypeScript, not on the server. | Rami, 2026-11-08 ("go ahead"). Exact has no production door for agents (`exact agent` is development only; its MCP plan, LLP 1111, is parked). One copy of the chat logic: the app's own state (archive, merges, labels, ...) is account data that only MatrixCore reads and writes. The macOS SDK build also serves M5. On the server it would need the access token there (invariant 7). Fallback after 3 failed tries: Rust with matrix-sdk. |
 
 ## Facts we rely on
 
-Checked on 2026-10-27. Recheck a fact before a task depends on it.
+The infrastructure observations below began on 2026-10-27. Current source paths
+were reviewed on 2026-11-10; old disk sizes, utilization and service observations
+are historical, not a live host audit. Recheck before operating the server.
 
-**Server (`ssh oracle`):** Ubuntu 24.04.5, aarch64, 4 CPUs, 23 GiB memory, 96 GB disk with 30 GB used (62 GB on 2026-11-03), Docker installed but disabled (since T0.5 the playbook runs it, on at boot). Ports 80, 443 and 8448 are free. Details: `server/notes/inventory.md` (T0.1). No host firewall is active (`iptables-persistent` was removed on 2025-08-11, so `/etc/iptables/rules.v4` is not loaded); Oracle's security list is the only firewall. No public IPv6. Time sync: `systemd-timesyncd`.
+**Server (`ssh oracle`):** Ubuntu 24.04.5, aarch64, 4 CPUs, 23 GiB memory, 96 GB disk with 30 GB used (62 GB on 2026-11-03), Docker was initially disabled; since T0.5 the playbook runs it, enabled at boot. Ports 80, 443 and 8448 now serve the configured deployment; the inventory's free-port result was pre-install. Details: `server/notes/inventory.md` (T0.1). No host firewall is active (`iptables-persistent` was removed on 2025-08-11, so `/etc/iptables/rules.v4` is not loaded); Oracle's security list is the only firewall. No public IPv6. Time sync: `systemd-timesyncd`.
 
 **Mac:** arm64, Xcode, Docker, uv, Homebrew, gh. Ansible 14.5.0 (ansible-core 2.21.5) through `uv tool`, installed by `server/setup.sh`. `just` is not needed.
 
@@ -390,10 +628,10 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 **matrix-rust-components-swift** ([repo](https://github.com/element-hq/matrix-rust-components-swift)):
 - Swift 5.9, iOS 16 minimum, Apache-2.0, iOS and the iOS Simulator only.
-- Product `MatrixRustSDK` (a dynamic library). The binary target `MatrixSDKFFI` is an XCFramework downloaded from GitHub. Version 26.10.27.
+- Product `MatrixRustSDK` (Swift bindings over the binary SDK). The binary target `MatrixSDKFFI` is an XCFramework downloaded from GitHub. Version 26.10.27.
 - New releases are frequent, so pin the version.
 
-**Exact** (`/Users/rami/Documents/code/exact/exact2`):
+**Exact** (`/Users/rami/Documents/code/exact/expo-exact`, `local/mux-integration`):
 - New app: `bun scripts/exact.mjs new <path> --name <Name> --bundle-id <id>`. Set the name and the id before the first build.
 - Only `docs/start-here.md` is required reading.
 - A native module is `modules/apple/*.swift` or `*.xcframework`.
@@ -417,11 +655,11 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | Something on the server already uses Docker or ports 80/443. | High | Inventory first. Rami decides what stays. | T0.1 |
 | A component has no arm64 image and cannot self-build. | High | Note each image. Change the component, or move to an amd64 VPS. | T0.5, T0.6 |
 | Exact cannot link matrix-rust-sdk. | High | A spike before any UI. Stop after 3 rounds. Fallback: Expo with the same MatrixCore. | T1.2 |
-| Oracle reclaims an idle instance. | Medium | The server rebuilds from `server/`. Back up PostgreSQL. Check usage at the M0 checkpoint. (2026-11-03: the 7-day use meets all three idle conditions; the backups are on the same disk, so an off-server copy waits for Rami. Since 2026-11-03 the Mac pulls the dumps, media and signing key every day: `server/README.md`, Backups.) | M0 checkpoint |
+| Oracle reclaims an idle instance. | Medium | The server rebuilds from `server/`. Back up PostgreSQL. Check usage at the M0 checkpoint. (2026-11-03: the 7-day use meets all three idle conditions; the backups are on the same disk, and the original off-server gap was closed on 2026-11-03. Since 2026-11-03 the Mac pulls the dumps, media and signing key every day: `server/README.md`, Backups.) | M0 checkpoint |
 | Unexpected Oracle charges for 4 CPUs and 23 GiB. | Medium | Rami checks billing. | Q5 |
 | A network blocks logins from cloud IP addresses (not verified). | Medium | Test each network before we depend on it. | Phase 4 |
 | The notification extension runs out of memory or fails to decrypt. | High for M3 | Test early in Phase 3. | Phase 3 |
-| matrix-rust-components-swift is iOS only. | High for M5 | Build the SDK's Swift bindings for macOS ourselves. | Phase 5 |
+| matrix-rust-components-swift is iOS only. | Low (was High for M5) | Retired 2026-11-08: `scripts/build-matrix-sdk-macos.sh` builds the app macOS slice from the pinned commit with matching Swift bindings and headers. The CLI uses `scripts/setup-cli-sdk.sh`. | Phase 5 |
 | SDK API changes often. | Medium | Pin the version. Only MatrixCore touches the SDK. | Always |
 | The bridges see message text, so a server breach exposes chats. | High | SSH keys only, few services, updates. End-to-bridge encryption is optional. | Phase 2 |
 
@@ -440,6 +678,7 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 
 | Date | Entry |
 |---|---|
+| 2026-11-10 | Public documentation audited against main source. Current entry points distinguish preview availability, Mac development, bridge plaintext, fixed push infrastructure and unpublished Exact integration. No new native/server validation claimed. |
 | 2026-10-27 | Plan created. D1 to D7 recorded. Rami is the only user for now. |
 | 2026-10-27 | Project moved out of the `exact` folder to `/Users/rami/Documents/code/switchboard` and registered as its own T3 project. The Exact framework is only a dependency, used by path. |
 | 2026-10-27 | Pulled the latest Exact. Its `main` history was rewritten on the remote, so local `main` now matches `origin/main` (`65577096ed`). The old local `main` is kept in exact2 as `backup/main-before-2026-10-27-rewrite`. The facts above still hold. |
@@ -538,6 +777,10 @@ Checked on 2026-10-27. Recheck a fact before a task depends on it.
 | 2026-11-04 | Later ready for serialized integration: tested code head `1a38b7c` incorporates main `03fec0f` and UI main `cebda48`. New Space `149843c`; room-member preview resolution and fallback wrapping `dc70b9a`; merged-space compatibility `840eea5`. Ten existing focused core tests and both corrected compatibility tests passed; the latter proves new children survive a later failure and retry completes membership. Final `verify ios`: 7 tests, no findings, 9 largest-text screens. Signed-in Select Chats fallback wraps in both appearances at largest text; account signed out and own simulator shut down. Prior real-account 29-to-zero raw-sender evidence retained; no new real-account drive. Main `316e116` arrived during verification and is deliberately left for coordinator integration, preserving push/shared-store migration. No main merge by this lane. |
 | 2026-11-04 | Integrated the complete Later branch e93aa0e with main 316e116, preserving shared-store migration. Combined verify ios: 7 passed, light/dark clean, 9 largest-text screens without overflow (186.9 s). Combined MatrixCore selection: 25 passed, 0 failed/skipped (224.2 s), covering communities, Requests, preview senders, push and session stores under the shared lock. Labels remains outside this integration pending review fixes. |
 | 2026-11-04 | Integrated full Labels branch 2b55caf after the combined 39-test selection passed on main under the shared lock (no failures/skips, 1062.9 s). Preserved all earlier UI, Spaces, Requests and session-migration work. Contract build clean; app/core code identical to the lane’s final 9-test iOS verification, with light/dark and 11 largest-text screens clean. The archive fix changes only test event sequencing. Feedback remains local per Rami. |
+| 2026-11-08 | D12: an agent CLI, `mx` (Swift, MatrixCore, macOS SDK built by us). C0 passed as `@test1`: sign in, chats (fresh, 0.3 to 0.5 s warm), parallel calls, sign out removed the device. A cold first run lists chats before the server's order arrives (not by recency); warm runs are in order. |
+| 2026-11-07 | R04 changed for chats with no kept copy (branch `fix/demo-bugs`): such a chat now waits for its full first screen under the loading spinner, instead of answering on the timeline's first diff. Why: on a new device that diff holds only the newest message, which showed alone for about 0.35 s and then jumped up (seen in the demo recording). A chat with a kept copy keeps R04's early answer, since the copy covers the older rows. The older-messages row keeps one height in both states. The demo staging seats a third contact in its group: its bot is listed but never joins, so the app's member count (which subtracts listed service members, right for real bridges) read the group as a DM. |
+| 2026-11-07 | DMs or Groups for a bridged chat (branch `fix/members-composer-groups`): `m.direct` decides first; a bridged room not marked direct with at most 2 people besides its bot is what its bridge's `m.bridge` says (`com.beeper.room_type` `dm`, else a group), read once per room from the server and kept; with no bridge state the count decides, as before. Why: the count cannot tell a group with one other person from a DM. A read-only audit of the real account (349 rooms) found every bridged DM in `m.direct` with room type `dm` and no bridged group there, so only a few rooms are asked. Also: the info page counts a service member out only when it has joined (the list's rule), and the chat's composer shows from its first frame. |
+| 2026-11-08 | Rami said yes to a Mac spike now, and to local notifications only on the Mac (no APNs there). Spike result: the SDK builds for macOS from the pinned commit; the app builds for the Mac with `#if os(macOS)` branches in four module files; sign-in, the chat list, a chat and sending work. Exact findings 156 to 158. The risk "matrix-rust-components-swift is iOS only" is retired. |
 
 ### Appearance preference (2026-11-04)
 
@@ -745,3 +988,5 @@ Host result: the one compile and all 31 exact selectors passed on `57fac7b5`, bi
 `3020ad05`, with no retry or ignored test. All owned groups ended and target-openers check
 passed. The proposed managed-owner/foreign-transfer plan remains unaccepted; a custom string
 packet versus bounded typed record needs an explicit design decision before implementation.
+
+Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).

@@ -58,3 +58,21 @@ A combined native-module rebuild took 102.4 seconds before verification on the n
 framework checkout. The full verification took 186.9 seconds, versus the initial 65-second
 estimate based on its previous run. Including invalidated native modules in the estimate
 would make that waiting time clearer. No additional workaround was needed.
+
+## display-string rebuild (2026-11-06)
+
+At integration checkout `31063d7dbb`, a branding-only change to display strings in
+two small native module files and a media vendor string rebuilt the full module
+including unchanged third-party bindings. The successful simulator build reported
+95.8 s for arms, versus 12.3 s for Swift host work and 9.9 s for packaging. Broad
+silent intervals made progress hard to assess; per-file reporting and a separate
+cache for vendor bindings would help.
+
+
+## Further evidence: desktop lifecycle, 2026-11-08
+
+At Exact `afac7b1370`, a small lifecycle-observer edit again recompiles all native
+module sources, including a third-party generated binding file. The parent build
+finishes its host packages quickly, then spends minutes in `swift-frontend` on
+those bindings. Keeping the vendor binding compilation separate would remove
+this iteration cost. No new timing claim is made from this busy machine.

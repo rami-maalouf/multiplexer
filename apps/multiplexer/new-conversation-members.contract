@@ -1,0 +1,44 @@
+use ConversationAccounts, ConversationContacts, ConversationStarted from "./new-conversation.contract"
+
+members Multiplexer
+  state contactQuery = ""
+  state conversationAccount = ""
+  state conversationVisit = ""
+  resource conversationAccounts = loadConversationAccounts(session.userId, top(nav).name == "newConversation") as shape ConversationAccounts else empty()
+  resource conversationContacts = loadConversationContacts(session.userId, top(nav).name == "newConversation", conversationAccount, contactQuery.trim()) as shape ConversationContacts else empty()
+  mutation conversationStarted as shape ConversationStarted refreshes roomList then didStartConversation
+  derive contactAccountsShown = conversationAccounts.owner == session.userId
+  derive contactsShown = conversationContacts.owner == session.userId and conversationContacts.account == conversationAccount and conversationContacts.query == contactQuery.trim()
+  derive contactProblem = failed(conversationAccounts) or failed(conversationContacts) ? "Could not load contacts. Try again." : (contactAccountsShown and conversationAccounts.problem != "" ? conversationAccounts.problem : (contactsShown ? conversationContacts.problem : ""))
+  derive contactStartProblem = failed(conversationStarted) ? "Could not open the conversation. Try again." : (match conversationStarted { case some(r) => r.owner == session.userId and r.visit == `${top(nav).id}` ? r.problem : "", case none => "" })
+  derive fullMatrixContact = contactQuery.trim().startsWith("@") and contactQuery.trim().includes(":") and not contactQuery.trim().includes(" ") and (conversationAccount == "" or conversationAccount == "matrix")
+  action openNewConversation
+    contactQuery = ""
+    conversationAccount = ""
+    closeSearch()
+    follow(path("newConversation"))
+    focus("contact-search")
+  action closeNewConversation
+    nav = back(nav)
+    blur()
+  action typeContactQuery(v: string)
+    contactQuery = v
+  action chooseConversationAccount(v: string)
+    conversationAccount = v
+  action retryContacts
+    refresh conversationAccounts
+    refresh conversationContacts
+  action chooseConversationContact(account: string, identifier: string)
+    if session.userId != "" and not pending(conversationStarted)
+      conversationVisit = `${top(nav).id}`
+      send conversationStarted = startConversation(session.userId, `${top(nav).id}`, account, identifier)
+  action startMatrixConversation
+    if fullMatrixContact
+      chooseConversationContact("matrix", contactQuery.trim())
+  action didStartConversation
+    match conversationStarted
+      case some(r)
+        if r.owner == session.userId and r.visit == conversationVisit and r.visit == `${top(nav).id}` and top(nav).name == "newConversation" and r.room != ""
+          follow(path("room", r.room))
+      case none
+        conversationVisit = ""

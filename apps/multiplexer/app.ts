@@ -1,6 +1,6 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
 import { ClipboardItem, write } from '@exact/clipboard';
-import { closeNotification, notificationStatus, showNotification } from '@exact/notifications';
+import { clearAppBadge, closeNotification, notificationStatus, setAppBadge, showNotification } from '@exact/notifications';
 import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
@@ -11,13 +11,18 @@ import { linkOf, noLink } from './links.ts';
 type Card = { url: string; title: string; image: string; width: number; height: number; state: string };
 const noCard: Card = { url: '', title: '', image: '', width: 0, height: 0, state: '' };
 import { appearance } from './appearance.ts';
+import { DesktopNotifications, DesktopNotificationDelivery } from './desktop-notifications.ts';
+import { stageDroppedFiles } from './desktop-files.ts';
+const desktopNotifications = new DesktopNotifications();
+const desktopDelivery = new DesktopNotificationDelivery();
+let desktopRevision = 0;
 
 // app.json’s app.id: change the two together.
 export const appId = 'com.ramimaalouf.multiplexer';
 // picked photos and files are read from the picker's copies; a photo is made smaller beside them
 // before it goes; a file message's file is shared from where the module downloaded it. A voice
 // message is recorded from the microphone into app:/tmp/voice.
-export const grants = ['fs.read app:/tmp/picked', 'fs.read app:/tmp/camera', 'device.camera purpose.camera', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
+export const grants = ['fs.read doc:/', 'fs.read app:/tmp/picked', 'fs.read app:/tmp/camera', 'device.camera purpose.camera', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'fs.read app:/cache/matrix-files', 'device.microphone purpose.microphone', 'fs.write app:/tmp/voice',
   'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
   'device.speech-recognition purpose.recognition', 'fs.read app:/data/transcripts.json', 'fs.write app:/data/transcripts.json',
@@ -336,13 +341,17 @@ function saveThreadCopies(native: Native) {
 }
 
 /** While the first answer still fills (it holds the newest messages only), the copy's older
- * messages stay in front of them, so text already shown does not go away (R04). Matched by event id. */
+ * messages stay in front of them, so text already shown does not go away (R04). Matched by event id.
+ * A copy that reached the chat's start says so while the answer shows from its first message: the
+ * fill pages back only to learn what the copy knows, so the older-messages spinner does not flash. */
 function withKeptOlder(answer: MessagesAnswer, copy: MessagesAnswer | undefined): MessagesAnswer {
   if (!answer.settling || copy === undefined || answer.messages.length === 0) return answer;
   const live = new Set(answer.messages.map((m) => m.event).filter((e) => e !== ''));
   const firstTime = answer.messages[0].time;
   const older = copy.messages.filter((m) => m.event !== '' && !live.has(m.event) && m.time < firstTime);
-  return older.length === 0 ? answer : { ...answer, messages: older.concat(answer.messages) };
+  const shown = older.length === 0 ? answer : { ...answer, messages: older.concat(answer.messages) };
+  const start = copy.messages[0]?.event ?? '';
+  return copy.atStart && start !== '' && shown.messages[0].event === start ? { ...shown, atStart: true } : shown;
 }
 
 /** The chat's screen from the native side's answer (or its copy). */
@@ -396,6 +405,45 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
 
 // the web has no Matrix SDK: it shows the sign-in screen and refuses to sign in.
 const sources: Sources = {
+  resolveNotification: ([tag, room], _store, _storage, native): Result<'resolveNotification'> => {
+    const owner = native?.available ? (native.call({ op: 'session' }) as { userId: string }).userId : '';
+    return { owner, room: owner && (!tag.startsWith('chat:') || tag.startsWith(`chat:${owner}:`)) ? room : '' };
+  },
+  importDroppedFiles: async ([owner, room, paths, limit], _store, storage, native): Promise<Result<'importDroppedFiles'>> => {
+    try {
+      const { id } = native!.call({ op: 'dropBatch' }) as { id: string };
+      return { owner, room, ...await stageDroppedFiles(paths, storage.fs, limit, id) };
+    } catch {
+      return { owner, room, items: [], problem: 'Could not attach these files.' };
+    }
+  },
+  composerSurface: (_args, _store, _storage, native): Result<'composerSurface'> => {
+    if (!native?.available) return { groupedGlass: false, desktop: false };
+    return native.call({ op: 'composerSurface' }) as Result<'composerSurface'>;
+  },
+  updateDesktop: async ([userId, desktop, permission, enabled, openRoom, visibility], _store, _storage, native): Promise<Result<'updateDesktop'>> => {
+    const revision = ++desktopRevision;
+    const generation = desktopDelivery.configure(desktop ? userId : '', enabled, permission === 'granted');
+    if (!desktop || !userId || !native?.available) {
+      desktopNotifications.update({ userId: '', rooms: [], openRoom: '', foreground: false, visible: false,
+        notificationsEnabled: false, permissionGranted: false, now: 0 });
+      if (desktop && native?.available) await clearAppBadge({});
+      return { unread: 0, notified: 0 };
+    }
+    native.watch('rooms');
+    native.watch('desktop');
+    const snapshot = await native.later({ op: 'desktopRooms' }) as {
+      rooms: Result<'loadRoomsByRecency'>['rooms']; unread: number; active: boolean; visible: boolean; now: number;
+    };
+    if (revision !== desktopRevision) return { unread: 0, notified: 0 };
+    await setAppBadge({ contents: snapshot.unread });
+    if (revision !== desktopRevision) return { unread: 0, notified: 0 };
+    const notices = desktopNotifications.update({ userId, rooms: snapshot.rooms, openRoom,
+      foreground: snapshot.active, visible: snapshot.visible && visibility === 'visible',
+      notificationsEnabled: enabled, permissionGranted: permission === 'granted', now: snapshot.now });
+    const notified = await desktopDelivery.send(notices, generation, showNotification);
+    return { unread: snapshot.unread, notified };
+  },
   loadAppearance: ([color]) => appearance(color),
   ...infoSources,
   currentSession: (_args, _store, _storage, native): Result<'currentSession'> => {
@@ -478,6 +526,23 @@ const sources: Sources = {
   // the search screen's results (search.ts): a kind's messages, the chats opened last (recent,
   // newest first) before any word, or chats by name, messages and links. Nothing while it is closed.
   // With room, the search in that chat (its info page's): its messages and links, or a kind's.
+  loadConversationAccounts: async ([owner, active], _store, _storage, native): Promise<Result<'loadConversationAccounts'>> => {
+    if (!owner || !active) return { owner, accounts: [], problem: '' };
+    if (!native?.available) return { owner, accounts: [], problem: 'This build has no Matrix SDK.' };
+    native.watch('rooms');
+    return await native.later({ op: 'conversationAccounts', owner }) as Result<'loadConversationAccounts'>;
+  },
+  loadConversationContacts: async ([owner, active, account, query], _store, _storage, native): Promise<Result<'loadConversationContacts'>> => {
+    if (!owner || !active) return { owner, account, query, contacts: [], problem: '' };
+    if (!native?.available) return { owner, account, query, contacts: [], problem: 'This build has no Matrix SDK.' };
+    native.watch('rooms');
+    native.watch('conversationContacts');
+    return await native.later({ op: 'conversationContacts', owner, account, query }) as Result<'loadConversationContacts'>;
+  },
+  startConversation: async ([owner, visit, account, identifier], _store, _storage, native): Promise<Result<'startConversation'>> => {
+    if (!owner || !native?.available) return { owner, visit, account, identifier, room: '', problem: 'Sign in to start a conversation.' };
+    return await native.later({ op: 'startConversation', owner, visit, account, identifier }) as Result<'startConversation'>;
+  },
   loadSearch: async ([userId, searching, query, kind, recent, room], _store, _storage, native): Promise<Result<'loadSearch'>> => {
     const none = { owner: userId, room, query, kind, chats: [], messages: [], links: [] };
     // a chat's Bookmarks kind shows its saved messages (loadBookmarks), which no search finds.
@@ -590,8 +655,9 @@ const sources: Sources = {
     const served = `${screen} ${roomId}`;
     if (copy && showingLive.get(screen) !== roomId && !servedCopy.has(served)) {
       servedCopy.add(served);
-      // its "New" line and its start are the live answer's to say.
-      const thread = threadOf({ ...copy, firstUnread: '', atStart: false, settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
+      // its "New" line is the live answer's to say; its start is the copy's (it shows the same first
+      // message), so a chat that shows all of itself opens on "Start of the chat", not a spinner.
+      const thread = threadOf({ ...copy, firstUnread: '', settling: true }, roomId, isDirect, roomName, utcOffset, network, true);
       // its links' kept previews, read at once, so the copy shows its cards too.
       const unknown = [...new Set(thread.messages.map((m) => m.previewUrl).filter((u) => u !== '' && !cards.has(u)))];
       if (unknown.length === 0) return thread;
@@ -602,8 +668,11 @@ const sources: Sources = {
     servedCopy.delete(served);
     showingLive.set(screen, roomId);
     return (async (): Promise<Result<'loadMessages'>> => {
-      const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT })) as MessagesAnswer;
-      const shown = withKeptOlder(answer, threadCopies.get(roomId));
+      // a chat with no kept copy waits for its full first screen (early: false), under the loading
+      // spinner: a new device's first answer held only the newest message, which then jumped up.
+      const kept = threadCopies.get(roomId);
+      const answer = (await native.later({ op: 'messages', roomId, limit: MESSAGE_COUNT, early: kept !== undefined })) as MessagesAnswer;
+      const shown = withKeptOlder(answer, kept);
       keepThreadCopy(roomId, answer, native);
       const thread = threadOf(shown, roomId, isDirect, roomName, utcOffset, network, false);
       // the chat's links' kept previews join their messages (cards); the module says when a fetch

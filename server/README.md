@@ -1,4 +1,10 @@
-# Server
+# Server: maintainer operations
+
+This is the runbook for Rami's existing deployment, not a portable installer.
+For a new server, start with [the self-hosting guide](../docs/self-hosting.md).
+The scripts contain live domains, an SSH alias, Keychain services and backup paths;
+adapt a separate inventory before running them. The live config also includes
+unrelated reverse-proxy routes and Apple push credentials by reference.
 
 The Matrix server (Synapse) and the bridges run on the Oracle machine (`ssh oracle`).
 [matrix-docker-ansible-deploy](https://github.com/spantaleev/matrix-docker-ansible-deploy)
@@ -15,7 +21,7 @@ goes through the playbook or a playbook in this folder; manual commands there on
 | `remove-unused-sessions.py` | Signs out a user's sessions that have no name and were never used (`uv run`). |
 | `inventory/hosts` | The server: `matrix.ramimaalouf.com`, reached through `Host oracle` in `~/.ssh/config`. |
 | `inventory/host_vars/matrix.ramimaalouf.com/config.yml` | All settings. In git, no secrets. |
-| `inventory/host_vars/matrix.ramimaalouf.com/vars.yml` | The two secrets. Gitignored; `setup.sh` writes it. Its shape: `vars.example.yml`. |
+| `inventory/host_vars/matrix.ramimaalouf.com/vars.yml` | Server secrets, including configured APNs key material. Gitignored; `setup.sh` writes it. Its shape: `vars.example.yml`. |
 | `vendor/` | The playbook checkout. Gitignored. |
 | `notes/` | What we found on the server (`inventory.md`, T0.1). |
 
@@ -30,7 +36,8 @@ ansible -i server/inventory/hosts all -m ping   # answers "pong"
   the two secrets in the Keychain. Without the flag, a missing secret stops the script, so
   a server that runs never gets new secrets by mistake.
 - Ansible 2.21 cannot ask about an unknown SSH host key. If Ansible says
-  `Host key verification failed`, run `ssh oracle` once and accept the key.
+  `Host key verification failed`, run `ssh oracle` once and verify its fingerprint
+  through the provider console before accepting the key.
 
 ## Run the playbook
 
@@ -55,6 +62,7 @@ All in the Mac's login Keychain. Never in git, chat or logs.
 | `multiplexer-matrix` | See local `.local/accounts.md`. | Real Matrix account password. |
 | `multiplexer-test-account` | `@test1:ramimaalouf.com`, `@test2:ramimaalouf.com` | Test users for the app. |
 | `multiplexer-apns` | `key`, `key-id` | The sandbox APNs key (`.p8`, base64) and its Key ID, for Sygnal. |
+| `multiplexer-apns` | `production-key`, `production-key-id` | The separate production APNs key (`.p8`, base64) and its Key ID, for TestFlight and App Store push. |
 
 The real account ID and Universal Clipboard password lookup command are in
 `.local/accounts.md` at the repository root (local only, ignored by git).
@@ -87,18 +95,24 @@ The real account ID and Universal Clipboard password lookup command are in
 
 - **What:** Sygnal sends Synapse's pushes for the iPhone to Apple (APNs). `config.yml` turns it
   on with `com.ramimaalouf.multiplexer.ios.dev` (APNs sandbox, development builds),
-  team `3V2UU7RRK9` and topic `com.ramimaalouf.multiplexer`. The key created on
-  2026-11-07 is sandbox-only and restricted to that topic. Production is disabled
-  until it has a separate production credential.
+  and `com.ramimaalouf.multiplexer.ios` (APNs production, TestFlight and App Store),
+  team `3V2UU7RRK9` and topic `com.ramimaalouf.multiplexer`. Each environment has
+  its own key restricted to that topic.
 - **Where:** `https://sygnal.ramimaalouf.com/_matrix/push/v1/notify`. DNS: Cloudflare
   `CNAME sygnal -> matrix.ramimaalouf.com`, DNS only.
 - **The key:** in the Keychain (`multiplexer-apns`, see Secrets). `setup.sh` copies it into
   `vars.yml`; the playbook writes it to `/matrix/sygnal/data/apns-key.p8` (mode 0600, user
-  `matrix`). The playbook also keeps a copy of `vars.yml` in `/matrix/vars.yml` (mode 0660,
+  `matrix`). The production key is written separately to
+  `/matrix/sygnal/data/apns-production-key.p8` with the same owner and mode.
+  The playbook also keeps a copy of `vars.yml` in `/matrix/vars.yml` (mode 0660,
   user `matrix`), as for the other secrets. A new key: replace the Keychain items, run
   `setup.sh`, then install.
 
 ## Network
+
+The infrastructure and firewall observations below describe the maintainer's
+deployment and past inspections. They are not a current audit of every service
+on that host. Restrict SSH to administration addresses in a new deployment.
 
 - **Names.** User IDs are `@name:ramimaalouf.com`. Synapse runs at `matrix.ramimaalouf.com`.
   This can never change after the first install.
