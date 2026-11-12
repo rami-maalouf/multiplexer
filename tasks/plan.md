@@ -11,7 +11,9 @@ own identity and service members are excluded. The live baseline reproduced empt
 and nil downloads despite a member image. Fixed coverage includes a fresh client after 24
 outgoing messages, before opening Members, and a direct-to-group transition. Simulator
 inbox and light/dark chat header screenshots were inspected with a synthetic image; the
-test account signed out. Actual Instagram/LinkedIn metadata was not accessed. Notification
+test account signed out. With explicit approval, read-only Oracle inspection subsequently confirmed member-avatar
+state, available source files and successful thumbnail responses for both networks, while
+direct-room avatars were absent. No message contents were read or user session created. Notification
 sender-photo work is owned by the separate push conversation / PR #22. Native verify passed all 13 tests, light/dark checks were clean, and 15 largest-text screens
 had no overflow. All 38 TypeScript tests passed; the avatar fix is published in PR #23 (https://github.com/rami-maalouf/multiplexer/pull/23).
 
@@ -988,3 +990,5 @@ passed. The proposed managed-owner/foreign-transfer plan remains unaccepted; a c
 packet versus bounded typed record needs an explicit design decision before implementation.
 
 Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).
+
+Avatar diary sent with explicit approval, receipt `594fc919-b6ac-4b88-8a0d-52c99bc57f93`; no other diaries, command logs or attachments were sent.

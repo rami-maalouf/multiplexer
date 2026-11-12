@@ -3050,6 +3050,8 @@ Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc60837
 
 The first history fixture hit HTTP 429; it now respects retry_after_ms with bounded retries.
 An immediate first-frame cold assertion was replaced by a bounded eventual-image check;
-normal membership sync can arrive after room classification. No real accounts or server
-configuration were accessed. The existing historical feedback issue checker is absent in
-the current Exact checkout; new build-cost evidence was added to finding 30 and stays local.
+normal membership sync can arrive after room classification. No real-account messages were accessed and no server configuration was changed. The existing historical feedback issue checker is absent in
+the current Exact checkout; new build-cost evidence was added to finding 30. The approved generic diary was subsequently sent as recorded below.
+
+- [x] With explicit permission, inspect Oracle bridge and Synapse avatar metadata read-only; verify source files and sample authenticated thumbnail responses. The real metadata matches the missing room-to-member fallback. No user login/session or chat mutation.
+- [x] Send only this task's approved Exact diary, receipt `594fc919-b6ac-4b88-8a0d-52c99bc57f93`; no logs, attachments or other diaries.

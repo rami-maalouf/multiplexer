@@ -318,3 +318,5 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1407](https://github.com/ccheever/exact2/pull/1407): a link's spoken name counts a labelled image inside it, as on the web | 32 | Open |
 | 2026-11-03 | [#1410](https://github.com/ccheever/exact2/pull/1410): a large title opens when a route with no bar turns into one with a large title | 76 | Open |
 | 2026-11-03 | [#1411](https://github.com/ccheever/exact2/pull/1411): the reference says how a virtualized list shows a row that is not an item | 20 | Open |
+
+Avatar task, 2026-11-12: with Rami's explicit approval, sent only `2026-11-12-bridge-avatars.md`, receipt `594fc919-b6ac-4b88-8a0d-52c99bc57f93`. Zero command logs or attachments; other diaries stayed local.
