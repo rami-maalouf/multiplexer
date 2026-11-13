@@ -4,6 +4,18 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Chat template run (2026-11-13):** built the unchanged public template on its
+supported `ad181418b3` pin and ran it beside the existing fixed Mux build on an
+iPhone 16 Pro / iOS 27 simulator. Template: 14 native and 13 data tests pass;
+loaded-history scrolling, reply and edge-back work after Home returns. Mux:
+inbox/chat scrolling, row actions and edge-back work after returns with a designated
+test account, subsequently signed out. No complete freeze reproduced or frame
+timing comparison measured. Current upstream cannot bake the unchanged template
+because its pin includes branch-only features. The template pin lacks the observer
+we repaired; it is not an isolated runtime A/B. Both use virtualized transcripts;
+Mux already inherits interactive keyboard dismissal. No production code changed.
+Evidence and input-automation limits: `tasks/evidence/chat-template-comparison-20261113.json`.
+
 **Gesture fix upstream PR (2026-11-13):** [expo/exact#494](https://github.com/expo/exact/pull/494)
 contains only the passive touch lifecycle repair and its regression, on upstream
 `c419ce55c9` at commit `bdac0a1be3`. All six Exact checks pass, plus 19 native timer

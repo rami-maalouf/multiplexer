@@ -199,6 +199,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 167 | Long identifier wrapping needs a specific remedy when max-width clips and anywhere is rejected. | About 5 min | P3 | [long-identifier-wrapping](issues/20261112-long-identifier-wrapping.md) |
 | 166 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
 | 168 | The older feedback workflow names `scripts/issue.mjs`, which the current checkout no longer ships. | About 1 min | P3 | [missing issue checker](issues/20261113-issue-checker-missing-after-checkout-migration.md) |
+| 169 | The public chat template pins branch-only features absent from current main; similar markup is not a same-runtime gesture control. | About 3 min plus source inspection | P3 | [chat template runtime compatibility](issues/20261113-chat-template-runtime-compatibility.md) |
 
 ## What worked well
 

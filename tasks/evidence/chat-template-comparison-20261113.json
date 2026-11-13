@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-13",
+  "purpose": "run the public chat template and compare its behavior with the existing fixed Mux build",
+  "simulator": {"model": "iPhone 16 Pro", "os": "iOS 27.0", "udid": "566CD713-0D24-463D-9D5A-24EF3FF9015A"},
+  "template": {
+    "source": "https://github.com/expo/exact-templates/tree/041917c8e1c9c2c076232a8011f0d5f40601ca01/chat",
+    "framework": "ad181418b37d5452a0c0e35f15bf6d3f45f4a212",
+    "bundle": "com.example.muxcomparison.pinned",
+    "generation": "supported new.mjs chat command with explicit framework path; no authored-source edits",
+    "build": "passed and installed",
+    "nativeTests": {"passed": 14, "failed": 0},
+    "dataTests": {"passed": 13, "failed": 0, "expects": 49},
+    "observations": [
+      "loaded earlier history through the options menu",
+      "history scrolled before Home; the Home screen was verified visually",
+      "return preserved the same navigation identities and history position; subsequent downward finger path moved from history rows 218-228 to 195-206",
+      "a second return with the keyboard open preserved the draft; a subsequent drag moved to history rows 230-236",
+      "rightward message swipe opened Replying to; Cancel reply removed it",
+      "raw left-edge swipe returned to Chats after keyboard dismissal"
+    ]
+  },
+  "mux": {
+    "artifact": "existing fixed simulator build from app ce24795 with Exact 6f4917bda",
+    "bundle": "com.ramimaalouf.multiplexer",
+    "accountScope": "designated test account only, signed out at completion",
+    "observations": [
+      "inbox scrolled to older test-room rows after Home return and scrolled back to the top",
+      "a test chat scrolled to older messages after a separate Home return",
+      "raw left-edge swipe returned to the inbox",
+      "partial horizontal row drag exposed Archive and Mute; neither action was invoked"
+    ],
+    "automationLimit": "two composer fill attempts returned TEXT_ENTRY_MISMATCH with an empty field, including the suggested delayed retry; no message was sent and composer text entry is not claimed validated in this comparison"
+  },
+  "currentUpstreamTemplateAttempt": {
+    "framework": "bdac0a1be34ef34a3c4133f0c8c9cc29b6b49f84",
+    "result": "compile failed on unchanged template",
+    "missingFeatures": ["column swipe and swipe-direction", "layout-margins-inset variables", "100cqw expression"]
+  },
+  "conclusions": [
+    "both products use a virtualized appearance-none transcript starting at and following the end",
+    "template explicitly requests interactive keyboard dismissal; the current framework already defaults vertical scrollers to interactive, which Mux inherits",
+    "the template uses native route chrome, fake data, three inbox contacts and explicit history loading; Mux uses custom glass chrome, live Matrix data and reach-start pagination",
+    "the template pin has no TimerScrollTouch; this is a product comparison, not an isolated runtime A/B",
+    "no complete scrolling freeze reproduced; no frame-rate or hitch comparison was measured",
+    "Home commands do not reproduce the physical touch-cancellation path of the original Home-indicator swipe",
+    "no app or framework production source changed"
+  ],
+  "localArtifacts": "research/chat-template-comparison; /tmp/mux-chat-template-native-tests.log; /tmp/mux-chat-pinned-build.log; /tmp/mux-chat-patched-build.log"
+}

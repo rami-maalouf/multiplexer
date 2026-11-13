@@ -1,5 +1,16 @@
 # Mux: tasks
 
+## Run the public chat template beside Mux (2026-11-13)
+
+- [x] Generate unchanged apps through the supported template generator, with separate identities.
+- [x] Build and install the supported framework pin; 14 native and 13 data tests pass.
+- [x] Attempt current upstream: record branch-only feature compile failures without rewriting the template to hide incompatibility.
+- [x] Compare loaded history, Home returns, reply and edge-back; Mux inbox/chat returns, row actions and edge-back pass on the same simulator.
+- [x] Confirm Mux inherits interactive keyboard dismissal; no missing-setting workaround is justified.
+- [x] Sign out the designated test account, release the auth-drive lock and shut down the owned simulator. No real account accessed or Matrix messages sent.
+- [x] Record comparison limits: different runtime branches/data/chrome, no physical Home-indicator reproduction and no measured frame timings.
+- [ ] If investigating composer entry separately, distinguish the driver's repeated `TEXT_ENTRY_MISMATCH` from actual input behavior; the field stayed empty during this run, so no typing acceptance is claimed.
+
 ## Scroll stutter after gesture repair (2026-11-13)
 
 - [x] Clarify symptom: jerky movement in both inbox and chats, rather than a complete freeze.
