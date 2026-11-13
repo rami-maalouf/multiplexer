@@ -26,7 +26,11 @@
   },
   "template": {
     "source": "https://github.com/expo/exact-templates/tree/main/chat",
-    "finding": "uses the same native list and header path; no background-return gesture test"
+    "finding": "uses Exact lists and headers with a virtualized end-following transcript; no app-level background-return recovery or Home-return gesture test found",
+    "templateRevision": "041917c8e1c9c2c076232a8011f0d5f40601ca01",
+    "pinnedFrameworkRevision": "ad181418b37d5452a0c0e35f15bf6d3f45f4a212",
+    "qualification": "the template pins ide/exact2 chat/messages-1123; that framework tree contains neither TimerAdmissions nor TimerScrollTouch, so the template is not a same-runtime control",
+    "otherReportedFreeze": "QUEUE.md describes a physical-phone send/composer-growth lockup and text-view layout change d27750f96a; physical acceptance remained pending, and it is not evidence of a fix for Home-return gesture freezing"
   },
   "physicalRebuiltVerification": "fixed build installed; physical gesture acceptance pending",
   "physicalInstallation": {

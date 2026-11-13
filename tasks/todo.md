@@ -31,6 +31,7 @@ Private captures and both signed builds: root checkout's ignored
 - [x] Reproduce the Home-indicator freeze on the physical phone and confirm finger scrolling.
 - [x] Inspect idle native recognizers; changing only `TimerScrollTouch` to failed restores the same inbox.
 - [x] Compare the public chat template and correct the earlier glass-pan diagnosis.
+- [x] Recheck the template's actual framework pin: `ad181418b3` lacks the timer touch observer. Its queue's send/composer lockup has a different trigger; no alternative Home-return repair or test was found. Do not describe the pinned template as a same-runtime control.
 - [x] Create isolated app/framework branches after reproduction; include merged PR #24 (`fdbfa3c`).
 - [x] Add cancellation and final-contact lifecycle coverage; baseline leaves the recognizer possible.
 - [x] Native regression: 17 pass / 1 fail without the fix; 18 pass with it. All six framework checks pass.

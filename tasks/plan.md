@@ -11,6 +11,9 @@ tests and the tvOS build. The workspace check needed a retry after scoped compil
 cache cleanup resolved disk exhaustion. No phone build changed. Keep the current
 integration until an adopted upstream revision includes the repair, then remove its
 gesture hunk from the bundled integration patch; other integration changes remain needed.
+Template recheck: `exact-templates` at `041917c8` pins framework `ad181418b3`, whose
+Apple host has no `TimerScrollTouch`. Its similar list structure is not a same-runtime
+control; no template-level Home-return repair or test was found.
 
 **Scroll stutter follow-up (2026-11-13, attribution pending):** the owner reports
 jerky scrolling in both inbox and chats after installing the gesture repair. The
