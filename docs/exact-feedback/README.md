@@ -243,6 +243,14 @@ it must keep `!/.exact/diary/`.
 | saved native test run loses its bundles | about 2 min plus rebuilding | P3 | [native replay](issues/20261107-native-test-replay-loses-bundles.md) |
 | affected hides an unavailable cargo executable | about 1 min | P3 | [affected lookup](issues/20261107-affected-hides-missing-cargo.md) |
 
+## Send animation findings (2026-11-13)
+
+| Finding | Cost | Severity | Evidence |
+|---|---|---|---|
+| frame omits the keyboard toolbar lift | about 45 min | P3 | [keyboard geometry](issues/20261113-frame-omits-keyboard-toolbar-lift.md) |
+| framework symlink fails source identity capture | about 5 min and rebuilding | P3 | [build paths](issues/20261113-symlink-framework-source-identity.md) |
+| chat recipe omits the template send handoff | about 20 min | P3 | [send recipe](issues/20261113-chat-send-motion-recipe.md) |
+
 ## Sent to the Exact team
 
 Validation continuation, 2026-11-07: receipt `ac9481f6-814f-49b1-bbc1-33193c87b718`,

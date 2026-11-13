@@ -83,6 +83,8 @@ final class Matrix: ExactModule {
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
         switch request["op"] as? String {
+        case "sendOrigin":
+            return MainActor.assumeIsolated { sendOrigin() }
         case "composerSurface":
             #if os(macOS)
             return ["groupedGlass": false, "desktop": true]
@@ -326,9 +328,9 @@ final class Matrix: ExactModule {
                 case "send":
                     // the message shows in the chat at once; its state says how the sending goes.
                     let replyTo = request["replyTo"] as? String ?? ""
-                    try await signedIn().send(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "",
+                    let id = try await signedIn().send(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "",
                                               replyTo: replyTo.isEmpty ? nil : replyTo)
-                    reply.send(["ok": true])
+                    reply.send(["ok": true, "id": id ?? ""])
                 case "sendMedia":
                     // the photo or file shows in the chat at once; its state and progress say how the upload goes.
                     reply.send(["ok": try await sendMedia(request)])

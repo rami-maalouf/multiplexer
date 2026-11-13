@@ -1,5 +1,16 @@
 # Mux: tasks
 
+## Outgoing message animation (2026-11-13)
+
+- [x] Inspect and record the pinned Exact template send flight.
+- [x] Return the queued text message identity, including concurrent identical sends.
+- [x] Adapt template spring phases to Mux bubbles, replies, drafts and reduced motion.
+- [x] Verify the corrected keyboard origin, rapid sends, navigation and native checks.
+- [x] Complete simplification and code review; no actionable findings remain.
+- [ ] Open a new Mux PR against main.
+
+Test notes: MatrixCore identical-send and delivery/refusal tests pass (2 tests); 45 TypeScript tests pass. Full iOS verify: 14 tests, light/dark and 16 largest-text screens clean. Native signed-in drives cover multiline replies, rapid sends/new draft retention, route cancellation, reduced motion and sending while away from the bottom. Final standalone animation recording inspected. Both test sessions signed out. Mac test build stopped at the missing Matrix SDK macOS arm64 slice; physical-device frame pacing remains unchecked. Simulator AX fill did not deliver composer input; keyboard typing did. A fresh native build failed once without a printed diagnostic after Swift compilation; retry completed. Machine-specific generated paths are temporary and excluded from the PR.
+
 ## Final paired production demo (2026-11-09, user approved Mux direction)
 
 - [x] Recover phone control after Rami's ready confirmation and capture the matching Beeper

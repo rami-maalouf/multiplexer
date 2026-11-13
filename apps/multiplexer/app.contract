@@ -233,6 +233,19 @@ shape SignInReply
   ok: bool
   error: string
 
+shape SendOrigin
+  available: bool
+  x: number
+  width: number
+  height: number
+  bottom: number
+
+shape SentMessage
+  ok: bool
+  id: string
+  room: string
+  origin: SendOrigin
+
 shape Reply
   ok: bool
 
@@ -423,7 +436,7 @@ component Multiplexer
   mutation changedChat as shape Reply queue refreshes roomList
   mutation signedIn as shape SignInReply refreshes session then afterSignIn
   mutation signedOut as shape Reply refreshes session
-  mutation sent as shape Reply then toEnd
+  mutation sent as shape SentMessage then sentText
   mutation sentMedia as shape Reply then toEnd
   mutation staged as shape Reply queue
   mutation opened as shape OpenedFile then openDownloaded
@@ -563,6 +576,7 @@ component Multiplexer
   members "./desktop-members.contract"
   members "./new-conversation-members.contract"
   members "./details-members.contract"
+  members "./send-members.contract"
   members "./voice-members.contract"
   members "./search-members.contract"
   members "./info-members.contract"
@@ -754,13 +768,25 @@ component Multiplexer
           unsaved = openRoom
           tooLarge = ""
       else if composer.text.trim() != "" and not pending(sent)
+        beginSendFlight()
         send sent = sendMessage(openRoom, composer.text.trim(), composer.replyTo)
-        composers = withComposer(composers, Composer(composer, text="", replyTo=""))
-        unsaved = openRoom
+        if viewport.prefersReducedMotion or frame("conversation").unavailable or frame("composer-glass").unavailable
+          composers = withComposer(composers, Composer(composer, text="", replyTo=""))
+          unsaved = openRoom
       // Send keeps a keyboard that is up (its button retains the composer's focus), and raises none
       // the person put away (a drag down).
       if composerFocus
         focus("composer")
+  action handOffSend
+    let draft = composerOf(composers, flightRoom, savedDraft)
+    if draft.text == flightDraft and draft.replyTo == flightReply
+      composers = withComposer(composers, Composer(draft, text="", replyTo=""))
+      unsaved = flightRoom
+  action restoreSendDraft
+    let draft = composerOf(composers, flightRoom, savedDraft)
+    if draft.text == ""
+      composers = withComposer(composers, Composer(draft, text=flightDraft, replyTo=flightReply))
+      unsaved = flightRoom
   // a press on the field's glass (around the text, or held): the keyboard comes up, as a tap on the
   // text does. The press also makes the glass interactive (it swells and follows the finger).
   action pressField
@@ -1509,7 +1535,7 @@ component Multiplexer
           // A zero-height box above the transcript makes the host pad the route under the status
           // bar (finding 53); the bar then reaches back into that band with top=-62 so its soft
           // edge covers the clock instead of leaving the page's colour as a hard shelf.
-          column navigationKey=`${e.id}` navigationBar="none" navigationScroll="transcript" position="absolute" inset=0 drop=desktopDrop
+          column id="conversation" testId="conversation" navigationKey=`${e.id}` navigationBar="none" navigationScroll="transcript" position="absolute" inset=0 drop=desktopDrop
             display="flex" flex-direction="column"
             view height=0 flex-shrink=0 aria-hidden=true
             if threadShown
@@ -1634,7 +1660,7 @@ component Multiplexer
                                 // takes no tap and a press inside a swipe keeps the touch.
                                 match (m.linkOnly and m.card.state == "ready" ? some(m.card) : none)
                                   case some(p)
-                                    view opacity=(held == m.id ? 0 : 1) max-width="100%"
+                                    view opacity=(held == m.id or (flightPhase > 0 and flightRoom == openRoom and (flightId == m.id or (flightId == "" and m.isOwn and m.state == "sending" and not flightBefore.includes(m.id)))) ? 0 : 1) max-width="100%"
                                       SwipeReply(reply=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body), open=openLink(m.previewUrl),
                                         hold=hold(m.id, m.body, m.isOwn ? "You" : m.senderName, m.isOwn, m.endsRun),
                                         label=(p.title != "" ? `${p.title}, ${m.linkSite}` : m.linkSite), identifier=`bubble-${m.id}`)
@@ -1645,7 +1671,7 @@ component Multiplexer
                                     // follows the finger and, with the transition, springs back when it lets go.
                                     box id=`bubble-${m.id}` testId=`bubble-${m.id}` tabindex=0 retainFocus=true user-select="none" max-width="100%"
                                       position="relative" touch-action="pan-y" transition="translate -exact-spring(300, 30, 1)"
-                                      opacity=(held == m.id ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body)
+                                      opacity=(held == m.id or (flightPhase > 0 and flightRoom == openRoom and (flightId == m.id or (flightId == "" and m.isOwn and m.state == "sending" and not flightBefore.includes(m.id)))) ? 0 : 1) swiperight=startReply(m.id, m.isOwn ? "You" : m.senderName, m.body)
                                       contextmenu=hold(m.id, m.body, m.isOwn ? "You" : m.senderName, m.isOwn, m.endsRun) aria-label=m.body
                                       // the reply arrow, left of the bubble's middle: unseen at rest, it grows in as the
                                       // swipe nears the 64 points that answer. On release it leaves faster than the bubble
@@ -1667,7 +1693,7 @@ component Multiplexer
                                               open=openLink)
                                           case none
                                             RichBalloon(appearance=appearance, runs=m.runs, outgoing=m.isOwn, tail=m.endsRun, dimmed=(m.state == "sending"),
-                                              identifier=`message-${m.id}`, open=openLink)
+                                              identifier=`message-${m.id}`, open=openLink, shift=0, shiftMotion="none")
                               if m.isEdited
                                 text "Edited" font="-exact-caption2" color="-exact-secondary-label" padding="0 8px" testId=`edited-${m.id}`
                               if m.reactions.length > 0
@@ -1788,7 +1814,7 @@ component Multiplexer
                 // the glass interactive, as Beeper's field is: held, it swells and follows the finger.
                 column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" press=pressField
                   border=(composerSurface.desktop and composerFocus ? "1px solid AccentColor" : "none")
-                  -exact-press-opacity=1 testId="composer-glass"
+                  -exact-press-opacity=1 id="composer-glass" testId="composer-glass"
                   // it widens into the voice button's slot as Send moves in, and gives it back.
                   -exact-layout-transition=(viewport.prefersReducedMotion ? "none" : "300ms cubic-bezier(.32,.72,0,1)")
                   if recording == "draft"
@@ -1853,6 +1879,28 @@ component Multiplexer
                   VoiceStop(press=stopVoice, disabled=(recording != "recording"))
                 else if voiceOffered
                   VoiceButton(press=beginVoice, disabled=(not composerReady or pending(sentVoice)), still=viewport.prefersReducedMotion)
+            if flightPhase > 0 and flightRoom == openRoom
+              match flightMessage
+                case some(m)
+                  row id="send-flight" testId="send-flight" aria-hidden=true position="absolute" left=12 right=12 top=flightTop
+                    justify-content="flex-end" pointer-events="none" opacity=(flightPhase == 1 ? 0 : (flightPhase == 2 ? 0.6 : 1))
+                    translate=`${flightSlide}px ${flightRise}px` scale=(flightPhase >= 3 ? flightScale : 1) transform-origin="100% 50%" transition=flightMotion
+                    row position="relative" flex=1 min-width=0 justify-content="flex-end" scale=(flightPhase >= 4 ? 1 / flightScale : 1)
+                      transform-origin="100% 50%" transition=swellMotion
+                      if not m.bigEmoji
+                        box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
+                          box position="absolute" inset=0 border-radius=20 background-color=appearance.bubble translate=`${flightNarrowed}px 0px` transition=narrowMotion
+                      box id="flying-balloon" max-width="80%"
+                        if m.bigEmoji
+                          BigEmoji(body=m.body, dimmed=false, identifier="flying-message")
+                        else if m.card.state == "ready"
+                          LinkBalloon(appearance=appearance, runs=m.runs, linkOnly=m.linkOnly, site=m.linkSite, preview=m.card,
+                            outgoing=true, tail=m.endsRun, dimmed=false, identifier="flying-message", open=openLink)
+                        else
+                          RichBalloon(appearance=appearance, runs=m.runs, outgoing=true, tail=m.endsRun, dimmed=false,
+                            identifier="flying-message", open=openLink, shift=flightShift, shiftMotion=narrowMotion)
+                case none
+                  view
             column id="send-later-menu" inert=(not composerReady) popover="auto" role="menu"
               button press=scheduleDraft("tomorrow") popovertarget="send-later-menu" popovertargetaction="hide" testId="later-tomorrow"
                 image "symbol:icon.clock"

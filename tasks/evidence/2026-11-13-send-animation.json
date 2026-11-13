@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-13",
+  "base": "fdbfa3c3391b3974771d5fa2c30a45cdd386b83a",
+  "exact": "6f4917bdab8b5392a78c2e4e6b6d8d3b28e9317c",
+  "template": "041917c8e1c9c2c076232a8011f0d5f40601ca01",
+  "tests": {
+    "typescript": 45,
+    "matrix_core_send": 2,
+    "native_ios": 14,
+    "largest_text_screens": 16,
+    "ios_verify": "clean"
+  },
+  "manual_native_checks": [
+    "short outgoing text takeoff and landing on final standalone build",
+    "multiline reply retains quote",
+    "rapid consecutive sends and newer draft retained",
+    "leaving the route cancels flight; returning keeps empty sent draft",
+    "reduced motion keeps flightPhase zero",
+    "send while scrolled up returns to latest message"
+  ],
+  "review": {
+    "run_id": "mux-send-a481dc8b",
+    "status": "complete",
+    "depth": "lite",
+    "actionable_findings": 0,
+    "simplification": "redundant state and comments removed; protected send proof tests preserved"
+  },
+  "limits": [
+    "no physical iPhone frame-pacing measurement",
+    "macOS test build blocked by missing Matrix SDK macOS arm64 slice",
+    "late echo timeout fallback reviewed but not forced in a regression test"
+  ],
+  "cleanup": {
+    "test_sessions_signed_out": true,
+    "owned_simulator_shutdown": true,
+    "shared_framework_modified": false,
+    "machine_specific_generated_paths_excluded": true
+  },
+  "feedback": "local only"
+}

@@ -1,0 +1,116 @@
+// outgoing text motion from exact-templates/chat (041917c), adapted to asynchronous local echoes.
+members Multiplexer
+  state flightPhase = 0
+  state flightId = ""
+  state flightRoom = ""
+  state flightRoute = ""
+  state flightDraft = ""
+  state flightReply = ""
+  state flightBefore: string[] = []
+  state flightAt = 0
+  state squashAt = 0
+  state flightTop = 0
+  state fieldTop = 0
+  state fieldX = 0
+  state fieldRight = 0
+  state flierBottom = 0
+  state flightScale = 1
+  state flightSlide = 0
+  state flightReach = 0
+  state flightNarrow = 0
+  state flightShift = 0
+  state flightRise = 0
+  derive flightMessage = first(thread.messages.filter(m => m.id == flightId))
+  derive flightNarrowed = flightPhase >= 3 ? flightNarrow : 0
+  derive flightMotion = flightPhase >= 3 ? "translate -exact-spring(141.759, 17.3503, 1), scale -exact-spring(310, 38, 2), opacity 200ms ease-in" : "none"
+  derive swellMotion = flightPhase >= 4 ? "scale -exact-spring(320, 38, 2)" : "none"
+  derive narrowMotion = flightPhase >= 3 ? "translate 200ms cubic-bezier(0.541951, 0, 0.58, 1)" : "none"
+
+  action beginSendFlight
+    let pageFrame = frame("conversation")
+    let pill = frame("composer-glass")
+    flightRoom = openRoom
+    flightRoute = `${top(nav).id}`
+    flightDraft = composer.text
+    flightReply = composer.replyTo
+    flightBefore = thread.messages.map(m => m.id)
+    flightId = ""
+    flightAt = performanceNow()
+    flightPhase = viewport.prefersReducedMotion or pageFrame.unavailable or pill.unavailable ? 0 : 1
+    flightTop = pill.y + pill.height - pageFrame.y
+    fieldTop = pill.y
+    fieldX = pill.x
+    fieldRight = pill.x + pill.width
+    flightScale = 0.7 + 0.2 * min(1, max(0, (pill.height - 40.3333) / (6 * 40.3333)))
+    flightSlide = 0
+    flightShift = 0
+    flightRise = 0
+    flightReach = 0
+    flightNarrow = 0
+
+  action sentText
+    match sent
+      case some(result)
+        if result.room == openRoom and result.room == flightRoom and flightRoute == `${top(nav).id}`
+          flightId = result.id
+          if result.origin.available
+            flightTop = result.origin.bottom
+            fieldTop = result.origin.bottom - result.origin.height
+            fieldX = result.origin.x
+            fieldRight = result.origin.x + result.origin.width
+          if result.id == "" or (not result.origin.available and not composerSurface.desktop)
+            flightPhase = 0
+            handOffSend()
+          if viewport.prefersReducedMotion
+            scrollIntoView("transcript", result.id == "" ? lastId : result.id, offset=1000000, behavior="instant")
+          else
+            scrollIntoView("transcript", result.id == "" ? lastId : result.id, offset=1000000, behavior="smooth")
+      case none
+        flightPhase = 0
+
+  action animateSend
+    let stamp = performanceNow()
+    if flightRoom != openRoom or flightRoute != `${top(nav).id}` or top(nav).name != "room" or page.visibilityState != "visible" or viewport.prefersReducedMotion
+      flightPhase = 0
+      handOffSend()
+    else if failed(sent)
+      flightPhase = 0
+    else if flightPhase == 1
+      let flier = frame("flying-balloon")
+      if not flier.unavailable and not flier.provisional
+        let origin = flightTop
+        let inset = flier.y - origin
+        flightTop = origin - inset - flier.height
+        flierBottom = origin
+        let slide = fieldRight - flier.x - flier.width
+        flightSlide = slide
+        flightReach = fieldX - frame("send-flight").x - slide
+        flightNarrow = flier.x - fieldX + slide
+        let words = frame("flying-message-text")
+        flightShift = fieldX + 14 - slide - (words.unavailable ? flier.x + 14 : words.x)
+        flightPhase = 2
+        flightAt = stamp
+        handOffSend()
+      else if stamp - flightAt > 1000
+        flightPhase = 0
+        handOffSend()
+    else if flightPhase == 2 and stamp - flightAt >= 16
+      flightShift = 0
+      flightSlide = 0
+      flightPhase = 3
+      squashAt = stamp
+    else if flightPhase >= 3 and stamp - squashAt >= 995
+      flightPhase = 0
+    else if flightPhase >= 3
+      if flightPhase == 3 and stamp - squashAt >= 185
+        flightPhase = 4
+      if stamp - squashAt >= 55
+        let row = frame(`bubble-${flightId}`)
+        if not row.unavailable and not row.provisional
+          let bottom = min(row.y + row.height, fieldTop - 12)
+          if max(bottom - flierBottom - flightRise, flierBottom + flightRise - bottom) > 0.5
+            flightRise = bottom - flierBottom
+  task failedTextSend when failed(sent)
+    after(1, restoreSendDraft)
+  task sendingFlight when flightPhase > 0
+    every(frame, animateSend)
