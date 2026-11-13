@@ -3361,3 +3361,6 @@ the current Exact checkout; new build-cost evidence was added to finding 30. The
 - [x] Published PR #24: https://github.com/rami-maalouf/multiplexer/pull/24.
 - Limits: no live bridged account or macOS verification. Test runner clears the kept drive
   session (feedback 132); the isolated test simulator is used throughout.
+
+- [x] Sent only the group-profile diary with explicit approval; receipt
+  `e584da31-3ea8-456b-bbc4-d3fda3238d90`. No command logs or attachments.

@@ -11,6 +11,8 @@ limit/media downloads, and timeline identity fallback. Platform-touch iOS drive 
 with limit 1 and Close returns to the composer; light/dark screenshots inspected. The live
 regression and 45 TypeScript tests pass. Full iOS verify is clean: 14 tests, light/dark checks and 16 largest-text screens. Live bridge-specific
 accounts and macOS not exercised; no real account or server configuration modified.
+The task diary was sent with approval, receipt `e584da31-3ea8-456b-bbc4-d3fda3238d90`
+(one diary, no logs or attachments).
 
 **Main and AppDrop published (2026-11-12):** main `1686cd1` contains PRs #22 and
 #23, login help, all pending work, and the 11 previously unpushed local-main commits.

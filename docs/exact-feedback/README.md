@@ -339,3 +339,7 @@ zero logged commands, no attachments). Receipt:
 `236a21c9-38ae-4cc3-b8e0-2bb6b11fd3e5`. Other unsent diaries remain local.
 
 Avatar task, 2026-11-12: with Rami's explicit approval, sent only `2026-11-12-bridge-avatars.md`, receipt `594fc919-b6ac-4b88-8a0d-52c99bc57f93`. Zero command logs or attachments; other diaries stayed local.
+
+Group profile diary sent with explicit approval: receipt `e584da31-3ea8-456b-bbc4-d3fda3238d90`.
+Only `2026-11-12-member-profiles.md`: one diary, zero logged commands, no attachments.
+Other diaries and the command-log cursor were preserved.
