@@ -19,3 +19,11 @@ Canonicalize framework paths consistently or name the required update command in
 ## Evidence
 
 Observed with Exact `6f4917bda` and exact-templates `041917c`. Kept local; not submitted upstream.
+
+## More evidence (2026-11-13, second task)
+
+The same failure came back in the same worktree. After `exact update` with the canonical path,
+the next build failed with two `mismatched types` errors between two copies of one framework crate
+(`exact_markdown`): an unhashed `libexact_markdown_editor.rlib` built through the symlink path
+stayed in the target folder. Deleting that rlib and its two fingerprints fixed it. About fifteen
+minutes. Cleaning stale framework crates when `update` changes the framework path would avoid it.

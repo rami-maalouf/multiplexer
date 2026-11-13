@@ -48,7 +48,9 @@ members Multiplexer
   derive voiceFailed = match voiceFailure { case some(f) => true, case none => false }
   derive voiceRefused = match voiceFailure { case some(f) => f.code == "NotAllowedError", case none => false }
   // the voice button shows while the field is empty and nothing is picked; Send shows otherwise.
-  derive voiceOffered = editing == "" and composer.text.trim() == "" and composer.attachments.length == 0
+  // a sent message leaves from the field at its full width, so the voice button waits until the
+  // message has risen clear of it (send-members.contract).
+  derive voiceOffered = editing == "" and composer.text.trim() == "" and composer.attachments.length == 0 and not flightHoldsField
   // leaving the chat stops its voice message, and throws away a recording made there.
   task stopVoice when voicePlaying != "" and voiceRoom != openRoom
     after(1, stopVoiceNow)
