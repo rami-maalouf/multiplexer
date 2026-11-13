@@ -13,8 +13,11 @@ the regression (17/1 before, 18/0 after), all six framework checks, 14 native ap
 45 TypeScript tests. Simulator inbox returns at 8/8/30 s, chat scrolling, row actions
 and interactive back pass. The bundled patch reproduces tree `d01576d5`; the clean
 shared Exact integration includes the tested commit. The app branch includes PR #24.
-The simulator could not invoke the same system Home gesture. The owner disconnected
-the phone, so rebuilt physical acceptance remains pending.
+The simulator could not invoke the same system Home gesture. On 2026-11-13, at the
+owner's request, app commit `ce24795` with Exact `6f4917bda` was built and installed
+on the reconnected iPhone, including the notification extension. Strict deep signing
+verification passed, and the phone confirmed installation. Physical gesture acceptance
+remains pending; this installation did not open chats or drive the real account.
 The generic task diary was sent with explicit approval: receipt
 `5e8f8009-8339-4206-b9cd-9ddb13571800`, one diary with no logs or attachments.
 

@@ -28,7 +28,16 @@
     "source": "https://github.com/expo/exact-templates/tree/main/chat",
     "finding": "uses the same native list and header path; no background-return gesture test"
   },
-  "physicalRebuiltVerification": "pending; phone disconnected for owner's use",
+  "physicalRebuiltVerification": "fixed build installed; physical gesture acceptance pending",
+  "physicalInstallation": {
+    "date": "2026-11-13",
+    "appCommit": "ce24795",
+    "exactCommit": "6f4917bdab8b5392a78c2e4e6b6d8d3b28e9317c",
+    "notificationExtensionIncluded": true,
+    "strictDeepSignatureVerification": "pass",
+    "deviceInstallationConfirmed": true,
+    "realAccountDriven": false
+  },
   "regressionAfterFix": {
     "suite": "SessionClockTimerTests",
     "passed": 18,

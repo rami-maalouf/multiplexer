@@ -15,7 +15,8 @@
   is committed and fast-forwarded into the clean shared integration under the lock.
 - [x] Sign out the designated simulator test account, release the auth-drive lock, and shut down the owned simulator.
 - [x] Send only the approved generic diary, receipt `5e8f8009-8339-4206-b9cd-9ddb13571800`; no logs or attachments. Other pending feedback remains local.
-- [ ] Install and repeat the physical Home-indicator test when the owner can reconnect the phone.
+- [x] Install the fixed build on the owner's reconnected iPhone (2026-11-13): app `ce24795`, Exact `6f4917bda`, notification extension included, strict deep signature verified, phone installation confirmed.
+- [ ] Confirm the repaired physical Home-indicator return no longer freezes scrolling.
 
 Build prerequisite: disk exhaustion interrupted the initial test build. Scoped cleanup of
 regenerable build caches restored space; no source or personal files removed.
