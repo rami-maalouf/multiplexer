@@ -262,6 +262,8 @@ it must keep `!/.exact/diary/`.
 
 ## Sent to the Exact team
 
+Send coordination, 2026-11-13: receipt `1fd77ab5-6f7b-4405-a4cb-7c2e74ce999d`, explicit approval for this one diary; zero command logs or attachments. Comparison diary remains local.
+
 Send-list motion follow-up, 2026-11-13: receipt `06db05a9-355a-474a-8e44-807ea1d18f0f`, explicit approval for this one diary; zero command logs or attachments.
 
 Send animation, 2026-11-13: receipt `2f4ff629-9277-4a43-a9c6-c6dbba6af9a6`, with explicit approval for one diary only; zero command logs or attachments. The comparison diary remains local.

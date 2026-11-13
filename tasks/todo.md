@@ -23,7 +23,7 @@ newer drafts, reduced motion, off-bottom sends and navigation. Both test session
 auth-drive lock released, owned simulator shut down. Review receipt
 `20261113-send-coordination-602329cd`: complete, no actionable findings. Simplification kept
 identity maps and atomic-action ID construction; shared grouping logic was extracted.
-The new coordination diary remains local pending separate approval. The framework checkout
+Coordination diary sent with separate approval: `1fd77ab5-6f7b-4405-a4cb-7c2e74ce999d`; one diary, zero logs or attachments. The comparison diary remains local. The framework checkout
 no longer provides the documented issue generator/checker; findings were updated manually.
 
 
