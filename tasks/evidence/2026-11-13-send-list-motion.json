@@ -112,7 +112,14 @@
     "smooth_tests.rs: followed end animates; a reader away from end keeps an unanimated anchor",
     "into_view.rs: keyed reveal animation depends on explicit behavior, independent of list style"
   ],
-  "feedback": "new follow-up diary stays local; prior approval already consumed by original animation diary",
+  "feedback": {
+    "receipt": "06db05a9-355a-474a-8e44-807ea1d18f0f",
+    "diaries": 1,
+    "commands": 0,
+    "attachments": 0,
+    "approval": "explicit; follow-up diary only",
+    "comparison_diary": "local"
+  },
   "ios_verify": {
     "result": "clean",
     "seconds": 144.4,
