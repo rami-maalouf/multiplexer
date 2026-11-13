@@ -717,6 +717,32 @@ index c8d24dadf..28b5b88c5 100644
          button.tag = Int(node.id)
          button.bezelStyle = .texturedRounded
          button.title = face?.title ?? item.title
+diff --git a/host/apple/Sources/ExactKit/TimerAdmissions.swift b/host/apple/Sources/ExactKit/TimerAdmissions.swift
+index 8ab792305..2fd92547c 100644
+--- a/host/apple/Sources/ExactKit/TimerAdmissions.swift
++++ b/host/apple/Sources/ExactKit/TimerAdmissions.swift
+@@ -199,7 +199,7 @@ final class TimerAdmissions {
+ 
+ #if canImport(UIKit)
+ // Observe touches without recognizing, delaying, cancelling or preventing gestures
+-private final class TimerScrollTouch: UIGestureRecognizer, UIGestureRecognizerDelegate {
++class TimerScrollTouch: UIGestureRecognizer, UIGestureRecognizerDelegate {
+     private var touches: Set<ObjectIdentifier> = []
+     private let changed: () -> Void
+     var held: Bool { !touches.isEmpty }
+@@ -217,7 +217,11 @@ private final class TimerScrollTouch: UIGestureRecognizer, UIGestureRecognizerDe
+     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) { finish(touches) }
+     private func finish(_ touches: Set<UITouch>) {
+         for touch in touches { self.touches.remove(ObjectIdentifier(touch)) }
+-        if self.touches.isEmpty { DispatchQueue.main.async { [weak self] in self?.changed() } }
++        if self.touches.isEmpty {
++            // finish the sequence so uikit can reset recognizers after a system gesture cancels it.
++            state = .failed
++            DispatchQueue.main.async { [weak self] in self?.changed() }
++        }
+     }
+     override func reset() { super.reset(); touches.removeAll(); DispatchQueue.main.async { [weak self] in self?.changed() } }
+ }
 diff --git a/host/apple/build.mjs b/host/apple/build.mjs
 index a2229680c..69d76d583 100644
 --- a/host/apple/build.mjs
@@ -1042,10 +1068,18 @@ index d09a7a57d..84a35b70a 100644
          let (session, window) = fixture()
          defer { window.isHidden = true; session.destroy() }
 diff --git a/host/apple/tests/ExactKitTests/NavigationBarIOSTests.swift b/host/apple/tests/ExactKitTests/NavigationBarIOSTests.swift
-index e543727e5..0423ac857 100644
+index e543727e5..434770afe 100644
 --- a/host/apple/tests/ExactKitTests/NavigationBarIOSTests.swift
 +++ b/host/apple/tests/ExactKitTests/NavigationBarIOSTests.swift
-@@ -22,6 +22,8 @@ final class NavigationBarIOSTests: XCTestCase {
+@@ -13,7 +13,6 @@ import XCTest
+ final class NavigationBarIOSTests: XCTestCase {
+     var window: UIWindow?
+     var sessions: [ExactSession] = []
+-
+     override func tearDown() {
+         // An attempt that never reached its replay (an exception ended it) still reports what it held.
+         if let held = heldIssues { heldIssues = nil; held.forEach(record) }
+@@ -22,6 +21,8 @@ final class NavigationBarIOSTests: XCTestCase {
          NativeViews.uninstallTable()
          sessions = []
          window?.isHidden = true
@@ -1054,7 +1088,7 @@ index e543727e5..0423ac857 100644
          window = nil
          super.tearDown()
      }
-@@ -1423,6 +1425,20 @@ final class NavigationBarIOSTests: XCTestCase {
+@@ -1423,6 +1424,20 @@ final class NavigationBarIOSTests: XCTestCase {
          XCTAssertEqual(owner.convert(owner.bounds, to: nil), frame)
      }
  
@@ -1075,7 +1109,7 @@ index e543727e5..0423ac857 100644
  }
  
  /// The block-based UIKit animator remains supported alongside interruptible animators.
-@@ -1442,7 +1458,7 @@ private final class LegacyFade: NSObject, UIViewControllerAnimatedTransitioning
+@@ -1442,7 +1457,7 @@ private final class LegacyFade: NSObject, UIViewControllerAnimatedTransitioning
  }
  
  /// An app's delegate: a cross-fade, interactive when asked.
@@ -1565,6 +1599,54 @@ index e45d849e7..698a24d31 100644
      func testTheRowOwnedSeparatorFollowsPresentationWithoutABatchRedraw() throws {
          let p = try fixture()
          let (row, line) = try XCTUnwrap(rowLines(p).first)
+diff --git a/host/apple/tests/ExactKitTests/SessionClockTimerTests.swift b/host/apple/tests/ExactKitTests/SessionClockTimerTests.swift
+index fb453eb74..430df9e9e 100644
+--- a/host/apple/tests/ExactKitTests/SessionClockTimerTests.swift
++++ b/host/apple/tests/ExactKitTests/SessionClockTimerTests.swift
+@@ -4,6 +4,9 @@ import QuartzCore
+ import XCTest
+ #if os(macOS)
+ import AppKit
++#else
++import UIKit
++import UIKit.UIGestureRecognizerSubclass
+ #endif
+ @testable import ExactKit
+ import ExactCore
+@@ -404,3 +407,33 @@ extension SessionClockTimerTests {
+         XCTAssertEqual(batch.nativeTimers?.first?.generation, UInt64.max)
+     }
+ }
++
++#if canImport(UIKit)
++extension SessionClockTimerTests {
++    private final class ScrollTouch: TimerScrollTouch {
++        // uikit receives no system touch sequence in a unit test; retain the requested state.
++        private var phase = UIGestureRecognizer.State.possible
++        override var state: UIGestureRecognizer.State { get { phase } set { phase = newValue } }
++    }
++
++    func testScrollTouchObservationFinishesAfterEndingOrCancellingTheLastFinger() {
++        for cancelled in [false, true] {
++            let observer = ScrollTouch(changed: {})
++            let pan = UIPanGestureRecognizer()
++            let first = UITouch(), second = UITouch(), event = UIEvent()
++            observer.touchesBegan([first, second], with: event)
++            XCTAssertTrue(observer.held)
++            observer.touchesEnded([first], with: event)
++            XCTAssertEqual(observer.state, .possible, "the remaining finger still holds timer admission")
++            XCTAssertTrue(observer.held)
++            if cancelled { observer.touchesCancelled([second], with: event) }
++            else { observer.touchesEnded([second], with: event) }
++            XCTAssertEqual(observer.state, .failed, "an observer must finish so UIKit can reset the scroll and system gestures after a Home cancellation")
++            XCTAssertFalse(observer.held)
++            XCTAssertFalse(observer.cancelsTouchesInView)
++            XCTAssertFalse(observer.canPrevent(pan))
++            XCTAssertFalse(observer.canBePrevented(by: pan))
++        }
++    }
++}
++#endif
 diff --git a/packages/recording/apple/Recording.swift b/packages/recording/apple/Recording.swift
 index 51c8d24c2..be0364f80 100644
 --- a/packages/recording/apple/Recording.swift

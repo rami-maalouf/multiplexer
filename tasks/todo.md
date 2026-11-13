@@ -1,5 +1,65 @@
 # Mux: tasks
 
+## Run the public chat template beside Mux (2026-11-13)
+
+- [x] Generate unchanged apps through the supported template generator, with separate identities.
+- [x] Build and install the supported framework pin; 14 native and 13 data tests pass.
+- [x] Attempt current upstream: record branch-only feature compile failures without rewriting the template to hide incompatibility.
+- [x] Compare loaded history, Home returns, reply and edge-back; Mux inbox/chat returns, row actions and edge-back pass on the same simulator.
+- [x] Confirm Mux inherits interactive keyboard dismissal; no missing-setting workaround is justified.
+- [x] Sign out the designated test account, release the auth-drive lock and shut down the owned simulator. No real account accessed or Matrix messages sent.
+- [x] Record comparison limits: different runtime branches/data/chrome, no physical Home-indicator reproduction and no measured frame timings.
+- [ ] If investigating composer entry separately, distinguish the driver's repeated `TEXT_ENTRY_MISMATCH` from actual input behavior; the field stayed empty during this run, so no typing acceptance is claimed.
+
+## Scroll stutter after gesture repair (2026-11-13)
+
+- [x] Clarify symptom: jerky movement in both inbox and chats, rather than a complete freeze.
+- [x] Read authorized numeric diagnostics: observer finishes; list moves after Home returns.
+- [x] Profile inbox only: automated run shows 94 hitches after startup, worst 50.01 ms.
+  Accessibility automation overhead prevents treating this as a clean manual baseline.
+- [x] Attempt owner-driven capture: one malformed transfer has no CPU/frame samples;
+  the next CPU capture is mostly idle. Neither establishes manual-scroll attribution.
+- [x] Build a comparison with only `TimerScrollTouch.finish`'s terminal assignment removed;
+  preserve the fixed signed app, restore all temporary source/config changes afterward.
+- [ ] Deferred unless stutter recurs: install and measure comparison. iOS refused
+  the install: 204,933,186 bytes needed, 120,698,280 available including purgeable space
+  (40,538,112 actually free). Storage was measured after profiling and is a confounder,
+  not a proven cause of the initial report.
+- [x] Confirm failed comparison install left the fixed app at its original bundle URL;
+  stop this phone's automation runner. No chats opened, messages sent or read status changed.
+- [x] Record the owner's subsequent smooth-scrolling report on the unchanged fixed build.
+  No code change reached the phone after the complaint; the improvement's cause is unknown.
+- [ ] If stutter recurs, compare the same inbox workload with/without the observer fix, then restore the fixed
+  build. Profile any persistent stutter before changing shared scroll/render code.
+
+Private captures and both signed builds: root checkout's ignored
+`research/scroll-followup-20261113/`. No performance code changes or upstream feedback sent.
+
+## Foreground gesture freeze (2026-11-13)
+
+- [x] Submit the isolated framework repair and regression upstream: [expo/exact#494](https://github.com/expo/exact/pull/494), commit `bdac0a1be3` on `c419ce55c9`. All six required checks, 19 timer tests and tvOS compile pass.
+- [ ] After upstream acceptance, adopt a revision containing the repair and remove only its gesture hunk from the integration patch.
+- [x] Reproduce the Home-indicator freeze on the physical phone and confirm finger scrolling.
+- [x] Inspect idle native recognizers; changing only `TimerScrollTouch` to failed restores the same inbox.
+- [x] Compare the public chat template and correct the earlier glass-pan diagnosis.
+- [x] Recheck the template's actual framework pin: `ad181418b3` lacks the timer touch observer. Its queue's send/composer lockup has a different trigger; no alternative Home-return repair or test was found. Do not describe the pinned template as a same-runtime control.
+- [x] Create isolated app/framework branches after reproduction; include merged PR #24 (`fdbfa3c`).
+- [x] Add cancellation and final-contact lifecycle coverage; baseline leaves the recognizer possible.
+- [x] Native regression: 17 pass / 1 fail without the fix; 18 pass with it. All six framework checks pass.
+- [x] Mux: 14 native and 45 TypeScript tests pass. Simulator inbox returns at 8/8/30 s
+  scroll both ways; chat return, row actions and interactive back pass. The simulator
+  did not reproduce the physical system Home gesture.
+- [x] Package the framework patch and verify tree `d01576d5`. Exact fix `6f4917bda`
+  is committed and fast-forwarded into the clean shared integration under the lock.
+- [x] Sign out the designated simulator test account, release the auth-drive lock, and shut down the owned simulator.
+- [x] Send only the approved generic diary, receipt `5e8f8009-8339-4206-b9cd-9ddb13571800`; no logs or attachments. Other pending feedback remains local.
+- [x] Install the fixed build on the owner's reconnected iPhone (2026-11-13): app `ce24795`, Exact `6f4917bda`, notification extension included, strict deep signature verified, phone installation confirmed.
+- [ ] Confirm the repaired physical Home-indicator return no longer freezes scrolling.
+
+Build prerequisite: disk exhaustion interrupted the initial test build. Scoped cleanup of
+regenerable build caches restored space; no source or personal files removed.
+Evidence: `tasks/evidence/foreground-gestures-20261113.json`.
+
 ## Final paired production demo (2026-11-09, user approved Mux direction)
 
 - [x] Recover phone control after Rami's ready confirmation and capture the matching Beeper

@@ -4,6 +4,60 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Chat template run (2026-11-13):** built the unchanged public template on its
+supported `ad181418b3` pin and ran it beside the existing fixed Mux build on an
+iPhone 16 Pro / iOS 27 simulator. Template: 14 native and 13 data tests pass;
+loaded-history scrolling, reply and edge-back work after Home returns. Mux:
+inbox/chat scrolling, row actions and edge-back work after returns with a designated
+test account, subsequently signed out. No complete freeze reproduced or frame
+timing comparison measured. Current upstream cannot bake the unchanged template
+because its pin includes branch-only features. The template pin lacks the observer
+we repaired; it is not an isolated runtime A/B. Both use virtualized transcripts;
+Mux already inherits interactive keyboard dismissal. No production code changed.
+Evidence and input-automation limits: `tasks/evidence/chat-template-comparison-20261113.json`.
+
+**Gesture fix upstream PR (2026-11-13):** [expo/exact#494](https://github.com/expo/exact/pull/494)
+contains only the passive touch lifecycle repair and its regression, on upstream
+`c419ce55c9` at commit `bdac0a1be3`. All six Exact checks pass, plus 19 native timer
+tests and the tvOS build. The workspace check needed a retry after scoped compiler
+cache cleanup resolved disk exhaustion. No phone build changed. Keep the current
+integration until an adopted upstream revision includes the repair, then remove its
+gesture hunk from the bundled integration patch; other integration changes remain needed.
+Template recheck: `exact-templates` at `041917c8` pins framework `ad181418b3`, whose
+Apple host has no `TimerScrollTouch`. Its similar list structure is not a same-runtime
+control; no template-level Home-return repair or test was found.
+
+**Scroll stutter follow-up (2026-11-13, attribution pending):** the owner reports
+jerky scrolling in both inbox and chats after installing the gesture repair. The
+phone's numeric log shows successful scrolling after Home returns and terminal
+touch-observer states. An automated inbox Instruments run measured 94 hitches after
+startup (worst about 50 ms), with timer-view scanning present near hitches; automation
+also adds substantial accessibility work. Manual traces were malformed or captured
+idle time, so they do not establish the cause. A comparison build removing only the
+observer's terminal-state assignment is ready, but iOS refused installation for
+insufficient storage (about 40 MB free, another 80 MB purgeable). This was observed
+after profiling, not before the initial stutter. The fixed installation is unchanged.
+The owner subsequently reported smooth scrolling on that unchanged installation.
+No performance fix was installed after the complaint; attribution remains unknown.
+Further comparison is deferred unless the symptom recurs.
+
+**Foreground gesture freeze (2026-11-13, physical acceptance pending):** reproduced twice after a
+physical Home-indicator swipe, with finger confirmation. Idle inspection disproved
+the earlier stuck-glass-pan inference. Setting only Exact's `TimerScrollTouch` to
+failed restored scrolling without navigation or remount. Its final-contact path
+never finishes the recognizer. Exact `6f4917bda` repairs final end/cancel and passes
+the regression (17/1 before, 18/0 after), all six framework checks, 14 native app and
+45 TypeScript tests. Simulator inbox returns at 8/8/30 s, chat scrolling, row actions
+and interactive back pass. The bundled patch reproduces tree `d01576d5`; the clean
+shared Exact integration includes the tested commit. The app branch includes PR #24.
+The simulator could not invoke the same system Home gesture. On 2026-11-13, at the
+owner's request, app commit `ce24795` with Exact `6f4917bda` was built and installed
+on the reconnected iPhone, including the notification extension. Strict deep signing
+verification passed, and the phone confirmed installation. Physical gesture acceptance
+remains pending; this installation did not open chats or drive the real account.
+The generic task diary was sent with explicit approval: receipt
+`5e8f8009-8339-4206-b9cd-9ddb13571800`, one diary with no logs or attachments.
+
 **Group sender profiles (2026-11-12, PR #24):** avatar taps already use one network-independent
 route, but direct entry never requested members and the profile depended on a six-person
 info preview. Added an independent selected-member resource, native selection before the

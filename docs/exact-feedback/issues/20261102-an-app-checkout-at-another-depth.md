@@ -85,3 +85,9 @@ minutes. Seen at framework `94b8671f7`.
 
 
 2026-11-12 follow-up: in an isolated worktree, EXACT2 alone did not repair the generated cargo paths. update repaired those paths but left package file dependencies at the original folder depth; installed package copies were needed locally. no generated path changes are intended to ship.
+
+2026-11-13 comparison-build follow-up: an environment-only framework override again
+failed the Cargo patch check. `exact update` refreshed six generated files before a
+one-line native lifecycle comparison could build. All generated path changes were
+restored afterward. About two minutes of setup, excluding compilation; a temporary
+comparison override that covers the entire native dependency graph would help.

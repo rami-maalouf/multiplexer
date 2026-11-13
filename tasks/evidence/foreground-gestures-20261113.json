@@ -1,0 +1,100 @@
+{
+  "muxBase": "fdbfa3c3391b3974771d5fa2c30a45cdd386b83a",
+  "exactBase": "8536d208c40f97be3f132ea266d5029e2e3c10ba",
+  "physicalBaseline": {
+    "hardwareHomeReturnsSeconds": [
+      8,
+      30
+    ],
+    "hardwareHomeResult": "scrolling worked",
+    "homeIndicatorReturns": 2,
+    "homeIndicatorResult": "inbox froze in both directions; owner confirmed finger scrolling was frozen",
+    "scope": "authorized inbox only; no chats opened or messages sent"
+  },
+  "causalIntervention": {
+    "idleObserver": "TimerScrollTouch possible with zero touches",
+    "idleListPan": "failed",
+    "idleGlassPans": "possible with zero touches",
+    "change": "set only TimerScrollTouch state to failed in the paused live process",
+    "result": "same mounted inbox scrolled immediately after debugger detach without navigation or restart"
+  },
+  "regressionBeforeFix": {
+    "suite": "SessionClockTimerTests",
+    "passed": 17,
+    "failed": 1,
+    "assertions": "both final touch end and cancellation left state possible instead of failed"
+  },
+  "template": {
+    "source": "https://github.com/expo/exact-templates/tree/main/chat",
+    "finding": "uses Exact lists and headers with a virtualized end-following transcript; no app-level background-return recovery or Home-return gesture test found",
+    "templateRevision": "041917c8e1c9c2c076232a8011f0d5f40601ca01",
+    "pinnedFrameworkRevision": "ad181418b37d5452a0c0e35f15bf6d3f45f4a212",
+    "qualification": "the template pins ide/exact2 chat/messages-1123; that framework tree contains neither TimerAdmissions nor TimerScrollTouch, so the template is not a same-runtime control",
+    "otherReportedFreeze": "QUEUE.md describes a physical-phone send/composer-growth lockup and text-view layout change d27750f96a; physical acceptance remained pending, and it is not evidence of a fix for Home-return gesture freezing"
+  },
+  "physicalRebuiltVerification": "fixed build installed; physical gesture acceptance pending",
+  "physicalInstallation": {
+    "date": "2026-11-13",
+    "appCommit": "ce24795",
+    "exactCommit": "6f4917bdab8b5392a78c2e4e6b6d8d3b28e9317c",
+    "notificationExtensionIncluded": true,
+    "strictDeepSignatureVerification": "pass",
+    "deviceInstallationConfirmed": true,
+    "realAccountDriven": false
+  },
+  "regressionAfterFix": {
+    "suite": "SessionClockTimerTests",
+    "passed": 18,
+    "failed": 0,
+    "baselineRecheckedWithFinalTest": true
+  },
+  "frameworkChecks": {
+    "build": "pass",
+    "test": "pass",
+    "clippy": "pass",
+    "fmt": "pass",
+    "caps": "pass after removing one blank line from an existing 1501-line navigation test",
+    "boot": "pass",
+    "workspace": "pass"
+  },
+  "appTypeScript": {
+    "passed": 45,
+    "failed": 0
+  },
+  "exactFixedCommit": "6f4917bdab8b5392a78c2e4e6b6d8d3b28e9317c",
+  "exactFixedTree": "d01576d564783957ae64e0b0f3d8cee1a07d4922",
+  "bundledPatchTreeVerified": true,
+  "appNativeTests": {
+    "passed": 14,
+    "failed": 0
+  },
+  "simulatorInboxReturns": [
+    {
+      "cycle": 1,
+      "backgroundSeconds": 8,
+      "upMoved": true,
+      "downMoved": true
+    },
+    {
+      "cycle": 2,
+      "backgroundSeconds": 8,
+      "upMoved": true,
+      "downMoved": true
+    },
+    {
+      "cycle": 3,
+      "backgroundSeconds": 30,
+      "upMoved": true,
+      "downMoved": true
+    }
+  ],
+  "simulatorChatReturn": {
+    "backgroundSeconds": 8,
+    "upMoved": true,
+    "downMoved": true
+  },
+  "simulatorRowSwipe": "archive and mute revealed",
+  "simulatorBackSwipe": "left-edge swipe returned from chat to inbox",
+  "simulatorLimit": "automated bottom-edge swipe scrolled the app instead of invoking the system Home gesture; ordinary Home used for simulator returns",
+  "testAccountCleanup": "signed out; owned simulator shut down"
+}
