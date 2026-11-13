@@ -1,0 +1,124 @@
+{
+  "task": "send flight velocity correction",
+  "date": "2026-11-13",
+  "base": "a721079912ba82a3fb4ea71a5de42c6ed1faa489",
+  "framework": "6f4917bda",
+  "template": "041917c8e1c9c2c076232a8011f0d5f40601ca01",
+  "cause": "the rise cap omitted the row suffix; receipt-height transitions changed the suffix and restarted animated end-follow",
+  "fix": "include row suffix in the resting cap and settle all receipt heights during a flight; preserve template phases and spring parameters",
+  "measurement": {
+    "method": "temporary every-frame Contract target sampler, written once after each flight; all instrumentation removed before final recordings",
+    "before_short": [
+      {
+        "milliseconds_since_squash": 163.12,
+        "rise_target_points": -59.25
+      },
+      {
+        "milliseconds_since_squash": 211.76,
+        "rise_target_points": -61.3487
+      },
+      {
+        "milliseconds_since_squash": 263.68,
+        "rise_target_points": -71.2224
+      },
+      {
+        "milliseconds_since_squash": 294.49,
+        "rise_target_points": -75.8426
+      },
+      {
+        "milliseconds_since_squash": 393.29,
+        "rise_target_points": -81.5886
+      },
+      {
+        "milliseconds_since_squash": 422.47,
+        "rise_target_points": -83.6675
+      }
+    ],
+    "after_short": [
+      {
+        "milliseconds_since_squash": 73.13,
+        "rise_target_points": -82.9
+      },
+      {
+        "milliseconds_since_squash": 339.79,
+        "rise_target_points": -83.7
+      }
+    ],
+    "after_multiline": [
+      {
+        "milliseconds_since_squash": 71.87,
+        "rise_target_points": -82.9
+      },
+      {
+        "milliseconds_since_squash": 338.56,
+        "rise_target_points": -83.7
+      }
+    ],
+    "final_footer_points": 29.65,
+    "late_target_correction_before_points": 24.4175,
+    "late_target_correction_after_points": 0.8,
+    "limits": "logical target samples measure geometry, not rendered frame pacing; simulator recording uses variable timestamps"
+  },
+  "tests": {
+    "typescript_passed": 49,
+    "native_verify_passed": 14,
+    "light_dark": "no findings",
+    "largest_text_screens": 16,
+    "largest_text_findings": 0,
+    "native_verify_seconds": 155.5
+  },
+  "review": {
+    "run_id": "20261113-162215-ff59b14f",
+    "runtime_findings": 0,
+    "documentation_findings": "resolved by final session updates",
+    "intentional_tradeoff": "receipt height changes apply immediately on all open-room rows during a flight; normal receipt transitions resume afterward",
+    "followup_task": "mux-send-velocity-review-2",
+    "followup_result": "new code sound; documentation findings resolved; photo-viewer keyboard restoration and alternate navigation paths were not independently exercised"
+  },
+  "recordings": [
+    {
+      "path": "research/send-animation/mux-send-velocity-single.mov",
+      "sha256": "e808dc0c93c6295f3fbb95d4af76d3ca498ad46a4f2ec0dd4f26a438abe84e9b"
+    },
+    {
+      "path": "research/send-animation/mux-send-velocity-multiline.mov",
+      "sha256": "4d67aa626c2fb5179d54e38099c8606dcc61e602e71ba0b86a3d36375a5735ce"
+    },
+    {
+      "path": "research/send-animation/template-and-mux-velocity.mp4",
+      "sha256": "a8fcf03fe9b8dfb80c5476a0a6f356573668caefbe7a65ae7af594d988c67aeb"
+    },
+    {
+      "path": "research/send-animation/mux-send-velocity-keyboard-down.mov",
+      "sha256": "7deb6a0447ae5dc4d52c3b8bbd9af2befa20a9623998a1e5f1e2b4c72b54abb6"
+    },
+    {
+      "path": "research/send-animation/mux-send-keyboard-focus-fixed.mov",
+      "sha256": "599d164f10ce5cdb5313a35e419810cc58455a6572d221bed48c90ecade52f24"
+    }
+  ],
+  "limits": [
+    "no physical iPhone frame-pacing claim",
+    "Mac native behavior unverified: SDK slice absent",
+    "signed-in animation has no persistent authored-test seam; before/after native trace and recording are the regression instrument"
+  ],
+  "cleanup": {
+    "normal_session": "signed out, sign-in screen observed",
+    "agent_session": "signed out after verify",
+    "auth_drive_lock": "released",
+    "simulator": "shutdown",
+    "generated_paths": "restored",
+    "shared_framework": "clean"
+  },
+  "focus_correction": {
+    "cause": "composer focus flag survives route removal without a blur event; Send then reopens a dismissed keyboard",
+    "changed_actions": [
+      "follow",
+      "back",
+      "pickEmoji",
+      "markUnreadOpen"
+    ],
+    "before": "saved-draft return showed closed keyboard before Send; keyboard reopened during flight",
+    "after": "same native sequence keeps keyboard closed and completes the flight"
+  }
+}

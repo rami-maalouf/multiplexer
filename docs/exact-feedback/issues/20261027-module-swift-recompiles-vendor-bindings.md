@@ -82,3 +82,7 @@ this iteration cost. No new timing claim is made from this busy machine.
 ### Additional evidence, 2026-11-12
 
 A small native profile-selection change rebuilt all copied module sources, including vendor bindings. The focused native test took about two minutes to become available. Incremental compilation remains desirable.
+
+### temporary diagnostics, 2026-11-13
+
+At Exact `6f4917bda`, adding a small frame-trace writer to an existing native module again rebuilt the vendor bindings, with quiet intervals over a minute. Contract-only probe changes reused the module. A built-in target/presentation trace would avoid this rebuild solely for animation diagnosis.

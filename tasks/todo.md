@@ -1,5 +1,31 @@
 # Mux: tasks
 
+## Send velocity correction (2026-11-13)
+
+Rami reports a slow initial rise followed by abrupt acceleration. The prior visual acceptance
+checked landing and list movement, but did not establish the template velocity profile.
+- [x] Trace native frame targets and compare against the template.
+- [x] Correct the cause and compare fresh short/multiline recordings.
+- [x] Verify, review and update PR #26.
+
+The old rise target moved from -59.25 to -83.667 points. The corrected short and multiline
+probes start at -82.9 and finish at -83.7. The row suffix is stable at 29.65 points. Disabling
+only the new receipt's spring still let the previous receipt restart end-follow; all receipt
+heights now settle immediately during flight, then resume their usual transitions afterward.
+This deliberately trades the roughly one-second receipt-height animation for one coordinated
+list movement. Template timings and springs are unchanged.
+
+Final standalone short and multiline recordings were inspected after removing all probes.
+49 TS tests and native verify pass (14 tests, light/dark and 16 largest-text screens clean).
+Code review `20261113-162215-ff59b14f` found documentation updates and the intentional receipt
+tradeoff, with no runtime fix requested. Simplification made no changes. The regression
+instrument is a native frame trace plus actual recordings, not the signed-out authored suite.
+Physical-device pacing and Mac remain unverified. See `tasks/evidence/2026-11-13-send-velocity.json`.
+A saved-draft navigation check additionally exposed stale composer focus reopening the
+keyboard during Send. Clearing focus in `follow`, `back`, `pickEmoji` and `markUnreadOpen` keeps it closed; the final native drive
+and recorded flight confirm the correction. Claude follow-up review found the resets sound and prior documentation findings resolved. Photo-viewer keyboard restoration and alternate direct-navigation paths were not independently exercised. Both test sessions are signed out, the auth-drive lock released, the owned simulator shut down and generated paths restored. Final native verify took 155.5 s. New diary stays local pending approval.
+
+
 ## Coordinated send animation revision (2026-11-13)
 
 Rami rejected the prior motion and chose to preserve Mux's composer/keyboard layout.

@@ -4,6 +4,18 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Send velocity correction (2026-11-13):** native probes confirmed that the rise cap omitted
+space below the bubble, moving the target another 24.4 points after the rise began. The cap
+now includes the row suffix. Receipt heights settle immediately on all open-room rows during
+flight, intentionally suspending their height springs for about one second so end-follow does
+not restart. Template spring parameters and phase timings, Mux layout and delivery identities
+are preserved. Short and multiline traces leave only a 0.8-point late correction; final native
+recordings show the earlier continuous rise and aligned handoff. Verification: 49 TS tests,
+14 native tests, light/dark and 16 largest-text screens clean. Scoped Claude review found no
+runtime defects; documentation was updated. Physical iPhone pacing and Mac remain unverified.
+Evidence: `tasks/evidence/2026-11-13-send-velocity.json`. Navigation now also clears stale composer focus: a saved-draft send keeps a closed keyboard
+closed, confirmed in a fresh standalone recording. The new velocity diary is local and not approved to send.
+
 **Send coordination revision (2026-11-13, validated):** Rami rejected the previous
 motion and explicitly chose to retain Mux's composer and keyboard layout. Prior evidence
 shows gradual list movement only, not visual equivalence to the template. The revision

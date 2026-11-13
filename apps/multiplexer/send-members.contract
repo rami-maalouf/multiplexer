@@ -97,8 +97,11 @@ members Multiplexer
       if stamp - squashAt >= 55
         let target = match flightMessage { case some(m) => m.id, case none => flightId }
         let row = frame(`bubble-${target}`)
-        if not row.unavailable and not row.provisional
-          let bottom = min(row.y + row.height, fieldBottom - frame("composer-glass").height - 12)
+        let container = frame(`row-${target}`)
+        if not row.unavailable and not row.provisional and not container.unavailable and not container.provisional
+          let below = container.y + container.height - row.y - row.height
+          let end = fieldBottom - frame("composer-glass").height - 6 - (composerSurface.desktop ? 8 : 0) - below
+          let bottom = min(row.y + row.height, end)
           if max(bottom - flierBottom - flightRise, flierBottom + flightRise - bottom) > 0.5
             flightRise = bottom - flierBottom
   task failedTextSend when failed(sent)
