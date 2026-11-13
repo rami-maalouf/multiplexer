@@ -11,7 +11,7 @@ previous standalone recording. The transcript now selects smooth automatic end-f
 keyed reveals keep their independent immediate behavior on the validated Exact integration.
 14 native tests pass; light/dark checks and 16 largest-text screens are clean.
 Evidence: `tasks/evidence/2026-11-13-send-list-motion.json`.
-The follow-up diary is local; the earlier send approval covered the original animation diary.
+The follow-up diary was sent with separate approval, receipt `06db05a9-355a-474a-8e44-807ea1d18f0f` (one diary, zero command logs or attachments).
 
 **Outgoing message animation (2026-11-13):** the Exact chat template's composer-to-bubble
 spring flight now follows the actual queued Matrix message, including identical sends.

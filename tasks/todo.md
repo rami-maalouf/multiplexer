@@ -15,6 +15,8 @@ The regression instrument is a sampled recording, not a static style assertion. 
 animation has no persistent authored-test seam; recordings and the measurement method are
 recorded in `tasks/evidence/2026-11-13-send-list-motion.json`. Physical-device pacing is unmeasured.
 
+Follow-up diary sent with separate approval: `06db05a9-355a-474a-8e44-807ea1d18f0f`; one diary, zero command logs or attachments.
+
 ## Outgoing message animation (2026-11-13)
 
 - [x] Inspect and record the pinned Exact template send flight.
