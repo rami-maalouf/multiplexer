@@ -18,7 +18,10 @@ extension Matrix {
         case "chatMembers":
             // the first `limit` by name, each with their picture, and how many there are.
             let all = try await account.chatMembers(roomId: roomId)
-            return ["total": all.count, "members": all.prefix(int(request["limit"])).map { member in
+            // a profile selects by identity before limiting or downloading pictures.
+            let userId = request["userId"] as? String ?? ""
+            let selected = userId.isEmpty ? all : all.filter { $0.userId == userId }
+            return ["total": all.count, "members": selected.prefix(int(request["limit"])).map { member in
                 ["id": member.userId, "name": member.name, "isOwn": member.isOwn,
                  "picture": cached(member.pictureName, then: .info(roomId)) {
                      _ = try await account.pictureFile(url: member.pictureUrl, directory: self.media) }]

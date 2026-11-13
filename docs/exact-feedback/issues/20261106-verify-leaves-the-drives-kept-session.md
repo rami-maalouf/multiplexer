@@ -30,3 +30,9 @@ Seen on 2026-11-06 at exact2 `dd9343b324`, iOS Simulator (iOS 26.5): a sign-in d
 `verify ios`, then a drive whose first step was a tap on a signed-in screen. Seen twice.
 
 Additional evidence (2026-11-07, exact2 `91d7b12620`): `test ios` does the same as `verify`. On the Simulator that the drives use, a drive kept a signed-in session; after `test ios` (all tests passed, nothing said about the store) the next drive met the sign-in screen. Seen twice: an earlier task ran the tests after its last drive and the next task's first drive found the app signed out. Each time a new sign-in drive was needed: a new device on the server, and a password typed again and then scrubbed from the run log (finding 116). About 10 minutes over the two.
+
+### Additional evidence, 2026-11-12
+
+After a focused test ios run, a previously signed-in drive opened at sign-in. A fresh sign-in restored the same test scenario. This cost about one minute; the test output did not warn that the kept drive session would be cleared.
+
+A signed-out route test could assert navigation but could not arrange authenticated native resources; verify correctly flagged those refusals. The signed-in drive remained the regression instrument. Authenticated native test fixtures would make this repeatable in the authored suite.

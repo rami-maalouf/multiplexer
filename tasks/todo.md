@@ -3342,3 +3342,25 @@ the current Exact checkout; new build-cost evidence was added to finding 30. The
 
 - Release diary sent with explicit approval: `dc85afe6-72cc-4298-a4bf-635dc4e3d139`. One diary only;
   zero command logs, no attachments; all other pending feedback remained local.
+
+
+### Group sender profiles (2026-11-12)
+
+- [x] Reproduce direct avatar entry on native iOS: profile opens but chatMembers stays empty.
+- [x] Load the selected sender independently of chat info, before the member preview limit.
+- [x] Keep timeline name/picture while loading and preserve the composer draft on entry.
+- [x] Native platform-touch open/close roundtrip and light/dark visual inspection.
+- [x] Live route regression and 45 app TypeScript tests pass.
+- [x] Wrap long member IDs at accessibility text sizes.
+- Signed-out authored route coverage was removed: it cannot arrange authenticated native
+  resources; verify correctly rejects the resulting refusals. The signed-in drive is the
+  regression instrument, with two data-source tests retained.
+- First broad verification hit ENOSPC. Removed disposable framework dev-profile artifacts
+  using cargo clean (7.2 GiB), leaving source files unchanged, then reran verification.
+- [x] Full iOS verify clean: 14 tests, light/dark checks and 16 largest-text screens.
+- [x] Published PR #24: https://github.com/rami-maalouf/multiplexer/pull/24.
+- Limits: no live bridged account or macOS verification. Test runner clears the kept drive
+  session (feedback 132); the isolated test simulator is used throughout.
+
+- [x] Sent only the group-profile diary with explicit approval; receipt
+  `e584da31-3ea8-456b-bbc4-d3fda3238d90`. No command logs or attachments.

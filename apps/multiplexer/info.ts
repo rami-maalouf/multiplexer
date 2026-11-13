@@ -2,7 +2,7 @@ import type { Result, Sources } from './app.contract.d.ts';
 
 // a chat's info page (info.contract): what modules/apple/Info.swift answers. MatrixCore says when
 // any of it changes, on the topic info:<room>.
-type InfoSources = Pick<Sources, 'loadChatInfo' | 'loadChatMembers' | 'loadChatMedia' | 'renameChat' | 'setChatPicture'
+type InfoSources = Pick<Sources, 'loadChatInfo' | 'loadChatMember' | 'loadChatMembers' | 'loadChatMedia' | 'renameChat' | 'setChatPicture'
   | 'setCustomName' | 'inviteMember' | 'loadExpiry' | 'setExpiry'>;
 
 const initials = (name: string): string =>
@@ -40,6 +40,14 @@ export const infoSources: InfoSources = {
     if (roomId === '' || !native?.available) return { room: roomId, total: 0, members: [] };
     native.watch(`info:${roomId}`);
     const answer = (await native.later({ op: 'chatMembers', roomId, limit })) as
+      { total: number; members: { id: string; name: string; isOwn: boolean; picture: string }[] };
+    return { room: roomId, total: answer.total, members: answer.members.map((m) => ({ ...m, initials: initials(m.name) })) };
+  },
+  // select before the native preview limit, downloading only this person's picture.
+  loadChatMember: async ([roomId, userId], _store, _storage, native): Promise<Result<'loadChatMember'>> => {
+    if (roomId === '' || userId === '' || !native?.available) return { room: roomId, total: 0, members: [] };
+    native.watch(`info:${roomId}`);
+    const answer = (await native.later({ op: 'chatMembers', roomId, userId, limit: 1 })) as
       { total: number; members: { id: string; name: string; isOwn: boolean; picture: string }[] };
     return { room: roomId, total: answer.total, members: answer.members.map((m) => ({ ...m, initials: initials(m.name) })) };
   },
