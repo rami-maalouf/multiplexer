@@ -3358,6 +3358,6 @@ the current Exact checkout; new build-cost evidence was added to finding 30. The
 - First broad verification hit ENOSPC. Removed disposable framework dev-profile artifacts
   using cargo clean (7.2 GiB), leaving source files unchanged, then reran verification.
 - [x] Full iOS verify clean: 14 tests, light/dark checks and 16 largest-text screens.
-- Publication: branch `fix/group-member-profiles`, ready to open against main.
+- [x] Published PR #24: https://github.com/rami-maalouf/multiplexer/pull/24.
 - Limits: no live bridged account or macOS verification. Test runner clears the kept drive
   session (feedback 132); the isolated test simulator is used throughout.

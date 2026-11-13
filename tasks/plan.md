@@ -4,7 +4,7 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
-**Group sender profiles (2026-11-12):** avatar taps already use one network-independent
+**Group sender profiles (2026-11-12, PR #24):** avatar taps already use one network-independent
 route, but direct entry never requested members and the profile depended on a six-person
 info preview. Added an independent selected-member resource, native selection before the
 limit/media downloads, and timeline identity fallback. Platform-touch iOS drive opens test2
