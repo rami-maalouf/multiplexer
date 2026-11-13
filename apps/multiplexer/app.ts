@@ -1,4 +1,4 @@
-import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
+import type { Answer, Overlay, Result, Sources, Storage } from './app.contract.d.ts';
 import { ClipboardItem, write } from '@exact/clipboard';
 import { clearAppBadge, closeNotification, notificationStatus, setAppBadge, showNotification } from '@exact/notifications';
 import { emojiRows } from './emoji-rows.ts';
@@ -124,7 +124,7 @@ type MessagesAnswer = {
   firstUnread: string;
   messages: {
     // event: its event id once the server has it, else "".
-    id: string; event: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
+    id: string; presentationId?: string; event: string; sender: string; senderName: string; body: string; time: number; isOwn: boolean; state: string;
     isImage: boolean; image: string; imageWidth: number; imageHeight: number; waitingForKey: boolean;
     isEdited: boolean; senderPicture: string;
     // deleted for everyone (body ""); your own text message, which an edit can change.
@@ -159,6 +159,9 @@ const problems: Record<string, (server: string) => string> = {
 // before it, or on another day.
 const GROUP_GAP_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const sameMessageGroup = (earlier: number, later: number, utcOffset: number): boolean =>
+  later - earlier <= GROUP_GAP_MS
+  && Math.floor((earlier + utcOffset * 60000) / DAY_MS) === Math.floor((later + utcOffset * 60000) / DAY_MS);
 // a sticker fits a box this many rem wide and tall, as Beeper shows one.
 const STICKER_SIDE = 9.5;
 // a voice message's waveform shows as this many bars.
@@ -361,14 +364,12 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
   cached: boolean): Result<'loadMessages'> {
     // a bridged one-to-one chat is often not marked direct, but it is named after the other person.
     const group = !isDirect && answer.messages.some((m) => !m.isOwn && m.senderName !== roomName);
-    const day = (t: number) => Math.floor((t + utcOffset * 60000) / DAY_MS);
     const messages = answer.messages.map((m, i) => {
       const before = answer.messages[i - 1];
       const after = answer.messages[i + 1];
-      const startsGroup = before === undefined || m.time - before.time > GROUP_GAP_MS || day(m.time) !== day(before.time);
+      const startsGroup = before === undefined || !sameMessageGroup(before.time, m.time, utcOffset);
       // a run is one sender's messages in a row; its last bubble has the tail and the sender's picture.
-      const endsRun = after === undefined || after.sender !== m.sender || after.time - m.time > GROUP_GAP_MS
-        || day(after.time) !== day(m.time);
+      const endsRun = after === undefined || after.sender !== m.sender || !sameMessageGroup(m.time, after.time, utcOffset);
       // a group chat names the sender above the first message of each run.
       const showName = group && !m.isOwn && (startsGroup || before.sender !== m.sender);
       const isVideo = m.video.duration !== undefined;
@@ -381,7 +382,7 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
       const bigEmoji = !media && !m.waitingForKey && isBigEmoji(m.body);
       const status = i === answer.messages.length - 1 ? statusOf(m, group) : { status: '', statusTime: 0 };
       return {
-        id: m.id, event: m.event, sender: m.sender, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
+        id: m.id, presentationId: m.presentationId || m.id, event: m.event, sender: m.sender, senderName: m.senderName, senderInitials: initials(m.senderName), senderPicture: m.senderPicture,
         body: m.body, time: m.time, isOwn: m.isOwn, state: m.state, startsGroup, endsRun, showName,
         isImage: m.isImage && !m.isSticker, image: isVideo ? m.poster : m.image, imageWidth: width, imageHeight: height,
         isVideo, seconds: isAudio ? secondsOf(m.audio.duration ?? 0) : Math.round((m.video.duration ?? 0) / 1000),
@@ -407,6 +408,9 @@ function threadOf(answer: MessagesAnswer, roomId: string, isDirect: boolean, roo
 
 // the web has no Matrix SDK: it shows the sign-in screen and refuses to sign in.
 const sources: Sources = {
+  sendOrigin: ([id], _store, _storage, native): Result<'sendOrigin'> =>
+    id !== '' && native?.available ? native.call({ op: 'sendOrigin' }) as Result<'sendOrigin'>
+      : { available: false, x: 0, width: 0, height: 0, bottom: 0 },
   resolveNotification: ([tag, room], _store, _storage, native): Result<'resolveNotification'> => {
     const owner = native?.available ? (native.call({ op: 'session' }) as { userId: string }).userId : '';
     return { owner, room: owner && (!tag.startsWith('chat:') || tag.startsWith(`chat:${owner}:`)) ? room : '' };
@@ -753,10 +757,9 @@ const sources: Sources = {
     return { ok: false, error: problems[answer.problem]?.(server) ?? `Mux could not sign in: ${answer.detail}` };
   },
   // a failure to send shows on the message itself (state "failed"), not as a refusal here.
-  sendMessage: async ([roomId, text, replyTo], _store, _storage, native): Promise<Result<'sendMessage'>> => {
-    const origin = native!.call({ op: 'sendOrigin' }) as Result<'sendMessage'>['origin'];
-    const answer = await native!.later({ op: 'send', roomId, text, replyTo }) as { ok: boolean; id: string };
-    return { ok: answer.ok, id: answer.id, room: roomId, origin };
+  sendMessage: async ([roomId, text, replyTo, presentationId], _store, _storage, native): Promise<Result<'sendMessage'>> => {
+    const answer = await native!.later({ op: 'send', roomId, text, replyTo, presentationId }) as { ok: boolean; id: string };
+    return { ok: answer.ok, id: answer.id, room: roomId };
   },
   // each photo or file goes in the chat's send queue in order and shows at once; the caption goes
   // with the last one, the reply with the first. A failure shows on the message, as for text.
@@ -925,3 +928,33 @@ const sources: Sources = {
 };
 export const answer: Answer = (source, args, store, storage, native) =>
   sources[source](args, store, storage, native);
+
+export const overlay: Overlay = (source, args, answer, writes): ReturnType<Overlay> => {
+  if (source !== 'loadMessages') return undefined;
+  const [roomId, isDirect, roomName, utcOffset, network] = args as Parameters<Sources['loadMessages']>[0];
+  const thread = answer as Result<'loadMessages'>;
+  let messages = thread.messages;
+  for (const write of writes) {
+    if (write.source !== 'sendMessage') continue;
+    const [room, body, replyTo, presentationId, sender, time] = write.args;
+    if (room !== roomId || messages.some(m => m.presentationId === presentationId)) continue;
+    if (write.answered && !write.reply?.ok) continue;
+    if (write.answered) write.keep();
+    const quote = messages.find(m => m.id === replyTo || (replyTo !== '' && m.event === replyTo));
+    const raw: MessagesAnswer['messages'][number] = {
+      id: presentationId, presentationId, event: '', sender, senderName: 'You', senderPicture: '',
+      body, time, isOwn: true, state: 'sending', isImage: false, image: '', imageWidth: 0, imageHeight: 0,
+      waitingForKey: false, isEdited: false, isDeleted: false, isEditable: false,
+      reply: quote ? { senderName: quote.senderName, body: quote.body, isOwn: quote.isOwn } : {},
+      file: {}, progress: -1, reactions: [], isSticker: false, video: {}, poster: '', audio: {}, readers: [],
+    };
+    const outgoing = threadOf({ ...thread, messages: [raw] }, roomId, isDirect, roomName, utcOffset, network, false).messages[0];
+    const previous = messages.at(-1);
+    const sameGroup = previous && sameMessageGroup(previous.time, time, utcOffset);
+    outgoing.startsGroup = !sameGroup;
+    messages = messages.map((m, i) => i === messages.length - 1
+      ? { ...m, status: '', statusTime: 0, endsRun: !(sameGroup && m.sender === sender) } : m);
+    messages = [...messages, outgoing];
+  }
+  return messages === thread.messages ? undefined : { ...thread, messages };
+};

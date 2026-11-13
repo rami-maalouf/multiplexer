@@ -13,3 +13,7 @@ Report the current build stage periodically in the command output, and consider 
 ## Evidence
 
 Observed on 2026-11-12 with upstream checkout `8536d208c40f97be3f132ea266d5029e2e3c10ba`. The baseline retry captured the signed-out form and correctly refused a missing help target. No account was used.
+
+## More evidence (2026-11-13)
+
+At `6f4917bda`, a fresh native build seeded the registry cache but still recompiled the framework and module code for several minutes, with long quiet intervals between phase boundaries. Periodic phase progress would distinguish compilation from a stall.

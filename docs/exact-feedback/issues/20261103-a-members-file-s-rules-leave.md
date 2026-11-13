@@ -59,3 +59,7 @@ While adding a selection mode at the same commit, a derive called `none` was ref
 the name is a reserved literal. The message named the cause clearly; renaming took under a
 minute. A members example listing reserved names would have prevented the failed build.
 
+
+## Seen again (2026-11-13, `6f4917bda`)
+
+A resource in a members file could not name a root shape without a cycle. The compiler named the cycle and remedy clearly. Keeping that resource in the root resolved it in about one minute.

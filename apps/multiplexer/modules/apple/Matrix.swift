@@ -269,7 +269,7 @@ final class Matrix: ExactModule {
                     let messages = opening.messages
                     reply.send(["atStart": opening.atStart, "firstUnread": opening.firstUnread ?? "", "settling": opening.settling,
                                 "messages": messages.map {
-                        ["id": $0.id, "event": $0.eventId, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
+                        ["id": $0.id, "presentationId": $0.presentationId, "event": $0.eventId, "sender": $0.sender, "senderName": $0.senderName, "body": $0.body,
                          "time": Double($0.timestamp), "isOwn": $0.isOwn, "state": $0.sendState.rawValue,
                          "waitingForKey": $0.waitingForKey, "isEdited": $0.isEdited,
                          "isDeleted": $0.isDeleted, "isEditable": $0.isEditable,
@@ -329,7 +329,7 @@ final class Matrix: ExactModule {
                     // the message shows in the chat at once; its state says how the sending goes.
                     let replyTo = request["replyTo"] as? String ?? ""
                     let id = try await signedIn().send(roomId: request["roomId"] as? String ?? "", text: request["text"] as? String ?? "",
-                                              replyTo: replyTo.isEmpty ? nil : replyTo)
+                                              replyTo: replyTo.isEmpty ? nil : replyTo, presentationId: request["presentationId"] as? String ?? "")
                     reply.send(["ok": true, "id": id ?? ""])
                 case "sendMedia":
                     // the photo or file shows in the chat at once; its state and progress say how the upload goes.

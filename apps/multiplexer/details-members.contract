@@ -50,7 +50,8 @@ members Multiplexer
     // a chat opened at a found message moves there instead (search-members.contract).
     if thread.firstUnread != "" and (jumpEvent == "" or jumpRoom != openRoom)
       placing = true
-      scrollIntoView("transcript", thread.firstUnread, block="center")
+      let key = match first(thread.messages.filter(m => m.id == thread.firstUnread)) { case some(m) => m.presentationId, case none => thread.firstUnread }
+      scrollIntoView("transcript", key, block="center")
   action forgetNewLine
     newLine = ""
     newLineRoom = ""
@@ -68,7 +69,7 @@ members Multiplexer
   // padding under the composer and, with the keyboard up, its inset. block="end" stopped the last
   // row at the list's edge, behind the composer. The offset is clamped to the scroll range.
   action jumpToEnd
-    scrollIntoView("transcript", lastId, offset=1000000, behavior="smooth")
+    scrollIntoView("transcript", lastKey, offset=1000000, behavior="smooth")
   // a tap on a video's poster plays it full screen, zooming out of the poster.
   action showVideo(id: string)
     nav = push(nav, path("video", openRoom, id))

@@ -21,3 +21,7 @@ Make frame() include the native toolbar lift in the same viewport coordinates as
 ## Evidence
 
 Observed with Exact `6f4917bda` and exact-templates `041917c`. Kept local; not submitted upstream.
+
+## Bottom-anchored send flight (2026-11-13)
+
+A bottom-anchored overlay also needed calibration against its measured initial frame. A direct route-height formula overshot the destination and jumped at handoff. Correcting the anchor using the measured flier bottom removed that discontinuity in the inspected native recordings. Multiline sends must use the current composer height when capping the landing target, because clearing the composer changes its height. No framework change was needed.

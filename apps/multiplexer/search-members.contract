@@ -112,7 +112,8 @@ members Multiplexer
   // moving to it is not the reader leaving the newest message, which would read the chat.
   action revealJump
     placing = true
-    scrollIntoView("transcript", jumpedTo, block="center")
+    let key = match first(thread.messages.filter(m => m.id == jumpedTo)) { case some(m) => m.presentationId, case none => jumpedTo }
+    scrollIntoView("transcript", key, block="center")
   action clearJump
     jumpedTo = ""
   action clearMissed

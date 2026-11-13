@@ -355,12 +355,12 @@ public final class MatrixAccount: @unchecked Sendable {
     /// be answered. The chat's stored draft goes, so a relaunch does not offer the text again.
     /// returns its local echo id, or nil if the timeline has not reported it within a second.
     @discardableResult
-    public func send(roomId: String, text: String, replyTo: String? = nil, timeout: TimeInterval = 30) async throws -> String? {
+    public func send(roomId: String, text: String, replyTo: String? = nil, presentationId: String = "", timeout: TimeInterval = 30) async throws -> String? {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
         // serialize only local enqueue and echo identification, never server delivery.
         await live.textSends.acquire()
+        let cursor = live.items.reserveText(presentationId: presentationId)
         do {
-            let cursor = live.items.localTextCursor
             let content = messageEventContentFromMarkdown(md: text)
             if let eventId = live.items.replyEventId(replyTo) {
                 _ = try await live.timeline.sendReply(msg: content, eventId: eventId)
@@ -372,6 +372,7 @@ public final class MatrixAccount: @unchecked Sendable {
             try? await room(roomId, timeout: timeout).clearComposerDraft(threadRoot: nil)
             return id
         } catch {
+            live.items.cancelTextReservation(after: cursor)
             await live.textSends.release()
             throw error
         }
@@ -857,7 +858,22 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     private var textSequence = 0
     private var claimedTextSequence = 0
     private var knownLocalTexts: Set<String> = []
-    var localTextCursor: Int { lock.withLock { max(textSequence, claimedTextSequence) } }
+    private var pendingPresentations: [Int: String] = [:]
+    private var itemPresentations: [String: String] = [:]
+    private var eventPresentations: [String: String] = [:]
+    private var transactionPresentations: [String: String] = [:]
+
+    func reserveText(presentationId: String) -> Int {
+        lock.withLock {
+            let cursor = max(textSequence, claimedTextSequence)
+            if !presentationId.isEmpty { pendingPresentations[cursor + 1] = presentationId }
+            return cursor
+        }
+    }
+
+    func cancelTextReservation(after cursor: Int) {
+        lock.withLock { _ = pendingPresentations.removeValue(forKey: cursor + 1) }
+    }
 
     func localText(after cursor: Int) async -> String? {
         // even a late echo owns its slot; a timeout must not give it to the next send.
@@ -927,7 +943,13 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     func messages() -> [Message] {
-        lock.withLock { chatMessages(items, me: me, names: names).filter { $0.timestamp > cut } }
+        lock.withLock {
+            chatMessages(items, me: me, names: names).filter { $0.timestamp > cut }.map { message in
+                var message = message
+                message.presentationId = itemPresentations[message.id] ?? eventPresentations[message.eventId] ?? ""
+                return message
+            }
+        }
     }
 
     /// The timeline holds an event from before the chat's delete: nothing older shows.
@@ -992,16 +1014,21 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
 
     private func remember(_ item: TimelineItem) {
         guard let event = item.asEvent() else { return }
-        if case .eventId(let id) = event.eventOrTransactionId {
-            eventIds[item.uniqueId().id] = id
+        let id = item.uniqueId().id
+        if case .eventId(let eventId) = event.eventOrTransactionId {
+            eventIds[id] = eventId
+            if let presentation = itemPresentations[id] { eventPresentations[eventId] = presentation }
         } else if !event.isRemote, event.isOwn,
                   case .transactionId(let transaction) = event.eventOrTransactionId,
                   case .msgLike(let like) = event.content, case .message(let message) = like.kind,
-                  case .text = message.msgType,
-                  knownLocalTexts.insert(transaction).inserted {
-            textSequence += 1
-            localTexts.append((item.uniqueId().id, textSequence))
-            if localTexts.count > 128 { localTexts.removeFirst() }
+                  case .text = message.msgType {
+            if knownLocalTexts.insert(transaction).inserted {
+                textSequence += 1
+                localTexts.append((id, textSequence))
+                transactionPresentations[transaction] = pendingPresentations.removeValue(forKey: textSequence)
+                if localTexts.count > 128 { localTexts.removeFirst() }
+            }
+            itemPresentations[id] = transactionPresentations[transaction]
         }
     }
 
