@@ -14,7 +14,7 @@ light/dark checks and 16 largest-text screens clean; 45 TypeScript tests and 2 l
 send identity/delivery tests pass. Mac tests could not build because this checkout lacks the
 SDK's macOS arm64 slice; physical iPhone frame pacing is unmeasured. Both test sessions signed
 out and the owned simulator shut down. Review completed with no actionable findings.
-Feature branch `feat/message-send-animation` is based on main `fdbfa3c`; new PR pending.
+Feature branch `feat/message-send-animation` is based on main `fdbfa3c`; PR [#26](https://github.com/rami-maalouf/multiplexer/pull/26) is open.
 Generic feedback is local, with no diary or command logs sent.
 
 **Group sender profiles (2026-11-12, PR #24):** avatar taps already use one network-independent
