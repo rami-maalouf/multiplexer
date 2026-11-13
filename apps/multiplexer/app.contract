@@ -1730,7 +1730,7 @@ component Multiplexer
                               button press=discard(m.id) destructive=true disabled=pending(discarded) testId=`discard-${m.id}`
                                 text "Delete"
                           // changing receipt heights during flight restarts the transcript's end-follow scroll.
-                          StatusLine(label=seenText(m.status, m.statusTime, shown, time.utcOffset), own=m.isOwn,
+                          StatusLine(label=(flightHidesReceipt and flightId == m.presentationId ? "" : seenText(m.status, m.statusTime, shown, time.utcOffset)), own=m.isOwn,
                             indent=(thread.group and not m.isOwn ? 36 : 0), identifier=`status-${m.presentationId}`,
                             reserved=(m.status != "" or (m.isOwn and m.id == lastId and m.state != "failed")),
                             reduced=(viewport.prefersReducedMotion or (flightPhase > 0 and flightRoom == openRoom)))
@@ -1851,8 +1851,9 @@ component Multiplexer
                 column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" press=pressField
                   border=(composerSurface.desktop and composerFocus ? "1px solid AccentColor" : "none")
                   -exact-press-opacity=1 id="composer-glass" testId="composer-glass"
-                  // it widens into the voice button's slot as Send moves in, and gives it back.
-                  -exact-layout-transition=(viewport.prefersReducedMotion ? "none" : "300ms cubic-bezier(.32,.72,0,1)")
+                  // it widens into the voice button's slot as Send moves in, and gives it back once Send
+                  // has faded, so its glass never passes over a Send still showing.
+                  -exact-layout-transition=(viewport.prefersReducedMotion ? "none" : (voiceOffered ? "300ms 70ms cubic-bezier(.32,.72,0,1)" : "300ms cubic-bezier(.32,.72,0,1)"))
                   if recording == "draft"
                     DraftBar(appearance=appearance, bars=draftBars, seconds=draftSeconds, current=(voicePlaying == "draft"),
                       playing=(voicePlaying == "draft" and not voicePaused), time=voiceTime, play=playVoice("draft"))
@@ -1895,7 +1896,7 @@ component Multiplexer
                     view position="absolute" right=8 bottom=8 contextmenu=holdSend contextPopover=(canLater ? "send-later-menu" : "")
                       testId="send-hold"
                       animation=(viewport.prefersReducedMotion ? "none" : "sendIn 280ms 60ms cubic-bezier(.32,.72,0,1) both")
-                      -exact-exit-animation="sendOut 160ms ease-in both"
+                      -exact-exit-animation="sendOut 90ms ease-in both"
                       // a glass circle tinted the accent (UIKit's tinted glass), not a native button, so it is
                       // glass on the same plane as the field it sits in. Disabled, only its arrow dims.
                       button appearance="none" press=post backgroundMaterial="glass" -exact-tint-color=appearance.tint

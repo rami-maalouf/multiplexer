@@ -260,6 +260,13 @@ it must keep `!/.exact/diary/`.
 | native build stages remain quiet | several minutes | P3 | [build progress](issues/20261112-native-drive-build-progress.md) |
 | members resource cannot name root shape | about 1 min | P3 | [shape ownership](issues/20261103-a-members-file-s-rules-leave.md) |
 
+## Send field width findings (2026-11-13)
+
+| Finding | Cost | Severity | Evidence |
+|---|---|---|---|
+| a layout transition does not resize a glass or blur material | about 40 min | P2 | [glass resize](issues/20261113-layout-transition-skips-glass.md) |
+| a framework path change leaves a stale duplicate crate | about 15 min | P3 | [build paths](issues/20261113-symlink-framework-source-identity.md) |
+
 ## Send velocity findings (2026-11-13)
 
 | Finding | Cost | Severity | Evidence |

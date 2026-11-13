@@ -20,6 +20,10 @@ members Multiplexer
   state flightShift = 0
   state flightRise = 0
   derive flightMessage = first(thread.messages.filter(m => m.presentationId == flightId))
+  // the field keeps the width the message leaves from until it has risen clear (the swell, 185 ms on).
+  derive flightHoldsField = flightPhase > 0 and flightPhase < 4 and flightRoom == openRoom
+  // the sent row's receipt waits for the landing, as the template's does.
+  derive flightHidesReceipt = flightPhase > 0 and flightRoom == openRoom
   derive flightNarrowed = flightPhase >= 3 ? flightNarrow : 0
   derive flightMotion = flightPhase >= 3 ? "translate -exact-spring(141.759, 17.3503, 1), scale -exact-spring(310, 38, 2), opacity 200ms ease-in" : "none"
   derive swellMotion = flightPhase >= 4 ? "scale -exact-spring(320, 38, 2)" : "none"
