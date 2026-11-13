@@ -260,6 +260,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 
 | Date | Receipt | What | Sent by |
 |---|---|---|---|
+| 2026-11-13 | `5e8f8009-8339-4206-b9cd-9ddb13571800` | Only the foreground-gesture diary: one generic diary, zero logged commands and no attachments. Other pending diaries and logs unchanged. | Codex, with Rami's explicit yes |
 | 2026-11-07 | `be9ec5d7-b554-4bc1-8762-38bedae7bf5a` | 1 diary (member/composer/group fixes: finding 155, new evidence for 42 and 116) and 21 command-log lines | Codex, with Rami's prior yes |
 | 2026-11-06 | `a83c1989-e345-4828-8cb5-60c983aeb0df` | One branding diary, isolated from the backlog: native rebuild cost and manifest icon packaging. Zero command-log entries or attachments. | Codex, with Rami's yes |
 | 2026-10-27 | `4c8a0a07-60a8-466e-ae9a-bef9a0b29f82` | 4 diary entries (findings 1 to 15, in their Rough sections) and 77 command-log lines | Rami |

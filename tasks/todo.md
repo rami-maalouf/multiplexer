@@ -14,6 +14,7 @@
 - [x] Package the framework patch and verify tree `d01576d5`. Exact fix `6f4917bda`
   is committed and fast-forwarded into the clean shared integration under the lock.
 - [x] Sign out the designated simulator test account, release the auth-drive lock, and shut down the owned simulator.
+- [x] Send only the approved generic diary, receipt `5e8f8009-8339-4206-b9cd-9ddb13571800`; no logs or attachments. Other pending feedback remains local.
 - [ ] Install and repeat the physical Home-indicator test when the owner can reconnect the phone.
 
 Build prerequisite: disk exhaustion interrupted the initial test build. Scoped cleanup of

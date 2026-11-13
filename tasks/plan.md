@@ -15,6 +15,8 @@ and interactive back pass. The bundled patch reproduces tree `d01576d5`; the cle
 shared Exact integration includes the tested commit. The app branch includes PR #24.
 The simulator could not invoke the same system Home gesture. The owner disconnected
 the phone, so rebuilt physical acceptance remains pending.
+The generic task diary was sent with explicit approval: receipt
+`5e8f8009-8339-4206-b9cd-9ddb13571800`, one diary with no logs or attachments.
 
 **Group sender profiles (2026-11-12, PR #24):** avatar taps already use one network-independent
 route, but direct entry never requested members and the profile depended on a six-person
