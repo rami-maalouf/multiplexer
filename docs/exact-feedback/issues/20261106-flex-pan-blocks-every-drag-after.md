@@ -1,4 +1,4 @@
-# A liquid-glass flex pan stays `.changed` after a return and blocks every drag
+# Scrolling and swipes freeze after a Home-indicator return
 
 **Status:** Open
 **Systems:** Apple host (iOS)
@@ -6,7 +6,35 @@
 **Author:** Auto (Composer), from Rami Maalouf's chat app friction log (an app outside exact2)
 **Date:** 2026-11-06
 
-Local state: local `isEnabled` release workaround tried and reverted; did not fix on device.
+Local state: the flex-pan release workaround was reverted. A later idle-state probe
+isolated `TimerScrollTouch`. The lifecycle fix passes native regression and simulator
+checks; rebuilt physical acceptance remains pending.
+
+## Corrected diagnosis, 2026-11-13
+
+The earlier `.changed` snapshots below were taken during touch delivery, before all
+recognizers had processed the end event. They do not prove that a flex pan stayed active.
+On integration `8536d208c40f97be3f132ea266d5029e2e3c10ba`, two Home-indicator returns
+froze the same mounted list. Finger scrolling confirmed both directions were blocked.
+Hardware Home returns at 8 and 30 seconds did not reproduce it.
+
+An idle-state debugger inspection found both glass flex pans `.possible` with zero
+touches. The list pan was `.failed`, while `TimerScrollTouch` was still `.possible`
+with zero touches. Changing only that observer to `.failed` immediately restored
+scrolling on the same list, without navigation, restart or remount.
+
+`TimerScrollTouch.finish` removes its final tracked contact but never assigns a
+terminal recognizer state. Both `touchesEnded` and `touchesCancelled` take this path.
+The observer must fail after the final contact so UIKit can reset the touch sequence.
+It must continue observing while another contact remains and never prevent other
+recognizers. The final UIKit regression fails without the state transition and
+passes with it: 18 timer tests pass on the repaired version. Simulator inbox returns
+at 8/8/30 seconds, chat scrolling, row actions and interactive back pass. The simulator
+automation did not trigger the same system Home gesture, so physical rebuilt acceptance
+is still required. Fix: `6f4917bdab8b5392a78c2e4e6b6d8d3b28e9317c`.
+
+The older evidence and unsuccessful workaround below are retained as history, not
+as the current diagnosis. No private diagnostic log or account content is attached.
 
 ## What happens
 

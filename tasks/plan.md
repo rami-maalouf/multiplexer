@@ -4,6 +4,18 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Foreground gesture freeze (2026-11-13, physical acceptance pending):** reproduced twice after a
+physical Home-indicator swipe, with finger confirmation. Idle inspection disproved
+the earlier stuck-glass-pan inference. Setting only Exact's `TimerScrollTouch` to
+failed restored scrolling without navigation or remount. Its final-contact path
+never finishes the recognizer. Exact `6f4917bda` repairs final end/cancel and passes
+the regression (17/1 before, 18/0 after), all six framework checks, 14 native app and
+45 TypeScript tests. Simulator inbox returns at 8/8/30 s, chat scrolling, row actions
+and interactive back pass. The bundled patch reproduces tree `d01576d5`; the clean
+shared Exact integration includes the tested commit. The app branch includes PR #24.
+The simulator could not invoke the same system Home gesture. The owner disconnected
+the phone, so rebuilt physical acceptance remains pending.
+
 **Group sender profiles (2026-11-12, PR #24):** avatar taps already use one network-independent
 route, but direct entry never requested members and the profile depended on a six-person
 info preview. Added an independent selected-member resource, native selection before the

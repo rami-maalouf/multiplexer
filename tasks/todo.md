@@ -1,5 +1,25 @@
 # Mux: tasks
 
+## Foreground gesture freeze (2026-11-13)
+
+- [x] Reproduce the Home-indicator freeze on the physical phone and confirm finger scrolling.
+- [x] Inspect idle native recognizers; changing only `TimerScrollTouch` to failed restores the same inbox.
+- [x] Compare the public chat template and correct the earlier glass-pan diagnosis.
+- [x] Create isolated app/framework branches after reproduction; include merged PR #24 (`fdbfa3c`).
+- [x] Add cancellation and final-contact lifecycle coverage; baseline leaves the recognizer possible.
+- [x] Native regression: 17 pass / 1 fail without the fix; 18 pass with it. All six framework checks pass.
+- [x] Mux: 14 native and 45 TypeScript tests pass. Simulator inbox returns at 8/8/30 s
+  scroll both ways; chat return, row actions and interactive back pass. The simulator
+  did not reproduce the physical system Home gesture.
+- [x] Package the framework patch and verify tree `d01576d5`. Exact fix `6f4917bda`
+  is committed and fast-forwarded into the clean shared integration under the lock.
+- [x] Sign out the designated simulator test account, release the auth-drive lock, and shut down the owned simulator.
+- [ ] Install and repeat the physical Home-indicator test when the owner can reconnect the phone.
+
+Build prerequisite: disk exhaustion interrupted the initial test build. Scoped cleanup of
+regenerable build caches restored space; no source or personal files removed.
+Evidence: `tasks/evidence/foreground-gestures-20261113.json`.
+
 ## Final paired production demo (2026-11-09, user approved Mux direction)
 
 - [x] Recover phone control after Rami's ready confirmation and capture the matching Beeper

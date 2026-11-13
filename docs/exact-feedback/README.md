@@ -178,7 +178,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 148 | Smooth scrolling cannot be limited to following a list's end, so an appended message is a one-frame shift. | Not timed | P3 | [smooth-scrolling-cannot-be-limited-to](issues/20261107-smooth-scrolling-cannot-be-limited-to.md) |
 | 149 | A held device request (a microphone permission) shows only on `clock settle`; `clock +N real` passes in silence, and a disabled-control failure does not name it. | About 15 min, two takes | P3 | [a-held-device-request-shows-only](issues/20261107-a-held-device-request-shows-only.md) |
 | 150 | `state` does not show a state that a `members` file declares. | About 3 min | P3 | [state-does-not-show-a-state](issues/20261107-state-does-not-show-a-state.md) |
-| 151 | After a return, liquid-glass `_UIFlexInteractionPanGestureRecognizer` can stay `.changed` and block every drag (scroll, row swipe, back); taps still work. An `isEnabled` release try did not fix it on device and was reverted. | About 15 min reading the phone log | P1 | [flex-pan-blocks-every-drag-after](issues/20261106-flex-pan-blocks-every-drag-after.md) |
+| 151 | Home-indicator returns freeze scroll, row swipe and back. Idle-state inspection corrected the earlier flex-pan diagnosis: ending only the unfinished `TimerScrollTouch` restored the same mounted list. Lifecycle fix passes native regression and simulator checks; rebuilt physical acceptance pending. | Physical reproduction and debugger isolation | P1 | [foreground gesture freeze](issues/20261106-flex-pan-blocks-every-drag-after.md) |
 | 152 | A native popover action is reachable by its visible label but does not expose its authored test id to an external native drive. | About 2 min | P3 | [native-popover-action-test-id](issues/20261107-a-native-popover-action-does-not.md) |
 | 153 | A package's Swift that did not compile shows an empty error: "did not compile:" and nothing after it. | About 3 min and a 2-min build | P3 | [a-package-s-swift-that-did](issues/20261107-a-package-s-swift-that-did.md) |
 | 154 | A drive cannot show a component in a given state (props or app state), so `layout` of a short-lived state needs a contract edit for each measurement. | About 8 min, four drives | P3 | [a-drive-cannot-show-a-component](issues/20261107-a-drive-cannot-show-a-component.md) |
@@ -198,6 +198,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 165 | `clock until state` takes only `==`; `!=` is refused. | Two refused ops | P3 | [clock-until-state-takes-only](issues/20261109-clock-until-state-takes-only.md) |
 | 167 | Long identifier wrapping needs a specific remedy when max-width clips and anywhere is rejected. | About 5 min | P3 | [long-identifier-wrapping](issues/20261112-long-identifier-wrapping.md) |
 | 166 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
+| 168 | The older feedback workflow names `scripts/issue.mjs`, which the current checkout no longer ships. | About 1 min | P3 | [missing issue checker](issues/20261113-issue-checker-missing-after-checkout-migration.md) |
 
 ## What worked well
 
@@ -225,11 +226,13 @@ task down. Record that in the task's notes (`tasks/todo.md`), not here.
    `apps/multiplexer/.exact/diary/<YYYY-MM-DD>-<topic>.md` (format: `<exact2>/docs/diary.md`).
 2. At the end of the task, search exact2's `issues/`, `issues/closed/` and `QUEUE.md`
    for the same problem. Also search the files here.
-3. For a new problem, add an issue file here. Run this from this folder:
+3. For a new problem, add an issue file here. If the checkout supplies `scripts/issue.mjs`, run this from this folder:
    `bun <exact2>/scripts/issue.mjs new "<title>" --systems "<a, b>" --severity P3 --author "Claude (Opus 5.5), from Rami Maalouf's chat app friction log (an app outside exact2)"`.
    Then write what happened, what would help, and where you saw it (the exact2 commit).
    For a known problem, add your evidence to its file.
-4. Run `bun <exact2>/scripts/issue.mjs check` from this folder.
+4. Run `bun <exact2>/scripts/issue.mjs check` from this folder when that script exists.
+   The current checkout no longer supplies it: retain the existing issue format and
+   manually check Status, Systems, Severity, Author, Date, evidence and the index link.
 5. Add a row to the table above.
 6. Keep each file generic: no app name, product purpose, server name, account name or secret.
 
