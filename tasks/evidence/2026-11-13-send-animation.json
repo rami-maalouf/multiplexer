@@ -36,7 +36,14 @@
     "shared_framework_modified": false,
     "machine_specific_generated_paths_excluded": true
   },
-  "feedback": "local only",
+  "feedback": {
+    "receipt": "2f4ff629-9277-4a43-a9c6-c6dbba6af9a6",
+    "diaries": 1,
+    "commands": 0,
+    "attachments": 0,
+    "approval": "explicit; animation diary only",
+    "comparison_diary": "local"
+  },
   "pull_request": "https://github.com/rami-maalouf/multiplexer/pull/26",
   "implementation_commit": "26118f72b763b9dad421d0bb360aa29e87006e53"
 }

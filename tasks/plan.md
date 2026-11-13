@@ -15,7 +15,7 @@ send identity/delivery tests pass. Mac tests could not build because this checko
 SDK's macOS arm64 slice; physical iPhone frame pacing is unmeasured. Both test sessions signed
 out and the owned simulator shut down. Review completed with no actionable findings.
 Feature branch `feat/message-send-animation` is based on main `fdbfa3c`; PR [#26](https://github.com/rami-maalouf/multiplexer/pull/26) is open.
-Generic feedback is local, with no diary or command logs sent.
+The animation diary was sent with approval, receipt `2f4ff629-9277-4a43-a9c6-c6dbba6af9a6` (one diary, zero command logs or attachments). The comparison diary remains local.
 
 **Group sender profiles (2026-11-12, PR #24):** avatar taps already use one network-independent
 route, but direct entry never requested members and the profile depended on a six-person

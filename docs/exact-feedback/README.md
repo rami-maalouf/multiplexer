@@ -253,6 +253,8 @@ it must keep `!/.exact/diary/`.
 
 ## Sent to the Exact team
 
+Send animation, 2026-11-13: receipt `2f4ff629-9277-4a43-a9c6-c6dbba6af9a6`, with explicit approval for one diary only; zero command logs or attachments. The comparison diary remains local.
+
 Validation continuation, 2026-11-07: receipt `ac9481f6-814f-49b1-bbc1-33193c87b718`,
 one diary, zero logged commands, sent with Rami's prior authorization. Findings:
 saved native-test replay and the missing-cargo diagnostic above.
