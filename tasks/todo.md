@@ -10,13 +10,15 @@
   the next CPU capture is mostly idle. Neither establishes manual-scroll attribution.
 - [x] Build a comparison with only `TimerScrollTouch.finish`'s terminal assignment removed;
   preserve the fixed signed app, restore all temporary source/config changes afterward.
-- [ ] Install and measure comparison after the owner frees phone storage. iOS refused
+- [ ] Deferred unless stutter recurs: install and measure comparison. iOS refused
   the install: 204,933,186 bytes needed, 120,698,280 available including purgeable space
   (40,538,112 actually free). Storage was measured after profiling and is a confounder,
   not a proven cause of the initial report.
 - [x] Confirm failed comparison install left the fixed app at its original bundle URL;
   stop this phone's automation runner. No chats opened, messages sent or read status changed.
-- [ ] Compare the same inbox workload with/without the observer fix, then restore the fixed
+- [x] Record the owner's subsequent smooth-scrolling report on the unchanged fixed build.
+  No code change reached the phone after the complaint; the improvement's cause is unknown.
+- [ ] If stutter recurs, compare the same inbox workload with/without the observer fix, then restore the fixed
   build. Profile any persistent stutter before changing shared scroll/render code.
 
 Private captures and both signed builds: root checkout's ignored
@@ -24,6 +26,8 @@ Private captures and both signed builds: root checkout's ignored
 
 ## Foreground gesture freeze (2026-11-13)
 
+- [x] Submit the isolated framework repair and regression upstream: [expo/exact#494](https://github.com/expo/exact/pull/494), commit `bdac0a1be3` on `c419ce55c9`. All six required checks, 19 timer tests and tvOS compile pass.
+- [ ] After upstream acceptance, adopt a revision containing the repair and remove only its gesture hunk from the integration patch.
 - [x] Reproduce the Home-indicator freeze on the physical phone and confirm finger scrolling.
 - [x] Inspect idle native recognizers; changing only `TimerScrollTouch` to failed restores the same inbox.
 - [x] Compare the public chat template and correct the earlier glass-pan diagnosis.

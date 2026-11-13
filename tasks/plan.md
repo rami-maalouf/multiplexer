@@ -4,6 +4,14 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Gesture fix upstream PR (2026-11-13):** [expo/exact#494](https://github.com/expo/exact/pull/494)
+contains only the passive touch lifecycle repair and its regression, on upstream
+`c419ce55c9` at commit `bdac0a1be3`. All six Exact checks pass, plus 19 native timer
+tests and the tvOS build. The workspace check needed a retry after scoped compiler
+cache cleanup resolved disk exhaustion. No phone build changed. Keep the current
+integration until an adopted upstream revision includes the repair, then remove its
+gesture hunk from the bundled integration patch; other integration changes remain needed.
+
 **Scroll stutter follow-up (2026-11-13, attribution pending):** the owner reports
 jerky scrolling in both inbox and chats after installing the gesture repair. The
 phone's numeric log shows successful scrolling after Home returns and terminal
@@ -14,7 +22,9 @@ idle time, so they do not establish the cause. A comparison build removing only 
 observer's terminal-state assignment is ready, but iOS refused installation for
 insufficient storage (about 40 MB free, another 80 MB purgeable). This was observed
 after profiling, not before the initial stutter. The fixed installation is unchanged.
-Awaiting storage headroom before a controlled comparison; no performance fix made.
+The owner subsequently reported smooth scrolling on that unchanged installation.
+No performance fix was installed after the complaint; attribution remains unknown.
+Further comparison is deferred unless the symptom recurs.
 
 **Foreground gesture freeze (2026-11-13, physical acceptance pending):** reproduced twice after a
 physical Home-indicator swipe, with finger confirmation. Idle inspection disproved

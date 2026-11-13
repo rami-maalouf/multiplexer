@@ -9,6 +9,8 @@
 Local state: the flex-pan release workaround was reverted. A later idle-state probe
 isolated `TimerScrollTouch`. The lifecycle fix passes native regression and simulator
 checks; rebuilt physical acceptance remains pending.
+Upstream repair: [expo/exact#494](https://github.com/expo/exact/pull/494), based on
+`c419ce55c9`. All six framework checks, 19 native timer tests and tvOS compile pass.
 
 ## Corrected diagnosis, 2026-11-13
 
@@ -46,6 +48,8 @@ automation adds accessibility work and causal attribution remains open. Manual
 profiling did not produce a usable scrolling baseline. A movement boolean cannot
 validate smoothness; native timing coverage should accompany return-gesture checks.
 No further runtime change is justified by these observations alone.
+The owner later reported smooth scrolling on the same installed build. The comparison
+install had failed, so no code change explains that improvement; attribution remains open.
 
 ## What happens
 
