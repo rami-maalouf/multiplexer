@@ -260,6 +260,13 @@ it must keep `!/.exact/diary/`.
 | native build stages remain quiet | several minutes | P3 | [build progress](issues/20261112-native-drive-build-progress.md) |
 | members resource cannot name root shape | about 1 min | P3 | [shape ownership](issues/20261103-a-members-file-s-rules-leave.md) |
 
+## Send velocity findings (2026-11-13)
+
+| Finding | Cost | Severity | Evidence |
+|---|---|---|---|
+| stable destination and receipt/end-follow interactions need a recipe and frame trace | about thirty minutes | P3 | [send recipe](issues/20261113-chat-send-motion-recipe.md) |
+| a temporary native trace rebuilds vendor bindings | several minutes | P2 | [native rebuild](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
+
 ## Sent to the Exact team
 
 Send coordination, 2026-11-13: receipt `1fd77ab5-6f7b-4405-a4cb-7c2e74ce999d`, explicit approval for this one diary; zero command logs or attachments. Comparison diary remains local.

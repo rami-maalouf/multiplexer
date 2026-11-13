@@ -603,6 +603,7 @@ component Multiplexer
   action follow(url: string)
     keepDraftNow()
     nav = go(nav, url)
+    composerFocus = false
     held = ""
     panel = false
     tooLarge = ""
@@ -616,6 +617,7 @@ component Multiplexer
     let sheet = top(nav).name == "reactions" or top(nav).name == "forward" or top(nav).name == "gifs"
     keepDraftNow()
     nav = back(nav)
+    composerFocus = false
     held = ""
     panel = false
     tooLarge = ""
@@ -991,6 +993,7 @@ component Multiplexer
   action pickEmoji(key: string)
     send reacted = react(openRoom, sheetMessage, key)
     nav = back(nav)
+    composerFocus = false
     held = ""
   action searchEmoji(v: string)
     emojiQuery = v
@@ -1122,6 +1125,7 @@ component Multiplexer
     send changedChat = changeChat(openChatId, "unread")
     keepDraftNow()
     nav = back(nav)
+    composerFocus = false
     held = ""
     panel = false
     tooLarge = ""
@@ -1725,9 +1729,11 @@ component Multiplexer
                                 text "Try Again"
                               button press=discard(m.id) destructive=true disabled=pending(discarded) testId=`discard-${m.id}`
                                 text "Delete"
+                          // changing receipt heights during flight restarts the transcript's end-follow scroll.
                           StatusLine(label=seenText(m.status, m.statusTime, shown, time.utcOffset), own=m.isOwn,
                             indent=(thread.group and not m.isOwn ? 36 : 0), identifier=`status-${m.presentationId}`,
-                            reserved=(m.status != "" or (m.isOwn and m.id == lastId and m.state != "failed")), reduced=viewport.prefersReducedMotion)
+                            reserved=(m.status != "" or (m.isOwn and m.id == lastId and m.state != "failed")),
+                            reduced=(viewport.prefersReducedMotion or (flightPhase > 0 and flightRoom == openRoom)))
             else
               if failed(thread) and not pending(thread)
                 column flex=1 justify-content="center" align-items="center" gap=12 padding=24
