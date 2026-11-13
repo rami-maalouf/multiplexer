@@ -1,0 +1,73 @@
+{
+  "task": "coordinated send animation revision",
+  "date": "2026-11-13",
+  "base": "0331458a8254f12df16bea330648368c3e5a2581",
+  "framework": "6f4917bda",
+  "template": "041917c8e1c9c2c076232a8011f0d5f40601ca01",
+  "layout_decision": "preserve Mux composer and overlays-content keyboard layout; adapt template geometry",
+  "observed": [
+    "pending row makes room in the same update as the flight",
+    "previous messages move while the flier slides, squashes, rises and grows",
+    "single-line and multiline flights land without the earlier final handoff jump",
+    "flight passes behind composer glass",
+    "multiline composer returns to one line during flight"
+  ],
+  "regression_drives": [
+    "reply retained through send",
+    "rapid consecutive sends",
+    "newer draft retained",
+    "reduced motion skips flight",
+    "off-bottom send reaches end",
+    "navigation cancels flight",
+    "agent test session signed out"
+  ],
+  "tests": {
+    "typescript": {
+      "passed": 49
+    },
+    "matrix_core": {
+      "passed": 3,
+      "proof": "matrix-core/Tests/MatrixCoreTests/SendPresentationTests.swift"
+    },
+    "overlay_proof": "apps/multiplexer/send-overlay.test.ts",
+    "native_verify": {
+      "passed": 14,
+      "light_dark": "no findings",
+      "largest_text_screens": 16,
+      "largest_text_findings": 0,
+      "elapsed_seconds": 146.2
+    },
+    "contract_build": "passed"
+  },
+  "review": {
+    "status": "complete",
+    "run_id": "20261113-send-coordination-602329cd",
+    "actionable_findings": 0
+  },
+  "limits": [
+    "simulator video establishes geometry and sequencing, not physical iPhone frame pacing",
+    "Mac SDK slice absent; no Mac native verification",
+    "forced late-echo timeout not tested",
+    "comparison crops keyboard and aligns send onset without changing playback speed"
+  ],
+  "recordings": [
+    {
+      "path": "research/send-animation/template-and-mux.mp4",
+      "sha256": "613bc578bffc94eca37e08d93785f7218f75d43cc66e815efea4383f97638907"
+    },
+    {
+      "path": "research/send-animation/mux-send-multiline-final.mov",
+      "sha256": "ed595c48b695227c72d548cae63da4835aa9245a180e04a7a7e4a24aba439066"
+    },
+    {
+      "path": "research/send-animation/mux-send-single-final.mov",
+      "sha256": "872fe8e53fd61177083bd3876bcd97b14b1870d3a5bd42decf6049f8060c3207"
+    }
+  ],
+  "cleanup": {
+    "normal_session": "signed out",
+    "agent_session": "signed out",
+    "auth_drive_lock": "released",
+    "simulator": "shutdown"
+  }
+}

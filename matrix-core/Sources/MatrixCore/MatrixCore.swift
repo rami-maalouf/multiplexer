@@ -102,6 +102,8 @@ public struct RoomSummary: Equatable, Sendable {
 public struct Message: Equatable, Sendable {
     /// The timeline's id for the message: the same while it is sent and after.
     public var id: String
+    /// the caller's transient identity, retained from local enqueue through acknowledgement.
+    public var presentationId: String = ""
     /// Its event id once the server has it ("" before): what a bookmark keeps.
     public var eventId: String = ""
     public var sender: String

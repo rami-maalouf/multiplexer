@@ -251,6 +251,15 @@ it must keep `!/.exact/diary/`.
 | framework symlink fails source identity capture | about 5 min and rebuilding | P3 | [build paths](issues/20261113-symlink-framework-source-identity.md) |
 | chat recipe omits the template send handoff | about 20 min | P3 | [send recipe](issues/20261113-chat-send-motion-recipe.md) |
 
+## Send coordination findings (2026-11-13)
+
+| Finding | Cost | Severity | Evidence |
+|---|---|---|---|
+| data entry tests need native package mocks | about 2 min | P3 | [data tests](issues/20261113-native-package-data-tests.md) |
+| bottom-anchored flights need displayed geometry calibration | recording and iteration | P3 | [keyboard geometry](issues/20261113-frame-omits-keyboard-toolbar-lift.md) |
+| native build stages remain quiet | several minutes | P3 | [build progress](issues/20261112-native-drive-build-progress.md) |
+| members resource cannot name root shape | about 1 min | P3 | [shape ownership](issues/20261103-a-members-file-s-rules-leave.md) |
+
 ## Sent to the Exact team
 
 Send-list motion follow-up, 2026-11-13: receipt `06db05a9-355a-474a-8e44-807ea1d18f0f`, explicit approval for this one diary; zero command logs or attachments.

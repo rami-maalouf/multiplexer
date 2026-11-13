@@ -1,5 +1,32 @@
 # Mux: tasks
 
+## Coordinated send animation revision (2026-11-13)
+
+Rami rejected the prior motion and chose to preserve Mux's composer/keyboard layout.
+The earlier recording proved intermediate list positions, not template fidelity.
+
+- [x] Compare the template's same-update optimistic row, flight and receipt spacing with Mux.
+- [x] Add a failing presentation-identity proof, then pass it and the existing live send tests.
+- [x] Insert pending text rows synchronously, reconcile exact native identities, and preserve keyed scrolling.
+- [x] Inspect the installed native flight and compare recordings against the reference.
+- [x] Finish regression drives, native verification and review.
+- [x] Commit and push the revision to PR #26.
+
+
+Latest standalone recordings show immediate conversation movement during flight and aligned
+single-line/multiline handoffs after calibrating the displayed origin and following the
+composer height change. This preserves Mux layout; it does not claim literal template layout
+or physical iPhone frame pacing. Evidence: `tasks/evidence/2026-11-13-send-coordination.json`.
+Three live MatrixCore tests, 49 TS tests, contract build and native verify pass: 14 native tests,
+light/dark and 16 largest-text screens clean. Signed-in drives cover replies, rapid sends,
+newer drafts, reduced motion, off-bottom sends and navigation. Both test sessions signed out,
+auth-drive lock released, owned simulator shut down. Review receipt
+`20261113-send-coordination-602329cd`: complete, no actionable findings. Simplification kept
+identity maps and atomic-action ID construction; shared grouping logic was extracted.
+The new coordination diary remains local pending separate approval. The framework checkout
+no longer provides the documented issue generator/checker; findings were updated manually.
+
+
 ## Send-list motion follow-up (2026-11-13)
 
 - [x] Reproduce the list jump from the prior standalone recording and identify automatic end-follow as the cause.

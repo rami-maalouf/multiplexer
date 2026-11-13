@@ -61,9 +61,18 @@ component StatusLine
     label: string
     own: bool
     indent: number
+    identifier: string
+    reserved: bool
+    reduced: bool
+  state measuredHeight = 0
+  action measure(width: number, height: number)
+    measuredHeight = height
   view
-    text label font="-exact-caption1" color="-exact-secondary-label" align-self=(own ? "flex-end" : "flex-start")
-      text-align=(own ? "end" : "start") padding=(own ? "3px 6px 0 0" : `3px 0 0 ${indent + 6}px`) max-width="80%" testId="status"
+    column align-self="stretch" height=(reserved ? measuredHeight : 0) flex-shrink=0 overflow="hidden"
+      transition=(reduced ? "none" : "height -exact-spring(438.65, 41.888, 1)")
+      text (label == "" ? "Sent" : label) id=identifier resize=measure font="-exact-caption1" color="-exact-secondary-label"
+        align-self=(own ? "flex-end" : "flex-start") flex-shrink=0 opacity=(reserved and label != "" ? 1 : 0) aria-hidden=(not reserved or label == "")
+        text-align=(own ? "end" : "start") padding=(own ? "3px 6px 0 0" : `3px 0 0 ${indent + 6}px`) max-width="80%" testId="status"
 
 // the jump to the newest message, bottom right over the chat while it is out of view, with how
 // many messages are unread ("23" and an arrow, as Beeper has it); the arrow alone when none are.

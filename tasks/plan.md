@@ -4,6 +4,17 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Send coordination revision (2026-11-13, validated):** Rami rejected the previous
+motion and explicitly chose to retain Mux's composer and keyboard layout. Prior evidence
+shows gradual list movement only, not visual equivalence to the template. The revision
+uses an immediate optimistic row with an exact native presentation identity, coordinates
+receipt space, and retains the template's flight phases around the existing toolbar.
+Three live MatrixCore send tests, 49 TypeScript tests and 14 native iOS tests pass.
+Light/dark and 16 largest-text screens are clean. Installed native recordings show concurrent
+list movement and aligned single-line/multiline handoffs; physical iPhone pacing remains
+unmeasured. Review completed without actionable findings. Evidence:
+`tasks/evidence/2026-11-13-send-coordination.json`. The new diary remains local.
+
 **Send-list motion follow-up (2026-11-13):** reproduced the abrupt list movement in the
 previous standalone recording. The transcript now selects smooth automatic end-follow, with
 `auto` under reduced motion, matching the template. The recorded preceding row now traverses
