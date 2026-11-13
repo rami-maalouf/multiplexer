@@ -241,6 +241,10 @@ it must keep `!/.exact/diary/`.
 
 ## Validation resumption findings
 
+2026-11-13 scrolling follow-up: added physical responsiveness versus smoothness evidence
+to finding 151, and comparison-build path switching evidence to finding 46. Attribution
+of the reported stutter remains open; this follow-up diary stays local.
+
 | Finding | Cost | Severity | Evidence |
 |---|---|---|---|
 | saved native test run loses its bundles | about 2 min plus rebuilding | P3 | [native replay](issues/20261107-native-test-replay-loses-bundles.md) |

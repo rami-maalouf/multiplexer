@@ -36,6 +36,17 @@ is still required. Fix: `6f4917bdab8b5392a78c2e4e6b6d8d3b28e9317c`.
 The older evidence and unsuccessful workaround below are retained as history, not
 as the current diagnosis. No private diagnostic log or account content is attached.
 
+## Follow-up: responsiveness does not establish smoothness
+
+After installing the repair, numeric physical-phone diagnostics show the observer
+ending and the list moving after Home returns. The owner nevertheless reports jerky
+scrolling in both lists and transcripts. An external automated inbox profile measured
+frame hitches; timer-state updates scan presenter views during scroll events, but
+automation adds accessibility work and causal attribution remains open. Manual
+profiling did not produce a usable scrolling baseline. A movement boolean cannot
+validate smoothness; native timing coverage should accompany return-gesture checks.
+No further runtime change is justified by these observations alone.
+
 ## What happens
 
 After the app returns from the background on a physical iPhone, vertical scrolling, row

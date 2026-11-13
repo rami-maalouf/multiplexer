@@ -4,6 +4,18 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Scroll stutter follow-up (2026-11-13, attribution pending):** the owner reports
+jerky scrolling in both inbox and chats after installing the gesture repair. The
+phone's numeric log shows successful scrolling after Home returns and terminal
+touch-observer states. An automated inbox Instruments run measured 94 hitches after
+startup (worst about 50 ms), with timer-view scanning present near hitches; automation
+also adds substantial accessibility work. Manual traces were malformed or captured
+idle time, so they do not establish the cause. A comparison build removing only the
+observer's terminal-state assignment is ready, but iOS refused installation for
+insufficient storage (about 40 MB free, another 80 MB purgeable). This was observed
+after profiling, not before the initial stutter. The fixed installation is unchanged.
+Awaiting storage headroom before a controlled comparison; no performance fix made.
+
 **Foreground gesture freeze (2026-11-13, physical acceptance pending):** reproduced twice after a
 physical Home-indicator swipe, with finger confirmation. Idle inspection disproved
 the earlier stuck-glass-pan inference. Setting only Exact's `TimerScrollTouch` to

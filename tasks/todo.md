@@ -1,5 +1,27 @@
 # Mux: tasks
 
+## Scroll stutter after gesture repair (2026-11-13)
+
+- [x] Clarify symptom: jerky movement in both inbox and chats, rather than a complete freeze.
+- [x] Read authorized numeric diagnostics: observer finishes; list moves after Home returns.
+- [x] Profile inbox only: automated run shows 94 hitches after startup, worst 50.01 ms.
+  Accessibility automation overhead prevents treating this as a clean manual baseline.
+- [x] Attempt owner-driven capture: one malformed transfer has no CPU/frame samples;
+  the next CPU capture is mostly idle. Neither establishes manual-scroll attribution.
+- [x] Build a comparison with only `TimerScrollTouch.finish`'s terminal assignment removed;
+  preserve the fixed signed app, restore all temporary source/config changes afterward.
+- [ ] Install and measure comparison after the owner frees phone storage. iOS refused
+  the install: 204,933,186 bytes needed, 120,698,280 available including purgeable space
+  (40,538,112 actually free). Storage was measured after profiling and is a confounder,
+  not a proven cause of the initial report.
+- [x] Confirm failed comparison install left the fixed app at its original bundle URL;
+  stop this phone's automation runner. No chats opened, messages sent or read status changed.
+- [ ] Compare the same inbox workload with/without the observer fix, then restore the fixed
+  build. Profile any persistent stutter before changing shared scroll/render code.
+
+Private captures and both signed builds: root checkout's ignored
+`research/scroll-followup-20261113/`. No performance code changes or upstream feedback sent.
+
 ## Foreground gesture freeze (2026-11-13)
 
 - [x] Reproduce the Home-indicator freeze on the physical phone and confirm finger scrolling.
