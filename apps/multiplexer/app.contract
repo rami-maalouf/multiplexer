@@ -1551,7 +1551,7 @@ component Multiplexer
                 // bar's soft edge blurs real messages there, not empty page colour; padding clears
                 // the floating controls below the clock.
                 column flex=1 min-height=0 margin-bottom=(composerSurface.desktop ? 0 : -100) margin-top=(composerSurface.desktop ? 0 : -62)
-                  list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true
+                  list id="transcript" inert=(held != "") appearance="none" virtualized=true scroll-start="end" scrollFollowEnd=true scroll-behavior=(viewport.prefersReducedMotion ? "auto" : "smooth")
                     reachstart=loadOlder scroll=scrolled flex=1 min-height=0 padding-top=(composerSurface.desktop ? 8 : ((viewport.accessibilityTextSize ? 178 : 162) + (openMerge == none ? 0 : 56)))
                     padding-bottom=(composerSurface.desktop ? 8 : 100)
                     // no UIKit edge effect: the chat bar and the composer draw their own soft edges; UIKit's
