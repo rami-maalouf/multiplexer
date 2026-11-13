@@ -13,7 +13,7 @@ Three live MatrixCore send tests, 49 TypeScript tests and 14 native iOS tests pa
 Light/dark and 16 largest-text screens are clean. Installed native recordings show concurrent
 list movement and aligned single-line/multiline handoffs; physical iPhone pacing remains
 unmeasured. Review completed without actionable findings. Evidence:
-`tasks/evidence/2026-11-13-send-coordination.json`. The new diary remains local.
+`tasks/evidence/2026-11-13-send-coordination.json`. Coordination diary sent with separate approval: `1fd77ab5-6f7b-4405-a4cb-7c2e74ce999d`; one diary, zero logs or attachments.
 
 **Send-list motion follow-up (2026-11-13):** reproduced the abrupt list movement in the
 previous standalone recording. The transcript now selects smooth automatic end-follow, with
