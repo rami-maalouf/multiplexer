@@ -109,6 +109,26 @@ final class MatrixCoreTests: XCTestCase {
         try await reader.signOut()
     }
 
+    func testIdenticalSendsReturnTheirOwnLocalEchoIds() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
+            throw XCTSkip("test credentials are not set")
+        }
+        let account = try await signIn(env["MATRIX_TEST_HOMESERVER"] ?? "matrix.org", user, password)
+        let roomId = try await testRoom(account, account.rooms())
+        let text = "Identical send \(UUID().uuidString)"
+        async let first: String? = account.send(roomId: roomId, text: text)
+        async let second: String? = account.send(roomId: roomId, text: text)
+        let (a, b) = try await (first, second)
+        XCTAssertNotNil(a)
+        XCTAssertNotNil(b)
+        XCTAssertNotEqual(a, b)
+        let messages = try await account.messages(roomId: roomId, limit: 20)
+        XCTAssertEqual(messages.first { $0.id == a }?.body, text)
+        XCTAssertEqual(messages.first { $0.id == b }?.body, text)
+        try await account.signOut()
+    }
+
     func testASentMessageShowsAtOnceThenSentAndARefusedOneFails() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let user = env["MATRIX_TEST_USER"], let password = env["MATRIX_TEST_PASSWORD"], !password.isEmpty else {
@@ -121,15 +141,17 @@ final class MatrixCoreTests: XCTestCase {
 
         // a message shows at once, then as sent, under the same id.
         let text = "Send state \(UUID().uuidString)"
-        try await account.send(roomId: roomId, text: text)
+        let echoId = try await account.send(roomId: roomId, text: text)
         let queued = try await mine(account, roomId, text, within: 5)
         let sent = try await mine(account, roomId, text, within: 15) { $0.sendState == .sent }
         XCTAssertEqual(sent.id, queued.id, "the message changed its id when it was sent")
+        XCTAssertEqual(echoId, sent.id)
 
         // a message over the spec's 65,536-byte event limit is refused, and shows as failed.
         let tooLarge = String(repeating: "x", count: 70_000)
-        try await account.send(roomId: roomId, text: tooLarge)
+        let failedId = try await account.send(roomId: roomId, text: tooLarge)
         let failed = try await mine(account, roomId, tooLarge, within: 20) { $0.sendState == .failed }
+        XCTAssertEqual(failedId, failed.id)
         // retrying it does not throw; the server refuses it again.
         try await account.retry(roomId: roomId, messageId: failed.id)
         let again = try await mine(account, roomId, tooLarge, within: 20) { $0.sendState == .failed }

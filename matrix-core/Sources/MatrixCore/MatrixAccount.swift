@@ -353,15 +353,28 @@ public final class MatrixAccount: @unchecked Sendable {
     /// it at once as `sending`, then `sent`, or `failed`. With `replyTo`, a message's id (or the
     /// event id a draft keeps), it answers that message; one the server does not have yet cannot
     /// be answered. The chat's stored draft goes, so a relaunch does not offer the text again.
-    public func send(roomId: String, text: String, replyTo: String? = nil, timeout: TimeInterval = 30) async throws {
+    /// returns its local echo id, or nil if the timeline has not reported it within a second.
+    @discardableResult
+    public func send(roomId: String, text: String, replyTo: String? = nil, timeout: TimeInterval = 30) async throws -> String? {
         let live = try await liveTimeline(roomId, limit: 20, timeout: timeout)
-        let content = messageEventContentFromMarkdown(md: text)
-        if let eventId = live.items.replyEventId(replyTo) {
-            _ = try await live.timeline.sendReply(msg: content, eventId: eventId)
-        } else {
-            _ = try await live.timeline.send(msg: content)
+        // serialize only local enqueue and echo identification, never server delivery.
+        await live.textSends.acquire()
+        do {
+            let cursor = live.items.localTextCursor
+            let content = messageEventContentFromMarkdown(md: text)
+            if let eventId = live.items.replyEventId(replyTo) {
+                _ = try await live.timeline.sendReply(msg: content, eventId: eventId)
+            } else {
+                _ = try await live.timeline.send(msg: content)
+            }
+            let id = await live.items.localText(after: cursor)
+            await live.textSends.release()
+            try? await room(roomId, timeout: timeout).clearComposerDraft(threadRoot: nil)
+            return id
+        } catch {
+            await live.textSends.release()
+            throw error
         }
-        try? await room(roomId, timeout: timeout).clearComposerDraft(threadRoot: nil)
     }
 
     /// Adds this account's reaction `key` (an emoji) to a message, or takes it back when it
@@ -641,6 +654,7 @@ private final class RoomEntries: RoomListEntriesListener, @unchecked Sendable {
 final class LiveTimeline: @unchecked Sendable {
     let timeline: Timeline
     let items: TimelineItems
+    let textSends = TextSendGate()
     private let handle: TaskHandle
     private let lock = NSLock()
     /// The oldest message the chat shows; older ones are loaded but not shown yet.
@@ -838,6 +852,23 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     /// a minute; most likely its event cache dropping a duplicate and inserting the event anew). A
     /// caller that holds the old id still means that message, so a lookup falls back to its event.
     private var eventIds: [String: String] = [:]
+    // retain local creation before an acknowledgement replaces it in the same diff batch.
+    private var localTexts: [(id: String, sequence: Int)] = []
+    private var textSequence = 0
+    private var claimedTextSequence = 0
+    private var knownLocalTexts: Set<String> = []
+    var localTextCursor: Int { lock.withLock { max(textSequence, claimedTextSequence) } }
+
+    func localText(after cursor: Int) async -> String? {
+        // even a late echo owns its slot; a timeout must not give it to the next send.
+        lock.withLock { claimedTextSequence = cursor + 1 }
+        let start = Date()
+        repeat {
+            if let id = lock.withLock({ localTexts.first { $0.sequence == cursor + 1 }?.id }) { return id }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        } while !Task.isCancelled && Date().timeIntervalSince(start) < 1
+        return nil
+    }
 
     init(me: String) { self.me = me }
 
@@ -960,7 +991,18 @@ final class TimelineItems: TimelineListener, @unchecked Sendable {
     }
 
     private func remember(_ item: TimelineItem) {
-        if case .eventId(let id)? = item.asEvent()?.eventOrTransactionId { eventIds[item.uniqueId().id] = id }
+        guard let event = item.asEvent() else { return }
+        if case .eventId(let id) = event.eventOrTransactionId {
+            eventIds[item.uniqueId().id] = id
+        } else if !event.isRemote, event.isOwn,
+                  case .transactionId(let transaction) = event.eventOrTransactionId,
+                  case .msgLike(let like) = event.content, case .message(let message) = like.kind,
+                  case .text = message.msgType,
+                  knownLocalTexts.insert(transaction).inserted {
+            textSequence += 1
+            localTexts.append((item.uniqueId().id, textSequence))
+            if localTexts.count > 128 { localTexts.removeFirst() }
+        }
     }
 
     /// The event a reply answers: `replyTo` is a message's id in this chat, or an event id ("$…")

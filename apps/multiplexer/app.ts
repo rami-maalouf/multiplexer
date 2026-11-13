@@ -754,8 +754,9 @@ const sources: Sources = {
   },
   // a failure to send shows on the message itself (state "failed"), not as a refusal here.
   sendMessage: async ([roomId, text, replyTo], _store, _storage, native): Promise<Result<'sendMessage'>> => {
-    await native!.later({ op: 'send', roomId, text, replyTo });
-    return { ok: true };
+    const origin = native!.call({ op: 'sendOrigin' }) as Result<'sendMessage'>['origin'];
+    const answer = await native!.later({ op: 'send', roomId, text, replyTo }) as { ok: boolean; id: string };
+    return { ok: answer.ok, id: answer.id, room: roomId, origin };
   },
   // each photo or file goes in the chat's send queue in order and shows at once; the caption goes
   // with the last one, the reply with the first. A failure shows on the message, as for text.

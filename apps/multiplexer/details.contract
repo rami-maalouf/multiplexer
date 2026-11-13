@@ -112,11 +112,13 @@ component RichBalloon
     dimmed: bool
     identifier: string
     open: action
+    shift: number
+    shiftMotion: string
   derive ink = outgoing ? appearance.onFill : "-exact-label"
   view
     BalloonBox(appearance=appearance, outgoing=outgoing, tail=tail, dimmed=dimmed, card=false, identifier=identifier)
       // the paragraph has the runs' ink too: a run's colour is its own, and `check` reads the paragraph's.
-      text position="relative" color=ink white-space="pre-wrap" overflow-wrap="break-word" hyphens="none" min-width=0
+      text id=`${identifier}-text` translate=`${shift}px 0px` transition=shiftMotion position="relative" color=ink white-space="pre-wrap" overflow-wrap="break-word" hyphens="none" min-width=0
         for r in runs key=r.id
           if r.href != ""
             text r.text color=(outgoing ? appearance.onFill : "AccentColor") text-decoration-line="underline" press=open(r.href)

@@ -4,6 +4,19 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Outgoing message animation (2026-11-13):** the Exact chat template's composer-to-bubble
+spring flight now follows the actual queued Matrix message, including identical sends.
+A session-scoped UIKit measurement supplies the displayed composer origin; no Exact source
+changes are needed. Native recordings inspected takeoff, squash, rise, growth and handoff.
+Drives cover multiline replies, rapid sends, newer draft retention, navigation cancellation,
+reduced motion and sending from earlier in the conversation. Verification: 14 iOS tests,
+light/dark checks and 16 largest-text screens clean; 45 TypeScript tests and 2 live MatrixCore
+send identity/delivery tests pass. Mac tests could not build because this checkout lacks the
+SDK's macOS arm64 slice; physical iPhone frame pacing is unmeasured. Both test sessions signed
+out and the owned simulator shut down. Review completed with no actionable findings.
+Feature branch `feat/message-send-animation` is based on main `fdbfa3c`; new PR pending.
+Generic feedback is local, with no diary or command logs sent.
+
 **Group sender profiles (2026-11-12, PR #24):** avatar taps already use one network-independent
 route, but direct entry never requested members and the profile depended on a six-person
 info preview. Added an independent selected-member resource, native selection before the
