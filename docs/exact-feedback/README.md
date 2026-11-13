@@ -26,7 +26,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 
 | # | Finding | Cost | Severity | File |
 |---|---|---|---|---|
-| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04. | 31 to 42 s for each edit; latest branding rebuild: arms 95.8 s; self-hosted configuration rebuild: modules 79.7 s | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
+| 1 | Each Swift edit compiles all of `modules/apple` again, including a vendor's 2 MB of bindings. Further evidence on 2026-11-04 and 2026-11-12. | 31 to 42 s for each edit; latest branding rebuild: arms 95.8 s; self-hosted configuration rebuild: modules 79.7 s | P2 | [module-swift-recompiles-vendor-bindings](issues/20261027-module-swift-recompiles-vendor-bindings.md) |
 | 2 | An authored test cannot read a secret, so `verify` never reaches the screens behind a sign-in. | A text-size bug that `verify` missed | P2 | [authored-tests-cannot-read-a-secret](issues/20261027-authored-tests-cannot-read-a-secret.md) |
 | 3 | A native module can use only real files in `modules/apple`: no links, no local Swift package. | About 20 min, then a copy step after each edit | P3 | [module-swift-only-from-modules-apple](issues/20261027-module-swift-only-from-modules-apple.md) |
 | 4 | A native module cannot keep a secret in Exact's store, so its Keychain items outlive a fresh drive. | A test device left signed in on the server | P3 | [native-module-has-no-secret-store](issues/20261027-native-module-has-no-secret-store.md) |
@@ -159,7 +159,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 129 | A swipe row in a plain list loses the cell's 16-point margin, with no warning: its content needs its own padding. | About 20 min, one regression | P3 | [a-swipe-row-in-a-plain](issues/20261106-a-swipe-row-in-a-plain.md) |
 | 130 | A swiped row's line runs from the cell's margin after it closes; fixed locally in the integration checkout (`cc75ef11d0`). | About 15 min | P3 | [a-swiped-row-s-line-runs](issues/20261106-a-swiped-row-s-line-runs.md) |
 | 131 | A drive cannot cross the app leaving the foreground and coming back: no Home, app switcher or lock op, and every op fails while the app is away. | About 30 min | P3 | [a-drive-cannot-cross-a-return](issues/20261106-a-drive-cannot-cross-a-return.md) |
-| 132 | `verify` leaves the drives' kept session signed out, and says nothing: the next drive meets the sign-in screen. `test ios` does the same (2026-11-07). | About 3 min | P3 | [verify-leaves-the-drives-kept-session](issues/20261106-verify-leaves-the-drives-kept-session.md) |
+| 132 | `verify` leaves the drives' kept session signed out, and says nothing: the next drive meets the sign-in screen. `test ios` does the same (2026-11-07; reproduced 2026-11-12). | About 3 min | P3 | [verify-leaves-the-drives-kept-session](issues/20261106-verify-leaves-the-drives-kept-session.md) |
 | 133 | A text that spills its box shows only in `check`, one screen at a time; `layout` ranges and `tap <list> into` give no sign. | About 60 min | P3 | [a-text-that-spills-its-box](issues/20261106-a-text-that-spills-its-box.md) |
 | 134 | A tinted glass circle needs `appearance="none"` plus `backgroundMaterial="glass"`; `buttonStyle="glass"` refuses a tint. | About 2 min | P3 | [a-tinted-glass-circle-needs](issues/20261106-a-tinted-glass-circle-needs.md) |
 | 135 | Glass is interactive only on a node with its own `press`; the docs do not say so, and the agent cannot show it. | About 15 min | P3 | [glass-is-interactive-only-with](issues/20261106-glass-is-interactive-only-with.md) |
@@ -196,6 +196,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 163 | `go()` pushes a second entry of the same route instead of collapsing it; a stacked second `room` renders the first room's resources. | About 15 min, two drives, hand-collapsed nav | P3 | [go-pushes-a-second-entry](issues/20261109-go-pushes-a-second-entry.md) |
 | 164 | An `if` condition cannot continue on the next line (a leading `and`/`or` gives syntax-expected-name + bad-dedent). | Two failed builds | P3 | [an-if-condition-cannot-continue](issues/20261109-an-if-condition-cannot-continue.md) |
 | 165 | `clock until state` takes only `==`; `!=` is refused. | Two refused ops | P3 | [clock-until-state-takes-only](issues/20261109-clock-until-state-takes-only.md) |
+| 167 | Long identifier wrapping needs a specific remedy when max-width clips and anywhere is rejected. | About 5 min | P3 | [long-identifier-wrapping](issues/20261112-long-identifier-wrapping.md) |
 | 166 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
 
 ## What worked well

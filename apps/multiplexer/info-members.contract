@@ -23,13 +23,19 @@ members Multiplexer
   mutation pictured as shape InfoReply refreshes chatInfo, roomList then infoSaved
   mutation customNamed as shape InfoReply refreshes chatInfo, roomList then infoSaved
   mutation invited as shape InfoReply refreshes chatMembers, chatInfo then infoSaved
-  // the member page open over the chat or the info page: who it is, from the members' resource
-  // once it covers them, else their id's local part until then.
+  // the profile fetches its selected member independently of the info preview and its limit.
+  // retain the timeline identity while loading, including for senders who have left.
   derive memberId = top(nav).name == "member" ? top(nav).params.user : ""
-  derive memberShown = match first(chatMembers.members.filter(x => x.id == memberId)) {
+  derive memberRoom = memberId != "" ? openRoom : ""
+  resource memberDetails = loadChatMember(memberRoom, memberId) as shape ChatMembers else empty()
+  derive memberSender = first(thread.messages.filter(x => x.sender == memberId))
+  derive memberShown = match first(memberDetails.members.filter(x => x.id == memberId and memberDetails.room == memberRoom)) {
     case some(m) => m,
-    case none => ChatMember(id=memberId, name=memberFallbackName(memberId), picture="",
-      initials=memberFallbackName(memberId).slice(0, 1).toUpperCase(), isOwn=(memberId == session.userId)) }
+    case none => match memberSender {
+      case some(m) => ChatMember(id=memberId, name=m.senderName, picture=m.senderPicture,
+        initials=m.senderInitials, isOwn=m.isOwn),
+      case none => ChatMember(id=memberId, name=memberFallbackName(memberId), picture="",
+        initials=memberFallbackName(memberId).slice(0, 1).toUpperCase(), isOwn=(memberId == session.userId)) } }
   // a Matrix member that is not you can be reached in a direct chat.
   derive memberMessageable = openNetwork == "matrix" and memberId != "" and memberId != session.userId
   derive memberMessaging = pending(conversationStarted)
@@ -75,8 +81,10 @@ members Multiplexer
   // a member's page over the chat, zoomed out of their picture or their row in the members' list.
   action openMember(userId: string)
     if userId != ""
+      keepDraftNow()
       held = ""
       panel = false
+      blur("composer")
       nav = push(nav, path("member", openRoom, userId))
   // their direct chat: the conversation machinery's start (a Matrix member only).
   action messageMember

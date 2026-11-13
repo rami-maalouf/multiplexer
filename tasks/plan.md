@@ -4,6 +4,14 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Group sender profiles (2026-11-12):** avatar taps already use one network-independent
+route, but direct entry never requested members and the profile depended on a six-person
+info preview. Added an independent selected-member resource, native selection before the
+limit/media downloads, and timeline identity fallback. Platform-touch iOS drive opens test2
+with limit 1 and Close returns to the composer; light/dark screenshots inspected. The live
+regression and 45 TypeScript tests pass. Full iOS verify is clean: 14 tests, light/dark checks and 16 largest-text screens. Live bridge-specific
+accounts and macOS not exercised; no real account or server configuration modified.
+
 **Main and AppDrop published (2026-11-12):** main `1686cd1` contains PRs #22 and
 #23, login help, all pending work, and the 11 previously unpushed local-main commits.
 GitHub confirms both PRs merged. Final verification: 14 native tests, light/dark and

@@ -1,0 +1,21 @@
+{
+  "baseline": "d4db959db2f9799276afc0b6b9d19a9297913c65",
+  "reproduction": {
+    "host": "ios simulator",
+    "scenario": "open group, tap incoming sender avatar without visiting chat info",
+    "observed": "member page opened, chatMembers.room remained empty and members stayed empty"
+  },
+  "fix": "independent selected-member resource, identity selection before limit and media download, timeline fallback",
+  "verification": {
+    "typescript": "45 passed",
+    "native_platform_touch": "avatar opens selected test2 profile with limit 1; close returns to composer",
+    "visual": "light and dark screenshots inspected; largest native text size profile check has no findings in either appearance",
+    "session": "final live drive signed out test account",
+    "native_suite": "verify ios clean: 14 passed, light/dark no findings, 16 largest-text screens fit; 142.9 s"
+  },
+  "limits": [
+    "no live bridged accounts accessed",
+    "macOS not verified",
+    "authenticated native route requires live drive, not signed-out authored tests"
+  ]
+}

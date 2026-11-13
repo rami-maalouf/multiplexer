@@ -382,7 +382,7 @@ component MemberPage
             text member.name role="heading" aria-level=1 font="-exact-title2" font-weight=700 text-align="center" margin-top=8
               testId="member-name"
             text (network == "matrix" ? member.id : networkName(network)) font="-exact-subheadline" color="-exact-secondary-label"
-              text-align="center" testId="member-subtitle"
+              text-align="center" max-width="100%" overflow-wrap="break-word" testId="member-subtitle"
             if member.isOwn
               text "You" font="-exact-footnote" color="-exact-tertiary-label" testId="member-own"
         if messageable

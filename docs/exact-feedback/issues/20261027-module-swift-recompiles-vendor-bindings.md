@@ -78,3 +78,7 @@ those bindings. Keeping the vendor binding compilation separate would remove
 this iteration cost. No new timing claim is made from this busy machine.
 
 2026-11-12 self-hosting follow-up: a small native configuration edit rebuilt the complete native module, including vendor bindings; the production module step took 79.7 seconds. a separately cached vendor module would avoid recompiling these unchanged bindings.
+
+### Additional evidence, 2026-11-12
+
+A small native profile-selection change rebuilt all copied module sources, including vendor bindings. The focused native test took about two minutes to become available. Incremental compilation remains desirable.

@@ -1501,7 +1501,7 @@ component Multiplexer
         // a member's own page, as the chat's info page: their picture, name and network, and a
         // direct chat away (info-members.contract).
         if e.name == "member"
-          MemberPage(appearance=appearance, route=`${e.id}`, member=memberShown, loaded=(chatMembers.room == openRoom),
+          MemberPage(appearance=appearance, route=`${e.id}`, member=memberShown, loaded=(memberDetails.room == openRoom),
             network=openNetwork, messageable=memberMessageable, messaging=memberMessaging, close=back, message=messageMember,
             largeText=viewport.accessibilityTextSize)
         if e.name == "room"
