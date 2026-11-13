@@ -11,6 +11,8 @@
 
 Test notes: MatrixCore identical-send and delivery/refusal tests pass (2 tests); 45 TypeScript tests pass. Full iOS verify: 14 tests, light/dark and 16 largest-text screens clean. Native signed-in drives cover multiline replies, rapid sends/new draft retention, route cancellation, reduced motion and sending while away from the bottom. Final standalone animation recording inspected. Both test sessions signed out. Mac test build stopped at the missing Matrix SDK macOS arm64 slice; physical-device frame pacing remains unchecked. Simulator AX fill did not deliver composer input; keyboard typing did. A fresh native build failed once without a printed diagnostic after Swift compilation; retry completed. Machine-specific generated paths are temporary and excluded from the PR.
 
+Animation diary sent with approval: `2f4ff629-9277-4a43-a9c6-c6dbba6af9a6`; one diary, zero command logs or attachments. Comparison diary remains local.
+
 ## Final paired production demo (2026-11-09, user approved Mux direction)
 
 - [x] Recover phone control after Rami's ready confirmation and capture the matching Beeper
