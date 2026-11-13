@@ -1,5 +1,24 @@
 # Mux: tasks
 
+## Send field width (2026-11-13)
+
+Rami: the bubble must leave from the field as the template's does, and the field should then
+shrink smoothly as the voice button returns. The field had narrowed in the frame the flight began,
+so the bubble stuck out under the voice button.
+- [x] Hold Send and the full field until the bubble is clear (`flightHoldsField`, phase 4), and
+  hide the new row's receipt until the landing (`flightHidesReceipt`; its space stays reserved).
+- [x] Exact: a layout transition never resized a glass material, so the field's width jumped
+  (167 points in one frame, both ways, since 11-06). Fixed on `local/mux-integration`
+  `5cf7585a2f` (`Surface.swift` sizes the material with the shown box); a new
+  `BoxLayerIOSTests` case fails without it. Seven navigation-keyboard and ink tests fail the
+  same way with and without it on this Simulator (97 pass in both).
+- [x] Send fades in 90 ms and the field shrinks 70 ms later, only when it empties, so its glass
+  never passes over a Send still showing. Typing still widens it at once.
+- [ ] Rami: whether to offer the Exact fix upstream (exact2 is public). macOS left as it was.
+Recordings: `research/send-animation/field-shrink-before-and-after*.mp4`,
+`mux-field-glass-resize.mov`, `mux-field-glass-widen.mov`. The send-to-rise wait (about 200 ms)
+is the same with and without these changes and close to the template's 173 ms.
+
 ## Send comparison video correction (2026-11-13)
 
 Rami saw a one-frame snap at the end of the landing in `template-and-mux-velocity.mp4`. The
