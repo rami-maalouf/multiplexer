@@ -1,5 +1,18 @@
 # Mux: tasks
 
+## Send comparison video correction (2026-11-13)
+
+Rami saw a one-frame snap at the end of the landing in `template-and-mux-velocity.mp4`. The
+snap was in that video, not in the app. Simulator recordings carry decode timestamps that go
+backwards (frame 78 of the short send: 1.672 s back to 1.190 s); ffmpeg dropped about 330 ms
+of landing as "past" frames and held the settled frame, a 46-pixel jump. Both halves were also
+played at frame index, not time. The raw frames, placed at their presentation times, land
+smoothly: largest step 14 px for Mux against 18 px for the template, settled at about 970 ms.
+- [x] Measure the snap in the delivered video and in the raw recording, frame by frame.
+- [x] Rebuild `research/send-animation/template-and-mux-realtime.mp4` (and a quarter-speed copy)
+  with `scripts/retime-recording.py`; never retime a Simulator recording with `fps`/`-r` alone.
+- [ ] Rami: confirm whether the snap was also visible on the phone. No app change was made.
+
 ## Send velocity correction (2026-11-13)
 
 Rami reports a slow initial rise followed by abrupt acceleration. The prior visual acceptance

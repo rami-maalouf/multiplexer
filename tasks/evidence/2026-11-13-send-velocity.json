@@ -120,5 +120,58 @@
     ],
     "before": "saved-draft return showed closed keyboard before Send; keyboard reopened during flight",
     "after": "same native sequence keeps keyboard closed and completes the flight"
+  },
+  "comparison_video_correction": {
+    "reported": "one-frame snap at the end of the landing in template-and-mux-velocity.mp4",
+    "cause": "simulator recording decode timestamps go backwards (short send frame 78: 1.672 s to 1.190 s); ffmpeg fps retiming dropped about 330 ms of landing and held the settled frame; both halves were also played by frame index",
+    "old_video_left_edge_px": [
+      154,
+      158,
+      164,
+      172,
+      176,
+      178,
+      176,
+      172,
+      169,
+      164,
+      158,
+      112
+    ],
+    "old_video_largest_step_px": 46,
+    "retimed_mux_left_edge_px": [
+      152,
+      164,
+      178,
+      172,
+      158,
+      146,
+      136,
+      124,
+      118,
+      114,
+      112,
+      110
+    ],
+    "retimed_mux_largest_step_px": 14,
+    "retimed_template_largest_step_px": 18,
+    "settled_ms_after_flier": {
+      "mux": 434,
+      "template": 450
+    },
+    "app_change": "none",
+    "tool": "scripts/retime-recording.py",
+    "videos": [
+      {
+        "path": "research/send-animation/template-and-mux-realtime.mp4",
+        "sha256": "685e091d7979afd103ae95940c04f3b02338003372bf1280ed9baa8934e22e35"
+      },
+      {
+        "path": "research/send-animation/template-and-mux-quarter-speed.mp4",
+        "sha256": "d6d0f3e1f4939cc0f34edca36cddf764667f28276969eafa60be71fc640f187d"
+      }
+    ],
+    "superseded": "research/send-animation/template-and-mux-velocity.mp4",
+    "limits": "simulator only; physical iPhone pacing not measured"
   }
 }
