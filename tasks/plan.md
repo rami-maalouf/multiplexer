@@ -4,6 +4,15 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Send-list motion follow-up (2026-11-13):** reproduced the abrupt list movement in the
+previous standalone recording. The transcript now selects smooth automatic end-follow, with
+`auto` under reduced motion, matching the template. The recorded preceding row now traverses
+16 visible position updates over about 0.27 seconds instead of one sampled jump. Unread/search
+keyed reveals keep their independent immediate behavior on the validated Exact integration.
+14 native tests pass; light/dark checks and 16 largest-text screens are clean.
+Evidence: `tasks/evidence/2026-11-13-send-list-motion.json`.
+The follow-up diary is local; the earlier send approval covered the original animation diary.
+
 **Outgoing message animation (2026-11-13):** the Exact chat template's composer-to-bubble
 spring flight now follows the actual queued Matrix message, including identical sends.
 A session-scoped UIKit measurement supplies the displayed composer origin; no Exact source

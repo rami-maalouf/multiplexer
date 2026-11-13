@@ -1,0 +1,137 @@
+{
+  "base": "5e21c5cd6df241c87974d76ba6482532b8d228b2",
+  "change": "smooth automatic transcript end-follow; auto under reduced motion",
+  "exact": "6f4917bdab8b5392a78c2e4e6b6d8d3b28e9317c",
+  "native_ios_tests": 14,
+  "method": "ffmpeg resampled at 60 Hz, scaled to 402x874; follow the blue band of the preceding two-line message at x=100, y=180..489, height 50..65; inspect contact sheets alongside values",
+  "before": [
+    {
+      "frame": 0,
+      "t": 0.0,
+      "top": 398
+    },
+    {
+      "frame": 121,
+      "t": 2.017,
+      "top": 359
+    }
+  ],
+  "after": [
+    {
+      "frame": 0,
+      "t": 0.0,
+      "top": 359
+    },
+    {
+      "frame": 265,
+      "t": 4.417,
+      "top": 354
+    },
+    {
+      "frame": 266,
+      "t": 4.433,
+      "top": 351
+    },
+    {
+      "frame": 267,
+      "t": 4.45,
+      "top": 346
+    },
+    {
+      "frame": 268,
+      "t": 4.467,
+      "top": 339
+    },
+    {
+      "frame": 269,
+      "t": 4.483,
+      "top": 332
+    },
+    {
+      "frame": 270,
+      "t": 4.5,
+      "top": 324
+    },
+    {
+      "frame": 271,
+      "t": 4.517,
+      "top": 316
+    },
+    {
+      "frame": 272,
+      "t": 4.533,
+      "top": 307
+    },
+    {
+      "frame": 273,
+      "t": 4.55,
+      "top": 299
+    },
+    {
+      "frame": 274,
+      "t": 4.567,
+      "top": 292
+    },
+    {
+      "frame": 275,
+      "t": 4.583,
+      "top": 285
+    },
+    {
+      "frame": 276,
+      "t": 4.6,
+      "top": 280
+    },
+    {
+      "frame": 277,
+      "t": 4.617,
+      "top": 276
+    },
+    {
+      "frame": 278,
+      "t": 4.633,
+      "top": 273
+    },
+    {
+      "frame": 279,
+      "t": 4.65,
+      "top": 271
+    },
+    {
+      "frame": 280,
+      "t": 4.667,
+      "top": 270
+    }
+  ],
+  "limits": [
+    "different insertion heights: the after send also starts a timestamp group",
+    "resampled simulator capture measures visible displacement, not physical-device frame pacing",
+    "no persistent authenticated UI test seam; authored tests start signed out"
+  ],
+  "framework_source_checks": [
+    "smooth_tests.rs: followed end animates; a reader away from end keeps an unanimated anchor",
+    "into_view.rs: keyed reveal animation depends on explicit behavior, independent of list style"
+  ],
+  "feedback": "new follow-up diary stays local; prior approval already consumed by original animation diary",
+  "ios_verify": {
+    "result": "clean",
+    "seconds": 144.4,
+    "native_tests": 14,
+    "largest_text_screens": 16,
+    "appearances": [
+      "light",
+      "dark"
+    ]
+  },
+  "review": {
+    "run_id": "mux-list-motion-5e21c5c",
+    "depth": "lite",
+    "actionable_findings": 0
+  },
+  "cleanup": {
+    "test_account_signed_out": true,
+    "owned_simulator_shutdown": true,
+    "shared_framework_modified": false,
+    "generated_path_updates_excluded": true
+  }
+}

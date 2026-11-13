@@ -1,5 +1,20 @@
 # Mux: tasks
 
+## Send-list motion follow-up (2026-11-13)
+
+- [x] Reproduce the list jump from the prior standalone recording and identify automatic end-follow as the cause.
+- [x] Enable smooth following with a reduced-motion fallback; verify intermediate positions in a fresh installed app recording.
+- [x] Pass 14 native iOS tests and inspect keyed-reveal independence for unread/search placement.
+- [x] Finish native verification and scoped review; ship the follow-up on PR #26.
+
+Verification is clean: 14 native tests, light/dark and 16 largest-text screens. Scoped review
+found no actionable issues. No simplification pass was needed for one runtime line. The normal
+test session is signed out, the agent remains signed out, and the owned simulator is shut down.
+
+The regression instrument is a sampled recording, not a static style assertion. The signed-in
+animation has no persistent authored-test seam; recordings and the measurement method are
+recorded in `tasks/evidence/2026-11-13-send-list-motion.json`. Physical-device pacing is unmeasured.
+
 ## Outgoing message animation (2026-11-13)
 
 - [x] Inspect and record the pinned Exact template send flight.
