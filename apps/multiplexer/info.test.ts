@@ -37,14 +37,16 @@ test("a bridged member's profile link asks the bridge's identifiers for that per
   };
   const result = await infoSources.loadMemberLink(['@instagram_1:example.org', 'instagram'], {} as never, {} as never, native as never);
   expect(requests).toEqual([{ op: 'memberIdentifiers', userId: '@instagram_1:example.org' }]);
-  expect(result).toEqual({ user: '@instagram_1:example.org', url: 'https://www.instagram.com/some.user/' });
+  expect(result).toEqual({ user: '@instagram_1:example.org', profile: 'https://www.instagram.com/some.user/',
+    chat: 'https://ig.me/m/some.user', handle: '@some.user', phone: '' });
 });
 
 test("a Matrix member's page asks nothing, and a failed ask still links what the id says", async () => {
   const refuse = { available: true, later: () => { throw new Error('unexpected request'); } };
   expect(await infoSources.loadMemberLink(['@ana:example.org', 'matrix'], {} as never, {} as never, refuse as never))
-    .toEqual({ user: '@ana:example.org', url: '' });
+    .toEqual({ user: '@ana:example.org', profile: '', chat: '', handle: '', phone: '' });
   const failing = { available: true, later: async () => { throw new Error('offline'); } };
   expect(await infoSources.loadMemberLink(['@whatsapp_15551234567:example.org', 'whatsapp'], {} as never, {} as never, failing as never))
-    .toEqual({ user: '@whatsapp_15551234567:example.org', url: 'https://wa.me/15551234567' });
+    .toEqual({ user: '@whatsapp_15551234567:example.org', profile: '', chat: 'https://wa.me/15551234567',
+      handle: '', phone: '+1 (555) 123-4567' });
 });

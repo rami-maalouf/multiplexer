@@ -22,14 +22,46 @@
   screenshots inspected; labels now line up across symbols. 10 new bun tests, 1 live MatrixCore test.
 - [x] Live Instagram reels already arrive as `m.video` (36 in November) and play full screen in
   the app; checked with a reel-shaped test video.
-- [ ] **Needs Rami (server):** set `matrix.ghost_extra_profile_info: true` on the Instagram bridge
-  (and LinkedIn; WhatsApp optional, 16k ghosts). Without it there are no Instagram usernames,
-  so Instagram members show no button. Existing ghosts may need a resync to get identifiers.
-- [ ] **Needs Rami (server, larger):** backfilled reels (~860) are a preview image plus link with
-  `com.beeper.unresolved_media`. Playing them in the app needs the bridge's provisioning
-  `resolve_media` reachable from the app, plus app support. Today their link opens Instagram.
-- [ ] Physical iPhone with Instagram installed: confirm the reel link and profile open in the app.
-- [ ] Not checked: macOS; 1:1 chat info page (only the group member page has the button).
+- [x] Server: `matrix.ghost_extra_profile_info: true` on all three bridges (Rami's ok, "all
+  platforms", 2026-11-14; `config.yml`, playbook `ok=272 changed=3 failed=0`, bridges restarted
+  08:06 UTC). A person gets the field at the bridge's next update of their info. 20 min later:
+  LinkedIn 21 profiles; WhatsApp and Instagram 0.
+- [x] Instagram usernames (Rami: "make a patch and make a PR", 2026-11-14). The running
+  Instagram connector already sends `instagram:<username>`, but bridgev2 stores identifiers only
+  while `ghost_extra_profile_info` is on, so 992 of 997 ghosts had none. Patch on
+  `rami-maalouf/meta` (`ig-identifiers-deploy`, 4a7ebd9 + 1 commit): after the first login
+  connects, ghosts with a stored username and no identifiers get them. Built on the server
+  (`localhost/mautrix/meta:ig-1a9cb2f2...-arm64`, playbook `ok=274 failed=0`). After: 979 of 979
+  stored usernames published (965 valid; 14 contain a space, which the app ignores).
+- [x] WhatsApp and LinkedIn `bridge.phone_numbers_in_profile: true` (Rami's ok, 2026-11-14;
+  playbook `ok=272 failed=0`). `tel:` identifiers now publish at each person's next update.
+- [x] Read-only drive on the real account (no receipts, no new chat): an Instagram group's member
+  page shows "Open in Instagram" (`https://www.instagram.com/<username>/`; the Simulator has no
+  Instagram app, so the in-app browser opens it). Message on a member with a chat lands in that
+  chat (the `m.direct` room); on one without, "You have no chat with this person yet." Signed out.
+- [ ] Physical iPhone: "Open in Instagram" opens the Instagram app; Message creates a new chat.
+- [x] Upstream declined mautrix/meta#593 (closed 2026-11-14): "extra profile stuff will already
+  sync when the ghost info is updated". The backlog was one-time, so the server is back on the
+  published image (4a7ebd9, playbook `ok=272 failed=0`); all 979 identifiers stayed.
+- [x] Member page: Message (in Mux), Profile and "<network> Chat" in the network's app
+  (Instagram `ig.me/m/<name>`, WhatsApp `wa.me/<number>`), and Username and Phone rows. The 1:1
+  info page has the same rows, without Message. `memberLinks` in network-profiles.ts, 9 tests.
+  Read-only drive on the real account: an Instagram member shows all three buttons and
+  `@username`; Message lands in the DM in about 0.3 s (3 of 3); the DM's info page shows Username,
+  Instagram Profile and Instagram Chat. Light, dark and the largest text size inspected.
+- [ ] WhatsApp numbers: every WhatsApp member in Rami's chats has a private `lid-` id, and no
+  `tel:` identifier has arrived yet. `!wa sync contacts` in the WhatsApp bot chat fills them
+  (`resyncContacts`, `tel:` from the LID's phone); needs Rami's ok (a command from his account).
+
+## Message a member on their own network (2026-11-14, branch `feat/member-actions`)
+
+- [x] A member's page offers "Message" for anyone but you, also in bridged chats. MatrixCore
+  `directChat(with:create:)`: the joined chat `m.direct` names for them, else (a bridge's
+  person) the bridge login whose `resolve_identifier` answers that same `mxid` makes it with
+  `create_dm`; two such logins refuse ("start it from New Chat"). A drive as a non-test user
+  only finds a chat (`create: false`). A failure shows under the buttons.
+- [x] Drive as `@test1`: CLI coverage A, info, `@test2`'s row, Message: lands in "Multiplexer
+  inbox test DM". 22 offline + 3 live MatrixCore tests, 61 bun tests, 14 authored iOS tests pass.
 ## Send field width (2026-11-13)
 
 Rami: the bubble must leave from the field as the template's does, and the field should then

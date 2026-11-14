@@ -36,6 +36,13 @@ site list. A tapped web link first asks iOS to open it only in an app that claim
 links only); with none, the in-app browser opens. Any app Rami has (Google Maps, Google Photos,
 Instagram, ...) works without a list. Mac links still go to the default browser.
 
+**Member actions (2026-11-14, branch `feat/member-actions`):** "Message" on a member's page
+works on every network: MatrixCore `directChat(with:)` reuses the `m.direct` chat, else asks the
+person's own bridge (`resolve_identifier` takes a ghost's id; `create_dm` opens the DM). The 1:1
+info page has "Open in <network>". Server: `ghost_extra_profile_info` on for all bridges (Rami's
+ok), and `phone_numbers_in_profile` for WhatsApp and LinkedIn. Fact: bridgev2 stores identifiers
+only while that option is on, so old Instagram ghosts had none; our patched Instagram bridge
+(rami-maalouf/meta `ig-identifiers-deploy`, built on the server) publishes the stored usernames.
 **Network links (2026-11-14, branch `fix/open-in-network-apps`, on PR #24's branch):** links
 to network sites (Instagram reels, profiles, ...) now go to iOS `openURL`, so the installed app
 opens them, as in Beeper; other links keep the in-app browser. The member page has "Open in

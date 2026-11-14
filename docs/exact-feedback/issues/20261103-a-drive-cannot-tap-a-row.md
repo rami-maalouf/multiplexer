@@ -32,3 +32,5 @@ Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS 26.5 simulator.
 already at the top of the list. A lower menu action again failed with "its middle is outside the
 viewport; scroll it into view first". The selection bar's shorter menu reached the same sheet.
 This is not limited to holding a row near the bottom. About 2 additional minutes; feedback kept local.
+
+**More evidence (2026-11-14):** the same in a virtualized list, not a menu: a drive's `tap room-<id>` on a chat row below the fold was refused ("no view matches ... targets here: ..."), because the row was not drawn. The refusal's list of targets in view was clear, and the inbox search reached the row instead. About 3 minutes. A drive-level "scroll the list until this key is drawn" would remove it.
