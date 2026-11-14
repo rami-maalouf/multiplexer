@@ -492,8 +492,15 @@ final class Matrix: ExactModule {
                             "identifier": contact.identifier, "network": contact.network, "avatar": picture]
                 }
             default:
-                guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive starts conversations only as a test user") }
-                result["room"] = try await account.startConversation(accountId: source, identifier: request["identifier"] as? String ?? "")
+                let identifier = request["identifier"] as? String ?? ""
+                if source == "person" {
+                    // a member's page: their direct chat on their own network. A drive as anyone
+                    // but a test user only opens one that exists, and makes none.
+                    result["room"] = try await account.directChat(with: identifier, create: try sendsReadReceipts(account))
+                } else {
+                    guard try sendsReadReceipts(account) else { throw ExactNativeRefusal("a drive starts conversations only as a test user") }
+                    result["room"] = try await account.startConversation(accountId: source, identifier: identifier)
+                }
                 context.changed("rooms")
             }
         } catch {

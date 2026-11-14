@@ -57,6 +57,24 @@ final class ChatInfoTests: XCTestCase {
         XCTAssertEqual(NetworkIdentifiers.parse(Data("not json".utf8)), [])
     }
 
+    /// A member's page, "Message": the direct chat with a Matrix member is the one New Chat's
+    /// start finds, found without making one. A bridge's person whom no login here can reach
+    /// gets no chat, and asks make nothing. Yourself is no member to message.
+    func testDirectChatWithAMemberReusesTheirChat() async throws {
+        let (homeserver, user, password, user2, _) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let room = try await owner.startConversation(accountId: "matrix", identifier: user2)
+        let found = try await owner.directChat(with: user2, create: false)
+        XCTAssertEqual(found, room)
+        let started = try await owner.directChat(with: user2)
+        XCTAssertEqual(started, room)
+        do { _ = try await owner.directChat(with: user); XCTFail("a chat with yourself") }
+        catch ConversationError.invalidIdentifier { }
+        let server = String(user.split(separator: ":", maxSplits: 1)[1])
+        do { _ = try await owner.directChat(with: "@instagram_1:\(server)"); XCTFail("a chat no login can reach") }
+        catch ConversationError.noBridgeAccount { }
+    }
+
     /// A room may name a bridge's bot that is not a member (a staged chat; a bot that left): the
     /// header's count and the members' list then still agree.
     func testTheCountAndTheListAgreeWhenTheBotIsNoMember() async throws {

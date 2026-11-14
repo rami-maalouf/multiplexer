@@ -139,6 +139,71 @@ final class ConversationsTests: XCTestCase {
         XCTAssertTrue(ConversationProtocol.paths().allSatisfy { $0.contains("remote%2F123") })
     }
 
+    func testGhostChatReusesTheBridgesRoomWithoutCreatingOne() async throws {
+        let http = http([
+            ("resolve_identifier", 200, #"{"id":"123","mxid":"@whatsapp_123:example.org","dm_room_mxid":"!dm:example.org"}"#),
+        ])
+        let room = try await http.startWithGhost("@whatsapp_123:example.org", network: "whatsapp", sources: [source()])
+        XCTAssertEqual(room, "!dm:example.org")
+        XCTAssertEqual(ConversationProtocol.paths().count, 1)
+        XCTAssertEqual(URL(string: ConversationProtocol.paths()[0])?.lastPathComponent, "@whatsapp_123:example.org")
+    }
+
+    func testGhostChatIsMadeOnlyThroughTheBridgeOfThePersonsNetwork() async throws {
+        let http = http([
+            ("resolve_identifier", 200, #"{"id":"42","mxid":"@instagram_42:example.org"}"#),
+            ("create_dm", 200, #"{"id":"42","mxid":"@instagram_42:example.org","dm_room_mxid":"!new:example.org"}"#),
+        ])
+        let room = try await http.startWithGhost("@instagram_42:example.org", network: "instagram",
+                                                 sources: [source(), source(path: "meta", network: "facebook")])
+        XCTAssertEqual(room, "!new:example.org")
+        // the whatsapp login is never asked, and the meta login only twice.
+        XCTAssertEqual(ConversationProtocol.paths().count, 2)
+        XCTAssertTrue(ConversationProtocol.paths().allSatisfy { $0.contains("/meta/") })
+    }
+
+    func testGhostChatSkipsABridgeThatDoesNotOwnThePerson() async throws {
+        let http = http([
+            ("resolve_identifier", 404, #"{"errcode":"M_NOT_FOUND"}"#),
+            ("resolve_identifier", 200, #"{"id":"42","mxid":"@instagram_99:example.org"}"#),
+        ])
+        do {
+            _ = try await http.startWithGhost("@instagram_42:example.org", network: "instagram",
+                                              sources: [source(path: "meta", network: "facebook"), source(path: "ig", network: "instagram")])
+            XCTFail("a chat was made through a bridge that does not own the person")
+        } catch ConversationError.noBridgeAccount { }
+        XCTAssertFalse(ConversationProtocol.paths().contains { $0.contains("create_dm") })
+    }
+
+    func testGhostChatRefusesToChooseBetweenTwoLoginsThatOwnThePerson() async throws {
+        let http = http([
+            ("resolve_identifier", 200, #"{"id":"42","mxid":"@instagram_42:example.org"}"#),
+            ("resolve_identifier", 200, #"{"id":"42","mxid":"@instagram_42:example.org"}"#),
+        ])
+        do {
+            _ = try await http.startWithGhost("@instagram_42:example.org", network: "instagram",
+                                              sources: [source(path: "meta", network: "facebook"), source(path: "meta", network: "facebook")])
+            XCTFail("a chat was made from one of two accounts")
+        } catch ConversationError.severalBridgeAccounts { }
+        XCTAssertFalse(ConversationProtocol.paths().contains { $0.contains("create_dm") })
+    }
+
+    func testGhostChatWithoutCreateFindsOnlyAndMakesNothing() async throws {
+        let http = http([("resolve_identifier", 200, #"{"id":"42","mxid":"@instagram_42:example.org"}"#)])
+        do {
+            _ = try await http.startWithGhost("@instagram_42:example.org", network: "instagram",
+                                              sources: [source(path: "meta", network: "facebook")], create: false)
+            XCTFail("a chat was made without create")
+        } catch ConversationError.noDirectChat { }
+        XCTAssertEqual(ConversationProtocol.paths().count, 1)
+    }
+
+    func testBridgeNetworksForAPersonsNetwork() {
+        XCTAssertEqual(ConversationHTTP.networkIDs(for: "instagram"), ["instagram", "facebook"])
+        XCTAssertEqual(ConversationHTTP.networkIDs(for: "messenger"), ["messenger", "facebook"])
+        XCTAssertEqual(ConversationHTTP.networkIDs(for: "whatsapp"), ["whatsapp"])
+    }
+
     func testDiscoveryRejectsForeignOriginBeforeSendingBearer() async throws {
         let http = http([("mautrix", 200, #"{"fi.mau.bridges":["https://foreign.example.org/bridge"]}"#)])
         let sources = await http.sources()
@@ -183,9 +248,9 @@ final class ConversationsTests: XCTestCase {
         }
     }
 
-    private func source() -> ConversationSource {
-        ConversationSource(base: URL(string: "https://chat.example.org/bridge")!, login: "login/+1",
-                           account: ConversationAccount(id: "wa", name: "whatsapp", network: "whatsapp"))
+    private func source(path: String = "bridge", network: String = "whatsapp") -> ConversationSource {
+        ConversationSource(base: URL(string: "https://chat.example.org/\(path)")!, login: "login/+1",
+                           account: ConversationAccount(id: path, name: network, network: network))
     }
 
     private func http(_ replies: [(String, Int, String)]) -> ConversationHTTP {

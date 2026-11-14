@@ -25,6 +25,7 @@ public struct ConversationListing<Item: Sendable>: Sendable {
 
 enum ConversationError: LocalizedError {
     case untrustedEndpoint, invalidResponse, unknownAccount, invalidIdentifier, http(Int)
+    case noBridgeAccount, severalBridgeAccounts, noDirectChat
 
     var errorDescription: String? {
         switch self {
@@ -33,6 +34,9 @@ enum ConversationError: LocalizedError {
         case .unknownAccount: return "conversation account is no longer available"
         case .invalidIdentifier: return "enter a full matrix user id such as @user:server"
         case .http(let status): return "conversation source returned http \(status)"
+        case .noBridgeAccount: return "None of your connected accounts can reach this person. Try again."
+        case .severalBridgeAccounts: return "More than one of your accounts can reach this person. Start the chat from New Chat."
+        case .noDirectChat: return "You have no chat with this person yet."
         }
     }
 }
@@ -250,6 +254,41 @@ struct ConversationHTTP {
         return room
     }
 
+    /// The bridges (whoami's `network_id`) that may hold a person of this network (`RoomNetwork`):
+    /// the Meta bridge names itself "facebook" for Instagram as for Messenger.
+    static func networkIDs(for network: String) -> Set<String> {
+        switch network {
+        case "instagram": return ["instagram", "facebook"]
+        case "messenger": return ["messenger", "facebook"]
+        default: return [network]
+        }
+    }
+
+    /// A direct chat with a bridge's person, by their Matrix id (a ghost: `@instagram_123:server`).
+    /// Each login of a bridge of their network is asked, read only, whether the person is its own
+    /// (mautrix's `resolve_identifier` takes a ghost's id and answers its `mxid`). A chat is made
+    /// only through the one login that says so; two such logins could each send, so neither does.
+    /// `create` false finds a chat only, and makes none.
+    func startWithGhost(_ userId: String, network: String, sources: [ConversationSource], create: Bool = true) async throws -> String {
+        let ids = Self.networkIDs(for: network)
+        var owners: [ConversationSource] = []
+        for source in sources where ids.contains(source.account.network) {
+            let resolved: ConversationResolved
+            do { resolved = try decode(ConversationResolved.self, await bridge(source, "resolve_identifier", identifier: userId)) }
+            catch is CancellationError { throw CancellationError() }
+            catch { continue }
+            guard resolved.mxid == userId else { continue }
+            if let room = resolved.dm_room_mxid, !room.isEmpty { return room }
+            owners.append(source)
+        }
+        guard let owner = owners.first else { throw ConversationError.noBridgeAccount }
+        guard owners.count == 1 else { throw ConversationError.severalBridgeAccounts }
+        guard create else { throw ConversationError.noDirectChat }
+        let created = try decode(ConversationResolved.self, await bridge(owner, "create_dm", identifier: userId, method: "POST"))
+        guard let room = created.dm_room_mxid, !room.isEmpty else { throw ConversationError.invalidResponse }
+        return room
+    }
+
     func matrixURL(_ path: [String]) throws -> URL {
         guard var url = URL(string: saved.homeserverUrl) else { throw ConversationError.untrustedEndpoint }
         url.appendPathComponent("_matrix/client/v3")
@@ -330,5 +369,27 @@ extension MatrixAccount {
             throw ConversationError.unknownAccount
         }
         return try await http.start(source, identifier: identifier)
+    }
+
+    /// The direct chat with a person met in a chat (a member's page, "Message"), on their own
+    /// network: a Matrix user's as `startConversation` finds or makes it; a bridge's person's
+    /// (a ghost of a bridge on this server) is the joined chat `m.direct` names for them, else
+    /// the one their bridge opens (`startWithGhost`). Returns the room's id. `create` false only
+    /// finds an existing chat (`noDirectChat` when there is none), and so changes nothing.
+    public func directChat(with userId: String, create: Bool = true) async throws -> String {
+        let http = ConversationHTTP(saved: try savedSession())
+        guard ConversationHTTP.isMatrixID(userId), userId != http.saved.userId else { throw ConversationError.invalidIdentifier }
+        // a bridge marks its chats with one person in m.direct (`sync_direct_chat_list`), as a
+        // Matrix client marks its own.
+        struct Joined: Decodable { var joined_rooms: [String] }
+        let joined = Set(try http.decode(Joined.self, await http.request(http.matrixURL(["joined_rooms"]))).joined_rooms)
+        if let room = try await http.directRooms()[userId]?.first(where: { joined.contains($0) }) { return room }
+        if let room = try client.getDmRooms(userId: userId).first(where: { $0.membership() == .joined }) { return room.id() }
+        let server = { (id: String) in id.split(separator: ":", maxSplits: 1).dropFirst().first.map(String.init) ?? "" }
+        guard let network = RoomNetwork.network(ofBridgeUser: userId), server(userId) == server(http.saved.userId) else {
+            guard create else { throw ConversationError.noDirectChat }
+            return try await startConversation(accountId: "matrix", identifier: userId)
+        }
+        return try await http.startWithGhost(userId, network: network, sources: await http.sources().items, create: create)
     }
 }
