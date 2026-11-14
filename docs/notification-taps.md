@@ -16,6 +16,14 @@ Opening a chat saves the current draft and resets the navigation stack to the in
 before adding the destination. Chat state is shared across the stack; leaving an old
 room underneath the new one would keep displaying the previous conversation.
 
+When a conversation becomes visible, the app removes its delivered remote notifications
+from Notification Center. This runs for each chat visit as well as notification taps,
+without waiting for sync, unread counts or read receipts. The native query selects all
+system request identifiers whose destination matches the current account and room, and
+checks the saved account again after the query. Other conversations, other accounts,
+unscoped older banners and scheduled reminders remain untouched. The visit identity
+also reruns cleanup when a foreground banner reopens the same conversation.
+
 `NotificationActivation.swift` is a small adapter to Exact's private activation
 format. Rami approved this dependency on 2026-11-14. It supplies the `main` session,
 a cross-process identity, and JSON-encoded `notifications.notificationclick`
@@ -47,12 +55,28 @@ banner. `simctl push` does not run the service extension; use real sandbox APNs 
 the complete delivery path, or clearly distinguish an injected enriched-payload tap
 from an actual extension run.
 
+For notification cleanup, deliver two notifications for one conversation and a control
+for another. Open the first conversation from the inbox and inspect Notification Center:
+both of its notifications should disappear and the control should remain. Repeat by
+tapping a newly delivered notification. Include a different-account control and an
+already-read conversation, since cleanup must not depend on unread counts. While the
+same chat is still open, deliver two more notifications and tap one fresh banner;
+the remaining sibling must disappear too.
+
 Validated on 2026-11-14 with iOS 26.5 on an owned simulator and approved test users:
 real sandbox APNs taps opened the destination from Settings, another conversation,
 and a terminated app. An injected enriched fallback opened its room; an injected
 different-account banner left the inbox unchanged. The native service fixture
 separately verified creation of timeout and unavailable-store fallback metadata.
 Physical-device and distribution-channel tap delivery were not rerun for this change.
+
+Cleanup was reproduced and verified separately using injected enriched payloads on
+the same simulator. Opening an already-read chat from the inbox, tapping a fresh
+banner, and tapping while that same chat was already open removed its sibling
+notifications. Other-room and other-account controls remained. The same-chat case
+first failed without the visit identity and passed after adding it. Native request
+fixtures cover matching, malformed and unscoped metadata; these cleanup checks do
+not claim a new real-APNs or physical-device delivery test.
 
 ## Limits
 

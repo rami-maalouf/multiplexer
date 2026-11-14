@@ -42,6 +42,9 @@ shape DesktopState
   unread: number
   notified: number
 
+shape ClearedNotifications
+  count: number
+
 shape ComposerSurface
   groupedGlass: bool
   desktop: bool
@@ -460,6 +463,7 @@ component Multiplexer
   derive shown = time.epochAtZero + now
   // the chat stays open under its photo viewer, so the open room is the stack's, not the top's.
   derive openRoom = match first(stack(nav).filter(x => x.name == "room")) { case some(r) => r.params.id, case none => "" }
+  resource clearedChatNotifications = clearChatNotifications(session.userId, openRoom, top(nav).name == "room" and page.visibilityState == "visible", `${top(nav).id}`) as shape ClearedNotifications
   derive shownPhoto = top(nav).name == "photo" ? top(nav).params.message : ""
   derive shownPhotoMessage = first(thread.messages.filter(m => m.id == shownPhoto))
   resource photo = loadPhoto(openRoom, shownPhoto) as shape Photo else empty()

@@ -14,6 +14,7 @@ test('remote activation reaches the pinned native receiver once with account and
   try {
     writeFileSync(join(directory, 'main.swift'), String.raw`
 import Foundation
+import UserNotifications
 enum SessionState { case active, destroyed }
 final class ExactSession {
     let label = "main"; let notificationOwnerID = "app-owner"
@@ -63,11 +64,26 @@ for key in ["room_id", "event_id"] {
         precondition(NotificationActivation.userInfo(malformed, userId: account)["exact"] == nil)
     }
 }
+func notice(_ id: String, _ payload: [AnyHashable: Any]) -> UNNotificationRequest {
+    let content = UNMutableNotificationContent(); content.userInfo = payload
+    return UNNotificationRequest(identifier: id, content: content, trigger: nil)
+}
+let anotherAccount = NotificationActivation.userInfo(raw, userId: "@other:example.org")
+let anotherRoom = NotificationActivation.userInfo(["room_id": "!other:example.org", "event_id": "$other"], userId: account)
+var malformed = info
+malformed["exact"] = ["extension": "notifications", "event": "notificationclick", "args": "not json"]
+let delivered = [notice("first", info), notice("second", info), notice("another-account", anotherAccount),
+                 notice("another-room", anotherRoom), notice("unscoped", raw), notice("malformed", malformed)]
+precondition(ChatNotifications.identifiers(delivered, userId: account, roomId: room) == ["first", "second"],
+             "opening a chat must clear every matching system identifier and retain other accounts and rooms")
+precondition(ChatNotifications.identifiers(delivered, userId: "", roomId: room).isEmpty)
+precondition(ChatNotifications.identifiers(delivered, userId: account, roomId: "").isEmpty)
 print("native notification activation passed")
 `);
     const binary = join(directory, 'check');
     const compile = Bun.spawnSync(['xcrun', 'swiftc', receiver,
       resolve(import.meta.dir, '../apps/multiplexer/extensions/notifications/NotificationActivation.swift'),
+      resolve(import.meta.dir, '../apps/multiplexer/modules/apple/ChatNotifications.swift'),
       join(directory, 'main.swift'), '-o', binary]);
     if (compile.exitCode !== 0) throw new Error(compile.stderr.toString());
     const result = Bun.spawnSync([binary]);

@@ -4,6 +4,16 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Conversation notification cleanup (2026-11-14, PR #29):** opening a visible chat
+removes its delivered, account-scoped notifications without waiting for sync or read
+receipts. Injected iOS 26.5 notifications reproduced the original failure. Inbox
+navigation and fresh banner taps now remove all matching siblings and preserve
+other-room and other-account controls. A same-chat foreground tap exposed unchanged
+resource arguments; including the visit identity fixes that replay too. Old unscoped
+banners are retained. Six focused native/TS checks and 14 native iOS tests pass;
+light/dark checks and 16 largest-text screens are clean. Physical delivery and
+foreground suppression remain separate; the new Exact diary stays local.
+
 **Notification tap routing (2026-11-14, `fix/notification-tap-navigation`):**
 a new branch starts at main `f9fea095c95f30573420255064fde7d48d43ae5d`.
 Reproduced a simulated remote banner returning to the previous Settings screen

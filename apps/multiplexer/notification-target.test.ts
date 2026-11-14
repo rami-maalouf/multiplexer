@@ -26,3 +26,16 @@ test('old account and signed-out banners cannot open a chat', () => {
 test('existing local reminder destinations keep working', () => {
   expect(resolveTarget(`reminder-${room}`, owner)).toEqual({ owner, room });
 });
+
+test('opening a visible chat clears delivered notifications without waiting for unread messages', async () => {
+  const requests: unknown[] = [];
+  const native = { available: true, later: async (request: unknown) => { requests.push(request); return { count: 2 }; } } as unknown as Parameters<Answer>[4];
+  const clear = (userId: string, roomId: string, visible: boolean) =>
+    answer('clearChatNotifications', [userId, roomId, visible, 'visit'], {} as Parameters<Answer>[2], {} as Parameters<Answer>[3], native);
+  expect(await clear(owner, room, true)).toEqual({ count: 2 });
+  expect(requests).toEqual([{ op: 'clearChatNotifications', owner, roomId: room }]);
+  await clear(owner, room, false);
+  await clear('', room, true);
+  await clear(owner, '', true);
+  expect(requests).toHaveLength(1);
+});

@@ -94,3 +94,12 @@ The runtime identity is the short `notifications`. A receiver-only fixture accep
 either string, so real sandbox APNs taps were needed to expose this mismatch. Warm
 and terminated-app taps then reached the existing handler. This cost another ten
 minutes tracing runtime registration and logs; the constructor should own this name.
+
+## Evidence (2026-11-14): removing delivered remote notifications
+
+Opening a conversation left its delivered banners in Notification Center. The package's
+`closeNotification` removes only a caller-known request identifier; remote requests use
+system identifiers. Inspecting the native implementation took about two minutes. The app
+uses a native delivered-notification query, matches its account-scoped destination, and
+removes only matching identifiers. A documented group or metadata-based removal operation
+would avoid this additional native bridge.
