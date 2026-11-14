@@ -40,7 +40,18 @@
   Instagram app, so the in-app browser opens it). Message on a member with a chat lands in that
   chat (the `m.direct` room); on one without, "You have no chat with this person yet." Signed out.
 - [ ] Physical iPhone: "Open in Instagram" opens the Instagram app; Message creates a new chat.
-- [ ] Upstream: draft PR mautrix/meta#593 (2026-11-14). Rami asks in #meta:maunium.net, then marks it ready. Once merged, go back to the published image (config.yml).
+- [x] Upstream declined mautrix/meta#593 (closed 2026-11-14): "extra profile stuff will already
+  sync when the ghost info is updated". The backlog was one-time, so the server is back on the
+  published image (4a7ebd9, playbook `ok=272 failed=0`); all 979 identifiers stayed.
+- [x] Member page: Message (in Mux), Profile and "<network> Chat" in the network's app
+  (Instagram `ig.me/m/<name>`, WhatsApp `wa.me/<number>`), and Username and Phone rows. The 1:1
+  info page has the same rows, without Message. `memberLinks` in network-profiles.ts, 9 tests.
+  Read-only drive on the real account: an Instagram member shows all three buttons and
+  `@username`; Message lands in the DM in about 0.3 s (3 of 3); the DM's info page shows Username,
+  Instagram Profile and Instagram Chat. Light, dark and the largest text size inspected.
+- [ ] WhatsApp numbers: every WhatsApp member in Rami's chats has a private `lid-` id, and no
+  `tel:` identifier has arrived yet. `!wa sync contacts` in the WhatsApp bot chat fills them
+  (`resyncContacts`, `tel:` from the LID's phone); needs Rami's ok (a command from his account).
 
 ## Message a member on their own network (2026-11-14, branch `feat/member-actions`)
 

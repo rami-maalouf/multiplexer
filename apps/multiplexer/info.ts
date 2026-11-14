@@ -1,5 +1,5 @@
 import type { Result, Sources } from './app.contract.d.ts';
-import { memberProfileUrl } from './network-profiles';
+import { memberLinks } from './network-profiles';
 
 // a chat's info page (info.contract): what modules/apple/Info.swift answers. MatrixCore says when
 // any of it changes, on the topic info:<room>.
@@ -55,10 +55,11 @@ export const infoSources: InfoSources = {
   // the member's profile on the chat's network (network-profiles.ts): the bridge's identifiers,
   // asked only for a bridged chat's member, else what their Matrix id says.
   loadMemberLink: async ([userId, network], _store, _storage, native): Promise<Result<'loadMemberLink'>> => {
-    if (userId === '' || network === 'matrix' || !native?.available) return { user: userId, url: '' };
+    const empty = { user: userId, profile: '', chat: '', handle: '', phone: '' };
+    if (userId === '' || network === 'matrix' || !native?.available) return empty;
     const answer = (await native.later({ op: 'memberIdentifiers', userId }).catch(() => ({ identifiers: [] }))) as
       { identifiers: string[] };
-    return { user: userId, url: memberProfileUrl(network, userId, answer.identifiers) };
+    return { user: userId, ...memberLinks(network, userId, answer.identifiers) };
   },
   // the newest photos and videos, newest first; duration in milliseconds.
   loadChatMedia: async ([roomId, limit], _store, _storage, native): Promise<Result<'loadChatMedia'>> => {

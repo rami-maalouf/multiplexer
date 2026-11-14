@@ -51,9 +51,14 @@ shape ChatMember
 
 // a member's profile on their network (network-profiles.ts): url "" for none. user: whose it is,
 // so a page never shows another member's.
+// a member on their own network (network-profiles.ts): their profile page, a chat in the network's
+// app, their username and phone number; each "" when unknown.
 shape MemberLink
   user: string
-  url: string
+  profile: string
+  chat: string
+  handle: string
+  phone: string
 
 // room: the chat they are of, so a page never shows another chat's. total: everyone, though only
 // the first ones by name may be here.
@@ -158,9 +163,10 @@ component InfoPage
     open: action
     // a member's page: face, name and network, a direct chat away.
     member: action
-    // a chat with one person: their profile on the network ("" for none), opened in its app.
-    profile: string
+    // a chat with one person: their profile and chat on the network, opened in its app.
+    links: MemberLink
     openProfile: action
+    openChat: action
     // the search in this chat is open; it was closed on this visit (the page fades back in).
     searching: bool
     returned: bool
@@ -282,12 +288,27 @@ component InfoPage
                 text info.topic white-space="pre-wrap" overflow-wrap="break-word" min-width=0 testId="info-topic"
           // the chat's saved messages (Bookmarks): their own list over the page. A chat with one
           // person first offers their page on the network, in its app, as their member page does.
+          if links.handle != "" or links.phone != ""
+            section
+              if links.handle != ""
+                row testId="info-handle"
+                  text "Username" flex=1
+                  text links.handle color="-exact-secondary-label"
+              if links.phone != ""
+                row testId="info-phone"
+                  text "Phone" flex=1
+                  text links.phone color="-exact-secondary-label" font-variant-numeric="tabular-nums"
           section
-            if profile != ""
+            if links.profile != ""
               button press=openProfile testId="info-network-profile"
+                image "symbol:person"
+                text `${networkName(info.network)} Profile` flex=1
                 image "symbol:open-app"
-                text `Open in ${networkName(info.network)}` flex=1
-                image "symbol:forward-chevron"
+            if links.chat != ""
+              button press=openChat testId="info-network-chat"
+                image "symbol:messages"
+                text `${networkName(info.network)} Chat` flex=1
+                image "symbol:open-app"
             button press=addToSpace testId="info-add-space"
               image "symbol:people"
               text "Add to Space"
@@ -382,13 +403,15 @@ component MemberPage
     // a Matrix member that is not you can be reached in a direct chat.
     messageable: bool
     messaging: bool
-    // their profile on the network ("" for none), which openProfile opens in the network's app.
-    profile: string
+    // their profile, chat, username and number on the network; openProfile and openChat open
+    // them in the network's app.
+    links: MemberLink
     // why their direct chat did not open ("" for none).
     problem: string
     close: action
     message: action
     openProfile: action
+    openChat: action
     largeText: bool
   view
     column navigationKey=route navigationPresentation="fullscreen" navigationSource=`member-${member.id}`
@@ -407,18 +430,31 @@ component MemberPage
               text-align="center" max-width="100%" overflow-wrap="break-word" testId="member-subtitle"
             if member.isOwn
               text "You" font="-exact-footnote" color="-exact-tertiary-label" testId="member-own"
-        if messageable or profile != ""
+        // Message is their chat here, in Mux; the others leave for the network's own app.
+        if messageable or links.profile != "" or links.chat != ""
           section background-color="transparent"
             row gap=8 width="100%" flex-wrap=(largeText ? "wrap" : "nowrap")
               if messageable
                 InfoButton(label="Message", symbol="symbol:messages", press=message, disabled=messaging,
                   identifier="member-message", largeText=largeText)
-              // as Beeper does: their page on the network, in its app.
-              if profile != ""
-                InfoButton(label=`Open in ${networkName(network)}`, symbol="symbol:open-app", press=openProfile,
+              if links.profile != ""
+                InfoButton(label="Profile", symbol="symbol:person", press=openProfile,
                   disabled=false, identifier="member-profile", largeText=largeText)
+              if links.chat != ""
+                InfoButton(label=`${networkName(network)} Chat`, symbol="symbol:open-app", press=openChat,
+                  disabled=false, identifier="member-network-chat", largeText=largeText)
             footer
               text problem testId="member-problem"
+        if links.handle != "" or links.phone != ""
+          section
+            if links.handle != ""
+              row testId="member-handle"
+                text "Username" flex=1
+                text links.handle color="-exact-secondary-label"
+            if links.phone != ""
+              row testId="member-phone"
+                text "Phone" flex=1
+                text links.phone color="-exact-secondary-label" font-variant-numeric="tabular-nums"
 
 // a sheet with one field, over the info page: Edit Group Info (the name, and the picture when the
 // chat lets you change it), Customize for Me (a name only you see) and Add Member.

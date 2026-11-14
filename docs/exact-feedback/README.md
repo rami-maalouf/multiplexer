@@ -199,6 +199,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 167 | Long identifier wrapping needs a specific remedy when max-width clips and anywhere is rejected. | About 5 min | P3 | [long-identifier-wrapping](issues/20261112-long-identifier-wrapping.md) |
 | 168 | A box's `height` refuses a text-style length that its `font-size` takes, and `contract build --json` prints the one refusal once per use site (seven times). | About 2 min | P3 | [a-box-height-refuses-a-text-style](issues/20261114-a-box-height-refuses-a-text-style.md) |
 | 169 | `openURL` and the in-app browser cannot open a link only in an installed app that claims it, then fall back; the app module has no log call. | About 12 min | P3 | [openurl-has-no-universal-links-only](issues/20261114-openurl-has-no-universal-links-only.md) |
+| 170 | A wrapped row in a list section has a tall gap (about 38 points) between its lines on iOS, and `row-gap` is accepted but ignored. | About 6 min | P3 | [a-wrapped-row-in-a-list-section](issues/20261114-a-wrapped-row-in-a-list-section-has-a-tall-line-gap.md) |
 | 166 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
 
 ## What worked well
