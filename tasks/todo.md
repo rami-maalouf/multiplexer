@@ -1,5 +1,25 @@
 # Mux: tasks
 
+## Network links and member profiles in the network's app (2026-11-14, branch `fix/open-in-network-apps`)
+
+- [x] Reproduce: an Instagram reel link in a test chat opened the in-app browser (drive journal).
+- [x] Links to network sites (Instagram, Facebook, WhatsApp, LinkedIn, X, TikTok, YouTube, ...)
+  go to iOS `openURL`, which gives a universal link to the installed app (else Safari). Other
+  links still open in the in-app browser. Drive journals prove both.
+- [x] Member page: "Open in <network>" beside Message. URL from the bridge's
+  `com.beeper.bridge.identifiers` profile field (MatrixCore `networkIdentifiers`), else from the
+  Matrix id: WhatsApp phone ghosts -> wa.me, LinkedIn member ids -> linkedin.com/in. Light/dark
+  screenshots inspected; labels now line up across symbols. 10 new bun tests, 1 live MatrixCore test.
+- [x] Live Instagram reels already arrive as `m.video` (36 in November) and play full screen in
+  the app; checked with a reel-shaped test video.
+- [ ] **Needs Rami (server):** set `matrix.ghost_extra_profile_info: true` on the Instagram bridge
+  (and LinkedIn; WhatsApp optional, 16k ghosts). Without it there are no Instagram usernames,
+  so Instagram members show no button. Existing ghosts may need a resync to get identifiers.
+- [ ] **Needs Rami (server, larger):** backfilled reels (~860) are a preview image plus link with
+  `com.beeper.unresolved_media`. Playing them in the app needs the bridge's provisioning
+  `resolve_media` reachable from the app, plus app support. Today their link opens Instagram.
+- [ ] Physical iPhone with Instagram installed: confirm the reel link and profile open in the app.
+- [ ] Not checked: macOS; 1:1 chat info page (only the group member page has the button).
 ## Send field width (2026-11-13)
 
 Rami: the bubble must leave from the field as the template's does, and the field should then

@@ -36,3 +36,10 @@ can be unit tested.
 ## Evidence
 
 Seen on 2026-11-03 at exact2 `ed43ad09a0`.
+
+### Additional evidence, 2026-11-14
+
+A rule choosing which links go to another app (a link's host against a list of sites) was written
+as contract `fn`s, because an action calls it. No authored test could check it: there is no
+expression step, and a test starts signed out, so no chat with a link is reachable. Drives were
+the only check. About 4 minutes reading the test grammar.
