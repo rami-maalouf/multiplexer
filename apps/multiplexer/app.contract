@@ -1526,7 +1526,8 @@ component Multiplexer
             customize=customize, addMember=addMember, seeMembers=seeAllMembers, seeMedia=seeAllMedia, open=showInfoMedia,
             searching=chatSearching, returned=chatSearchClosed, search=openChatSearch, closeSearch=closeChatSearch,
             bookmarkCount=chatBookmarks.length, bookmarks=openChatBookmarks, expiry=chatExpiry, chooseExpiry=chooseExpiry,
-            largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion, member=openMember)
+            largeText=viewport.accessibilityTextSize, reduced=viewport.prefersReducedMotion, member=openMember,
+            profile=infoProfile, openProfile=openLink(infoProfile))
             // the search in this chat, in the page's place (chat-search-members.contract); its
             // Bookmarks kind's rows have the list's long-press menu.
             BookmarkMenu(aimedText=aimedBookmarkText, copy=copyBookmark, remove=removeAimedBookmark)
@@ -1550,7 +1551,8 @@ component Multiplexer
         // direct chat away (info-members.contract).
         if e.name == "member"
           MemberPage(appearance=appearance, route=`${e.id}`, member=memberShown, loaded=(memberDetails.room == openRoom),
-            network=openNetwork, messageable=memberMessageable, messaging=memberMessaging, profile=memberProfile, close=back,
+            network=openNetwork, messageable=memberMessageable, messaging=memberMessaging, profile=memberProfile,
+            problem=contactStartProblem, close=back,
             message=messageMember, openProfile=openLink(memberProfile),
             largeText=viewport.accessibilityTextSize)
         if e.name == "room"

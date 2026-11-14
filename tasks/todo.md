@@ -22,14 +22,36 @@
   screenshots inspected; labels now line up across symbols. 10 new bun tests, 1 live MatrixCore test.
 - [x] Live Instagram reels already arrive as `m.video` (36 in November) and play full screen in
   the app; checked with a reel-shaped test video.
-- [ ] **Needs Rami (server):** set `matrix.ghost_extra_profile_info: true` on the Instagram bridge
-  (and LinkedIn; WhatsApp optional, 16k ghosts). Without it there are no Instagram usernames,
-  so Instagram members show no button. Existing ghosts may need a resync to get identifiers.
+- [x] Server: `matrix.ghost_extra_profile_info: true` on all three bridges (Rami's ok, "all
+  platforms", 2026-11-14; `config.yml`, playbook `ok=272 changed=3 failed=0`, bridges restarted
+  08:06 UTC). A person gets the field at the bridge's next update of their info. 20 min later:
+  LinkedIn 21 profiles; WhatsApp and Instagram 0.
+- [ ] **Needs Rami (decision):** Instagram still gets no usernames. mautrix-meta never sends
+  identifiers (`wrapUserInfo` has none); it keeps the username only in its own database
+  (`ghost.metadata.username`: 979 of 997 Instagram people). Options: a small mautrix-meta patch
+  (our image, and upstream), or a server job that copies usernames into the profiles.
+- [ ] **Needs Rami (decision, privacy):** WhatsApp strips `tel:` identifiers unless
+  `bridge.phone_numbers_in_profile: true`, which puts contacts' phone numbers in their profiles on
+  our server. Without it, `@whatsapp_lid-...` people have no link; phone ghosts use their id (wa.me).
 - [ ] **Needs Rami (server, larger):** backfilled reels (~860) are a preview image plus link with
   `com.beeper.unresolved_media`. Playing them in the app needs the bridge's provisioning
   `resolve_media` reachable from the app, plus app support. Today their link opens Instagram.
 - [ ] Physical iPhone with Instagram installed: confirm the reel link and profile open in the app.
-- [ ] Not checked: macOS; 1:1 chat info page (only the group member page has the button).
+- [x] 1:1 chat info page: an "Open in <network>" row above Add to Space when the person has a
+  profile link (`infoProfile`, the same `loadMemberLink`). Not seen rendered yet: no test chat has
+  a bridged person with a link.
+- [ ] Not checked: macOS.
+
+## Message a member on their own network (2026-11-14, branch `feat/member-actions`)
+
+- [x] A member's page offers "Message" for anyone but you, also in bridged chats. MatrixCore
+  `directChat(with:create:)`: the joined chat `m.direct` names for them, else (a bridge's
+  person) the bridge login whose `resolve_identifier` answers that same `mxid` makes it with
+  `create_dm`; two such logins refuse ("start it from New Chat"). A drive as a non-test user
+  only finds a chat (`create: false`). A failure shows under the buttons.
+- [x] Drive as `@test1`: CLI coverage A, info, `@test2`'s row, Message: lands in "Multiplexer
+  inbox test DM". 22 offline + 3 live MatrixCore tests, 61 bun tests, 14 authored iOS tests pass.
+- [ ] Not driven: a bridged person's Message on a real account (no test user has a bridge login).
 ## Send field width (2026-11-13)
 
 Rami: the bubble must leave from the field as the template's does, and the field should then

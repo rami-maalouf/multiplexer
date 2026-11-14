@@ -158,6 +158,9 @@ component InfoPage
     open: action
     // a member's page: face, name and network, a direct chat away.
     member: action
+    // a chat with one person: their profile on the network ("" for none), opened in its app.
+    profile: string
+    openProfile: action
     // the search in this chat is open; it was closed on this visit (the page fades back in).
     searching: bool
     returned: bool
@@ -277,8 +280,14 @@ component InfoPage
                 text "About"
               row
                 text info.topic white-space="pre-wrap" overflow-wrap="break-word" min-width=0 testId="info-topic"
-          // the chat's saved messages (Bookmarks): their own list over the page.
+          // the chat's saved messages (Bookmarks): their own list over the page. A chat with one
+          // person first offers their page on the network, in its app, as their member page does.
           section
+            if profile != ""
+              button press=openProfile testId="info-network-profile"
+                image "symbol:open-app"
+                text `Open in ${networkName(info.network)}` flex=1
+                image "symbol:forward-chevron"
             button press=addToSpace testId="info-add-space"
               image "symbol:people"
               text "Add to Space"
@@ -375,6 +384,8 @@ component MemberPage
     messaging: bool
     // their profile on the network ("" for none), which openProfile opens in the network's app.
     profile: string
+    // why their direct chat did not open ("" for none).
+    problem: string
     close: action
     message: action
     openProfile: action
@@ -406,6 +417,8 @@ component MemberPage
               if profile != ""
                 InfoButton(label=`Open in ${networkName(network)}`, symbol="symbol:open-app", press=openProfile,
                   disabled=false, identifier="member-profile", largeText=largeText)
+            footer
+              text problem testId="member-problem"
 
 // a sheet with one field, over the info page: Edit Group Info (the name, and the picture when the
 // chat lets you change it), Customize for Me (a name only you see) and Add Member.
