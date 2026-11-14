@@ -10,6 +10,11 @@ shape Run
   text: string
   href: string
 
+// whether an installed app took a link (AppLinks.swift): when none did, it opens in the app.
+shape AppLink
+  url: string
+  opened: bool
+
 // a video message's video, downloaded to play; message names it.
 shape VideoFile
   message: string
