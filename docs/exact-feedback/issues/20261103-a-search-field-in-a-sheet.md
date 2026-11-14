@@ -31,3 +31,12 @@ every text size, so the app writes nothing.
 Seen on 2026-11-03 at exact2 `ed43ad09a0`, iOS Simulator (iPhone, iOS 26.5), content size
 `accessibility-extra-extra-extra-large`, dark mode, in two sheets (`navigationPresentation="modal"`,
 one with `navigationDetent="medium large"`).
+
+## Further evidence: account chooser (2026-11-12)
+
+At Exact `8536d208c40f97be3f132ea266d5029e2e3c10ba`, a content search field
+still drew its magnifier over the first character at the native largest accessibility
+size. A display capture confirmed the overlap. Applying the existing conditional
+40-point leading inset separated the icon and value; subsequent light/dark display
+captures were inspected and layout checks passed. The standard-size field keeps its
+normal inset. About 2 minutes to find and apply the documented local workaround.

@@ -40,6 +40,8 @@ component NewConversation
     signedIn: bool
     query: string
     account: string
+    chooseAccountFirst: bool
+    largeText: bool
     accounts: ConversationAccount[]
     contacts: ConversationContact[]
     loading: bool
@@ -56,16 +58,17 @@ component NewConversation
   view
     column navigationKey=route navigationScroll="conversation-contacts" position="absolute" inset=0
       display="flex" flex-direction="column" testId="new-conversation"
-      row padding="16px 20px" gap=12 align-items="center" flex-shrink=0 border-bottom="1px solid -exact-separator"
-        text "New Conversation" role="heading" aria-level=1 font="-exact-headline" flex=1
-        button press=close testId="new-conversation-cancel"
+      row padding="16px 20px" gap=12 align-items="center" flex-wrap="wrap" flex-shrink=0 border-bottom="1px solid -exact-separator"
+        text "New Conversation" role="heading" aria-level=1 font="-exact-headline" flex="1 1 12rem" min-width=0
+        button press=close testId="new-conversation-cancel" margin-left="auto" max-width="100%"
           text "Cancel"
       column gap=12 padding=16
-        row gap=12 align-items="center"
+        row gap=12 align-items="center" flex-wrap="wrap"
           input id="contact-search" type="search" value=query input=typeQuery placeholder="Search contacts"
-            flex=1 min-width=0 min-height=28 aria-label="Search contacts" autofocus=true autocapitalize="none" disabled=starting testId="contact-search"
-          select value=account change=chooseAccount disabled=starting aria-label="Account" testId="conversation-account" max-width="45%"
-            option "All accounts" value=""
+            flex="1 1 12rem" min-width=0 min-height=28 aria-label="Search contacts" autofocus=true autocapitalize="none" disabled=starting testId="contact-search"
+            padding-left=(largeText ? 40 : 0)
+          select value=account change=chooseAccount disabled=starting aria-label="Account" testId="conversation-account" max-width="100%"
+            option (chooseAccountFirst ? "Choose account" : "All accounts") value=""
             for a in accounts key=a.id
               option (a.id == "matrix" ? "Matrix" : a.name) value=a.id
         if starting
@@ -95,7 +98,10 @@ component NewConversation
               text problem color="-exact-system-red" role="alert" testId="contacts-error"
               button press=retry testId="contacts-retry"
                 text "Try Again"
-          if not loading and problem == "" and contacts.length == 0 and not matrixId
+          if chooseAccountFirst and not loading and problem == ""
+            section
+              text "Choose an account above to look up this person." color="-exact-secondary-label" testId="contacts-choose-account"
+          if not chooseAccountFirst and not loading and problem == "" and contacts.length == 0 and not matrixId
             section
               text (query.trim() == "" ? "Search by name, phone number, username or Matrix ID." : "No matching contacts. Try another name or address.")
                 color="-exact-secondary-label" testId="contacts-empty"

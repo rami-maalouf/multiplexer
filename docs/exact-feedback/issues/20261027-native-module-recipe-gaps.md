@@ -49,3 +49,11 @@ https://github.com/ccheever/exact2/pull/1341 (fixes part of it): the recipe name
 ## Pull request (2026-11-03)
 
 https://github.com/ccheever/exact2/pull/1359 (fixes part of it): `contract vocab image` says how to show a file a native module wrote (`context.cache` is `app:/cache`).
+
+## Further evidence: contacts permission discovery (2026-11-12)
+
+Adding optional address-book access required a source search of the device capability
+registry and the contacts package test fixture to find `device.contacts` and its purpose
+string. The general permissions recipe demonstrates location only. About five minutes;
+a contacts recipe linking status, reads, limited access and store-change observation
+would remove this discovery cost. No personal contact values were recorded.

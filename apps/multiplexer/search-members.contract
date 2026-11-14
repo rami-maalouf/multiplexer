@@ -82,6 +82,12 @@ members Multiplexer
     recentChats = []
     recentSearches = []
     recentOwner = session.userId
+  action openFoundPerson(phone: string, account: string, identifier: string)
+    closeSearch()
+    contactQuery = account != "" ? identifier : phone
+    personChoosingNetwork = account == ""
+    conversationAccount = account
+    follow(path("newConversation"))
   action openFoundChat(id: string)
     rememberSearch()
     follow(path("room", id))

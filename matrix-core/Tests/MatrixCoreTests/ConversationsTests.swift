@@ -55,6 +55,28 @@ final class ConversationsTests: XCTestCase {
         XCTAssertFalse(accounts.problem.isEmpty)
     }
 
+    func testFailedPeopleRefreshPreservesCacheAndWaitsBeforeRetry() async throws {
+        let http = http([
+            ("mautrix", 200, #"{"fi.mau.bridges":["https://chat.example.org/bridge"]}"#),
+            ("whoami", 200, #"{"network":{"displayname":"signal","network_id":"signal"},"logins":[{"id":"login/+1","name":"alice"}]}"#),
+            ("contacts", 500, #"{}"#),
+        ])
+        let cache = ContactBook()
+        let book = [BookContact(id: "local", name: "Saved Person", phones: ["+14155550101"])]
+        cache.set(book)
+        let person = BridgePerson(userId: "test", name: "Saved Person", network: "signal", accountId: "test", phones: [], room: "")
+        let saved = BridgePeople(people: [person], refreshed: ["test"], known: ["test"], complete: true)
+        XCTAssertTrue(cache.startFetch(force: true))
+        let result = await http.people()
+        XCTAssertNil(result)
+        XCTAssertFalse(cache.finishFetch(result))
+        XCTAssertEqual(cache.snapshot()?.book, book)
+        XCTAssertFalse(cache.startFetch(force: false), "failed refreshes must wait before trying again")
+        XCTAssertTrue(cache.startFetch(force: true), "an explicit refresh can bypass the retry delay")
+        cache.finishFetch(saved)
+        XCTAssertFalse(cache.startFetch(force: false))
+    }
+
     func testAllAccountsRetainsMatrixAndHealthyBridgeWhenAnotherFails() async throws {
         let http = http([
             ("mautrix", 200, #"{"fi.mau.bridges":["https://chat.example.org/a","https://chat.example.org/b"]}"#),

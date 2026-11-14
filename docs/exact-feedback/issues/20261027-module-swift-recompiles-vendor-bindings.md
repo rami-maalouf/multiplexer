@@ -77,6 +77,14 @@ finishes its host packages quickly, then spends minutes in `swift-frontend` on
 those bindings. Keeping the vendor binding compilation separate would remove
 this iteration cost. No new timing claim is made from this busy machine.
 
+## Further evidence: address-book module (2026-11-12)
+
+A native module change rebuilt the full copied third-party binding set. One observed
+build reported 96.8 seconds in `arms`, in addition to 13.2 seconds of Swift work.
+Each review correction needed another build before the native test runner accepted
+its receipt. A clearer estimate and isolation of unchanged bindings would shorten
+this edit/verify loop.
+
 2026-11-12 self-hosting follow-up: a small native configuration edit rebuilt the complete native module, including vendor bindings; the production module step took 79.7 seconds. a separately cached vendor module would avoid recompiling these unchanged bindings.
 
 ### Additional evidence, 2026-11-12
@@ -86,3 +94,10 @@ A small native profile-selection change rebuilt all copied module sources, inclu
 ### temporary diagnostics, 2026-11-13
 
 At Exact `6f4917bda`, adding a small frame-trace writer to an existing native module again rebuilt the vendor bindings, with quiet intervals over a minute. Contract-only probe changes reused the module. A built-in target/presentation trace would avoid this rebuild solely for animation diagnosis.
+
+## Further evidence: integration verification (2026-11-12)
+
+A native integration change at Exact `8536d208c40f97be3f132ea266d5029e2e3c10ba`
+rebuilt unchanged copied vendor bindings. Total build time was 110.4 seconds:
+91.2 seconds in arms and 13.3 seconds of Swift work. Subsequent view-only edits
+used the fast plan path, which avoided repeating that compilation.

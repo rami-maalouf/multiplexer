@@ -39,6 +39,38 @@ final class ConversationsAuthenticatedTests: XCTestCase {
         }
         let second = try await account.startConversation(accountId: "matrix", identifier: other)
         XCTAssertEqual(second, room, "immediately starting again reuses the same dm")
+        // synthetic bridge metadata exercises saved names through the real sdk room and info paths.
+        // no connected network account or real address book is used.
+        try await account.setCustomName(roomId: room, name: "")
+        let beforeContacts = try await account.chatInfo(roomId: room)
+        let phone = "+14155550101"
+        let person = BridgePerson(userId: other, name: "Bridge Profile", network: "whatsapp",
+                                  accountId: "synthetic", phones: [phone], room: room)
+        XCTAssertTrue(account.contactBook.startFetch(force: true))
+        account.contactBook.finishFetch(BridgePeople(people: [person], refreshed: ["synthetic"], known: ["synthetic"], complete: true))
+        let secondPhone = "+14155550202"
+        account.setAddressBook([BookContact(id: "synthetic", name: "Saved Contact", phones: [phone, secondPhone])])
+        let named = try await account.rooms().first { $0.id == room }
+        XCTAssertEqual(named?.name, "Saved Contact")
+        let namedInfo = try await account.chatInfo(roomId: room)
+        XCTAssertEqual(namedInfo.name, "Saved Contact")
+        XCTAssertEqual(namedInfo.pictureUrl, beforeContacts.pictureUrl, "contact names preserve the avatar resolver")
+        let namedRooms = try await account.rooms()
+        XCTAssertEqual(account.people("Saved Contact", in: namedRooms).chats.map(\.id), [room])
+        XCTAssertEqual(account.people("Saved Contact", in: namedRooms).people.flatMap(\.phones), [secondPhone],
+                       "an existing chat for one number must not hide the person's other number")
+        try await account.setCustomName(roomId: room, name: "My Custom Name")
+        addTeardownBlock { try? await account.setCustomName(roomId: room, name: "") }
+        let customized = try await account.rooms().first { $0.id == room }
+        let customizedInfo = try await account.chatInfo(roomId: room)
+        XCTAssertEqual(customized?.name, "My Custom Name")
+        XCTAssertEqual(customizedInfo.name, "My Custom Name")
+        XCTAssertEqual(customizedInfo.roomName, beforeContacts.roomName)
+        try await account.setCustomName(roomId: room, name: "")
+        account.setAddressBook(nil)
+        let disconnected = try await account.chatInfo(roomId: room)
+        XCTAssertEqual(disconnected.name, "Bridge Profile", "disconnecting contacts restores the bridge name")
+        XCTAssertEqual(disconnected.pictureUrl, beforeContacts.pictureUrl)
         if before[other, default: []].contains(room) {
             print("conversation integration: existing dm reuse verified; new creation requires a pair without an existing joined dm")
         } else {

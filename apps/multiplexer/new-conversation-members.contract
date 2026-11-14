@@ -1,11 +1,12 @@
 use ConversationAccounts, ConversationContacts, ConversationStarted from "./new-conversation.contract"
 
 members Multiplexer
+  state personChoosingNetwork = false
   state contactQuery = ""
   state conversationAccount = ""
   state conversationVisit = ""
   resource conversationAccounts = loadConversationAccounts(session.userId, top(nav).name == "newConversation") as shape ConversationAccounts else empty()
-  resource conversationContacts = loadConversationContacts(session.userId, top(nav).name == "newConversation", conversationAccount, contactQuery.trim()) as shape ConversationContacts else empty()
+  resource conversationContacts = loadConversationContacts(session.userId, top(nav).name == "newConversation" and (not personChoosingNetwork or conversationAccount != ""), conversationAccount, contactQuery.trim()) as shape ConversationContacts else empty()
   mutation conversationStarted as shape ConversationStarted refreshes roomList then didStartConversation
   derive contactAccountsShown = conversationAccounts.owner == session.userId
   derive contactsShown = conversationContacts.owner == session.userId and conversationContacts.account == conversationAccount and conversationContacts.query == contactQuery.trim()
@@ -13,6 +14,7 @@ members Multiplexer
   derive contactStartProblem = failed(conversationStarted) ? "Could not open the conversation. Try again." : (match conversationStarted { case some(r) => r.owner == session.userId and r.visit == `${top(nav).id}` ? r.problem : "", case none => "" })
   derive fullMatrixContact = contactQuery.trim().startsWith("@") and contactQuery.trim().includes(":") and not contactQuery.trim().includes(" ") and (conversationAccount == "" or conversationAccount == "matrix")
   action openNewConversation
+    personChoosingNetwork = false
     contactQuery = ""
     conversationAccount = ""
     closeSearch()
