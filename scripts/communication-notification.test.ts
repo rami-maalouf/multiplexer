@@ -12,13 +12,14 @@ test.skipIf(!simulator)('communication intents use sender identity and photo wit
 import Foundation
 import UIKit
 import Intents
+import UserNotifications
 struct PushContent {
     var senderId = "@test2:example.org"; var senderName = "Test Sender"; var body = "Message text"
     var roomId = "!room:example.org"; var chatName = "Test Group"; var isDirect = true
     var otherRecipientCount = 0; var hasMention = false
 }
 @main struct Check {
-    static func main() {
+    @MainActor static func main() async {
         let picture = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 32)).pngData { context in
             UIColor.systemBlue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
         }
@@ -40,6 +41,12 @@ struct PushContent {
         let invalid = CommunicationNotification.intent(for: shown, avatar: Data("bad image".utf8))
         precondition(missing.sender?.image != nil && invalid.sender?.image != nil, "initials fallback is missing")
         precondition(invalid.content == shown.body)
+        let original = UNMutableNotificationContent()
+        original.title = "Test Group"; original.subtitle = "Test Sender"; original.body = "Message text"
+        original.userInfo = NotificationActivation.userInfo(["room_id": shown.roomId, "event_id": "$event"], userId: "@test1:example.org")
+        let delivered = await CommunicationNotification.content(original, shown: shown, avatar: picture)
+        precondition(delivered.title == original.title && delivered.subtitle == original.subtitle && delivered.body == original.body)
+        precondition(NSDictionary(dictionary: delivered.userInfo).isEqual(to: original.userInfo), "communication styling lost the tap destination")
         print("sender photo, missing/corrupt photo and group context passed")
     }
 }
@@ -48,6 +55,7 @@ struct PushContent {
     const binary = join(directory, 'check');
     const compile = Bun.spawnSync(['xcrun', 'swiftc', '-parse-as-library', '-sdk', sdk,
       '-target', 'arm64-apple-ios17.0-simulator', resolve(import.meta.dir, '../apps/multiplexer/extensions/notifications/CommunicationNotification.swift'),
+      resolve(import.meta.dir, '../apps/multiplexer/extensions/notifications/NotificationActivation.swift'),
       fixture, '-o', binary]);
     if (compile.exitCode !== 0) throw new Error(compile.stderr.toString());
     const result = Bun.spawnSync(['xcrun', 'simctl', 'spawn', simulator!, binary]);

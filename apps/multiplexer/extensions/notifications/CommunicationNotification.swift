@@ -32,6 +32,7 @@ enum CommunicationNotification {
             updated.title = content.title
             updated.subtitle = content.subtitle
             updated.body = content.body
+            updated.userInfo = content.userInfo
             return updated
         } catch {
             // system personalization or photo failures must never hide a message.
