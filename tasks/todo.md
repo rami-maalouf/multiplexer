@@ -26,21 +26,21 @@
   platforms", 2026-11-14; `config.yml`, playbook `ok=272 changed=3 failed=0`, bridges restarted
   08:06 UTC). A person gets the field at the bridge's next update of their info. 20 min later:
   LinkedIn 21 profiles; WhatsApp and Instagram 0.
-- [ ] **Needs Rami (decision):** Instagram still gets no usernames. mautrix-meta never sends
-  identifiers (`wrapUserInfo` has none); it keeps the username only in its own database
-  (`ghost.metadata.username`: 979 of 997 Instagram people). Options: a small mautrix-meta patch
-  (our image, and upstream), or a server job that copies usernames into the profiles.
-- [ ] **Needs Rami (decision, privacy):** WhatsApp strips `tel:` identifiers unless
-  `bridge.phone_numbers_in_profile: true`, which puts contacts' phone numbers in their profiles on
-  our server. Without it, `@whatsapp_lid-...` people have no link; phone ghosts use their id (wa.me).
-- [ ] **Needs Rami (server, larger):** backfilled reels (~860) are a preview image plus link with
-  `com.beeper.unresolved_media`. Playing them in the app needs the bridge's provisioning
-  `resolve_media` reachable from the app, plus app support. Today their link opens Instagram.
-- [ ] Physical iPhone with Instagram installed: confirm the reel link and profile open in the app.
-- [x] 1:1 chat info page: an "Open in <network>" row above Add to Space when the person has a
-  profile link (`infoProfile`, the same `loadMemberLink`). Not seen rendered yet: no test chat has
-  a bridged person with a link.
-- [ ] Not checked: macOS.
+- [x] Instagram usernames (Rami: "make a patch and make a PR", 2026-11-14). The running
+  Instagram connector already sends `instagram:<username>`, but bridgev2 stores identifiers only
+  while `ghost_extra_profile_info` is on, so 992 of 997 ghosts had none. Patch on
+  `rami-maalouf/meta` (`ig-identifiers-deploy`, 4a7ebd9 + 1 commit): after the first login
+  connects, ghosts with a stored username and no identifiers get them. Built on the server
+  (`localhost/mautrix/meta:ig-1a9cb2f2...-arm64`, playbook `ok=274 failed=0`). After: 979 of 979
+  stored usernames published (965 valid; 14 contain a space, which the app ignores).
+- [x] WhatsApp and LinkedIn `bridge.phone_numbers_in_profile: true` (Rami's ok, 2026-11-14;
+  playbook `ok=272 failed=0`). `tel:` identifiers now publish at each person's next update.
+- [x] Read-only drive on the real account (no receipts, no new chat): an Instagram group's member
+  page shows "Open in Instagram" (`https://www.instagram.com/<username>/`; the Simulator has no
+  Instagram app, so the in-app browser opens it). Message on a member with a chat lands in that
+  chat (the `m.direct` room); on one without, "You have no chat with this person yet." Signed out.
+- [ ] Physical iPhone: "Open in Instagram" opens the Instagram app; Message creates a new chat.
+- [ ] Upstream PR for the patch; once merged, go back to the published image (config.yml).
 
 ## Message a member on their own network (2026-11-14, branch `feat/member-actions`)
 
@@ -51,7 +51,6 @@
   only finds a chat (`create: false`). A failure shows under the buttons.
 - [x] Drive as `@test1`: CLI coverage A, info, `@test2`'s row, Message: lands in "Multiplexer
   inbox test DM". 22 offline + 3 live MatrixCore tests, 61 bun tests, 14 authored iOS tests pass.
-- [ ] Not driven: a bridged person's Message on a real account (no test user has a bridge login).
 ## Send field width (2026-11-13)
 
 Rami: the bubble must leave from the field as the template's does, and the field should then
