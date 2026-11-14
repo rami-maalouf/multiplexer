@@ -121,6 +121,21 @@ matrix_bridge_mautrix_whatsapp_network_displayname_template: '{% raw %}{{or .Bus
 matrix_bridge_mautrix_meta_instagram_bridge_displayname_suffix: ''
 matrix_bridge_mautrix_linkedin_network_displayname_template: "{% raw %}{{ with .Organization }}{{ . }}{{ else }}{{ .FirstName }} {{ .LastName }}{{ end }}{% endraw %}"
 
+# a member's page in the app has "Open in <network>": the bridges publish each person's
+# network identifiers (`com.beeper.bridge.identifiers`, an instagram username, a whatsapp
+# phone, a linkedin id) in their matrix profile. off by default, because the bridge writes one
+# more profile field per person. a person gets it at the bridge's next update of their info.
+# rami's ok, for all bridges: 2026-11-14.
+matrix_bridge_mautrix_whatsapp_configuration_extension_yaml: |
+  matrix:
+    ghost_extra_profile_info: true
+matrix_bridge_mautrix_meta_instagram_configuration_extension_yaml: |
+  matrix:
+    ghost_extra_profile_info: true
+matrix_bridge_mautrix_linkedin_configuration_extension_yaml: |
+  matrix:
+    ghost_extra_profile_info: true
+
 # p3.3: sygnal, the push gateway. synapse sends a push for the iphone to sygnal, and sygnal
 # sends it to apple (apns) with rami's apns key. it answers at sygnal.ramimaalouf.com (the
 # playbook's default host name, no path prefix), so it needs cloudflare's

@@ -4,11 +4,6 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
-**Installed-app links (2026-11-14, branch `fix/open-links-in-installed-apps`):** replaces PR #27's
-site list. A tapped web link first asks iOS to open it only in an app that claims it (universal
-links only); with none, the in-app browser opens. Any app Rami has (Google Maps, Google Photos,
-Instagram, ...) works without a list. Mac links still go to the default browser.
-
 **Conversation notification cleanup (2026-11-14, PR #29):** opening a visible chat
 removes its delivered, account-scoped notifications without waiting for sync or read
 receipts. Injected iOS 26.5 notifications reproduced the original failure. Inbox
@@ -35,6 +30,11 @@ now saves its draft and resets the old stack. Injected fallback and different-ac
 banner taps pass. Full native verification is clean: 14 tests, light/dark checks,
 and 16 screens at the largest text size. Physical distribution taps
 remain unverified for this change. See `docs/notification-taps.md`.
+
+**Installed-app links (2026-11-14, branch `fix/open-links-in-installed-apps`):** replaces PR #27's
+site list. A tapped web link first asks iOS to open it only in an app that claims it (universal
+links only); with none, the in-app browser opens. Any app Rami has (Google Maps, Google Photos,
+Instagram, ...) works without a list. Mac links still go to the default browser.
 
 **Network links (2026-11-14, branch `fix/open-in-network-apps`, on PR #24's branch):** links
 to network sites (Instagram reels, profiles, ...) now go to iOS `openURL`, so the installed app
