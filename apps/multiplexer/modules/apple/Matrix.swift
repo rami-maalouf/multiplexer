@@ -35,6 +35,7 @@ final class Matrix: ExactModule {
     /// The signed-in account, made once and shared by every ask; nil when signed out or not restored yet.
     private var account: Task<MatrixAccount, Error>?
     private var conversationRevision = 0
+    @MainActor private lazy var phoneContacts = PhoneContacts()
     /// The chat list's receipt watch reads only while the list is on screen and the app in front.
     private var listShown = true, inFront = true
     private var lifecycle: [NSObjectProtocol] = []
@@ -44,6 +45,11 @@ final class Matrix: ExactModule {
     }
     @MainActor private func observeLifecycle() {
         guard lifecycle.isEmpty else { return }
+        phoneContacts.changed = { [weak self] in
+            self?.context.changed("contacts")
+            self?.context.changed("rooms")
+            self?.context.changed("search")
+        }
         #if os(macOS)
         let changed: @MainActor @Sendable () -> Void = { [weak self] in
             guard let self else { return }
@@ -59,6 +65,7 @@ final class Matrix: ExactModule {
         }
         #else
         let changed: @MainActor @Sendable (Bool) -> Void = { [weak self] front in
+            if front { self?.phoneContacts.invalidate() }
             self?.inFront = front
             self?.applyReceiptWatch()
         }
@@ -107,6 +114,15 @@ final class Matrix: ExactModule {
         Task { @MainActor in
             do {
                 switch request["op"] as? String {
+                case "phoneContacts":
+                    try await phoneContacts.update(request["enabled"] as? Bool)
+                    if let signed = try? await signedIn() { phoneContacts.apply(signed) }
+                    if request["enabled"] != nil {
+                        context.changed("contacts")
+                        context.changed("rooms")
+                        context.changed("search")
+                    }
+                    reply.send(phoneContacts.record)
                 case "signIn":
                     conversationRevision += 1
                     reply.send(await signIn(server: request["server"] as? String ?? "", user: request["user"] as? String ?? "",
@@ -395,6 +411,9 @@ final class Matrix: ExactModule {
                 case "bookmarks", "bookmark", "removeBookmark":
                     // saved messages (Bookmarks.swift).
                     reply.send(try await bookmarks(request))
+                case "openInApp":
+                    // a link an installed app claims opens there (AppLinks.swift).
+                    reply.send(await openInApp(request))
                 case "linkPreviews":
                     // previews of the open chat's links, fetched on the phone (LinkPreviews.swift).
                     reply.send(linkPreviews(request))
@@ -418,7 +437,7 @@ final class Matrix: ExactModule {
                     try await signOut()
                     reply.send(["ok": true])
                 default:
-                    reply.fail("matrix answers registerPush, unregisterPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, linkPreviews, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, memberIdentifiers, chatMedia, rename, customName, invite, setPicture and signOut")
+                    reply.fail("matrix answers registerPush, unregisterPush, signIn, rooms, search, showMessage, pin, unpin, chat, messages, markRead, draft, saveDraft, older, photo, recovery, recover, video, audio, prepareVoice, sendVoice, send, sendMedia, file, maxUploadSize, react, edit, deleteMessage, forward, media, emojis, resetEmojis, retry, discard, profile, openInApp, linkPreviews, bookmarks, bookmark, removeBookmark, chatInfo, chatMembers, memberIdentifiers, chatMedia, rename, customName, invite, setPicture and signOut")
                 }
             } catch {
                 reply.fail(String(describing: error))
@@ -577,7 +596,12 @@ final class Matrix: ExactModule {
     }
 
     @MainActor func signedIn() async throws -> MatrixAccount {
-        if let account { return try await account.value }
+        if let account {
+            let signed = try await account.value
+            try? await phoneContacts.update(nil)
+            phoneContacts.apply(signed)
+            return signed
+        }
         guard let resolved = try stored() else { throw ExactNativeRefusal("signed out") }
         var stored = resolved.session
         // a session kept before the search index gets its key now; its index starts empty.
@@ -592,6 +616,8 @@ final class Matrix: ExactModule {
         account = restoring
         do {
             let restored = try await restoring.value
+            try? await phoneContacts.update(nil)
+            phoneContacts.apply(restored)
             tellChanges(restored)
             logSearchIndex(restored)
             return restored
@@ -707,6 +733,7 @@ final class Matrix: ExactModule {
         let query = request["query"] as? String ?? "", room = request["room"] as? String ?? ""
         let kind = SearchKind(rawValue: request["kind"] as? String ?? "")
         let typed = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        var people: [FoundPerson] = []
         var chats: [RoomSummary] = [], messages: [FoundMessage] = [], links: [FoundMessage] = []
         if !room.isEmpty {
             if let kind {
@@ -722,6 +749,7 @@ final class Matrix: ExactModule {
         } else {
             let found = try await account.search(query)
             (chats, messages, links) = (found.chats, found.messages, found.links)
+            people = found.people
         }
         moduleLog("matrix: search answered \(chats.count) chats, \(messages.count) messages and \(links.count) links in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
         func hit(_ m: FoundMessage) -> [String: Any] {
@@ -737,7 +765,8 @@ final class Matrix: ExactModule {
              "senderPicture": cached(m.senderPictureName, topic: "search") {
                  _ = try await account.pictureFile(url: m.senderPicture, directory: self.media) }]
         }
-        return ["chats": chats.map { roomRecord($0, listed: true, account, topic: "search") },
+        return ["people": people.map { ["id": $0.id, "name": $0.name, "detail": $0.detail, "network": $0.network, "phone": $0.phones.first ?? "", "account": $0.accountId, "identifier": $0.identifier] },
+                "chats": chats.map { roomRecord($0, listed: true, account, topic: "search") },
                 "messages": messages.map(hit), "links": links.map(hit)]
     }
 

@@ -142,6 +142,7 @@ public struct FoundMessage: Equatable, Sendable {
 
 /// What a search for words finds, in the order the screen shows it (Rami, 2026-11-02).
 public struct SearchResults: Equatable, Sendable {
+    public var people: [FoundPerson] = []
     /// Chats whose name has the words, the best match first (`chatsNamed`).
     public var chats: [RoomSummary]
     /// Messages with the words, the newest first, but those under `links`.
@@ -279,7 +280,10 @@ extension MatrixAccount {
         // a link with one of the words puts its message under links.
         let inLink = found.filter { m in m.links.contains { link in words.contains { SearchIndex.fold(link).contains($0) } } }
         let linked = Set(inLink.map(\.eventId))
-        return SearchResults(chats: roomId == nil ? Self.chatsNamed(text, in: chats) : [],
+        let people = roomId == nil ? self.people(text, in: chats) : (people: [], chats: [])
+        let named = roomId == nil ? Self.chatsNamed(text, in: chats) : []
+        let ids = Set(named.map(\.id))
+        return SearchResults(people: people.people, chats: named + people.chats.filter { !ids.contains($0.id) },
                              messages: found.filter { !linked.contains($0.eventId) }, links: inLink)
     }
 
@@ -366,7 +370,10 @@ extension MatrixAccount {
         guard !words.isEmpty else { return [] }
         let ranked = chats.enumerated().compactMap { i, chat -> (rank: Int, at: Int, chat: RoomSummary)? in
             let name = SearchIndex.fold(chat.name)
-            guard !chat.isHidden, words.allSatisfy(name.contains) else { return nil }
+            let aliases = SearchIndex.fold(chat.roomName)
+            let digits = PhoneNumber.parse(text).digits
+            let phone = PhoneNumber.looksLikeNumber(text) && chat.phones.contains { PhoneNumber.parse($0).digits.contains(digits) }
+            guard !chat.isHidden, words.allSatisfy(name.contains) || words.allSatisfy(aliases.contains) || phone else { return nil }
             let nameWords = name.split { !$0.isLetter && !$0.isNumber }
             let starts = words.allSatisfy { w in nameWords.contains { $0.hasPrefix(w) } }
             return (name.hasPrefix(whole) ? 0 : (starts ? 1 : 2), i, chat)

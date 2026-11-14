@@ -15,7 +15,7 @@ type Hit = {
   isOwn: boolean; body: string; time: number; kind: string; links: string[]; picture: string; seconds: number;
   isVoice: boolean; fileName: string; fileSize: number; senderPicture: string;
 };
-export type SearchAnswer = { chats: Chat[]; messages: Hit[]; links: Hit[] };
+export type SearchAnswer = { people?: Found['people']; chats: Chat[]; messages: Hit[]; links: Hit[] };
 
 // a text without case or accents, to find the words in it. ASCII goes the fast way: the data
 // module has 100 ms a turn, and a Unicode fold of each character of 60 messages took 270 ms.
@@ -100,5 +100,5 @@ export const searchFound = (answer: SearchAnswer, query: string, initials: (name
     // the link with a word searched for, else its first.
     link: h.links.find((l) => words.some((w) => fold(l).includes(w))) ?? h.links[0] ?? '',
   });
-  return { chats: answer.chats.map(chat), messages: answer.messages.map(message), links: answer.links.map(message) };
+  return { people: answer.people ?? [], chats: answer.chats.map(chat), messages: answer.messages.map(message), links: answer.links.map(message) };
 };

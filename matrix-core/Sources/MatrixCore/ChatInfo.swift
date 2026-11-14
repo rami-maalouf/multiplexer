@@ -76,6 +76,9 @@ extension MatrixAccount {
             roomKinds.remember(roomId, kind)
             summary.fillKind(info, pins: pins, kinds: roomKinds)
         }
+        summary.counterpart = info.heroes.map(\.userId).first { $0 != me && !info.serviceMembers.contains($0) } ?? ""
+        var named = [summary]
+        fillContactNames(&named, custom: [:])
         // the people who have joined, as `chatMembers` lists them: a bridge's bot (a service member,
         // `io.element.functional_members`) is left out only when it has joined. a room may name a
         // bot that is no member, and the count then said one fewer than the list showed.
@@ -83,7 +86,7 @@ extension MatrixAccount {
         for userId in info.serviceMembers where (try? await target.member(userId: userId))?.membership == .join {
             joinedService += 1
         }
-        return ChatInfo(id: roomId, name: custom.isEmpty ? roomName : custom, roomName: roomName, customName: custom,
+        return ChatInfo(id: roomId, name: custom.isEmpty ? named[0].name : custom, roomName: roomName, customName: custom,
                         topic: info.topic ?? "", pictureUrl: await roomAvatar(target, info: info, oneToOne: summary.isOneToOne) ?? "",
                         network: RoomNetwork.of(info, ownUserId: me), isOneToOne: summary.isOneToOne,
                         memberCount: Int(info.joinedMembersCount > joinedService ? info.joinedMembersCount - joinedService : 0),
@@ -221,8 +224,9 @@ extension MatrixAccount {
     /// Each chat shows the account's own name for it, if it has one.
     func fillCustomNames(_ rooms: inout [RoomSummary]) async {
         let names = await customNames()
+        for i in rooms.indices { rooms[i].roomName = rooms[i].name }
+        fillContactNames(&rooms, custom: names)
         for i in rooms.indices {
-            rooms[i].roomName = rooms[i].name
             if let name = names[rooms[i].id] { rooms[i].name = name }
         }
     }

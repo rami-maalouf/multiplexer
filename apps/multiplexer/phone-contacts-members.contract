@@ -1,0 +1,7 @@
+use PhoneContacts from "./settings.contract"
+
+members Multiplexer
+  resource phoneContacts = loadPhoneContacts(session.userId) as shape PhoneContacts else empty()
+  mutation contactsChanged as shape PhoneContacts refreshes phoneContacts, roomList, found
+  action togglePhoneContacts(on: bool)
+    send contactsChanged = setPhoneContacts(on)

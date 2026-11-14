@@ -89,7 +89,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 61 | A members file's rules do not say whether it may also hold components, and `contract vocab` does not know `members`. Fixed in PR #1364 (open). | About 5 min | P3 | [a-members-file-s-rules-leave](issues/20261103-a-members-file-s-rules-leave.md) |
 | 62 | A drive's view of a video: `state media` is not in the agent's help, AVKit's controls show only under a real touch, and a video under the agent never takes the audio session. Fixed in PR #1366 (open). | About 10 min | P3 | [a-drive-cannot-see-a-video-s](issues/20261103-a-drive-cannot-see-a-video-s.md) |
 | 63 | `formatDay` has no style for a chat's day label. | About 5 min | P3 | [formatday-has-no-style-for](issues/20261103-formatday-has-no-style-for.md) |
-| 64 | A search field in a sheet's content draws its magnifier over its text at the accessibility sizes. | About 15 min | P3 | [a-search-field-in-a-sheet](issues/20261103-a-search-field-in-a-sheet.md) |
+| 64 | A search field in a sheet's content draws its magnifier over its text at the accessibility sizes. Further account-chooser evidence on 2026-11-12. | About 15 min | P3 | [a-search-field-in-a-sheet](issues/20261103-a-search-field-in-a-sheet.md) |
 | 65 | A sheet's bar search field hides the bar and its Send while searching, and the search card does not say so. Fixed in PR #1367 (open). | About 10 min | P3 | [a-sheet-s-bar-search-field](issues/20261103-a-sheet-s-bar-search-field.md) |
 | 66 | The edit-sheet recipe nests a sheet's header as `lower-header-nested` warns against. Fixed in PR #1361 (open). | About 5 min | P3 | [the-edit-sheet-recipe-nests-a](issues/20261103-the-edit-sheet-recipe-nests-a.md) |
 | 67 | The theme recipe shows an SF-only icon token, which the build refuses. Fixed in PR #1362 (open). | About 2 min | P3 | [the-theme-recipe-shows-an-sf](issues/20261103-the-theme-recipe-shows-an-sf.md) |
@@ -198,6 +198,7 @@ Later-lane evidence (2026-11-04): communities and Requests, finding 122; New Spa
 | 165 | `clock until state` takes only `==`; `!=` is refused. | Two refused ops | P3 | [clock-until-state-takes-only](issues/20261109-clock-until-state-takes-only.md) |
 | 167 | Long identifier wrapping needs a specific remedy when max-width clips and anywhere is rejected. | About 5 min | P3 | [long-identifier-wrapping](issues/20261112-long-identifier-wrapping.md) |
 | 168 | A box's `height` refuses a text-style length that its `font-size` takes, and `contract build --json` prints the one refusal once per use site (seven times). | About 2 min | P3 | [a-box-height-refuses-a-text-style](issues/20261114-a-box-height-refuses-a-text-style.md) |
+| 169 | `openURL` and the in-app browser cannot open a link only in an installed app that claims it, then fall back; the app module has no log call. | About 12 min | P3 | [openurl-has-no-universal-links-only](issues/20261114-openurl-has-no-universal-links-only.md) |
 | 166 | A screenshot drive waits silently through a native rebuild, then refuses the completed build if an unused Contract file was added during it. | About 3 min | P3 | [native-drive-build-progress](issues/20261112-native-drive-build-progress.md) |
 
 ## What worked well
@@ -371,6 +372,8 @@ and a 3,072-byte cap on each recipe (`bun scripts/caps.mjs`).
 | 2026-11-03 | [#1410](https://github.com/ccheever/exact2/pull/1410): a large title opens when a route with no bar turns into one with a large title | 76 | Open |
 | 2026-11-03 | [#1411](https://github.com/ccheever/exact2/pull/1411): the reference says how a virtualized list shows a row that is not an item | 20 | Open |
 
+Contacts task, 2026-11-12: added evidence to findings 1 (native binding rebuilds) and 9 (permission discovery). With Rami's explicit approval, sent only `2026-11-12-phone-contacts.md`: receipt `402f5667-525f-4a76-afca-aaf3e107a941`. Zero command logs or attachments; other unsent diaries stayed local.
+
 Migration evidence (2026-11-09): at upstream `94b8671f70fe2e25b307a40e7fce66dc27c9f802`, the updater still leaves JavaScript package file paths on the former checkout. See [checkout-depth finding](issues/20261102-an-app-checkout-at-another-depth.md#upstream-checkout-migration-2026-11-09). Feedback remains local.
 
 2026-11-12: with explicit approval, sent only the push-reliability diary (one diary,
@@ -382,3 +385,8 @@ Avatar task, 2026-11-12: with Rami's explicit approval, sent only `2026-11-12-br
 Group profile diary sent with explicit approval: receipt `e584da31-3ea8-456b-bbc4-d3fda3238d90`.
 Only `2026-11-12-member-profiles.md`: one diary, zero logged commands, no attachments.
 Other diaries and the command-log cursor were preserved.
+
+Contacts integration, 2026-11-12: with Rami's explicit approval, sent only
+`2026-11-12-contacts-integration.md`, receipt `8266a8d3-8d4c-4dbc-8932-0cfbef0edc0e`.
+One generic diary, zero command logs and no attachments. Other unsent diaries and the
+command cursor were preserved.

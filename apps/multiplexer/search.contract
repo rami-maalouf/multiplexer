@@ -68,11 +68,21 @@ shape FoundMessage
 // what the search found for owner's query and kind ("" for none), in room ("" for all chats):
 // chats by name (or the chats opened last, before any word), messages, and messages with a link
 // that has a word.
+shape FoundPerson
+  id: string
+  name: string
+  detail: string
+  network: string
+  phone: string
+  account: string
+  identifier: string
+
 shape SearchFound
   owner: string
   room: string
   query: string
   kind: string
+  people: FoundPerson[]
   chats: FoundChat[]
   messages: FoundMessage[]
   links: FoundMessage[]
@@ -333,13 +343,14 @@ component SearchResults
     largeText: bool
     reduced: bool
     chooseKind: action
+    openPerson: action
     openChat: action
     openMessage: action
     openLink: action
     useSearch: action
     clearSearches: action
   derive typed = query.trim() != ""
-  derive empty = shown and not loading and found.chats.length == 0 and found.messages.length == 0 and found.links.length == 0
+  derive empty = shown and not loading and found.people.length == 0 and found.chats.length == 0 and found.messages.length == 0 and found.links.length == 0
   derive pictures = kind == "images" or kind == "videos"
   view
     // over the inbox's list, which stays where it was under it; its ground reaches past the
@@ -401,6 +412,15 @@ component SearchResults
                 text "Chats"
               for c in found.chats.slice(0, 8) key=c.id
                 ChatResult(appearance=appearance, chat=c, open=openChat, now=now, offset=offset, largeText=largeText)
+          if found.people.length > 0
+            section testId="found-people"
+              header
+                text "People"
+              for p in found.people key=p.id
+                button press=openPerson(p.phone, p.account, p.identifier) disabled=(p.phone == "" and p.identifier == "") testId=`person-${p.id}` min-height=52 text-align="start"
+                  column gap=3 padding="6px 0"
+                    text p.name font="-exact-body" color="-exact-label"
+                    text (p.phone == "" and p.identifier == "" ? "No phone number" : (p.detail == "" ? "Choose a network to start a chat" : p.detail)) font="-exact-subheadline" color="-exact-secondary-label"
           if found.messages.length > 0
             section testId="found-messages"
               header

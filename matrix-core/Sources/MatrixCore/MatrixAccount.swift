@@ -24,6 +24,7 @@ public final class MatrixAccount: @unchecked Sendable {
     /// The account data events read from the server while the store had none (AccountData.swift).
     let serverAccountData = ServerAccountData()
     let mergeStates = MergeStates()
+    let contactBook = ContactBook()
 
     /// The newest message each chat's preview showed, and the watch on other devices' archives,
     /// deletes and names (ListFreshness.swift).
@@ -196,6 +197,11 @@ public final class MatrixAccount: @unchecked Sendable {
             if let info {
                 if summary.fillKind(info, pins: pins, kinds: roomKinds) { unkinded.append(summary.id) }
                 summary.fillActions(info, chats: chats)
+                if summary.isOneToOne {
+                    summary.counterpart = info.heroes.map(\.userId).first { $0 != me && !info.serviceMembers.contains($0) } ?? ""
+                    summary.phones = ContactBook.numberIn(userId: summary.counterpart).map { [$0] } ?? []
+                }
+
                 summary.avatarName = await roomAvatar(room, info: info, oneToOne: summary.isOneToOne).map(avatarFileName) ?? ""
             }
             switch await room.latestEvent() {

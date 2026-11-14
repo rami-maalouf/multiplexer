@@ -33,9 +33,19 @@ fn recoveryText(status: string): string = status == "on" ? "On" : (status == "of
 // the voice note speeds, in the speed chip's order.
 fn speeds(): number[] = [1, 1.5, 2]
 
+shape PhoneContacts
+  on: bool
+  denied: bool
+  limited: bool
+  count: number
+
 component SettingsScreen
   props
     // the screen's route (its stack entry's id).
+    contacts: PhoneContacts
+    contactsBusy: bool
+    contactsFailed: bool
+    toggleContacts: action
     route: string
     // the signed-in account's id ("" while signed out), and its name and picture.
     userId: string
@@ -103,6 +113,17 @@ component SettingsScreen
               text (notifications == "denied"
                 ? "Turn them on in the iPhone's Settings, under Mux."
                 : "A new message shows its chat, its sender and its text.")
+        if userId != ""
+          section testId="contacts-settings"
+            row gap=12 align-items="center" flex-wrap="wrap"
+              text "Contacts" flex=1
+              if contacts.denied
+                button press=openNotificationSettings testId="contacts-open-settings"
+                  text "Open Settings"
+              else
+                input type="checkbox" switch checked=contacts.on change=toggleContacts disabled=contactsBusy aria-label="Contacts" testId="contacts-switch"
+            footer
+              text (contactsFailed ? "Could not load contacts. Try again." : (contacts.denied ? "Allow Contacts in Settings to find people by their saved names." : (contacts.on ? `${contacts.count} ${contacts.count == 1 ? "contact" : "contacts"} connected${contacts.limited ? " (limited access)" : ""}. Search includes people without a chat. Your address book stays on this device.` : "Use your contact names in chats and find people without a conversation. Your address book stays on this device.")))
         section testId="appearance-settings"
           header
             text "Appearance"
