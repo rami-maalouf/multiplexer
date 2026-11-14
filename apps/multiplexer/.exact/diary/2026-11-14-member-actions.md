@@ -5,6 +5,8 @@
 - a drive's `call` takes only declared tools, not actions; opening a chat needed the inbox search and taps instead. The refusal said so clearly ("this app declares none"), about 2 minutes.
 - a list row far down the inbox is not a tap target until it is on screen; the refusal listed the targets in view, which pointed to search. About 3 minutes.
 
+- (network links) at the accessibility text sizes, a wrapped row of buttons in a list section shows a tall gap (about 38 points) between its lines, against 8 between buttons; `row-gap=8` was accepted and changed nothing. About 6 minutes, two builds. Left as is; finding 170.
+
 ## Lean in
 
 - the list lint (`lower-grouped-list`) named the exact fix for a footer under `if`: move it to the section's last line with a text that changes. One edit, then a clean build.

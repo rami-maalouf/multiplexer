@@ -38,7 +38,7 @@ members Multiplexer
         initials=memberFallbackName(memberId).slice(0, 1).toUpperCase(), isOwn=(memberId == session.userId)) } }
   // their profile on the chat's network, as Beeper links it: Instagram's page for them, and so on.
   resource memberLink = loadMemberLink(memberId, openNetwork) as shape MemberLink else empty()
-  derive memberProfile = (memberLink.user == memberId and memberId != session.userId) ? memberLink.url : ""
+  derive memberLinks = (memberLink.user == memberId and memberId != session.userId) ? memberLink : MemberLink(user="", profile="", chat="", handle="", phone="")
   // anyone but you can be reached in a direct chat, on the chat's own network (a bridged
   // person through their bridge).
   derive memberMessageable = memberId != "" and memberId != session.userId
@@ -46,7 +46,7 @@ members Multiplexer
   // a chat with one person: their profile on the network, for the info page (as a member's).
   derive infoPersonId = (infoShown.isOneToOne and openNetwork != "matrix") ? (match first(chatMembers.members.filter(x => not x.isOwn and chatMembers.room == infoRoom)) { case some(m) => m.id, case none => "" }) : ""
   resource infoPersonLink = loadMemberLink(infoPersonId, openNetwork) as shape MemberLink else empty()
-  derive infoProfile = (infoPersonId != "" and infoPersonLink.user == infoPersonId) ? infoPersonLink.url : ""
+  derive infoLinks = (infoPersonId != "" and infoPersonLink.user == infoPersonId) ? infoPersonLink : MemberLink(user="", profile="", chat="", handle="", phone="")
   // the page shows the open chat's info only, and until it has loaded, what the chat list knows.
   derive infoLoaded = chatInfo.id == openRoom and chatInfo.id != ""
   derive infoShown = infoLoaded ? chatInfo : ChatInfo(id=openRoom, name=openName, roomName=openName, customName="", topic="",
