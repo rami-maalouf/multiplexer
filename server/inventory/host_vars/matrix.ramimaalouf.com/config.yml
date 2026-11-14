@@ -72,16 +72,13 @@ matrix_appservice_double_puppet_enabled: true
 # for whatsapp. the bridge's api: https://matrix.ramimaalouf.com/bridges/meta-instagram.
 matrix_bridge_mautrix_meta_instagram_enabled: true
 
-# our copy of the instagram bridge (rami's ok, 2026-11-14): upstream mautrix/meta main
-# (4a7ebd9, 2026-10-30) plus one commit that publishes the usernames the bridge stored as
-# `instagram:<username>` identifiers, so the app's member page can link to the profile
-# (rami-maalouf/meta, branch ig-identifiers-deploy; offered upstream on branch
-# ig-publish-stored-usernames). built on the server from upstream's Dockerfile.ig. once
-# upstream has it, go back to its prebuilt image: delete the two self-build lines and set
-# the version to that commit.
-matrix_bridge_mautrix_meta_instagram_container_image_self_build: true
-matrix_bridge_mautrix_meta_instagram_container_image_self_build_repo: "https://github.com/rami-maalouf/meta.git"
-matrix_bridge_mautrix_meta_instagram_version: "1a9cb2f2aa50222faac16d2d8c8310877b85b95f"
+# upstream mautrix/meta main (4a7ebd9, 2026-10-30), not a release: no release has the fix
+# for the android login's password key request yet (mautrix/meta#483, which replaced our
+# fork's fix), nor the login code step fixes (#484). the image is prebuilt for arm64
+# (dock.mau.dev/mautrix/meta:ig-<commit>-arm64). go back to the playbook's release when one
+# has both, by deleting this line. (2026-11-14: a patched build ran once to publish the
+# usernames stored while ghost_extra_profile_info was off; upstream keeps them current.)
+matrix_bridge_mautrix_meta_instagram_version: "4a7ebd929a549d8dcb4d6c12cd5a94fde66fc42d"
 
 # the linkedin bridge (mautrix-linkedin). a user connects by sending `login password`
 # (email or phone, password, then a code or an app approval) or `login cookies` (a cURL
