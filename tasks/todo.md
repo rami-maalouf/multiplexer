@@ -40,7 +40,7 @@
   Instagram app, so the in-app browser opens it). Message on a member with a chat lands in that
   chat (the `m.direct` room); on one without, "You have no chat with this person yet." Signed out.
 - [ ] Physical iPhone: "Open in Instagram" opens the Instagram app; Message creates a new chat.
-- [ ] Upstream PR for the patch; once merged, go back to the published image (config.yml).
+- [ ] Upstream: draft PR mautrix/meta#593 (2026-11-14). Rami asks in #meta:maunium.net, then marks it ready. Once merged, go back to the published image (config.yml).
 
 ## Message a member on their own network (2026-11-14, branch `feat/member-actions`)
 
