@@ -36,3 +36,8 @@ Additional evidence (2026-11-07, exact2 `91d7b12620`): `test ios` does the same 
 After a focused test ios run, a previously signed-in drive opened at sign-in. A fresh sign-in restored the same test scenario. This cost about one minute; the test output did not warn that the kept drive session would be cleared.
 
 A signed-out route test could assert navigation but could not arrange authenticated native resources; verify correctly flagged those refusals. The signed-in drive remained the regression instrument. Authenticated native test fixtures would make this repeatable in the authored suite.
+
+### Additional evidence, 2026-11-14
+
+After `test ios` (14 passed), the next drive met the sign-in screen and needed a new sign-in
+as a test user. About 2 minutes.

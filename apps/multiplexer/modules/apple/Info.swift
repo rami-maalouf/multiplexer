@@ -26,6 +26,10 @@ extension Matrix {
                  "picture": cached(member.pictureName, then: .info(roomId)) {
                      _ = try await account.pictureFile(url: member.pictureUrl, directory: self.media) }]
             }]
+        case "memberIdentifiers":
+            // what the person's bridge says identifies them on their network, for a link to their
+            // profile there (MatrixCore Profile.swift).
+            return ["identifiers": try await account.networkIdentifiers(userId: request["userId"] as? String ?? "")]
         case "expiry":
             let expiry = try await account.messageExpiry(roomId: roomId)
             return ["offered": expiry != nil, "timer": expiry?.timer ?? 0, "choices": expiry?.choices ?? []]

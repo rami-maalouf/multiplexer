@@ -4,6 +4,15 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Network links (2026-11-14, branch `fix/open-in-network-apps`, on PR #24's branch):** links
+to network sites (Instagram reels, profiles, ...) now go to iOS `openURL`, so the installed app
+opens them, as in Beeper; other links keep the in-app browser. The member page has "Open in
+<network>": bridge identifiers from the profile (MSC4133 field `com.beeper.bridge.identifiers`),
+else the WhatsApp phone or LinkedIn id from the Matrix id. Facts (read-only server queries): the
+bridges store Instagram usernames but publish none, because `ghost_extra_profile_info` is off;
+Synapse advertises MSC4133 stable. Live reels arrive as `m.video` and play in the app; backfilled
+reels are images with `com.beeper.unresolved_media`. Both server steps wait for Rami (todo.md).
+Test users only; no real account, no server change.
 **Send velocity correction (2026-11-13):** native probes confirmed that the rise cap omitted
 space below the bubble, moving the target another 24.4 points after the rise began. The cap
 now includes the row suffix. Receipt heights settle immediately on all open-room rows during

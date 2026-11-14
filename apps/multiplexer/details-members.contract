@@ -1,6 +1,7 @@
 // the chat screen's state and actions for its details (details.contract): the "New" line kept
 // while the chat is open, the jump to the newest message, the video viewer, and links.
 use VideoFile from "./details.contract"
+use opensInApp from "./network.contract"
 use openBrowser, inAppBrowserStatus, InAppBrowserStatus, BrowserResult from "@exact/in-app-browser"
 
 members Multiplexer
@@ -73,8 +74,11 @@ members Multiplexer
   // a tap on a video's poster plays it full screen, zooming out of the poster.
   action showVideo(id: string)
     nav = push(nav, path("video", openRoom, id))
+  // a link to a network with its own app (network.contract's opensInApp) goes to that app.
   action openLink(url: string)
-    if browser.overApp
+    if opensInApp(url)
+      openURL(url)
+    else if browser.overApp
       send browsed = openBrowser(url=url)
     else
       openURL(url)

@@ -44,6 +44,19 @@ final class ChatInfoTests: XCTestCase {
         XCTAssertFalse(theirs.canRename)
     }
 
+    /// A member's network identifiers come from their server profile: none for a Matrix user, and
+    /// only the strings of a bridge's list (Profile.swift).
+    func testNetworkIdentifiersReadTheProfile() async throws {
+        let (homeserver, user, password, user2, _) = try twoUsers()
+        let owner = try await signIn(homeserver, user, password)
+        let none = try await owner.networkIdentifiers(userId: user2)
+        XCTAssertEqual(none, [])
+        let bridged = #"{"displayname":"A","com.beeper.bridge.identifiers":["instagram:a",3,""]}"#
+        XCTAssertEqual(NetworkIdentifiers.parse(Data(bridged.utf8)), ["instagram:a"])
+        XCTAssertEqual(NetworkIdentifiers.parse(Data(#"{"com.beeper.bridge.identifiers":"instagram:a"}"#.utf8)), [])
+        XCTAssertEqual(NetworkIdentifiers.parse(Data("not json".utf8)), [])
+    }
+
     /// A room may name a bridge's bot that is not a member (a staged chat; a bot that left): the
     /// header's count and the members' list then still agree.
     func testTheCountAndTheListAgreeWhenTheBotIsNoMember() async throws {

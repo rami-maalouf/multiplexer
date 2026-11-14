@@ -1,6 +1,6 @@
 // a chat's info page's state and actions (info.contract): it opens from the chat bar's picture and
 // name, and its buttons are the chat list's actions (B7, B8) on the open chat.
-use ChatInfo, ChatMember, ChatMembers, ChatMedia, Viewed, InfoReply, ChatExpiry, memberFallbackName from "./info.contract"
+use ChatInfo, ChatMember, ChatMembers, ChatMedia, Viewed, InfoReply, ChatExpiry, MemberLink, memberFallbackName from "./info.contract"
 
 members Multiplexer
   // the page shows every member, and more than a row of media, once asked.
@@ -36,6 +36,9 @@ members Multiplexer
         initials=m.senderInitials, isOwn=m.isOwn),
       case none => ChatMember(id=memberId, name=memberFallbackName(memberId), picture="",
         initials=memberFallbackName(memberId).slice(0, 1).toUpperCase(), isOwn=(memberId == session.userId)) } }
+  // their profile on the chat's network, as Beeper links it: Instagram's page for them, and so on.
+  resource memberLink = loadMemberLink(memberId, openNetwork) as shape MemberLink else empty()
+  derive memberProfile = (memberLink.user == memberId and memberId != session.userId) ? memberLink.url : ""
   // a Matrix member that is not you can be reached in a direct chat.
   derive memberMessageable = openNetwork == "matrix" and memberId != "" and memberId != session.userId
   derive memberMessaging = pending(conversationStarted)
