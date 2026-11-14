@@ -4,6 +4,22 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Notification tap routing (2026-11-14, `fix/notification-tap-navigation`):**
+a new branch starts at main `f9fea095c95f30573420255064fde7d48d43ae5d`.
+Reproduced a simulated remote banner returning to the previous Settings screen
+on the owned simulator as a test user. A probe compiling Exact's actual native
+receiver also fails: the room/event payload raises no activation event.
+The extension omits the host activation entry. Rami approved a pinned-format
+adapter with tests on 2026-11-14, overriding P3.7's prior team-consultation note.
+The adapter attaches the account-scoped destination before enrichment. Native
+receiver and fallback regressions pass. Real sandbox APNs taps on iOS 26.5 open the
+destination from Settings, another chat, and a terminated app. The other-chat replay
+also exposed shared chat state reading the first room in the stack; opening a chat
+now saves its draft and resets the old stack. Injected fallback and different-account
+banner taps pass. Full native verification is clean: 14 tests, light/dark checks,
+and 16 screens at the largest text size. Physical distribution taps
+remain unverified for this change. See `docs/notification-taps.md`.
+
 **Network links (2026-11-14, branch `fix/open-in-network-apps`, on PR #24's branch):** links
 to network sites (Instagram reels, profiles, ...) now go to iOS `openURL`, so the installed app
 opens them, as in Beeper; other links keep the in-app browser. The member page has "Open in

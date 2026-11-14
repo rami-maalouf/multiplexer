@@ -73,3 +73,24 @@ fallback banner on a locked physical iPhone using a development-signed build.
 This verifies the workaround, not framework support. The host's notification presenter
 still accepts only its own activation envelope, and exposes no app-defined remote tap
 or foreground-presentation callback. No private activation key was used as a workaround.
+
+## Evidence (2026-11-14): a remote tap silently restores the previous screen
+
+At integration checkout `b46687753f73fbe3473e661d59657592bb5b7572`, a remote banner
+with a room and event id opened the previous settings screen. A native probe compiling
+`Notify.swift` reproduced the missing activation event. The receiver requires its
+private `userInfo["exact"]` entry, including string session/owner fields and a
+cross-process identifier; its event arguments must be a JSON-encoded string.
+
+Tracing the receiver, startup order and module activation queue took about ten
+minutes. With maintainer approval, the app now constructs that pinned format in its
+service extension, before asynchronous enrichment, and tests it against the actual
+receiver. This is an app workaround, not a supported remote-notification API.
+A documented remote activation constructor would remove the private-format dependency.
+
+A first payload used `@exact/notifications`, matching the manifest/import name, but
+the runtime reported `@exact/notifications.notificationclick: no handler hears it`.
+The runtime identity is the short `notifications`. A receiver-only fixture accepts
+either string, so real sandbox APNs taps were needed to expose this mismatch. Warm
+and terminated-app taps then reached the existing handler. This cost another ten
+minutes tracing runtime registration and logs; the constructor should own this name.

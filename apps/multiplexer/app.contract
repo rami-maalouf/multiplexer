@@ -601,8 +601,10 @@ component Multiplexer
     now = performanceNow()
   // leaving a screen closes a long-press menu: the bar's Back stays live above it.
   action follow(url: string)
-    keepDraftNow()
+    prepareNavigation()
     nav = go(nav, url)
+  action prepareNavigation
+    keepDraftNow()
     composerFocus = false
     held = ""
     panel = false
@@ -1095,7 +1097,10 @@ component Multiplexer
     aimed = id
   // a merged chat opens the room it chose (Merge Chats).
   action openChat(id: string)
-    follow(path("room", match first(roomList.rooms.filter(r => r.id == id)) { case some(r) => r.open, case none => id }))
+    prepareNavigation()
+    // chat state belongs to one room; discard a previous chat and its sheets before opening another.
+    let room = match first(roomList.rooms.filter(r => r.id == id)) { case some(r) => r.open, case none => id }
+    nav = go(go(nav, path("home")), path("room", room))
   action togglePin
     send pinned = setPinned(aimed, not aimedPinned)
     haptic("success")
