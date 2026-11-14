@@ -3433,6 +3433,41 @@ item styling/invalidation correction needs source review and rendered verificati
 Public account-free crash probe: https://gist.github.com/rami-maalouf/670cc6083729abf9d089d5a938b38755 (intermittent, 1 SIGTRAP / 2 authored-test runs).
 
 
+## Phone contacts and people search (2026-11-12)
+
+- [x] Optional Contacts control with denied/limited/empty states and device-only address book.
+- [x] Contact names for matched direct chats; account custom names win; original names remain searchable.
+- [x] Saved people without conversations, unsaved bridge people, formatted-number search and separate multiple-number choices.
+- [x] Network choice before looking up a local number; bridge people keep their account and identifier.
+- [x] Regression coverage for ambiguous/cross-country numbers, LID identity, second numbers and partial bridge refreshes.
+- [x] Publish feature PR #21: https://github.com/rami-maalouf/multiplexer/pull/21
+- [x] Native verify: 13 tests passed, light/dark checks clean, no overflow across 15 largest-text screens; 38 TypeScript and 15 MatrixCore tests passed.
+- [x] Authenticated Contacts UI: off/on, actual consent refusal, permission revocation, seven synthetic contacts, saved-person search and account choice verified under auth-drive. Native normal/largest light/dark captures inspected; test account signed out.
+- [x] Integrate current main while preserving the original feature and main's login help, push, avatars and member pages.
+- [x] Reproduce and fix a hidden second phone number through the live SDK search boundary; strengthen existing address-book proof coverage.
+- [x] Reproduce HTTP-failure retry admission and add a 30-second delay that preserves cached values and explicit refreshes.
+- [x] Replace the account-choice error/retry with a neutral prompt; fix Cancel overflow and the native field's magnifier overlap at real largest type.
+- [x] Final validation: 25 focused core, 68 Bun (7 artifact skips), 14 native tests and 16 largest-text screens pass; 40 canonical core copies match. Earlier seven live search and one avatar checks passed.
+- [x] Completed full review and its independent finding validation; fixed the retained finding. Follow-up source review and combined simplification pass have no findings.
+- [ ] Physical connected-bridge acceptance and actual bridged room creation remain unverified; no real accounts were accessed. Saved-name/custom-name precedence and direct-room reuse were verified with synthetic bridge metadata and live dedicated Matrix users.
+- [ ] True limited-contact selection remains unverified: the Simulator's contacts-limited grant returned full authorization.
+
+Receipt: `tasks/evidence/contacts-pr21-integration-20261112.json`. The first combined native run
+was interrupted by the author opening Contacts; the untouched rerun passed, followed by the
+final 250.3 s clean run on all follow-ups. The first retry fixture used the wrong login id;
+a corrected fixture then reproduced only the intended admission failures before the fix.
+The integration diary adds evidence to known Exact findings 1 and 64. With Rami's explicit
+approval, sent only that diary: receipt `8266a8d3-8d4c-4dbc-8932-0cfbef0edc0e`.
+Zero command logs or attachments; other unsent diaries and the command cursor were preserved.
+No main merge or AppDrop replacement is part of this PR readiness update.
+
+The historical issue.mjs feedback checker is absent from the current framework checkout.
+Feedback evidence was added to known findings 1 and 9. Rami approved sending this task's diary only: receipt `402f5667-525f-4a76-afca-aaf3e107a941`; no command logs, attachments or other diaries were sent.
+
+Matching deliberately does not guess country codes from arbitrary national-number suffixes.
+International numbers match exactly; ten-digit North American numbers also match +1 forms.
+No real accounts, server configuration or real address books are used by verification.
+
 ## Bridge profile pictures (2026-11-12)
 
 - [x] Reproduce a bridge-style direct room with a member avatar and no room avatar against the live test server: inbox avatar empty, download nil.

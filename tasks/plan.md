@@ -68,6 +68,23 @@ accounts and macOS not exercised; no real account or server configuration modifi
 The task diary was sent with approval, receipt `e584da31-3ea8-456b-bbc4-d3fda3238d90`
 (one diary, no logs or attachments).
 
+**Phone contacts integration (2026-11-12, PR #21):** current main is integrated without
+losing login help, push, avatars or member pages. Saved people keep separate phone choices
+even when one number has a chat; failed bridge refreshes retain cached values and wait 30 s
+before retrying. Account choice is a neutral prompt, and the chooser wraps correctly at the
+real largest native text size. Native display captures were inspected in light/dark.
+The signed-in test-account drive verified off/on, system refusal, revocation, seven synthetic
+contacts, search and account choice, then signed out. Final checks: 68 Bun passes (7 artifact
+skips), 25 focused core passes, 14 native tests and 16 largest-text screens clean (250.3 s).
+Eight earlier live search/avatar checks also passed. Review findings are resolved; the
+follow-up source and simplification passes have no findings. Forty core copies match.
+Physical and real connected bridge acceptance, true limited-contact selection and bridged
+room creation remain unverified. Main/AppDrop were not changed by this PR update.
+Receipt: `tasks/evidence/contacts-pr21-integration-20261112.json`.
+Original contacts diary was sent with approval (`402f5667-525f-4a76-afca-aaf3e107a941`);
+the integration follow-up diary was sent with explicit approval
+(`8266a8d3-8d4c-4dbc-8932-0cfbef0edc0e`): one diary, zero command logs, no attachments.
+
 **Main and AppDrop published (2026-11-12):** main `1686cd1` contains PRs #22 and
 #23, login help, all pending work, and the 11 previously unpushed local-main commits.
 GitHub confirms both PRs merged. Final verification: 14 native tests, light/dark and

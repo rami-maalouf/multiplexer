@@ -580,6 +580,7 @@ component Multiplexer
   members "./details-members.contract"
   members "./send-members.contract"
   members "./voice-members.contract"
+  members "./phone-contacts-members.contract"
   members "./search-members.contract"
   members "./info-members.contract"
   members "./chat-search-members.contract"
@@ -1290,7 +1291,7 @@ component Multiplexer
                 SearchResults(desktop=composerSurface.desktop, appearance=appearance, found=found, shown=foundShown, loading=pending(found), query=searchQuery, kind=searchKind,
                   recentSearches=recentSearches, now=shown, offset=time.utcOffset, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion, chooseKind=chooseKind, openChat=openFoundChat, openMessage=openFoundMessage, openLink=openFoundLink,
-                  useSearch=useSearch, clearSearches=clearSearches)
+                  openPerson=openFoundPerson, useSearch=useSearch, clearSearches=clearSearches)
                 SearchBar(desktop=composerSurface.desktop, query=searchQuery, kind=searchKind, scope="", type=typeSearch, submit=submitSearch, close=closeSearch,
                   focused=searchFocused, focus=searchFocus, blur=searchBlur, largeText=viewport.accessibilityTextSize,
                   reduced=viewport.prefersReducedMotion)
@@ -1384,7 +1385,7 @@ component Multiplexer
                   image "symbol:delete"
                   text "Delete"
         if e.name == "newConversation"
-          NewConversation(route=`${e.id}`, signedIn=(session.userId != ""), query=contactQuery, account=conversationAccount,
+          NewConversation(route=`${e.id}`, signedIn=(session.userId != ""), query=contactQuery, account=conversationAccount, chooseAccountFirst=(personChoosingNetwork and conversationAccount == ""), largeText=viewport.accessibilityTextSize,
             accounts=(contactAccountsShown ? conversationAccounts.accounts : []), contacts=(contactsShown ? conversationContacts.contacts.filter(c => not (fullMatrixContact and c.accountId == "matrix" and c.identifier == contactQuery.trim())) : []),
             loading=(pending(conversationAccounts) or pending(conversationContacts)), problem=contactProblem,
             starting=pending(conversationStarted), startProblem=contactStartProblem, matrixId=fullMatrixContact,
@@ -1445,7 +1446,7 @@ component Multiplexer
         if e.name == "loginHelp"
           LoginHelp(route=`${e.id}`, close=back)
         if e.name == "settings"
-          SettingsScreen(chooseAccent=chooseAccent, resetAccent=resetAccent, appearance=appearance, route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
+          SettingsScreen(contacts=phoneContacts, contactsBusy=pending(contactsChanged), contactsFailed=(failed(phoneContacts) or failed(contactsChanged)), toggleContacts=togglePhoneContacts, chooseAccent=chooseAccent, resetAccent=resetAccent, appearance=appearance, route=`${e.id}`, userId=session.userId, profile=profile, speed=voiceSpeed, chooseSpeed=chooseSpeed,
             signOut=askSignOut, recovery=recovery, recoveryDraft=recoveryDraft, unlocking=pending(unlocked), refused=recoveryRefused,
             typeKey=typeRecoveryKey, unlock=unlockRecovery, largeText=viewport.accessibilityTextSize,
             notifications=notifications.state, messageNotifications=messageNotifications,

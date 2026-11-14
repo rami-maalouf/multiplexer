@@ -50,6 +50,8 @@ public struct RoomSummary: Equatable, Sendable {
     public var name: String
     /// The name everyone in the chat sees.
     public var roomName: String = ""
+    public var counterpart: String = ""
+    public var phones: [String] = []
     public var isDirect: Bool
     /// The newest message as one line ("" when the room has none): its text, or its kind ("Photo").
     public var lastMessage: String

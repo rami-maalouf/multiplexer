@@ -1,0 +1,122 @@
+{
+  "date": "2026-11-12",
+  "pr": "https://github.com/rami-maalouf/multiplexer/pull/21",
+  "branch": "feat/phone-contacts",
+  "verified_source_commit": "e93141b2d4f4731d7b5470fbb314307971157dc1",
+  "integrated_main": "d4db959db2f9799276afc0b6b9d19a9297913c65",
+  "exact_commit": "8536d208c40f97be3f132ea266d5029e2e3c10ba",
+  "changes": [
+    "preserved current main login help, push, avatar and member features",
+    "kept unmatched phone choices when another number has an existing chat",
+    "bounded automatic retries after a failed bridge people refresh to 30 seconds while keeping cached values",
+    "made account selection a neutral instruction with an explicit picker label",
+    "wrapped the header and fields at accessibility sizes; applied known native search-field inset workaround"
+  ],
+  "checks": {
+    "bun": {
+      "passed": 68,
+      "skipped": 7,
+      "failed": 0,
+      "skip_reason": "archive/export and simulator-artifact gated checks; no distribution package changed"
+    },
+    "core_baseline": {
+      "passed": 32,
+      "failed": 0,
+      "suites": [
+        "AddressBookTests:8",
+        "ConversationsTests:15",
+        "ConversationsAuthenticatedTests:1",
+        "SearchTests:7",
+        "bridged avatar live regression:1"
+      ]
+    },
+    "core_final": {
+      "passed": 25,
+      "failed": 0,
+      "seconds": 49.063,
+      "suites": [
+        "AddressBookTests:8",
+        "ConversationsTests:16",
+        "ConversationsAuthenticatedTests:1"
+      ]
+    },
+    "native_final": {
+      "passed": 14,
+      "failed": 0,
+      "seconds": 250.3,
+      "light_dark_findings": 0,
+      "largest_text_screens": 16,
+      "largest_text_overflow": 0,
+      "symbolic_unsupported_scripts": 10,
+      "lean_semantics": "unavailable"
+    },
+    "canonical_core_copies_matching": 40,
+    "review": {
+      "full_run": "contacts-r2-20261112",
+      "reviewers": 7,
+      "retained_finding": "failed bridge refresh needs retry delay",
+      "resolution": "reproduced by HTTP failure fixture; fixed and green in final 25-test run",
+      "followup_run": "contacts-final-delta-20261112",
+      "followup_findings": 0,
+      "simplify": "combined pass, no worthwhile findings, proof tests preserved"
+    }
+  },
+  "red_before_fix": {
+    "second_number": "live MatrixAccount.people returned [] instead of the second number; expected failure reproduced before per-phone resolution fix",
+    "retry_delay": "HTTP 500 yielded an immediately admissible second fetch; expected failure reproduced before retry deadline"
+  },
+  "manual_native_ui": {
+    "account_scope": "allowed dedicated test account only; no real account or real address book",
+    "synthetic_contacts_loaded": 7,
+    "verified": [
+      "contacts off",
+      "system consent refusal and Open Settings guidance",
+      "contacts enabled",
+      "saved person without a chat found by name",
+      "account chooser opens before lookup",
+      "permission revocation removes the person from search",
+      "normal type and real largest accessibility type in light/dark",
+      "Cancel overflow reproduced and fixed",
+      "search magnifier overlap reproduced and fixed"
+    ],
+    "captures_relative_to_app": [
+      ".exact/contacts-integration/settings-on.png",
+      ".exact/contacts-integration/settings-denied.png",
+      ".exact/contacts-integration/contacts-large.png",
+      ".exact/contacts-integration/chooser-final.png",
+      ".exact/contacts-integration/chooser-large-final-light.png",
+      ".exact/contacts-integration/chooser-large-final-dark.png",
+      ".exact/contacts-integration/revoked-search.png"
+    ],
+    "captures": "local gitignored evidence; settings-denied and revoked-search captures used the approximate app drawing, while the other listed captures are native display captures. Permission state was also verified through native replies. No image attachment support in current gh pr edit.",
+    "cleanup": "contacts preference disabled; signed-out userId confirmed empty; large content size and light restored; own simulator shut down"
+  },
+  "limitations": [
+    "no physical-device or real connected bridge drive",
+    "true limited-contact selection not exercised: simulator contacts-limited grant reported full authorization",
+    "Matrix direct-room reuse and mapping verified; no new bridged room was created",
+    "no main merge, AppDrop update, TestFlight release or server configuration changes"
+  ],
+  "source_sha256": {
+    "apps/multiplexer/app.contract": "254e5d1a9b78aa2b55f1394ae875ebea7efd7460da0a2cf3c48c42a750384db1",
+    "apps/multiplexer/app.ts": "8aded642dbc705b6f799419e689f74df530d392d1a61c9861bba1b1969a05b6d",
+    "apps/multiplexer/modules/apple/Matrix.swift": "8d64739e8a20a24a9dccfa6cba3867ba1ee755d8458e32629230052dbc65c5d1",
+    "apps/multiplexer/modules/apple/PhoneContacts.swift": "cc734f77b42b59c5b6aafcd4441bcb98e741d9e1db27481594a4db0b3744500b",
+    "apps/multiplexer/new-conversation-members.contract": "89e7405273b9d1617591602b50894cdb0feeae819d6fcf9115c0788329b75ad6",
+    "apps/multiplexer/new-conversation.contract": "6427086031d4cfebe55ec3cf29bf51cde71cf37052ccf3f5cd459fa20987d303",
+    "apps/multiplexer/phone-contacts-members.contract": "704b2194f99e257d93bfe0f2f17b64c127160f3fe6b050e8f2129ad8c17bafc6",
+    "apps/multiplexer/search-members.contract": "f9f9fdd98e3cc9efbd1c7cea54bf9088926bb58efdd6aabba212dab4b42ec297",
+    "apps/multiplexer/search.contract": "3ebfe333602b58572b67b1243816ab2d6286a2fc0bcf531cbd204a33baf0b590",
+    "apps/multiplexer/search.ts": "0746cca3eb68e71a03da07c2aaed9b16a4255c37ea292bd8dad61c393e53476f",
+    "apps/multiplexer/settings.contract": "16a9b04fb238ba4793ee834ed9232764379635ef370f0bd2454f6e5ad24a8c2a",
+    "apps/multiplexer/strings/en.json": "b2d84f509be0434dda4c88ec48022405ef538673739c9d60609190c25f8686be",
+    "matrix-core/Sources/MatrixCore/AddressBook.swift": "fb2a9a7265c7b4142a33ae5a426f9e768daecfbd7a34001883a4bd2cb5f41dc0",
+    "matrix-core/Sources/MatrixCore/ChatInfo.swift": "9c4f9f3736945a9d2856bbe4a2211aca5f4d9b3a0ec9a2b6891513944dad50f1",
+    "matrix-core/Sources/MatrixCore/MatrixAccount.swift": "efb436b0a2e5c72b8b8f7f5eb564cc580a50d45e18f8df58cc97be67e2e4cfe5",
+    "matrix-core/Sources/MatrixCore/MatrixCore.swift": "40e32d88e4ffda87eab5eaf7de61bc942e281ac912b03459cc1ade3431830809",
+    "matrix-core/Sources/MatrixCore/Search.swift": "02c8f4c7653206a2e62c94bd985658b1e66cfff1ca377717a2e4bbf5957cc599",
+    "matrix-core/Tests/MatrixCoreTests/AddressBookTests.swift": "885bba5b43044f0dacaaee39b3f3a8fb79aa91da0f1db634bdb1f5fd35a820f4",
+    "matrix-core/Tests/MatrixCoreTests/ConversationsAuthenticatedTests.swift": "e8dfd92b63b14052d5607f4ea41e930684f182a90d9c569a06d38db1f65324be",
+    "matrix-core/Tests/MatrixCoreTests/ConversationsTests.swift": "775d2c9ef01322c2d69e321dabb7b1fdd08a45b8c021e339374736751730f315"
+  }
+}

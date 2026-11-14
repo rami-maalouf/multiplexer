@@ -29,7 +29,7 @@ export const grants = ['fs.read doc:/', 'fs.read app:/tmp/picked', 'fs.read app:
   'fs.read app:/cache/matrix-media', 'fs.read app:/tmp/copy', 'fs.write app:/tmp/copy',
   'device.speech-recognition purpose.recognition', 'fs.read app:/data/transcripts.json', 'fs.write app:/data/transcripts.json',
   'net.fetch https://api.klipy.com', 'net.fetch https://static.klipy.com', 'fs.write app:/tmp/gifs', 'fs.read app:/tmp/gifs',
-  'device.notifications purpose.notifications', 'fs.read app:/data/reminders', 'fs.write app:/data/reminders'].join('\n');
+  'device.contacts purpose.contacts', 'device.notifications purpose.notifications', 'fs.read app:/data/reminders', 'fs.write app:/data/reminders'].join('\n');
 
 // GIFs (gif.contract): the phone calls KLIPY itself, as KLIPY requires (D10). Its app key is set at
 // build from the Keychain (scripts/setup-klipy-key.sh); it ships in the app, as an app key does.
@@ -549,14 +549,23 @@ const sources: Sources = {
     if (!owner || !native?.available) return { owner, visit, account, identifier, room: '', problem: 'Sign in to start a conversation.' };
     return await native.later({ op: 'startConversation', owner, visit, account, identifier }) as Result<'startConversation'>;
   },
+  loadPhoneContacts: async ([owner], _store, _storage, native) => {
+    if (!owner || !native?.available) return { on: false, denied: false, limited: false, count: 0 };
+    native.watch("contacts");
+    return await native.later({ op: "phoneContacts" }) as Result<"loadPhoneContacts">;
+  },
+  setPhoneContacts: async ([enabled], _store, _storage, native) => {
+    return await native!.later({ op: "phoneContacts", enabled }) as Result<"setPhoneContacts">;
+  },
   loadSearch: async ([userId, searching, query, kind, recent, room], _store, _storage, native): Promise<Result<'loadSearch'>> => {
-    const none = { owner: userId, room, query, kind, chats: [], messages: [], links: [] };
+    const none = { owner: userId, room, query, kind, people: [], chats: [], messages: [], links: [] };
     // a chat's Bookmarks kind shows its saved messages (loadBookmarks), which no search finds.
     if (userId === '' || !searching || !native?.available || (room !== '' && query === '' && kind === '') || kind === 'bookmarks') return none;
     // a found photo's or sender's picture, once downloaded, and a chat's new file, link or voice
     // message on a kind's page; a chat's new photo or video (the info page's); the recent chats'
     // last messages as they change.
     native.watch('search');
+    native.watch('rooms');
     if (room !== '' && (kind === 'images' || kind === 'videos')) native.watch(`info:${room}`);
     if (room === '' && query === '' && kind === '') native.watch('rooms');
     const answer = (await native.later({ op: 'search', query, kind, recent, room })) as SearchAnswer;
