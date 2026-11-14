@@ -14,10 +14,17 @@ so the bubble stuck out under the voice button.
   same way with and without it on this Simulator (97 pass in both).
 - [x] Send fades in 90 ms and the field shrinks 70 ms later, only when it empties, so its glass
   never passes over a Send still showing. Typing still widens it at once.
-- [ ] Rami: whether to offer the Exact fix upstream (exact2 is public). macOS left as it was.
+- [x] Exact fix offered upstream with Rami's yes: [expo/exact#544](https://github.com/expo/exact/pull/544)
+  (open). macOS left as it was.
+- [x] The voice button's glass buds off the field's end as the field shrinks (scale and move, no
+  fade: a faded glass leaves the glass group), and on typing it shrinks where Send grows in while
+  the field widens over it. The field draws above it (`z-index`), so its mark stays under Send.
 Recordings: `research/send-animation/field-shrink-before-and-after*.mp4`,
-`mux-field-glass-resize.mov`, `mux-field-glass-widen.mov`. The send-to-rise wait (about 200 ms)
-is the same with and without these changes and close to the template's 173 ms.
+`voice-glass-merge-and-bud*.mp4`, `mux-field-glass-resize.mov`, `mux-field-glass-widen.mov`.
+The send-to-rise wait (about 200 ms) is the same with and without these changes and close to
+the template's 173 ms.
+- [ ] More glass motion in the composer, if Rami wants it: the + button and X, and the voice
+  button and Stop, swap with no motion when a recording starts and ends.
 
 ## Send comparison video correction (2026-11-13)
 

@@ -264,7 +264,7 @@ it must keep `!/.exact/diary/`.
 
 | Finding | Cost | Severity | Evidence |
 |---|---|---|---|
-| a layout transition does not resize a glass or blur material | about 40 min | P2 | [glass resize](issues/20261113-layout-transition-skips-glass.md) |
+| a layout transition does not resize a glass or blur material; fixed in [expo/exact#544](https://github.com/expo/exact/pull/544) (open) | about 40 min | P2 | [glass resize](issues/20261113-layout-transition-skips-glass.md) |
 | a framework path change leaves a stale duplicate crate | about 15 min | P3 | [build paths](issues/20261113-symlink-framework-source-identity.md) |
 
 ## Send velocity findings (2026-11-13)
