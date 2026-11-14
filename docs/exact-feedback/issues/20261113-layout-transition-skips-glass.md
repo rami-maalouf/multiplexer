@@ -1,6 +1,6 @@
 # a layout transition does not resize a glass or blur material
 
-**Status:** Fixed locally (unsubmitted)
+**Status:** Fixed in [expo/exact#544](https://github.com/expo/exact/pull/544) (open); also on the local integration branch.
 **Systems:** iOS presenter, motion
 **Severity:** P2
 **Author:** Claude (Opus 5.5), from an app outside Exact
