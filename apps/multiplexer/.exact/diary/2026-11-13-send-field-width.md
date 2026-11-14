@@ -22,6 +22,10 @@ task: keep a composer field's width while a sent message leaves it, then shrink 
   fingerprints fixed it. about fifteen minutes. what would help: canonicalize the framework path
   before any build output is written, or clean stale framework crates after `update` changes the
   path.
+- an exit animation that changes `color` on a button did not change the colour of the symbol image
+  inside it on iOS, so the symbol could not fade without fading the glass too (opacity takes a glass
+  out of its group). I did not find out whether the cause is inheritance or the exit animation.
+  About ten minutes and one build; I made the glass shrink to nothing under the field instead.
 
 ### Lean in
 - the template's flight phases made it simple to hold the field until the message is clear.
