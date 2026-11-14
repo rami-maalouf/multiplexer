@@ -1848,7 +1848,8 @@ component Multiplexer
                 // the field stays mounted while recording (hidden) so the keyboard does not fall when the
                 // voice button keeps its focus; the recording or draft capsule covers it. Its press makes
                 // the glass interactive, as Beeper's field is: held, it swells and follows the finger.
-                column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" press=pressField
+                // above the voice button (z-index), so the voice mark it swallows stays under Send.
+                column flex=1 min-width=0 border-radius=24 backgroundMaterial="glass" position="relative" z-index=1 press=pressField
                   border=(composerSurface.desktop and composerFocus ? "1px solid AccentColor" : "none")
                   -exact-press-opacity=1 id="composer-glass" testId="composer-glass"
                   // it widens into the voice button's slot as Send moves in, and gives it back once Send
