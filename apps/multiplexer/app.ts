@@ -711,6 +711,10 @@ const sources: Sources = {
     for (const c of answer.items) cards.set(c.url, c);
     return answer;
   },
+  clearChatNotifications: async ([owner, roomId, visible], _store, _storage, native): Promise<Result<'clearChatNotifications'>> => {
+    if (!owner || !roomId || !visible || !native?.available) return { count: 0 };
+    return await native.later({ op: 'clearChatNotifications', owner, roomId }) as Result<'clearChatNotifications'>;
+  },
   // the view asks when the reader has seen the chat's newest message; loading a chat reads nothing.
   markRead: async ([roomId], _store, _storage, native): Promise<Result<'markRead'>> => {
     await native!.later({ op: 'markRead', roomId });

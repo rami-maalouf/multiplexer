@@ -25,6 +25,9 @@ final class NotificationService: UNNotificationServiceExtension {
         // the gateway sends the server's count of unread chats with each push.
         if let count = (info["unread_count"] as? NSNumber)?.intValue { content.badge = NSNumber(value: count) }
         let roomId = info["room_id"] as? String ?? "", eventId = info["event_id"] as? String ?? ""
+        // capture identity before sdk work so offline and expired banners can still open their chat.
+        let session = try? Self.readSession()
+        content.userInfo = NotificationActivation.userInfo(info, userId: session?.stored.session.userId)
         // one chat's notifications group together.
         if !roomId.isEmpty { content.threadIdentifier = roomId }
         lock.withLock {
@@ -37,7 +40,8 @@ final class NotificationService: UNNotificationServiceExtension {
         }
         work = Task {
             do {
-                guard let fetched = try await Self.read(roomId: roomId, eventId: eventId) else {
+                guard let session else { throw ExtensionProblem.signedOut }
+                guard let fetched = try await Self.read(session, roomId: roomId, eventId: eventId) else {
                     finish(content, outcome: "nothing to show")
                     return
                 }
@@ -71,7 +75,7 @@ final class NotificationService: UNNotificationServiceExtension {
     }
 
     /// The session from the app's Keychain item, the store from the App Group, then the message.
-    private static func read(roomId: String, eventId: String) async throws -> (content: PushContent, session: SavedSession)? {
+    private static func readSession() throws -> (group: String, keychain: SessionKeychain, stored: StoredSession) {
         let bundle = Bundle.main
         guard let group = bundle.object(forInfoDictionaryKey: "MultiplexerAppGroup") as? String,
               let keychainGroup = bundle.object(forInfoDictionaryKey: "MultiplexerKeychainGroup") as? String,
@@ -81,6 +85,12 @@ final class NotificationService: UNNotificationServiceExtension {
         // the item is readable after the phone's first unlock; before, this throws.
         let keychain = SessionKeychain(service: service, accessGroup: keychainGroup)
         guard let stored = try keychain.read() else { throw ExtensionProblem.signedOut }
+        return (group, keychain, stored)
+    }
+
+    private static func read(_ source: (group: String, keychain: SessionKeychain, stored: StoredSession),
+                             roomId: String, eventId: String) async throws -> (content: PushContent, session: SavedSession)? {
+        let (group, keychain, stored) = source
         // the app publishes this only after the complete store has moved successfully.
         guard stored.storeLocation == .group else { throw ExtensionProblem.storeNotShared }
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else {

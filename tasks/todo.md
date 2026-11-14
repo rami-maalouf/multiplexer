@@ -3304,15 +3304,55 @@ P3.6 badge/clearing semantics and P3.7 remote activation/presentation remain fol
 - [ ] **Ask Rami:** the badge counts chats (the server's default) or messages. The extension and
   the app show the same number.
 - [ ] A chat read on another device lowers the badge with no banner.
-- [ ] Opening a chat removes its delivered notifications.
+- [x] Opening a chat removes its delivered account-scoped notifications. (2026-11-14,
+  PR #29: injected enriched iOS 26.5 notifications disappear on inbox navigation,
+  fresh banner taps and repeated same-chat taps. Other-room/account controls stay;
+  already-read chat tested. Old unscoped banners are retained. Six focused native/TS
+  checks pass; physical-device cleanup remains unverified.)
+
+Cleanup evidence: `/tmp/mux-clear-after-manual.png`, `/tmp/mux-clear-after-tap.png`,
+`/tmp/mux-clear-same-chat-center.png` (same-chat failure before visit identity),
+`/tmp/mux-clear-final-same-center.png` (corrected replay). The current test session
+was signed out. Reinstalling the packaged simulator build reopened signed out;
+prior test devices may remain, and none were deleted on the
+server. System Notification Center automation did not activate its existing rows;
+fresh banner taps provided the end-user acceptance instead.
+Final `verify ios` passed all 14 native tests, light/dark checks and 16 largest-text
+screens in 144.5 s (`/tmp/mux-clear-verify-ios.log`). Its separate symbolic pass
+delivered three authored scripts in full and one in part; Lean was unavailable.
+No broader formal-proof or physical-device claim follows from the native result.
+Cleanup diary sent with explicit approval: `bd01a39d-7eeb-49af-8aaa-4da06a4a6d4e`.
+Only that diary was sent; command logs, attachments and other pending diaries stayed local.
 
 **Dependencies:** P3.5, B7. **Scope:** S
 
 ### P3.7 A tap opens its chat; no banner for the open chat
 
+2026-11-14 investigation: branch `fix/notification-tap-navigation` from main.
+Reproduced a system banner tap restoring Settings instead of its chat on MX push
+with `@test1`; a compiled probe of Exact's `Notify.swift` also observes no event.
+The existing launch queue already handles initial data readiness. Proposed repair
+is an account-scoped activation adapter before extension enrichment/fallback.
+Rami approved the pinned activation format with tests on 2026-11-14. Native receiver,
+service fallback and current-account resolver checks pass. Real sandbox APNs taps
+open the correct chat from Settings, another chat and a terminated app on iOS 26.5.
+The other-chat replay exposed a second bug: shared chat state read the first room
+in the stack. `openChat` now saves the draft and replaces the previous chat stack.
+Injected enriched fallback and different-account banners pass; the latter keeps the
+inbox unchanged. No real-account access or physical-device delivery was exercised.
+Build setup: refreshed the ignored MatrixCore copies after switching from the older
+branch; the first compile correctly reported the missing `networkIdentifiers` method.
+Evidence: `/tmp/mux-tap-after-click.png`, `/tmp/mux-notification-tap-probe/check`.
+Final evidence: `/tmp/mux-tap-final-other-chat.png`, `/tmp/mux-tap-final-cold.png`,
+`/tmp/mux-tap-fallback-success.png`, `/tmp/mux-tap-other-account-refused.png`.
+Focused Bun/native fixtures: 35 passed, no skips. Full `verify ios`: 14 passed,
+light/dark checks clean, 16 screens at the largest text size with no overflow,
+relaunch passed; `/tmp/mux-tap-verify-ios.log`. The owned test account was signed out.
+
 **Acceptance criteria:**
-- [ ] A tap on a notification opens its chat. Exact drops a tap on a notification it did not post
-  (`Notify.swift` reads only `userInfo["exact"]`); ask the Exact team before relying on that key.
+- [x] A tap on a newly processed notification opens its chat. Rami approved the pinned
+  `userInfo["exact"]` adapter with tests on 2026-11-14; actual receiver, fallback and
+  account checks plus warm/cold sandbox taps pass. Old delivered banners retain old metadata.
 - [ ] With the app in front on a chat, its messages show no banner (needs Exact's `willPresent`).
 
 **Dependencies:** P3.5, and Exact. **Scope:** S, plus Exact's part
