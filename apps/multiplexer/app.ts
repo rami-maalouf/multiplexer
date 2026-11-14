@@ -4,6 +4,7 @@ import { clearAppBadge, closeNotification, notificationStatus, setAppBadge, show
 import { emojiRows } from './emoji-rows.ts';
 import { searchFound, type SearchAnswer } from './search.ts';
 import { infoSources } from './info.ts';
+import { appLinkSources } from './app-links.ts';
 import { deleteUntil, editUntil } from './limits.ts';
 import { linkOf, noLink } from './links.ts';
 
@@ -452,6 +453,7 @@ const sources: Sources = {
   },
   loadAppearance: ([color]) => appearance(color),
   ...infoSources,
+  ...appLinkSources,
   currentSession: (_args, _store, _storage, native): Result<'currentSession'> => {
     if (!native?.available) return { userId: '' };
     return native.call({ op: 'session' }) as Result<'currentSession'>;

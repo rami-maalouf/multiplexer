@@ -6,19 +6,6 @@ fn networkName(network: string): string = network == "whatsapp" ? "WhatsApp" : (
   : (network == "messenger" ? "Messenger" : (network == "telegram" ? "Telegram" : (network == "signal" ? "Signal"
   : (network == "discord" ? "Discord" : (network == "linkedin" ? "LinkedIn" : (network == "matrix" ? "Matrix" : network)))))))
 
-// the sites whose own app a link opens, as Beeper does: a reel goes to Instagram, a profile to
-// LinkedIn. iOS hands such a link to the app when it is installed, and to Safari when it is not.
-// Every other link opens over the chat (details-members.contract's openLink).
-fn appSites(): string[] = ["instagram.com", "instagr.am", "facebook.com", "fb.com", "fb.watch", "m.me", "messenger.com",
-  "whatsapp.com", "wa.me", "linkedin.com", "lnkd.in", "threads.net", "threads.com", "x.com", "twitter.com", "tiktok.com",
-  "youtube.com", "youtu.be", "t.me", "telegram.me", "signal.me", "discord.com", "discord.gg", "spotify.com"]
-// a web link's host, lowercased and without its port: "" for anything that is not http or https.
-fn linkHost(url: string): string = ((url.toLowerCase().startsWith("https://") or url.toLowerCase().startsWith("http://"))
-  ? (match url.toLowerCase().split("/").at(2) { case some(h) => cut(cut(cut(h, "?"), "#"), ":"), case none => "" }) : "")
-fn cut(text: string, mark: string): string = match text.split(mark).at(0) { case some(p) => p, case none => text }
-fn opensInApp(url: string): bool = appSites().filter(d => hostIs(linkHost(url), d)).length > 0
-fn hostIs(host: string, site: string): bool = host == site or host.endsWith(`.${site}`)
-
 // the logo sits in a ring of the list's background, so it stands apart from the picture under
 // it. The picture's parent places it: it is outside the picture's clipped box.
 component NetworkBadge

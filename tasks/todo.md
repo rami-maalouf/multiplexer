@@ -1,5 +1,15 @@
 # Mux: tasks
 
+## Links open in any installed app (2026-11-14, branch `fix/open-links-in-installed-apps`)
+
+- [x] Rami: not only Instagram; Google Maps, Google Photos, anything with an app. The site list
+  is gone: iOS opens a link only if an installed app claims it (`universalLinksOnly`,
+  `modules/apple/AppLinks.swift`); otherwise the in-app browser opens, as before.
+- [x] Mail and phone links go to the system (the in-app browser cannot show them).
+- [x] Drive: under the agent no app takes a link, and the in-app browser opens after the answer.
+  14 authored iOS tests, 61 bun tests pass.
+- [ ] Physical iPhone: Instagram, Google Maps and Google Photos links open their apps.
+
 ## Network links and member profiles in the network's app (2026-11-14, branch `fix/open-in-network-apps`)
 
 - [x] Reproduce: an Instagram reel link in a test chat opened the in-app browser (drive journal).

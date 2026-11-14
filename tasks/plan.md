@@ -4,6 +4,11 @@ Mux (formerly Multiplexer) combines many chat networks into one inbox on a serve
 
 ## Status
 
+**Installed-app links (2026-11-14, branch `fix/open-links-in-installed-apps`):** replaces PR #27's
+site list. A tapped web link first asks iOS to open it only in an app that claims it (universal
+links only); with none, the in-app browser opens. Any app Rami has (Google Maps, Google Photos,
+Instagram, ...) works without a list. Mac links still go to the default browser.
+
 **Network links (2026-11-14, branch `fix/open-in-network-apps`, on PR #24's branch):** links
 to network sites (Instagram reels, profiles, ...) now go to iOS `openURL`, so the installed app
 opens them, as in Beeper; other links keep the in-app browser. The member page has "Open in

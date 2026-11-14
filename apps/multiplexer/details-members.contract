@@ -1,7 +1,6 @@
 // the chat screen's state and actions for its details (details.contract): the "New" line kept
 // while the chat is open, the jump to the newest message, the video viewer, and links.
-use VideoFile from "./details.contract"
-use opensInApp from "./network.contract"
+use VideoFile, AppLink from "./details.contract"
 use openBrowser, inAppBrowserStatus, InAppBrowserStatus, BrowserResult from "@exact/in-app-browser"
 
 members Multiplexer
@@ -33,6 +32,8 @@ members Multiplexer
   // a link's page opens over the chat on iOS (Safari's view, Done comes back), else in the browser.
   resource browser = inAppBrowserStatus() as shape InAppBrowserStatus else empty(available=false, overApp=false)
   mutation browsed as shape BrowserResult
+  mutation appLinked as shape AppLink then appLinkAnswered
+  derive unclaimedLink = match appLinked { case some(a) => (a.opened ? "" : a.url), case none => "" }
   // the line is the live answer's: a kept copy has none, and while more is on its way it may be
   // further back than the first answer shows.
   task keepNew when threadShown and newLineRoom != openRoom and (thread.firstUnread != "" or not thread.settling) key=openRoom
@@ -74,11 +75,18 @@ members Multiplexer
   // a tap on a video's poster plays it full screen, zooming out of the poster.
   action showVideo(id: string)
     nav = push(nav, path("video", openRoom, id))
-  // a link to a network with its own app (network.contract's opensInApp) goes to that app.
+  // a link that an installed app claims (Instagram, Google Maps, Google Photos, ...) opens in that
+  // app, as Beeper does; iOS says which apps claim which links. Any other opens over the chat
+  // (Safari's view, Done comes back); without one (the Mac), in the browser.
+  // a mail or phone link goes to the system, which the in-app browser cannot show.
   action openLink(url: string)
-    if opensInApp(url)
+    if not url.toLowerCase().startsWith("http://") and not url.toLowerCase().startsWith("https://")
       openURL(url)
     else if browser.overApp
-      send browsed = openBrowser(url=url)
+      send appLinked = openInApp(url)
     else
       openURL(url)
+  // no app took the link: it opens over the chat.
+  action appLinkAnswered
+    if unclaimedLink != ""
+      send browsed = openBrowser(url=unclaimedLink)
