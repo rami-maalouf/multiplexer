@@ -3304,7 +3304,23 @@ P3.6 badge/clearing semantics and P3.7 remote activation/presentation remain fol
 - [ ] **Ask Rami:** the badge counts chats (the server's default) or messages. The extension and
   the app show the same number.
 - [ ] A chat read on another device lowers the badge with no banner.
-- [ ] Opening a chat removes its delivered notifications.
+- [x] Opening a chat removes its delivered account-scoped notifications. (2026-11-14,
+  PR #29: injected enriched iOS 26.5 notifications disappear on inbox navigation,
+  fresh banner taps and repeated same-chat taps. Other-room/account controls stay;
+  already-read chat tested. Old unscoped banners are retained. Six focused native/TS
+  checks pass; physical-device cleanup remains unverified.)
+
+Cleanup evidence: `/tmp/mux-clear-after-manual.png`, `/tmp/mux-clear-after-tap.png`,
+`/tmp/mux-clear-same-chat-center.png` (same-chat failure before visit identity),
+`/tmp/mux-clear-final-same-center.png` (corrected replay). The current test session
+was signed out. Reinstalling the packaged simulator build reopened signed out;
+prior test devices may remain, and none were deleted on the
+server. System Notification Center automation did not activate its existing rows;
+fresh banner taps provided the end-user acceptance instead.
+Final `verify ios` passed all 14 native tests, light/dark checks and 16 largest-text
+screens in 144.5 s (`/tmp/mux-clear-verify-ios.log`). Its separate symbolic pass
+delivered three authored scripts in full and one in part; Lean was unavailable.
+No broader formal-proof or physical-device claim follows from the native result.
 
 **Dependencies:** P3.5, B7. **Scope:** S
 

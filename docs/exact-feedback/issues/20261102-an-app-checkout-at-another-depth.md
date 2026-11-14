@@ -85,3 +85,12 @@ minutes. Seen at framework `94b8671f7`.
 
 
 2026-11-12 follow-up: in an isolated worktree, EXACT2 alone did not repair the generated cargo paths. update repaired those paths but left package file dependencies at the original folder depth; installed package copies were needed locally. no generated path changes are intended to ship.
+
+2026-11-14 follow-up at `b46687753f73fbe3473e661d59657592bb5b7572`: the relative
+framework path was a symlink to the canonical checkout. A successful Cargo compile then
+failed source capture for `packages/child-process/exact.json`. Regenerating integration
+paths exposed cached Rust types compiled through the other path (`expected
+exact_markdown::style::Styled, found Styled`). Package paths also needed alignment.
+Canonical integration/package paths and an isolated Cargo target are the local build
+workaround. Investigation and attempted builds cost about five minutes before the clean
+build. Canonicalizing dependency identities before compilation would prevent this mismatch.

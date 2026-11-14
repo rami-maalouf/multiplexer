@@ -301,6 +301,10 @@ final class Matrix: ExactModule {
                          "audio": $0.audio.map { ["isVoice": $0.isVoice, "duration": $0.duration, "waveform": $0.waveform, "key": $0.fileName] } ?? [:],
                          "readers": $0.readBy.map { ["name": $0.name, "time": Double($0.timestamp ?? 0)] }]
                     }])
+                case "clearChatNotifications":
+                    let count = try await ChatNotifications.clear(userId: request["owner"] as? String ?? "",
+                        roomId: request["roomId"] as? String ?? "", currentUser: { try self.stored()?.session.session.userId })
+                    reply.send(["count": count])
                 case "markRead":
                     // the screen asks once the reader has seen the chat's newest message; a load does not.
                     let account = try await signedIn()
