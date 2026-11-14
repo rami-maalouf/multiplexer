@@ -12,7 +12,8 @@ other-room and other-account controls. A same-chat foreground tap exposed unchan
 resource arguments; including the visit identity fixes that replay too. Old unscoped
 banners are retained. Six focused native/TS checks and 14 native iOS tests pass;
 light/dark checks and 16 largest-text screens are clean. Physical delivery and
-foreground suppression remain separate; the new Exact diary stays local.
+foreground suppression remain separate. The cleanup diary was sent with explicit
+approval, receipt `bd01a39d-7eeb-49af-8aaa-4da06a4a6d4e`: one diary, zero logs or attachments.
 
 **Notification tap routing (2026-11-14, `fix/notification-tap-navigation`):**
 a new branch starts at main `f9fea095c95f30573420255064fde7d48d43ae5d`.

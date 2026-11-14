@@ -3321,6 +3321,8 @@ Final `verify ios` passed all 14 native tests, light/dark checks and 16 largest-
 screens in 144.5 s (`/tmp/mux-clear-verify-ios.log`). Its separate symbolic pass
 delivered three authored scripts in full and one in part; Lean was unavailable.
 No broader formal-proof or physical-device claim follows from the native result.
+Cleanup diary sent with explicit approval: `bd01a39d-7eeb-49af-8aaa-4da06a4a6d4e`.
+Only that diary was sent; command logs, attachments and other pending diaries stayed local.
 
 **Dependencies:** P3.5, B7. **Scope:** S
 

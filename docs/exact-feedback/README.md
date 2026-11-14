@@ -296,6 +296,7 @@ Findings go to the team through Exact's private feedback tool. Run it from
 
 | Date | Receipt | What | Sent by |
 |---|---|---|---|
+| 2026-11-14 | `bd01a39d-7eeb-49af-8aaa-4da06a4a6d4e` | One notification-cleanup diary: delivered-notification selection and worktree compiler identities. Zero command logs or attachments; other pending diaries preserved. | Codex, with Rami's yes |
 | 2026-11-14 | `4e9f3d31-c7cb-4c50-9219-6399bebe6dcf` | One notification-tap diary: private activation metadata and runtime module naming. Zero command logs or attachments; other pending diaries preserved. | Codex, with Rami's yes |
 | 2026-11-07 | `be9ec5d7-b554-4bc1-8762-38bedae7bf5a` | 1 diary (member/composer/group fixes: finding 155, new evidence for 42 and 116) and 21 command-log lines | Codex, with Rami's prior yes |
 | 2026-11-06 | `a83c1989-e345-4828-8cb5-60c983aeb0df` | One branding diary, isolated from the backlog: native rebuild cost and manifest icon packaging. Zero command-log entries or attachments. | Codex, with Rami's yes |
