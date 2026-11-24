@@ -68,58 +68,81 @@ component BottomBar
   // the symbols grow a little at the accessibility text sizes, and stay inside their glass.
   derive symbolSize = largeText ? 24 : 20
   view
-    // as iOS's scroll edge effect under a floating bar (R06): the rows stay visible under the glass, softened
-    // by a thin material that is full at the screen's bottom edge and fades out a little above the bar. The
-    // chat screen's top and composer use the same values. Under Reduce Transparency, UIKit draws the material
-    // solid. Outside the bar's glass group, so its glass stays its own. In dark mode "ultra-thin" lifted the
-    // black page to a grey band (about #25 at the bottom edge); the "dark" material and the chat's
-    // chat.edge-bottom tint keep it near black. It sits 6 points into the home indicator's band, a
-    // little lower than the page's end, as iOS's own floating tab bar does.
-    view position=(desktop ? "relative" : "absolute") left=0 right=0 bottom=(desktop ? 0 : -6) flex-shrink=0 pointer-events="none"
-      view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
-        mask-image="linear-gradient(to top, black 0%, transparent 100%)"
-      view position="absolute" left=0 right=0 top=-24 bottom=-40
-        background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
-      row position="relative" padding=(desktop ? "8px" : "0 16px") align-items="center" justify-content="space-between"
-        glassGroup=12 pointer-events="none" testId="bottom-bar"
-        if desktop
-          button popovertarget="filter-menu" width=40 height=40 pointer-events="auto"
-            aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") aria-pressed=filtered testId="filter"
-            image "symbol:filter" font-size=symbolSize color="-exact-label"
-        else
+    if desktop
+      row padding="5px 8px" gap=4 align-items="center" flex-shrink=0 border-top="1px solid -exact-separator" testId="bottom-bar"
+        button popovertarget="filter-menu" appearance="none" flex=1 min-width=0 height=34 border-radius=6
+          display="flex" align-items="center" justify-content="center" background-color=(filtered ? "-exact-secondary-fill" : "transparent")
+          aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") aria-pressed=filtered title="Filter" testId="filter"
+          image "symbol:filter" font-size=16 color="-exact-label"
+        button appearance="none" press=top flex=1 min-width=0 height=34 border-radius=6
+          display="flex" align-items="center" justify-content="center" background-color=(inInbox ? "-exact-secondary-fill" : "transparent")
+          aria-label=(communityName != "" ? communityName : (network == "" ? "Inbox" : networkName(network))) aria-selected=inInbox title="Inbox" testId="inbox"
+          if communityName != "" and communityPicture != ""
+            image communityPicture width=19 height=19 border-radius=4 object-fit="cover" aria-hidden=true
+          else if communityName != ""
+            image "symbol:people" font-size=16 color="-exact-label"
+          else if network == ""
+            image "symbol:icon.tray" font-size=16 color="-exact-label"
+          else
+            image `assets/networks/${network}.svg` width=19 height=19 aria-hidden=true
+        button appearance="none" press=archive flex=1 min-width=0 height=34 border-radius=6
+          display="flex" align-items="center" justify-content="center" background-color=(inArchive ? "-exact-secondary-fill" : "transparent")
+          aria-label="Archive" aria-selected=inArchive title="Archive" testId="archive"
+          image "symbol:icon.archive" font-size=16 color="-exact-label"
+        button appearance="none" press=sheet flex=1 min-width=0 height=34
+          display="flex" align-items="center" justify-content="center" aria-label="Inboxes" title="Inboxes" testId="inboxes-button"
+          image "symbol:chooser" font-size=16 color="-exact-label"
+        button appearance="none" press=search flex=1 min-width=0 height=34
+          display="flex" align-items="center" justify-content="center" aria-label="Search" title="Search" testId="search"
+          image "symbol:search" font-size=16 color="-exact-label"
+    else
+      // as iOS's scroll edge effect under a floating bar (R06): the rows stay visible under the glass, softened
+      // by a thin material that is full at the screen's bottom edge and fades out a little above the bar. The
+      // chat screen's top and composer use the same values. Under Reduce Transparency, UIKit draws the material
+      // solid. Outside the bar's glass group, so its glass stays its own. In dark mode "ultra-thin" lifted the
+      // black page to a grey band (about #25 at the bottom edge); the "dark" material and the chat's
+      // chat.edge-bottom tint keep it near black. It sits 6 points into the home indicator's band, a
+      // little lower than the page's end, as iOS's own floating tab bar does.
+      view position="absolute" left=0 right=0 bottom=-6 flex-shrink=0 pointer-events="none"
+        view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
+          mask-image="linear-gradient(to top, black 0%, transparent 100%)"
+        view position="absolute" left=0 right=0 top=-24 bottom=-40
+          background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
+        row position="relative" padding="0 16px" align-items="center" justify-content="space-between"
+          glassGroup=12 pointer-events="none" testId="bottom-bar"
           button popovertarget="filter-menu" buttonStyle=(filtered ? "prominent-glass" : "glass") width=48 height=48 pointer-events="auto"
             aria-label=(filtered ? `Filter, ${filterName(filter)}` : "Filter") testId="filter"
             image "symbol:filter" font-size=symbolSize
-        row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
-          button appearance="none" press=top aria-label=(communityName != "" ? communityName : (network == "" ? "Inbox" : networkName(network))) aria-selected=inInbox
-            testId="inbox" min-width=68 height=44 border-radius=22 background-color=(inInbox ? "-exact-tertiary-fill" : "transparent")
-            display="flex" align-items="center" justify-content="center"
-            if communityName != "" and communityPicture != ""
-              image communityPicture width=(symbolSize + 4) height=(symbolSize + 4) border-radius=6 object-fit="cover" aria-hidden=true
-            else if communityName != ""
-              image "symbol:people" font-size=symbolSize color="-exact-label"
-            else if network == ""
-              image "symbol:icon.tray" font-size=symbolSize color="-exact-label"
-            else
-              image `assets/networks/${network}.svg` width=(symbolSize + 4) height=(symbolSize + 4) aria-hidden=true
-          button appearance="none" press=archive aria-label="Archive" aria-selected=inArchive testId="archive"
-            min-width=68 height=44 border-radius=22 background-color=(inArchive ? "-exact-tertiary-fill" : "transparent")
-            display="flex" align-items="center" justify-content="center"
-            image "symbol:icon.archive" font-size=symbolSize color="-exact-label"
-          button appearance="none" press=sheet aria-label="Inboxes" testId="inboxes-button"
-            width=44 height=44 border-radius=22 display="flex" align-items="center" justify-content="center"
-            image "symbol:chooser" font-size=symbolSize color="-exact-label"
-        // its own glass face, as the capsule's: it flies into the search's field (a native button
-        // takes no layout transition).
-        button appearance="none" press=search backgroundMaterial="glass" width=48 height=48 border-radius=24 pointer-events="auto"
-          display="flex" align-items="center" justify-content="center" aria-label="Search" testId="search"
-          sharedElement="search" -exact-layout-transition="340ms cubic-bezier(.32,.72,0,1)"
-          image "symbol:search" font-size=symbolSize color="-exact-label"
-        column id="filter-menu" popover="auto" role="menu" pointer-events="auto"
-          for f in ["all", "unread", "unanswered", "people", "groups"] key=f
-            button role="menuitemradio" aria-checked=(filter == f) press=choose(f)
-              popovertarget="filter-menu" popovertargetaction="hide" testId=`filter-${f}`
-              text filterName(f)
+          row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="bar-capsule"
+            button appearance="none" press=top aria-label=(communityName != "" ? communityName : (network == "" ? "Inbox" : networkName(network))) aria-selected=inInbox
+              testId="inbox" min-width=68 height=44 border-radius=22 background-color=(inInbox ? "-exact-tertiary-fill" : "transparent")
+              display="flex" align-items="center" justify-content="center"
+              if communityName != "" and communityPicture != ""
+                image communityPicture width=(symbolSize + 4) height=(symbolSize + 4) border-radius=6 object-fit="cover" aria-hidden=true
+              else if communityName != ""
+                image "symbol:people" font-size=symbolSize color="-exact-label"
+              else if network == ""
+                image "symbol:icon.tray" font-size=symbolSize color="-exact-label"
+              else
+                image `assets/networks/${network}.svg` width=(symbolSize + 4) height=(symbolSize + 4) aria-hidden=true
+            button appearance="none" press=archive aria-label="Archive" aria-selected=inArchive testId="archive"
+              min-width=68 height=44 border-radius=22 background-color=(inArchive ? "-exact-tertiary-fill" : "transparent")
+              display="flex" align-items="center" justify-content="center"
+              image "symbol:icon.archive" font-size=symbolSize color="-exact-label"
+            button appearance="none" press=sheet aria-label="Inboxes" testId="inboxes-button"
+              width=44 height=44 border-radius=22 display="flex" align-items="center" justify-content="center"
+              image "symbol:chooser" font-size=symbolSize color="-exact-label"
+          // its own glass face, as the capsule's: it flies into the search's field (a native button
+          // takes no layout transition).
+          button appearance="none" press=search backgroundMaterial="glass" width=48 height=48 border-radius=24 pointer-events="auto"
+            display="flex" align-items="center" justify-content="center" aria-label="Search" testId="search"
+            sharedElement="search" -exact-layout-transition="340ms cubic-bezier(.32,.72,0,1)"
+            image "symbol:search" font-size=symbolSize color="-exact-label"
+    column id="filter-menu" popover="auto" role="menu" pointer-events="auto"
+      for f in ["all", "unread", "unanswered", "people", "groups"] key=f
+        button role="menuitemradio" aria-checked=(filter == f) press=choose(f)
+          popovertarget="filter-menu" popovertargetaction="hide" testId=`filter-${f}`
+          text filterName(f)
 
 // the pinned chats above the list, as Messages draws them: large round pictures, three to a
 // row (a short last row centred), a name under each, and a dot on one with unread messages.
@@ -134,6 +157,8 @@ component PinnedGrid
     selecting: bool
     chosen: string[]
     busy: bool
+    desktop: bool
+  derive size = desktop ? 44 : 80
   view
     row id="pinned" flex-wrap="wrap" justify-content="center" padding="4px 8px 12px" border-bottom="none" testId="pinned"
       for r in rooms key=r.id
@@ -141,13 +166,13 @@ component PinnedGrid
           width="33.333%" aria-label=(r.unread ? `${r.name}, unread` : r.name) testId=`pinned-${r.id}`
           role=(selecting ? "checkbox" : "button") aria-checked=(selecting and chosen.includes(r.id))
           display="flex" flex-direction="column" align-items="center" gap=6 padding="8px 4px"
-          view position="relative" width=80 height=80
-            view width=80 height=80 border-radius=40 overflow="hidden" background-color="-exact-tertiary-fill"
+          view position="relative" width=size height=size
+            view width=size height=size border-radius=(size / 2) overflow="hidden" background-color="-exact-tertiary-fill"
               display="flex" align-items="center" justify-content="center"
               if r.avatar != ""
                 image r.avatar width="100%" height="100%" object-fit="cover" aria-label=""
               else
-                text r.initials font-size="min(-exact-title1, 36px)" font-weight=600 color="-exact-secondary-label"
+                text r.initials font-size=(desktop ? "-exact-headline" : "min(-exact-title1, 36px)") font-weight=600 color="-exact-secondary-label"
             if r.unread
               view position="absolute" left=0 top=2 width=18 height=18 border-radius=9 background-color="AccentColor"
                 border="3px solid -exact-background" box-sizing="border-box" testId=`pinned-unread-${r.id}`
@@ -179,6 +204,7 @@ component InboxHeader
     settings: action
     merge: action
     largeText: bool
+    desktop: bool
     // in the list, which starts under the status bar.
     underStatusBar: bool
     // the list is scrolled from its top: chats are under the header (the first row's line is covered at rest).
@@ -190,7 +216,7 @@ component InboxHeader
   view
     // its own bottom edge: no list separator under the title (the line above the pinned chats).
     column id="inbox-header" position="sticky" top=0 z-index=2 flex-shrink=0 padding-top=(underStatusBar ? 62 : 0) border-bottom="none"
-      testId="inbox-header"
+      testId="inbox-header" min-width=0 flex-grow=(desktop ? 1 : 0)
       // soft edge over the list: the home bottom bar's recipe, mirrored (one material, the dark
       // one in dark mode, plus chat.edge-bottom): a little lighter than the bottom's (85%), even
       // through the status bar, then an eased fade (smoothstep stops). Two rules keep a line from
@@ -216,7 +242,7 @@ component InboxHeader
       if selecting
         SelectTitle(count=count, done=done, busy=busy)
       else
-        TitleMenu(title=title, select=select, settings=settings, merge=merge, largeText=largeText)
+        TitleMenu(title=title, select=select, settings=settings, merge=merge, largeText=largeText, desktop=desktop)
       if selecting and problem != ""
         text problem role="alert" font="-exact-footnote" color="-exact-system-red" padding="4px 16px 8px" testId="select-error"
 
@@ -228,11 +254,13 @@ component TitleMenu
     // Merge Chats' sheet (merge.contract).
     merge: action
     largeText: bool
+    desktop: bool
   view
-    row padding="2px 16px 6px" align-items="center" testId="title-bar"
+    row padding=(desktop ? 0 : "2px 16px 6px") align-items="center" testId="title-bar"
       button popovertarget="title-menu" appearance="none" aria-label=`${title}, menu` testId="title-button"
-        display="flex" align-items="center" gap=6 max-width="100%" min-height=44
-        text title role="heading" aria-level=1 font="-exact-title3" font-weight=700 color="-exact-label" testId="title"
+        display="flex" align-items="center" gap=6 max-width="100%" min-width=0 min-height=(desktop ? 36 : 44)
+        text title role="heading" aria-level=1 font=(desktop ? "-exact-headline" : "-exact-title3") font-weight=700 color="-exact-label"
+          min-width=0 line-clamp=(desktop ? 1 : 0) testId="title"
         image "symbol:icon.chevron-down" font=(largeText ? "-exact-headline" : "-exact-subheadline") font-weight=600 color="-exact-label"
           aria-hidden=true
       // a row with no press is a break between sections on iOS, so the greyed rows name one,
@@ -292,10 +320,13 @@ component SelectBar
     merge: action
     largeText: bool
     busy: bool
+    desktop: bool
     // dark mode: the dark material and a black tint under the bar.
     dark: bool
   derive off = count == 0 or busy
-  derive symbolSize = largeText ? 24 : 20
+  derive symbolSize = desktop ? 16 : (largeText ? 24 : 20)
+  derive actionWidth = desktop ? 32 : 56
+  derive actionHeight = desktop ? 34 : 44
   view
     // as iOS's scroll edge effect under a floating bar (R06): the rows stay visible under the glass, softened
     // by a thin material that is full at the screen's bottom edge and fades out a little above the bar. The
@@ -304,30 +335,31 @@ component SelectBar
     // black page to a grey band (about #25 at the bottom edge); the "dark" material and the chat's
     // chat.edge-bottom tint keep it near black. It sits 6 points into the home indicator's band, a
     // little lower than the page's end, as iOS's own floating tab bar does.
-    view position="absolute" left=0 right=0 bottom=-6 pointer-events="none"
-      view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
-        mask-image="linear-gradient(to top, black 0%, transparent 100%)"
-      view position="absolute" left=0 right=0 top=-24 bottom=-40
-        background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
-      row position="relative" padding="0 16px" align-items="center" justify-content="space-between"
-        glassGroup=12 pointer-events="none" testId="select-bar"
-        row backgroundMaterial="glass" border-radius=24 padding=2 gap=2 pointer-events="auto" testId="select-capsule"
+    view position=(desktop ? "relative" : "absolute") left=0 right=0 bottom=(desktop ? 0 : -6) flex-shrink=0 pointer-events="none"
+      if not desktop
+        view position="absolute" left=0 right=0 top=-24 bottom=-40 backgroundMaterial=(dark ? "dark" : "ultra-thin")
+          mask-image="linear-gradient(to top, black 0%, transparent 100%)"
+        view position="absolute" left=0 right=0 top=-24 bottom=-40
+          background-image="linear-gradient(to top, chat.edge-bottom 0%, transparent 100%)"
+      row position="relative" padding=(desktop ? "5px 8px" : "0 16px") align-items="center" justify-content="space-between"
+        border-top=(desktop ? "1px solid -exact-separator" : "none") glassGroup=12 pointer-events="none" testId="select-bar"
+        row backgroundMaterial=(desktop ? "none" : "glass") border-radius=24 padding=2 gap=2 pointer-events="auto" testId="select-capsule"
           button appearance="none" press=change(archived ? "unarchive" : "archive") disabled=off
             aria-label=(archived ? "Unarchive" : "Archive") testId="select-archive"
-            width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+            width=actionWidth height=actionHeight border-radius=(desktop ? 6 : 22) display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
             image (archived ? "symbol:icon.unarchive" : "symbol:icon.archive") font-size=symbolSize color="-exact-label"
           button appearance="none" press=change(unread ? "read" : "unread") disabled=off
             aria-label=(unread ? "Mark as Read" : "Mark as Unread") testId="select-read"
-            width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+            width=actionWidth height=actionHeight border-radius=(desktop ? 6 : 22) display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
             image (unread ? "symbol:messages" : "symbol:icon.mark-unread") font-size=symbolSize color="-exact-label"
           button appearance="none" press=change(muted ? "unmute" : "mute") disabled=off
             aria-label=(muted ? "Unmute" : "Mute") testId="select-mute"
-            width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+            width=actionWidth height=actionHeight border-radius=(desktop ? 6 : 22) display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
             image (muted ? "symbol:notifications" : "symbol:icon.bell-slash") font-size=symbolSize color="-exact-label"
           button appearance="none" popovertarget="select-more" disabled=off aria-label="More" testId="select-more-button"
-            width=56 height=44 border-radius=22 display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
+            width=actionWidth height=actionHeight border-radius=(desktop ? 6 : 22) display="flex" align-items="center" justify-content="center" opacity=(off ? 0.35 : 1)
             image "symbol:more" font-size=symbolSize color="-exact-label"
-        button appearance="none" press=delete disabled=off backgroundMaterial="glass" width=48 height=48 border-radius=24
+        button appearance="none" press=delete disabled=off backgroundMaterial=(desktop ? "none" : "glass") width=(desktop ? 32 : 48) height=(desktop ? 34 : 48) border-radius=(desktop ? 6 : 24)
           pointer-events="auto" display="flex" align-items="center" justify-content="center" aria-label="Delete" testId="select-delete"
           opacity=(off ? 0.35 : 1)
           image "symbol:delete" font-size=symbolSize color="-exact-system-red"

@@ -1231,18 +1231,22 @@ component Multiplexer
             // while searching, the search's results take the list's place, and the bar hides.
             column navigationKey=`${e.id}` navigationScroll=(searching ? "search-results" : "rooms") navigationBar="none"
               position="absolute" inset=0 display="flex" flex-direction="column"
-              if composerSurface.desktop
-                row padding="8px 16px" justify-content="flex-end"
-                  button press=openNewConversation aria-label="New conversation" testId="new-conversation-open"
-                    image "symbol:compose"
-                    text "New Conversation"
+              if composerSurface.desktop and not searching
+                row padding="6px 12px 4px" justify-content="space-between" align-items="center" flex-shrink=0
+                  InboxHeader(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), selecting=selecting,
+                    count=chosenIds.length, done=stopSelecting, busy=pending(changedChats), problem=selectionProblem,
+                    select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize,
+                    underStatusBar=false, scrolled=false, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark", desktop=true)
+                  if not selecting
+                    button press=openNewConversation aria-label="New conversation" title="New conversation" testId="new-conversation-open" flex-shrink=0
+                      image "symbol:compose"
               // the title names the network the filter sheet chose, and opens Beeper's menu. With chats shown it is
               // the list's first row (InboxHeader, R05); with none, it stands above the empty state.
-              if not searching and not (roomsShown and (listedRooms.length > 0 or gridShown))
+              if not composerSurface.desktop and not searching and not (roomsShown and (listedRooms.length > 0 or gridShown))
                 InboxHeader(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), selecting=selecting,
                   count=chosenIds.length, done=stopSelecting, busy=pending(changedChats), problem=selectionProblem,
                   select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize,
-                  underStatusBar=false, scrolled=false, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark")
+                  underStatusBar=false, scrolled=false, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark", desktop=false)
               // the list stays under the search, covered, so closing the search finds it where it was.
               if roomsShown
                 if listedRooms.length == 0 and not gridShown and not searching
@@ -1284,14 +1288,14 @@ component Multiplexer
                     inert=searching opacity=(searching ? 0 : 1) transition="opacity 180ms ease"
                     // the list's top, for its Inbox button: the sticky header below is always "in view".
                     view id="inbox-top" height=0 border-bottom="none"
-                    if not searching
+                    if not composerSurface.desktop and not searching
                       InboxHeader(title=(labelFilter == "" ? listTitle(chatList, scopeName) : activeLabelName), selecting=selecting,
                         count=chosenIds.length, done=stopSelecting, busy=pending(changedChats), problem=selectionProblem,
                         select=startSelecting, settings=showSettings, merge=openMergeSheet, largeText=viewport.accessibilityTextSize,
-                        underStatusBar=(not composerSurface.desktop), scrolled=roomsScrolled, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark")
+                        underStatusBar=true, scrolled=roomsScrolled, solid=viewport.prefersReducedTransparency, dark=viewport.prefersColorScheme == "dark", desktop=false)
                     if gridShown
                       PinnedGrid(rooms=roomList.pinned, open=tapPinned, aim=aim, menu="chat-menu", selecting=selecting,
-                        chosen=selectedChats, busy=pending(changedChats))
+                        chosen=selectedChats, busy=pending(changedChats), desktop=composerSurface.desktop)
                     for r in listedRooms key=r.id
                       // choosing chats, a tap chooses the row's chat; else it opens it, and a long press holds it.
                       if selecting
@@ -1302,7 +1306,14 @@ component Multiplexer
                           // at the accessibility text sizes the mark takes the picture's place, so the name keeps its width.
                           view flex-shrink=0 margin=(viewport.accessibilityTextSize ? "8px 12px 8px 0" : "0 12px 0 0")
                             ChooseMark(on=selectedChats.includes(r.id), identifier=`room-mark-${r.id}`)
-                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=(not viewport.accessibilityTextSize), largeText=viewport.accessibilityTextSize)
+                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=(not viewport.accessibilityTextSize),
+                            largeText=viewport.accessibilityTextSize, desktop=composerSurface.desktop)
+                      else if composerSurface.desktop
+                        link href=path("room", r.open) hover=desktopHover(r.id) contextmenu=aim(r.id) contextPopover="chat-menu"
+                          id=`room-${r.id}` testId=`room-${r.id}` width="100%" min-width=0 padding="0 12px" box-sizing="border-box"
+                          aria-current=(openRoom == r.open ? "page" : "false")
+                          background-color=(openRoom == r.open ? "-exact-secondary-fill" : (hoveredRoom == r.id ? "-exact-tertiary-fill" : "transparent"))
+                          RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=true, largeText=viewport.accessibilityTextSize, desktop=true)
                       else
                         // a swipe shows the row's actions, as Beeper and Messages do (UIKit's own on iOS): left, Archive and
                         // Mute, a full swipe archiving; right, Read or Unread, a full swipe toggling it. The row at rest is the
@@ -1313,10 +1324,9 @@ component Multiplexer
                           // the swipe's scroll is the row, so the list gives its content no margin: the link keeps the
                           // cell's 16 at each end itself, as the other rows have (Exact puts a row's content at the
                           // cell's margin only where the row writes no padding).
-                          link href=path("room", r.open) hover=desktopHover(r.id) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
+                          link href=path("room", r.open) contextmenu=aim(r.id) contextPopover="chat-menu" id=`room-${r.id}` testId=`room-${r.id}`
                             width="100%" flex-shrink=0 scroll-snap-align="start" padding="0 16px" box-sizing="border-box"
-                            background-color=(composerSurface.desktop and hoveredRoom == r.id ? "-exact-tertiary-fill" : "transparent")
-                            RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=true, largeText=viewport.accessibilityTextSize)
+                            RoomFace(appearance=appearance, r=r, now=shown, offset=time.utcOffset, picture=true, largeText=viewport.accessibilityTextSize, desktop=false)
                           button id=`swipe-read-${r.id}` press=swipeChat(r.id, rowUnread(r) ? "read" : "unread") accent-color="-exact-system-blue"
                             flex-shrink=0 scroll-snap-align="start" testId=`swipe-read-${r.id}`
                             image (rowUnread(r) ? "symbol:messages" : "symbol:icon.mark-unread")
@@ -1349,7 +1359,7 @@ component Multiplexer
               else if roomsShown and selecting
                 SelectBar(count=chosenIds.length, archived=chosenArchived, lowPriority=chosenLowPriority, unread=chosenUnread, muted=chosenMuted, pinned=chosenPinned,
                   change=changeChosen, delete=askDeleteChosen, labelChats=labelSelected, canMerge=(chosenRooms.filter(r => r.merge == "").length >= 2),
-                  merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats),
+                  merge=mergeChosen, largeText=viewport.accessibilityTextSize, busy=pending(changedChats), desktop=composerSurface.desktop,
                   dark=viewport.prefersColorScheme == "dark")
               else if roomsShown
                 BottomBar(desktop=composerSurface.desktop, filter=filter, choose=chooseFilter, top=toInbox, archive=toArchive, list=(labelFilter == "" ? chatList : "label"), network=network,
@@ -2138,25 +2148,26 @@ component RoomFace
     picture: bool
     // the accessibility text sizes: a name may take two lines.
     largeText: bool
+    desktop: bool
   view
     // the text is written first and the picture shown before it: a list's line starts at a row's
     // first text in written order, so every row's line starts at the name, not at the initials.
     row flex-direction="row-reverse" align-items="center" flex=1 min-width=0
-      column flex=1 min-width=0 gap=2 padding="10px 0"
+      column flex=1 min-width=0 gap=2 padding=(desktop ? "7px 0" : "10px 0")
         // at large text sizes the time wraps under the name instead of covering it.
-        row flex-wrap="wrap" column-gap=6 align-items="baseline"
+        row flex-wrap=(desktop and not largeText ? "nowrap" : "wrap") column-gap=6 align-items="baseline"
           // a muted chat: a crossed bell after its name's last word, as beeper shows it.
           // one line for the name (two at the accessibility sizes), its muted bell after it, so the
           // name's ellipsis never hides the bell.
-          row flex="1 1 10rem" min-width=0 gap=4 align-items="baseline"
-            text r.name font="-exact-headline" font-weight=(loud(r) ? 700 : 600) line-clamp=(largeText ? 2 : 1) min-width=0
+          row flex=(desktop and not largeText ? "1 1 0%" : "1 1 10rem") min-width=0 gap=4 align-items="baseline"
+            text r.name font=(desktop ? "-exact-subheadline" : "-exact-headline") font-weight=(loud(r) ? 700 : 600) line-clamp=(largeText ? 2 : 1) min-width=0
               overflow-wrap="break-word"
             if r.muted
               image "symbol:icon.bell-slash" font="-exact-headline" width="0.8em" height="0.8em" flex-shrink=0
                 color="-exact-secondary-label" aria-label="Muted" testId=`muted-${r.id}`
           row gap=6 align-items="baseline" flex-shrink=0 margin-left="auto"
             if r.lastTime > 0
-              text formatDay(r.lastTime, now, offset, "list") font="-exact-footnote" color="-exact-secondary-label"
+              text formatDay(r.lastTime, now, offset, "list") font=(desktop ? "-exact-caption1" : "-exact-footnote") color="-exact-secondary-label"
         // an unread chat: a bold name and a count beside the preview; muted, a grey
         // count; with a mention, "@" and the accent. marked unread by hand: a dot.
         row gap=8 align-items="flex-start"
@@ -2168,8 +2179,9 @@ component RoomFace
             if r.lastIsOwn and r.lastStatus != "" and r.lastMessage != ""
               Ticks(level=(r.lastStatus == "seen" ? 3 : (r.lastStatus == "delivered" ? 2 : 1)), size=0.95,
                 label=(r.lastStatus == "seen" ? "Seen" : (r.lastStatus == "delivered" ? "Delivered" : "Sent")), identifier=`receipt-${r.id}`)
-            text (r.lastMessage != "" ? preview(r) : "") font="-exact-subheadline" color="-exact-secondary-label" line-clamp=2
-              min-height="2.6em" flex=1 min-width=0 overflow-wrap="break-word" testId=`room-preview-${r.id}`
+            text (r.lastMessage != "" ? preview(r) : "") font=(desktop ? "-exact-footnote" : "-exact-subheadline")
+              color="-exact-secondary-label" line-clamp=(desktop and not largeText ? 1 : 2)
+              min-height=(desktop and not largeText ? "1.3em" : "2.6em") flex=1 min-width=0 overflow-wrap="break-word" testId=`room-preview-${r.id}`
           if r.mentions > 0
             view flex-shrink=0 testId=`count-${r.id}`
               AccentBadge(appearance=appearance, label=`@ ${countText(max(r.unread, r.mentions))}`, muted=false)
@@ -2186,11 +2198,11 @@ component RoomFace
               color=(r.reminder <= now ? "AccentColor" : "-exact-secondary-label")
             text `Reminder ${formatDay(r.reminder, now, offset, "day-time")}` font="-exact-footnote"
               color=(r.reminder <= now ? "AccentColor" : "-exact-secondary-label")
-      // a fixed 48-point picture; initials grow with the text size, to a cap. a bridged chat's
+      // initials grow with the text size, to a cap. a bridged chat's
       // network logo sits on its corner, outside the clipped circle.
       if picture
-        view position="relative" flex-shrink=0 margin="8px 12px 8px 0"
-          view width=48 height=48 border-radius=24 overflow="hidden"
+        view position="relative" flex-shrink=0 margin=(desktop ? "7px 10px 7px 0" : "8px 12px 8px 0")
+          view width=(desktop ? 34 : 48) height=(desktop ? 34 : 48) border-radius=(desktop ? 17 : 24) overflow="hidden"
             background-color="-exact-tertiary-fill" display="flex" align-items="center" justify-content="center"
             testId=`avatar-${r.id}`
             if r.avatar != ""
